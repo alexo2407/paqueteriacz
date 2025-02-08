@@ -1,19 +1,19 @@
-#impedir lista de directorio
+# #impedir lista de directorio
 
 
-Options All -Indexes
-Options -MultiViews
+ Options All -Indexes
+ Options -MultiViews
 
-#URL amigables
+# #URL amigables
 
-RewriteEngine On
+ RewriteEngine On
 
-# # Si el archivo o directorio solicitado existe, no lo reescribas
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# # # Si el archivo o directorio solicitado existe, no lo reescribas
+ RewriteCond %{REQUEST_FILENAME} !-f
+ RewriteCond %{REQUEST_FILENAME} !-d
 
-#usaremos la expresion regular como una regla que captura todo lo que venga despues de la palabra clave enlaceBack
+# #usaremos la expresion regular como una regla que captura todo lo que venga despues de la palabra clave enlaceBack
 
 
 
-RewriteRule ^([a-zA-Z0-9/]+)$ index.php?enlaceBack=$1 [QSA,L]
+ RewriteRule ^([a-zA-Z0-9/]+)$ index.php?enlace=$1 [QSA,L]

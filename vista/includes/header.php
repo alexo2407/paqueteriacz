@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
-        <a class="navbar-brand" href="<?=RUTA_FRONT?>">Curso PHP</a>
+        <a class="navbar-brand" href="<?=RUTA_URL?>">Paqueteria CruzValle</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -13,10 +13,10 @@
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_BACK ?>articulos">Artículos</a>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios">Usuarios</a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_BACK ?>comentarios">Comentarios</a>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>clientes">Clientes</a>
                         </li>
                     </ul>
                 </li>
@@ -24,17 +24,20 @@
 
 
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_BACK ?>usuarios">Usuarios</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>pedidos">pedidos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_BACK ?>dashboard">dashboard</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>productos">productos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= RUTA_URL ?>seguimientos">seguimiento</a>
                 </li>
 
             </ul>
 
             <ul class="navbar-nav mb-2 mb-lg-0">
                 <!-- <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_BACK ?>dashboard">Inicio</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>dashboard">Inicio</a>
                 </li> -->
 
                 <!-- <li class="nav-item">
@@ -56,7 +59,7 @@
                 ?>
                
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_BACK ?>salir">Salir</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>salir">Salir</a>
                 </li>
 
             </ul>

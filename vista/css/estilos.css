@@ -6,7 +6,7 @@
 }
 
 footer {
-  background: #212529;
+  background: #212529 !important;
 }
 
 .caja2 {
@@ -17,7 +17,7 @@ footer {
   background-color: #001042 !important;
 }
 
-footer .pie {
+.pie {
   font-size: 50px;
   background-color: #001042 !important;
 }

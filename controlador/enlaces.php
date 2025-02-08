@@ -1,13 +1,13 @@
 <?php 
 
-class EnlacesBackendController
+class EnlacesController
 {
-    public static function enlacesBackendController(){
+    public static function enlacesController(){
 
-    if(isset($_GET['enlaceBack']))
+    if(isset($_GET['enlace']))
     {
         //obtenemos del URL el enlace
-        $url = $_GET['enlaceBack'];
+        $url = $_GET['enlace'];
 
     }
     else {
@@ -18,7 +18,7 @@ class EnlacesBackendController
 
 
 
-    $repuesta = EnlaceBackendModel::enlaceBackendModel($url);
+    $repuesta = EnlaceBackendModel::enlacesModel($url);
 
     include $repuesta;
 

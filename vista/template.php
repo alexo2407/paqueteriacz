@@ -8,13 +8,14 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
 
-    <link rel="stylesheet" href="<?PHP echo RUTA_BACK;?>vista/css/bootstrap-icons-1.2.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/bootstrap-icons-1.2.1/font/bootstrap-icons.css">
 
     <link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet">
+    
 
-    <link rel="stylesheet" href="<?PHP echo RUTA_BACK;?>vista/css/estilos.css">
+    <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos.css">
 
-    <title>Curso PHP</title>
+    <title>Aplicacion Paqueteria</title>
   </head>
   <body>
 
@@ -23,10 +24,9 @@
     <?php 
   
 
-     $mostarEnlaces = new EnlacesBackendController();
-     $mostarEnlaces->enlacesBackendController();
-
-    // // var_dump($mostarEnlaces);
+     $mostarEnlaces = new EnlacesController();
+     $mostarEnlaces->enlacesController();
+    //  var_dump($mostarEnlaces);
        
     ?>
 
@@ -45,7 +45,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.min.js" integrity="sha384-pQQkAEnwaBkjpqZ8RU1fF1AKtTcHJwFl3pblpTlHXybJjHpMYo79HY3hIi4NKxyj" crossorigin="anonymous"></script>
 -->
 
-<script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
 
 <script>
         CKEDITOR.replace( 'texto' );

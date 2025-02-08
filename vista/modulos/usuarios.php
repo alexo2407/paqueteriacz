@@ -6,7 +6,7 @@
         <h3>Lista de Usuarios</h3>
     </div>   
     <div class="col-sm-4 offset-2">
-        <a href="<?=RUTA_BACK?>crearUsuario" class="btn btn-success w-100"><i class="bi bi-plus-circle-fill"></i> Nuevo Usuario</a>
+        <a href="<?=RUTA_URL?>crearUsuario" class="btn btn-success w-100"><i class="bi bi-plus-circle-fill"></i> Nuevo Usuario</a>
     </div>    
 </div>
 <div class="row mt-2 caja">
@@ -37,10 +37,10 @@
                         <td><?php echo $usuarios['id']; ?></td>
                         <td><?php echo $usuarios['nombre']; ?></td>
                         <td><?php echo $usuarios['email']; ?></td>
-                        <td><?php echo $usuarios['rol_id']; ?></td>
-                        <td><?php echo $usuarios['fecha_creacion']; ?></td>
+                        <td><?php echo $usuarios['fecha']; ?></td>
+                        <td><?php  echo $usuarios['rol']?></td>
                         <td>
-                            <a href="<?=RUTA_BACK?>editarUsuario/<?php echo $usuarios['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>                                            
+                            <a href="<?=RUTA_URL?>editarUsuario/<?php echo $usuarios['ID_Usuario']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>                                            
                         </td>
                     </tr>
 
@@ -50,6 +50,7 @@
             </table>
     </div>
 </div>
+
 <?php include("vista/includes/footer.php") ?>
 
 <script>

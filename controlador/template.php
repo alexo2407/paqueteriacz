@@ -1,7 +1,7 @@
 <?php 
 
 
-class backendTemplateController {
+class templateController {
 
     //incluye la vista de la plantilla
     public function template()
