@@ -1,29 +1,48 @@
 <?php 
 
-class EnlaceBackendModel
-{
 
+class EnlacesModel
+{
     public static function enlacesModel($link)
     {
+        // Dividimos la URL en partes
+        $ruta = explode("/", $link);
 
-        $ruta = explode("/",$link);
+        // Lista blanca de módulos permitidos
+        $modulosPermitidos = [
+            "inicio",
+            "dashboard",
+            "clientes",
+            "usuarios",
+            "pedidos",
+            "productos",
+            "salir"
+        ];
 
-        // var_dump($ruta);
-        //lista blanca de url
-        if($ruta[0] == "inicio" ||
-        $ruta[0] == "dashboard" ||
-        $ruta[0] == "clientes"|| 
-        $ruta[0] == "usuarios"|| 
-        $ruta[0] == "pedidos"||     
-        $ruta[0] == "productos" ||        
-        $ruta[0] == "salir")
-        {
-            $modulo = "vista/modulos/".$ruta[0].".php";
+        // Verifica si el módulo está en la lista blanca
+        if (in_array($ruta[0], $modulosPermitidos)) {
+            $archivo = "vista/modulos/" . $ruta[0];
+
+            // Si hay una acción (como "editar"), añádela
+            if (isset($ruta[1])) {
+                $archivo .= "/" . $ruta[1] . ".php";
+            } else {
+                $archivo .= ".php";
+            }
+
+            // Devuelve la ruta si el archivo existe
+            if (file_exists($archivo)) {
+                return [
+                    "archivo" => $archivo,
+                    "parametros" => array_slice($ruta, 2) // Extraer parámetros adicionales
+                ];
+            }
         }
-        else {
-            $modulo = "vista/modulos/inicio.php";
-        }
 
-        return $modulo;
+        // Si no se encuentra el módulo, devolver inicio.php
+        return [
+            "archivo" => "vista/modulos/inicio.php",
+            "parametros" => []
+        ];
     }
 }

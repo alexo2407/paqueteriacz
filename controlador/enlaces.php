@@ -1,26 +1,23 @@
 <?php 
-
 class EnlacesController
 {
-    public static function enlacesController(){
-
-    if(isset($_GET['enlace']))
+    public static function enlacesController()
     {
-        //obtenemos del URL el enlace
-        $url = $_GET['enlace'];
+        // Obtén la URL solicitada
+        $url = isset($_GET['enlace']) ? $_GET['enlace'] : "inicio";
 
-    }
-    else {
+        // Obtén el archivo y los parámetros desde el modelo
+        $respuesta = EnlacesModel::enlacesModel($url);
+        $archivo = $respuesta['archivo'];
+        $parametros = $respuesta['parametros'];
 
-        //si no existe por default sera index
-        $url = "index";
-    }
-
-
-
-    $repuesta = EnlaceBackendModel::enlacesModel($url);
-
-    include $repuesta;
-
+        // Incluye la vista correspondiente
+        if (file_exists($archivo)) {
+            // Los parámetros estarán disponibles en la vista
+            include $archivo;
+        } else {
+            include "vista/modulos/404.php";
+        }
     }
 }
+

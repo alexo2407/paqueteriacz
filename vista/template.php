@@ -23,7 +23,9 @@
   
     <?php 
   
-
+// En el controlador principal
+    $listarClientes = new ClientesController();
+    $clientes = $listarClientes->mostrarClientesController();
      $mostarEnlaces = new EnlacesController();
      $mostarEnlaces->enlacesController();
     //  var_dump($mostarEnlaces);

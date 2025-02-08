@@ -1,44 +1,50 @@
-<?php 
+<?php
 
-
-class Conexion {
-
-//parametros de la BD
-
-private $host  = DB_HOST;
-private $dataBase = DB_SCHEMA;
-private $userName = DB_USER;
-private $password = DB_PASSWORD;
-
-private $conexion;
-
-//creamos el metodo de conexion'
-
-public function conectar()
+class Conexion
 {
-    $this->conexion = null;
+    // Parámetros de configuración de la BD
+    private $host;
+    private $dataBase;
+    private $userName;
+    private $password;
+    private $conexion;
 
-    try
+    public function __construct()
     {
-        // instanciamos la conexion con propiedades privadas a PDO
-        $this->conexion = new PDO("mysql:host=".$this->host.";dbname=".$this->dataBase,$this->userName,$this->password);
-
-        $this->conexion->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
-
-    } catch (PDOException $e)
-    {
-        echo "Error en la conexión a la Base de Datos".$e->getMessage();
+        $this->host = DB_HOST;
+        $this->dataBase = DB_SCHEMA;
+        $this->userName = DB_USER;
+        $this->password = DB_PASSWORD;
     }
 
-    // retornamos la conexion
+    // Método para conectar a la BD
+    public function conectar()
+    {
+        $this->conexion = null;
 
-    return $this->conexion;
+        try {
+            // Crear la conexión usando PDO
+            $this->conexion = new PDO(
+                "mysql:host={$this->host};dbname={$this->dataBase}",
+                $this->userName,
+                $this->password
+            );
 
-}
+            // Configurar atributos de PDO
+            $this->conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+        } catch (PDOException $e) {
+            // Manejo de errores
+            error_log("Error en la conexión a la Base de Datos: " . $e->getMessage(), 3, "logs/errors.log");
+            die("Ocurrió un problema al conectar con la base de datos. Inténtalo más tarde.");
+        }
 
+        return $this->conexion;
+    }
 
-
-
-
+    // Método para cerrar la conexión (opcional)
+    public function desconectar()
+    {
+        $this->conexion = null;
+    }
 }

@@ -1,3 +1,4 @@
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="<?=RUTA_URL?>">Paqueteria CruzValle</a>
@@ -13,10 +14,10 @@
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios">Usuarios</a>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios/listar">Usuarios</a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_URL ?>clientes">Clientes</a>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>clientes/listar">Clientes</a>
                         </li>
                     </ul>
                 </li>

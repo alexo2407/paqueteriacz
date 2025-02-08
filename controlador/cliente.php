@@ -2,117 +2,66 @@
 
 class ClientesController
 {
-    /******************************** */
-    // MOSTRAR TODOS LOS USUARIOS
-    /********************************* */
-    public function mostrarClientesController()
+    /**
+     * Mostrar todos los clientes activos
+     * 
+     * @return array Lista de clientes o un mensaje de error
+     */
+    public function mostrarClientesController(): array
     {
-        $repuesta = ClientesModel::getAll();
+        try {
+            // Llama al modelo para obtener todos los clientes
+            $respuesta = ClientesModel::getAll();
 
-        return $repuesta;
-    }
-
-    /******************************** */
-    // EDITAR USUARIOS
-    /********************************* */
-
-    public static function editarUsuariosController()
-    {
-        $idUsuario = explode('/', $_SERVER['REQUEST_URI']);
-
-        // var_dump($idUsuario[4]);
-
-        if (isset($idUsuario[4]) && is_numeric($idUsuario[4])) {
-            $repuestaModel = UsuariosModel::editarUsuariosModels($idUsuario[4]);
-
-            if ($repuestaModel == TRUE) {
-                return $repuestaModel;
-            } else {
-                header("location:" . RUTA_URL . "editarUsuario/" . $repuestaModel);
+            // Verifica si la respuesta está vacía
+            if (empty($respuesta)) {
+                return ["error" => "No se encontraron clientes activos."];
             }
+
+            
+            return $respuesta;
+
+        } catch (Exception $e) {
+            // Manejo de errores
+            error_log("Error en ClientesController: " . $e->getMessage(), 3, "logs/errors.log");
+            return ["error" => "Ocurrió un problema al obtener la lista de clientes. Por favor, inténtalo más tarde."];
         }
     }
 
-    /******************************** */
-    // ACTUALIZAR USUARIOS
-    /********************************* */
-
-    public static function actualizarUsuariosController()
+     /**
+     * Obtener un cliente por su ID
+     *
+     * @param int $idCliente
+     * @return object|null Cliente como objeto o null si no existe
+     */
+    public function obtenerClientePorId($idCliente)
     {
+        // Llamar al modelo para obtener los datos del cliente
+        $cliente = ClientesModel::obtenerClientePorId($idCliente);
 
-
-        if (isset($_POST['actualizarUsuario']) && $_POST['nombre'] != '') {
-
-            $datoController = array(
-                "id" => (int) $_POST['id'],
-                "nombre" => $_POST['nombre'],
-                "email"  => $_POST['email'],
-                "rol" => (int) $_POST['rol']
-
-            );
-
-            //    var_dump($datoController);
-            $repuestaModel = UsuariosModel::actualizarUsuariosModels($datoController);
-
-
-            // var_dump($repuestaModel);
-
-            if ($repuestaModel[0] == "exitoso") {
-                header("location:" . RUTA_URL . "editarUsuario/" . $repuestaModel[1]);
-                exit();
-            } else {
-                echo "Fallo la actualizacion";
-            }
+        // Manejar caso en el que no se encuentra el cliente
+        if (!$cliente) {
+            error_log("Cliente con ID {$idCliente} no encontrado.");
         }
+
+        return $cliente;
     }
 
-    /* ***************************************************
-    BORRAR USUARIO
-         *********************************************/
-
-    public static function borrarUsuariosController()
+    /**
+     * Guardar la actualización de un cliente
+     *
+     * @param int $idCliente
+     * @param string $nombre
+     * @param int $activo
+     * @return bool True si la actualización fue exitosa, False si falló
+     */
+    public function actualizarCliente($idCliente, $nombre, $activo)
     {
-        $repuestaModel = UsuariosModel::borrarUsuariosModels($_POST['id']);
-
-        if ($repuestaModel == "usuarioBorrado") {
-
-            header("location:" . RUTA_URL . "usuarios");
-            exit();
-        } else {
-            echo "Fallo la actualizacion";
-        }
+        return ClientesModel::actualizarCliente($idCliente, $nombre, $activo);
     }
-
-    /******************************** */
-    // REGISTRAR USUARIOS
-    /********************************* */
-
-    public static function registrarUsuarioController()
-    {
-
-
-        if (isset($_POST['registrarse']) && $_POST['nombre'] != '') {
-
-            $datoController = array(
-                "nombre" => $_POST['nombre'],
-                "email"  => $_POST['email'],
-                "password"  => $_POST['password']
-            );
-
-            //    var_dump($datoController);
-            $repuestaModel = UsuariosModel::registrarUsuariosModels($datoController);
-
-            // var_dump($repuestaModel);
-
-            if ($repuestaModel == "regExitoso") {
-                header("location:" . RUTA_URL . "usuarios");
-                exit();
-            } else {
-                echo "Fallo la actualizacion";
-            }
-        }
-    }
-    /******************************** */
-    // LOGIN USUARIO
-    /********************************* */
 }
+
+
+
+
+
