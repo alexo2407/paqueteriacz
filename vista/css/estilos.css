@@ -1,0 +1,23 @@
+.caja {
+  background: #ffffff;
+  border: 1px solid gray;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+footer {
+  background: #212529;
+}
+
+.caja2 {
+  background-color: #0076c7;
+}
+
+ .bg-dark {
+  background-color: #001042 !important;
+}
+
+footer .pie {
+  font-size: 50px;
+  background-color: #001042 !important;
+}
