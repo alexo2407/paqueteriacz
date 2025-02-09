@@ -15,6 +15,9 @@ class EnlacesModel
             "clientes",
             "usuarios",
             "pedidos",
+            "inactivos",
+            "activar",
+            "desactivar",
             "productos",
             "salir"
         ];

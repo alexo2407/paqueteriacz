@@ -59,6 +59,27 @@ class ClientesController
     {
         return ClientesModel::actualizarCliente($idCliente, $nombre, $activo);
     }
+
+     /**
+     * Mostrar clientes inactivos
+     *
+     * @return array Lista de clientes inactivos
+     */
+    public function listarClientesInactivos()
+    {
+        return ClientesModel::obtenerClientesInactivos();
+    }
+
+    /**
+     * Activar un cliente por su ID
+     *
+     * @param int $idCliente
+     * @return bool True si la activación fue exitosa, False en caso contrario
+     */
+    public function estadoCliente($idCliente, $estado)
+    {
+        return ClientesModel::actualizarEstadoCliente($idCliente, $estado);
+    }
 }
 
 

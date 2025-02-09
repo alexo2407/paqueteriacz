@@ -25,13 +25,13 @@
 
 
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>pedidos">pedidos</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>pedidos/listar">pedidos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>productos">productos</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>productos/listars">productos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>seguimientos">seguimiento</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>seguimientos/listar">seguimiento</a>
                 </li>
 
             </ul>

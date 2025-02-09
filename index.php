@@ -11,11 +11,13 @@
 require_once "modelo/enlaces.php";
 require_once "modelo/usuario.php";
 require_once "modelo/cliente.php";
+require_once "modelo/pedido.php";
 
 //controladores
 require_once "controlador/enlaces.php";
 require_once "controlador/usuario.php";
 require_once "controlador/cliente.php";
+require_once "controlador/pedido.php";
 
 
 
