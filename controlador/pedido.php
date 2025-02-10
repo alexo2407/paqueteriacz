@@ -16,9 +16,19 @@ class PedidosController
     }
 
     public function listarPedidosExtendidos()
-{
-    return PedidosModel::obtenerPedidosExtendidos();
-}
+    {
+        return PedidosModel::obtenerPedidosExtendidos();
+    }
+
+    public function verPedido($idPedido)
+    {
+
+
+        return  PedidosModel::obtenerDetallesPedido($idPedido);
+
+        
+    }
+
 
 
     /**
@@ -79,7 +89,7 @@ class PedidosController
     }
 
 
-      /**
+    /**
      * Cambiar el estado de un pedido
      *
      * @param int $idPedido ID del pedido
@@ -91,7 +101,7 @@ class PedidosController
         return PedidosModel::cambiarEstado($idPedido, $nuevoEstado);
     }
 
-     /**
+    /**
      * Endpoint para cambiar el estado de un pedido vía Ajax
      */
     public function cambiarEstadoAjax()
@@ -136,9 +146,19 @@ class PedidosController
     {
         // Verificar que no falten datos obligatorios
         $requeridos = [
-            'Numero_Orden', 'ID_Cliente', 'ID_Usuario', 'Fecha_Ingreso',
-            'Zona', 'Departamento', 'Municipio', 'Barrio', 'Direccion_Completa',
-            'Comentario', 'Latitud', 'Longitud', 'ID_Estado'
+            'Numero_Orden',
+            'ID_Cliente',
+            'ID_Usuario',
+            'Fecha_Ingreso',
+            'Zona',
+            'Departamento',
+            'Municipio',
+            'Barrio',
+            'Direccion_Completa',
+            'Comentario',
+            'Latitud',
+            'Longitud',
+            'ID_Estado'
         ];
 
         foreach ($requeridos as $campo) {

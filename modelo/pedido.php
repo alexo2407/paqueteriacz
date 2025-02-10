@@ -73,41 +73,82 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-
-            // Consulta SQL corregida con los parámetros proporcionados
+    
+            // Consulta SQL para incluir el cliente
             $consulta = $db->prepare("
                 SELECT 
                     p.ID_Pedido,
                     p.Numero_Orden,
-                    c.Nombre AS ID_Cliente,
-                    u.Email AS ID_Usuario,
-                    p.Fecha_Ingreso,
-                    p.Zona,
-                    p.Departamento,
-                    p.Municipio,
-                    p.Barrio,
-                    p.Direccion_Completa,
+                    c.Nombre AS Cliente,
                     p.Comentario,
-                    CONCAT(p.Latitud, ', ', p.Longitud) AS COORDINATES,
-                    p.ID_Estado,
-                    ep.Estado AS Estado,
-                    p.created_at,
-                    p.updated_at
+                    ep.Estado AS Estado
                 FROM Pedidos p
                 INNER JOIN Clientes c ON p.ID_Cliente = c.ID_Cliente
-                INNER JOIN Usuarios u ON p.ID_Usuario = u.ID_Usuario
                 INNER JOIN Estado_Pedidos ep ON p.ID_Estado = ep.ID_Estado
             ");
             $consulta->execute();
-
+    
             // Retorna los resultados como un arreglo asociativo
             return $consulta->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log("Error al obtener pedidos extendidos: " . $e->getMessage());
+            error_log("Error al obtener pedidos simplificados: " . $e->getMessage());
             return [];
         }
     }
 
+    public static function obtenerDetallesPedido($idPedido)
+{
+    try {
+        $db = (new Conexion())->conectar();
+
+
+        // Consulta SQL para obtener detalles completos del pedido
+        $consulta = $db->prepare("
+            SELECT 
+                p.ID_Pedido,
+                p.Numero_Orden,
+                p.Fecha_Ingreso,
+                p.Zona,
+                p.Departamento,
+                p.Municipio,
+                p.Barrio,
+                p.Direccion_Completa,
+                p.Comentario,
+                CONCAT(p.Latitud, ', ', p.Longitud) AS COORDINATES,
+                ep.Estado AS Estado,
+                c.Nombre AS Cliente,
+                c.ID_Cliente,
+                u.Nombre AS Usuario,
+                u.Email AS UsuarioEmail,
+                sp.Nombre AS Producto,
+                sp.Precio,
+                pp.Cantidad,
+                p.created_at,
+                p.updated_at
+            FROM Pedidos p
+            INNER JOIN Clientes c ON p.ID_Cliente = c.ID_Cliente
+            INNER JOIN Usuarios u ON p.ID_Usuario = u.ID_Usuario
+            INNER JOIN Pedidos_Productos pp ON p.ID_Pedido = pp.ID_Pedido
+            INNER JOIN Stock_Productos sp ON pp.ID_Producto = sp.ID_Producto
+            INNER JOIN Estado_Pedidos ep ON p.ID_Estado = ep.ID_Estado
+            WHERE p.ID_Pedido = :idPedido
+        ");
+
+        // Vincular el parámetro idPedido
+        $consulta->bindValue(':idPedido', $idPedido, PDO::PARAM_INT);
+
+        // Ejecutar la consulta
+        $consulta->execute();
+
+        
+       // Retornar los resultados como un arreglo asociativo
+        return $consulta->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        // Registrar el error en el log
+        error_log("Error al obtener detalles del pedido: " . $e->getMessage());
+        return [];
+    }
+}
 
 
     /**
