@@ -20,18 +20,7 @@ class UsuariosModel
 
         //preparamos la consulta
 
-        $consulta = $db->prepare("SELECT 
-    usuarios.ID_Usuario AS id,
-    usuarios.Nombre AS nombre,
-    usuarios.Email AS email,
-    usuarios.created_at AS fecha,
-    roles.Nombre AS rol
-FROM 
-    usuarios
-INNER JOIN 
-    usuarios_roles ON usuarios.ID_Usuario = usuarios_roles.ID_Usuario
-INNER JOIN 
-    roles ON usuarios_roles.ID_Rol = roles.ID_Rol;
+        $consulta = $db->prepare("SELECT Usuarios.ID_Usuario AS id, Usuarios.Nombre AS nombre, Usuarios.Email AS email, Usuarios.created_at AS fecha, Roles.Nombre AS rol FROM Usuarios INNER JOIN Usuarios_Roles ON Usuarios.ID_Usuario = Usuarios_Roles.ID_Usuario INNER JOIN Roles ON Usuarios_Roles.ID_Rol = Roles.ID_Rol;
 ");
 
         //ejecutamos la consulta
