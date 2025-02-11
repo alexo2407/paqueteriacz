@@ -1,7 +1,5 @@
 <?php
 
-
-
 class PedidosController
 {
     /**
@@ -25,8 +23,6 @@ class PedidosController
 
 
         return  PedidosModel::obtenerDetallesPedido($idPedido);
-
-        
     }
 
 
@@ -169,4 +165,81 @@ class PedidosController
 
         return true;
     }
+    public function crearPedidoAPI($jsonData)
+    {
+        try {
+            // Decodificar el JSON
+            if (is_string($jsonData)) {
+                $pedido = json_decode($jsonData, true);
+            } else {
+                throw new Exception("El formato del JSON no es válido.");
+            }
+    
+            if (!$pedido) {
+                return ['success' => false, 'message' => 'JSON inválido o no se pudo decodificar.'];
+            }
+    
+            // Verificar o crear cliente
+            $idCliente = PedidosModel::verificarOCrearCliente($pedido['cliente']);
+            if (!$idCliente) {
+                return ['success' => false, 'message' => 'Error al verificar o crear cliente'];
+            }
+    
+            // Preparar datos del pedido
+            $pedidoData = [
+                'Numero_Orden' => $pedido['Numero_Orden'],
+                'ID_Cliente' => $idCliente,
+                'ID_Usuario' => $pedido['usuario']['ID_Usuario'],
+                'Zona' => $pedido['Zona'],
+                'Departamento' => $pedido['Departamento'],
+                'Municipio' => $pedido['Municipio'],
+                'Barrio' => $pedido['Barrio'],
+                'Direccion_Completa' => $pedido['Direccion_Completa'],
+                'Comentario' => $pedido['Comentario'],
+                'Latitud' => $pedido['Latitud'],
+                'Longitud' => $pedido['Longitud']
+            ];
+    
+            // Crear pedido
+            $idPedido = PedidosModel::crearPedido($pedidoData);
+            if (!$idPedido) {
+                return ['success' => false, 'message' => 'Error al crear el pedido'];
+            }
+    
+            // Insertar productos
+            foreach ($pedido['productos'] as $producto) {
+                $idProducto = PedidosModel::verificarOCrearProducto($producto);
+                if (!$idProducto) {
+                    return ['success' => false, 'message' => 'Error al verificar o crear producto: ' . $producto['Nombre']];
+                }
+    
+                if (!PedidosModel::insertarProductoEnPedido($idPedido, $idProducto, $producto['Cantidad'])) {
+                    return ['success' => false, 'message' => 'Error al insertar producto en pedido'];
+                }
+            }
+    
+            // Insertar estado inicial
+            if (!PedidosModel::insertarEstadoInicial($idPedido, $pedido['usuario']['ID_Usuario'])) {
+                return ['success' => false, 'message' => 'Error al insertar estado inicial'];
+            }
+    
+            // Respuesta de éxito
+            return [
+                'success' => true,
+                'message' => 'Pedido creado correctamente',
+                'data' => [
+                    'ID_Pedido' => $idPedido,
+                    'Numero_Orden' => $pedido['Numero_Orden'],
+                    'Estado_Actual' => 'En bodega',
+                    'productos' => $pedido['productos']
+                ]
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+    
 }

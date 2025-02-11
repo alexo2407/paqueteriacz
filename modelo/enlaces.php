@@ -1,6 +1,5 @@
 <?php 
 
-
 class EnlacesModel
 {
     public static function enlacesModel($link)
@@ -8,21 +7,18 @@ class EnlacesModel
         // Dividimos la URL en partes
         $ruta = explode("/", $link);
 
-        // Lista blanca de módulos permitidos
+        // Lista blanca de módulos permitidos para vistas
         $modulosPermitidos = [
             "inicio",
             "dashboard",
             "clientes",
             "usuarios",
             "pedidos",
-            "inactivos",
-            "activar",
-            "desactivar",
             "productos",
             "salir"
         ];
 
-        // Verifica si el módulo está en la lista blanca
+        // Verifica si es un módulo regular (vista)
         if (in_array($ruta[0], $modulosPermitidos)) {
             $archivo = "vista/modulos/" . $ruta[0];
 
@@ -42,7 +38,20 @@ class EnlacesModel
             }
         }
 
-        // Si no se encuentra el módulo, devolver inicio.php
+        // Verifica si es una ruta de la API
+        if ($ruta[0] === "api") {
+            $archivo = "api/" . (isset($ruta[1]) ? $ruta[1] : "index") . "/" . (isset($ruta[2]) ? $ruta[2] : "index") . ".php";
+
+            // Devuelve el archivo y parámetros si existe
+            if (file_exists($archivo)) {
+                return [
+                    "archivo" => $archivo,
+                    "parametros" => array_slice($ruta, 3)
+                ];
+            }
+        }
+
+        // Si no se encuentra el módulo o la ruta API, redirigir a inicio
         return [
             "archivo" => "vista/modulos/inicio.php",
             "parametros" => []

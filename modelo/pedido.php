@@ -45,6 +45,147 @@ class PedidosModel
         $this->updated_at = $datos['updated_at'] ?? null;
     }
 
+
+    // Verificar si el cliente existe, si no, crearlo
+     
+     // Crear cliente o verificar si ya existe
+     public static function verificarOCrearCliente($cliente)
+     {
+         try {
+             $db = (new Conexion())->conectar();
+     
+             // Buscar cliente por nombre
+             $consulta = $db->prepare("SELECT ID_Cliente FROM Clientes WHERE Nombre = :Nombre");
+             $consulta->execute(['Nombre' => $cliente['Nombre']]);
+             $clienteExistente = $consulta->fetch(PDO::FETCH_ASSOC);
+     
+             if ($clienteExistente) {
+                 return $clienteExistente['ID_Cliente'];
+             } else {
+                 // Crear cliente si no existe
+                 $consulta = $db->prepare("
+                     INSERT INTO Clientes (Nombre, ID_Usuario, created_at, updated_at)
+                     VALUES (:Nombre, :ID_Usuario, NOW(), NOW())
+                 ");
+                 $consulta->execute([
+                     'Nombre' => $cliente['Nombre'],
+                     'ID_Usuario' => $cliente['ID_Usuario']
+                 ]);
+                 return $db->lastInsertId();
+             }
+         } catch (PDOException $e) {
+             error_log("Error en verificarOCrearCliente: " . $e->getMessage());
+             return false; // Retorna false en caso de error
+         }
+     }
+     
+
+    // Verificar o crear producto en inventario
+    public static function verificarOCrearProducto($producto)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            // Buscar producto por nombre
+            $consulta = $db->prepare("SELECT ID_Producto FROM Stock_Productos WHERE Nombre = :Nombre");
+            $consulta->execute(['Nombre' => $producto['Nombre']]);
+            $productoExistente = $consulta->fetch(PDO::FETCH_ASSOC);
+
+            if ($productoExistente) {
+                return $productoExistente['ID_Producto'];
+            } else {
+                // Insertar nuevo producto
+                $consulta = $db->prepare("
+                    INSERT INTO Stock_Productos (Nombre, Descripcion, Precio, Cantidad_Stock, created_at, updated_at)
+                    VALUES (:Nombre, :Descripcion, :Precio, 0, NOW(), NOW())
+                ");
+                $consulta->execute([
+                    'Nombre' => $producto['Nombre'],
+                    'Descripcion' => $producto['Descripcion'] ?? '',
+                    'Precio' => $producto['Precio'] ?? 0
+                ]);
+                return $db->lastInsertId();
+            }
+        } catch (PDOException $e) {
+            error_log("Error en verificarOCrearProducto: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Crear un nuevo pedido
+    public static function crearPedido($pedidoData)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+    
+            $consulta = $db->prepare("
+                INSERT INTO Pedidos (
+                    Numero_Orden, ID_Cliente, ID_Usuario, Fecha_Ingreso, 
+                    Zona, Departamento, Municipio, Barrio, Direccion_Completa, 
+                    Comentario, Latitud, Longitud, created_at, updated_at
+                ) VALUES (
+                    :Numero_Orden, :ID_Cliente, :ID_Usuario, NOW(), 
+                    :Zona, :Departamento, :Municipio, :Barrio, :Direccion_Completa, 
+                    :Comentario, :Latitud, :Longitud, NOW(), NOW()
+                )
+            ");
+    
+            $consulta->execute($pedidoData);
+            return $db->lastInsertId(); // Devuelve el ID del pedido recién creado
+        } catch (PDOException $e) {
+            error_log("Error en crearPedido: " . $e->getMessage());
+            return false; // Devuelve false en caso de error
+        }
+    }
+
+    // Insertar productos en un pedido
+    public static function insertarProductoEnPedido($idPedido, $idProducto, $cantidad)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $consulta = $db->prepare("
+                INSERT INTO Pedidos_Productos (ID_Pedido, ID_Producto, Cantidad)
+                VALUES (:ID_Pedido, :ID_Producto, :Cantidad)
+            ");
+            $consulta->execute([
+                'ID_Pedido' => $idPedido,
+                'ID_Producto' => $idProducto,
+                'Cantidad' => $cantidad
+            ]);
+            return true;
+        } catch (PDOException $e) {
+            error_log("Error en insertarProductoEnPedido: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Insertar estado inicial en la tabla intermedia
+    public static function insertarEstadoInicial($idPedido, $idUsuario)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $consulta = $db->prepare("
+                INSERT INTO Pedido_Estados (ID_Pedido, ID_Estado, Fecha_Cambio, Usuario_Cambio, Comentario_Cambio)
+                VALUES (:ID_Pedido, 1, NOW(), :Usuario_Cambio, 'Estado inicial: En bodega')
+            ");
+            $consulta->execute([
+                'ID_Pedido' => $idPedido,
+                'Usuario_Cambio' => $idUsuario
+            ]);
+            return true;
+        } catch (PDOException $e) {
+            error_log("Error en insertarEstadoInicial: " . $e->getMessage());
+            return false;
+        }
+    }
+
+
+
+
+
+
     /**
      * Obtener todos los pedidos
      *
