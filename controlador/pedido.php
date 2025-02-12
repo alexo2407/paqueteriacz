@@ -60,6 +60,33 @@ class PedidosController
         }
     }
 
+private function consolidarProductos($productos)
+{
+    $productosConsolidados = [];
+
+    foreach ($productos as $producto) {
+        $idProducto = $producto["ID_Producto"];
+        $cantidad = $producto["Cantidad"];
+
+        if (isset($productosConsolidados[$idProducto])) {
+            $productosConsolidados[$idProducto] += $cantidad;
+        } else {
+            $productosConsolidados[$idProducto] = $cantidad;
+        }
+    }
+
+    $resultado = [];
+    foreach ($productosConsolidados as $idProducto => $cantidad) {
+        $resultado[] = [
+            "ID_Producto" => $idProducto,
+            "Cantidad" => $cantidad
+        ];
+    }
+
+    return $resultado;
+}
+
+
 
     private function validarDatosPedido($data)
     {
