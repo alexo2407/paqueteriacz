@@ -1,29 +1,26 @@
 <?php
-// Usar rutas absolutas para incluir los archivos necesarios
-require_once __DIR__ . '/../../config/config.php';
-require_once __DIR__ . '/../../controlador/pedido.php';
-require_once __DIR__ . '/../utils/responder.php'; // Archivo para formatear respuestas
 
-// Lee el contenido del cuerpo de la solicitud (JSON enviado desde el cliente)
-$jsonData = file_get_contents("php://input");
 
-// Decodifica el JSON para verificar que esté llegando correctamente
-if (!$jsonData) {
-    echo json_encode([
-        "success" => false,
-        "message" => "No se recibió ningún JSON válido."
-    ]);
-    exit;
-}
+ //Encabezados (HEADERS)
+ header('Access-Control-Allow-Origin: *');
+ header('Content-Type: application/json');
+ header('Access-Control-Allow-Methods: POST');
+ header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Content-Type, Access-Control-Allow-Methods, Authorization, X-Requested-With');
 
-// Enviar los datos al controlador
-$controller = new PedidosController();
-$result = $controller->crearPedidoAPI($jsonData);
 
-// Responder según el resultado
-if ($result) {
-    responder(true, "Pedido creado correctamente", ["ID_Pedido" => $result], 201);
-} else {
-    responder(false, "Error al crear el pedido", null, 500);
-}
-?>
+ require_once __DIR__ . '/../../controlador/pedido.php';
+ require_once __DIR__ . '/../utils/responder.php';
+ 
+ // Leer el cuerpo de la solicitud (JSON)
+ $jsonData = file_get_contents("php://input");
+ 
+ if ($jsonData) {
+     $controller = new PedidosController();
+     $response = $controller->crearPedidoAPI($jsonData);
+ 
+     // Responder según el resultado
+     responder($response["success"], $response["message"], $response["data"] ?? null, $response["success"] ? 201 : 400);
+ } else {
+     responder(false, "Datos no válidos o incompletos", null, 400);
+ }
+ 

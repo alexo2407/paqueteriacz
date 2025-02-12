@@ -1,5 +1,5 @@
 <?php
-require_once '../../config/config.php';
+/* require_once '../../config/config.php';
 require_once '../../modelo/PedidosModel.php';
 require_once '../utils/responder.php';
 
@@ -17,5 +17,8 @@ if ($pedido) {
     responder(true, "Detalles del pedido", $pedido, 200);
 } else {
     responder(false, "Pedido no encontrado", null, 404);
-}
+}*/
 ?>
+ 
+
+ <h1>Ver</h1>

@@ -40,7 +40,7 @@
                         <td><?php echo $usuarios['fecha']; ?></td>
                         <td><?php  echo $usuarios['rol']?></td>
                         <td>
-                            <a href="<?=RUTA_URL?>editarUsuario/<?php echo $usuarios['ID_Usuario']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>                                            
+                            <a href="<?= RUTA_URL ?>usuarios/editar/<?php echo $usuarios['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>                                            
                         </td>
                     </tr>
 

@@ -1,5 +1,5 @@
 <?php
-require_once '../../config/config.php';
+/* require_once '../../config/config.php';
 require_once '../../modelo/PedidosModel.php';
 require_once '../utils/responder.php';
 
@@ -18,5 +18,6 @@ if ($result) {
     responder(true, "Pedido actualizado correctamente", null, 200);
 } else {
     responder(false, "Error al actualizar el pedido", null, 500);
-}
+} */
 ?>
+<h1>Actualizar</h1>
