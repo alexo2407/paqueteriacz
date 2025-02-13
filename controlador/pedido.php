@@ -3,7 +3,7 @@
 
 class PedidosController {
 
-    
+
     public function crearPedidoAPI($jsonData) {
         // Decodificar el JSON recibido
         $data = json_decode($jsonData, true);
@@ -54,7 +54,7 @@ class PedidosController {
 
         // Devolver errores si los hay
         if (!empty($errores)) {
-            return ["success" => false, "message" => "Errores de validación.", "data" => $errores];
+            return ["success" => false, "message" => "Tus datos tienen errores de procedencia arreglalos.", "data" => $errores];
         }
 
         return ["success" => true];
