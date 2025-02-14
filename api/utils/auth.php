@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__ . '/../../vendor/autoload.php';
-//require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../modelo/usuario.php';
 
 use Firebase\JWT\JWT;
 
 class AuthController {
+    
     private $secret_key = JWT_SECRET_KEY; // Clave secreta definida en config.php
 
     public function login($email, $password) {
