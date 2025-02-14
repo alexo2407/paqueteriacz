@@ -58,6 +58,9 @@
                 }
                 
                 ?>
+                 <li class="nav-item">
+                    <a class="nav-link" href="<?= RUTA_URL ?>/api/doc/">Documentación API´S</a>
+                </li>
                
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>salir">Salir</a>
