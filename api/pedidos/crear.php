@@ -15,11 +15,13 @@ require_once __DIR__ . '/../utils/responder.php';
 require_once __DIR__ . '/../../controlador/pedido.php';
 
 
-// Obtener el token del encabezado Authorization
-$headers = apache_request_headers();
+header('Content-Type: application/json');
 
+// Obtener el token del encabezado Authorization
+$headers = getallheaders();
 if (!isset($headers['Authorization'])) {
-    responder(false, 'Token requerido en el encabezado Authorization', null, 401);
+    echo json_encode(['success' => false, 'message' => 'Token requerido']);
+    http_response_code(401);
     exit;
 }
 
@@ -30,28 +32,16 @@ $auth = new AuthMiddleware();
 $validacion = $auth->validarToken($token);
 
 if (!$validacion['success']) {
-    responder(false, $validacion['message'], null, 401);
+    echo json_encode(['success' => false, 'message' => $validacion['message']]);
+    http_response_code(401);
     exit;
 }
 
-// Procesar la creación del pedido si el token es válido
+// Procesar la solicitud si el token es válido
 $data = json_decode(file_get_contents("php://input"), true);
-
-if (!$data || !isset($data['numero_orden']) || !isset($data['destinatario'])) {
-    responder(false, 'Faltan parámetros requeridos', null, 400);
-    exit;
-}
-
-// Llamar al controlador de pedidos
 $pedidoController = new PedidosController();
 $response = $pedidoController->crearPedidoAPI($data);
-
-if ($response['success']) {
-    responder(true, 'Pedido creado con éxito', $response['data']);
-} else {
-    responder(false, $response['message'], null, 500);
-}
-
+echo json_encode($response);
 
 ?>
 
