@@ -62,6 +62,34 @@ class PedidosController {
         return ["success" => true];
     }
 
+    public function buscarPedidoPorNumero($numeroOrden) {
+        // Verificar si existe el pedido en la base de datos
+        $pedido = PedidosModel::obtenerPedidoPorNumero($numeroOrden);
+
+        if ($pedido) {
+            // Devolver los datos del pedido encontrados
+            return [
+                'success' => true,
+                'data' => [
+                    "numero_orden" => $pedido['numero_orden'],
+                    "destinatario" => $pedido['destinatario'],
+                    "telefono" => $pedido['telefono'],
+                    "precio" => $pedido['precio'],
+                    "producto" => $pedido['producto'],
+                    "cantidad" => $pedido['cantidad'],
+                    "pais" => $pedido['pais'],
+                    "coordenadas" => $pedido['coordenadas'],
+                    "estado" => $pedido['nombre_estado'] // Nombre del estado del producto
+                ]
+            ];
+        } else {
+            // Si no se encuentra, devolver un mensaje de error
+            return [
+                'success' => false,
+                'message' => 'Order not found'
+            ];
+        }
+    }
 
 
     /* ZONA DEL FRONT END */

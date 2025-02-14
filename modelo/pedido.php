@@ -50,9 +50,49 @@ class PedidosModel {
         } catch (Exception $e) {
             throw new Exception("Error al insertar el pedido: " . $e->getMessage());
         }
+
+        $stmt = null;
     }
 
+    public static function obtenerPedidoPorNumero($numeroOrden) {
+        try {
 
+            $db = (new Conexion())->conectar();
+            // Consulta para obtener los datos del pedido y su estado
+            $sql = "SELECT 
+                        p.numero_orden, 
+                        p.destinatario, 
+                        p.telefono, 
+                        p.precio, 
+                        p.producto, 
+                        p.cantidad, 
+                        p.pais, 
+                        p.coordenadas, 
+                        e.nombre_estado 
+                    FROM pedidos p
+                    INNER JOIN estados e ON p.estado_id = e.id_estado
+                    WHERE p.numero_orden = :numero_orden";
+
+            // Preparar la consulta
+            $stmt = $db->prepare($sql);
+
+            // Asignar el parámetro
+            $stmt->bindParam(':numero_orden', $numeroOrden, PDO::PARAM_INT);
+
+            // Ejecutar la consulta
+            $stmt->execute();
+
+            // Verificar si se encontró un resultado
+            if ($stmt->rowCount() > 0) {
+                return $stmt->fetch(PDO::FETCH_ASSOC); // Devuelve los datos como un array asociativo
+            } else {
+                return null; // No se encontró el pedido
+            }
+        } catch (PDOException $e) {
+            // Manejar errores de conexión o consulta
+            throw new Exception("Error while fetching the order: " . $e->getMessage());
+        }
+    }
 
     /*  ZONA DEL FRONT END */
 
