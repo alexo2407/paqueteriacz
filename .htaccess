@@ -8,6 +8,8 @@
 
  RewriteEngine On
 
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
  # Si el archivo o directorio solicitado existe, no lo reescribas
  RewriteCond %{REQUEST_FILENAME} !-f
  RewriteCond %{REQUEST_FILENAME} !-d

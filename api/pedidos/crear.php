@@ -16,16 +16,18 @@ require_once __DIR__ . '/../../controlador/pedido.php';
 
 
 // Obtener encabezados de la solicitud
-$headers = apache_request_headers();
-
-
+$headers = getallheaders();
+print_r($headers);
+exit;
 if (!isset($headers['Authorization'])) {
     echo json_encode(['success' => false, 'message' => 'Token requerido']);
     http_response_code(401);
     exit;
 }
 
+// Extraer el token eliminando 'Bearer'
 $token = str_replace('Bearer ', '', $headers['Authorization']);
+
 
 // Validar el token
 $auth = new AuthMiddleware();
