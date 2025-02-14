@@ -6,19 +6,44 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 class AuthMiddleware {
-    private $secret_key = JWT_SECRET_KEY; // Clave secreta definida en config.php
+    // $secret_key = JWT_SECRET_KEY; // Clave secreta definida en config.php
 
-    public function validarToken($token) {
+    public function validarToken($headers) {
         try {
-            $decoded = JWT::decode($token, new Key($this->secret_key, 'HS256'));
+            // Depuración: Muestra todos los encabezados recibidos
+            error_log(json_encode($headers));
+    
+            // Verifica si el encabezado Authorization existe
+            if (!isset($headers['Authorization'])) {
+                return [
+                    'success' => false,
+                    'message' => 'Missing Authorization header'
+                ];
+            }
+    
+            // Extraer el token del encabezado Authorization
+            $authHeader = $headers['Authorization'];
+            if (strpos($authHeader, 'Bearer ') !== 0) {
+                return [
+                    'success' => false,
+                    'message' => 'Invalid Authorization header format'
+                ];
+            }
+    
+            // Obtener solo el token
+            $jwt = trim(str_replace('Bearer ', '', $authHeader));
+    
+            // Decodificar el token JWT
+            $decoded = JWT::decode($jwt, new Key(JWT_SECRET_KEY, 'HS256'));
+    
             return [
                 'success' => true,
-                'data' => (array) $decoded->data
+                'data' => $decoded
             ];
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Token inválido o expirado'
+                'message' => 'Invalid or expired token: ' . $e->getMessage()
             ];
         }
     }

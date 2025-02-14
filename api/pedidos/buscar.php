@@ -7,11 +7,13 @@ error_reporting(E_ALL);
  
  
 require_once __DIR__ . '/../utils/autenticacion.php';
+require_once __DIR__ . '/../utils/responder.php';
+require_once __DIR__ . '/../../controlador/pedido.php';
+
 
 
 // Obtener encabezados de la solicitud
-$headers = getallheaders();
-
+$headers = apache_request_headers();
 
 // Autenticación del token
 $auth = new AuthMiddleware();
@@ -43,4 +45,5 @@ $pedidoController = new PedidosController();
 $response = $pedidoController->buscarPedidoPorNumero($numeroOrden);
 
 // Responder en formato JSON
+header('Content-Type: application/json');
 echo json_encode($response);
