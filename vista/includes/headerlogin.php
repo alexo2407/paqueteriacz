@@ -5,7 +5,7 @@
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="nav-item" >
-        <a class="nav-link" style="color: white;" href="<?= RUTA_URL ?>api/doc/">Documnetación API</a>
+        <a class="nav-link" style="color: white;" href="<?= RUTA_URL ?>api/doc/">Documentación API</a>
         </divi>
 </nav>
     </div>
