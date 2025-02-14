@@ -54,7 +54,7 @@ class PedidosModel {
         $stmt = null;
     }
 
-    public static function obtenerPedidoPorNumero($numeroOrden) {
+    public function obtenerPedidoPorNumero($numeroOrden) {
         try {
 
             $db = (new Conexion())->conectar();

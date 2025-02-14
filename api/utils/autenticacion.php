@@ -6,7 +6,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 class AuthMiddleware {
-    private $secret_key = JWT_SECRET_KEY; // Clave definida en config.php
+    private $secret_key = JWT_SECRET_KEY;
 
     public function validarToken($token) {
         try {
@@ -18,8 +18,9 @@ class AuthMiddleware {
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Token inválido o expirado'
+                'message' => 'Invalid or expired token: ' . $e->getMessage()
             ];
         }
     }
 }
+?>
