@@ -73,4 +73,66 @@ class PedidosController {
     }
 
 
+    public function obtenerPedido() {
+
+        $ruta = isset($_GET['enlace']) ? $_GET['enlace'] : null;
+
+        // Dividimos la URL en partes
+        $pedidoID = explode("/", $ruta );
+      
+      
+      if (!$pedidoID) {
+          echo "<div class='alert alert-danger'>No order ID provided.</div>";
+          exit;
+      }
+      
+        return PedidosModel::obtenerPedidoPorId($pedidoID[2]);
+    }
+
+
+    public function actualizarPedido($data) {
+        $resultado = PedidosModel::actualizarPedido($data);
+        if ($resultado) {
+            return [
+                "success" => true,
+                "message" => "Pedido actualizado correctamente."
+            ];
+        } else {
+            return [
+                "success" => false,
+                "message" => "No se realizaron cambios en el pedido."
+            ];
+        }
+    }
+    
+    
+    public function obtenerEstados() {
+        return PedidosModel::obtenerEstados();
+    }
+    
+    public function obtenerVendedores() {
+        return PedidosModel::obtenerVendedores();
+    }
+
+
+    public function guardarEdicion($data) {
+        try {
+            // Llama al modelo para actualizar el pedido
+            $resultado = PedidosModel::actualizarPedido($data);
+    
+            if ($resultado) {
+                // Redirigir con éxito
+                header('Location: ' . RUTA_URL . 'pedidos?success=1');
+            } else {
+                // Redirigir con un mensaje de error si no hubo cambios
+                header('Location: ' . RUTA_URL . 'pedidos/editar?id=' . $data['id_pedido'] . '&error=No se realizaron cambios en el pedido');
+            }
+        } catch (Exception $e) {
+            // Redirigir con mensaje de error en caso de excepción
+            header('Location: ' . RUTA_URL . 'pedidos/editar?id=' . $data['id_pedido'] . '&error=' . urlencode($e->getMessage()));
+        }
+        exit;
+    }
+    
+    
 }

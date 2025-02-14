@@ -1,34 +1,81 @@
-<?php include("vista/includes/header.php"); ?>
+<?php
+include("vista/includes/header.php"); 
 
-<div class="container mt-5">
-    <h3>Editar Pedido</h3>
-    <?php
-    $idPedido = $_GET['id']; // Asume que el ID del pedido viene en la URL
-    $pedidoController = new PedidosController();
-    $pedido = $pedidoController->mostrarPedido($idPedido);
-    ?>
+/*ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);*/
+// Obtener el ID del pedido desde la URL
 
-    <form action="<?= RUTA_URL ?>pedidos/actualizarPedido/<?php echo $pedido->ID_Pedido; ?>" method="POST">
-        <div class="mb-3">
-            <label for="Numero_Orden" class="form-label">Número de Orden</label>
-            <input type="text" class="form-control" id="Numero_Orden" name="Numero_Orden" value="<?php echo htmlspecialchars($pedido->Numero_Orden); ?>" required>
+
+// Obtener los datos del pedido, estados y vendedores
+$pedidoController = new PedidosController();
+$pedido = $pedidoController->obtenerPedido($pedidoID[2]);
+$estados = $pedidoController->obtenerEstados();
+$vendedores = $pedidoController->obtenerVendedores();
+
+if (!$pedido) {
+    echo "<div class='alert alert-danger'>Order not found.</div>";
+    exit;
+}
+?>
+
+<div class="container mt-4">
+    <h2>Edit Order</h2>
+    <form method="POST" action="<?= RUTA_URL ?>pedidos/guardarEdicion">
+        <input type="hidden" name="id_pedido" value="<?= htmlspecialchars($pedido['id']) ?>">
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="numero_orden" class="form-label">Order Number</label>
+                    <input type="text" class="form-control" id="numero_orden" name="numero_orden" value="<?= htmlspecialchars($pedido['numero_orden']) ?>" readonly>
+                </div>
+                <div class="mb-3">
+                    <label for="destinatario" class="form-label">Recipient</label>
+                    <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="telefono" class="form-label">Phone</label>
+                    <input type="text" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($pedido['telefono']) ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="direccion" class="form-label">Address</label>
+                    <textarea class="form-control" id="direccion" name="direccion" rows="2" required><?= htmlspecialchars($pedido['direccion']) ?></textarea>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="estado" class="form-label">Status</label>
+                    <select class="form-control" id="estado" name="estado" required>
+                        <?php foreach ($estados as $estado): ?>
+                            <option value="<?= $estado['id'] ?>" <?= $pedido['id'] == $estado['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($estado['nombre_estado']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="vendedor" class="form-label">Seller</label>
+                    <select class="form-control" id="vendedor" name="vendedor" required>
+                        <?php foreach ($vendedores as $vendedor): ?>
+                            <option value="<?= $vendedor['id'] ?>" <?= $pedido['id'] == $vendedor['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($vendedor['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="comentario" class="form-label">Comment</label>
+                    <textarea class="form-control" id="comentario" name="comentario" rows="2"><?= htmlspecialchars($pedido['comentario']) ?></textarea>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            <label for="ID_Cliente" class="form-label">Cliente</label>
-            <input type="number" class="form-control" id="ID_Cliente" name="ID_Cliente" value="<?php echo htmlspecialchars($pedido->ID_Cliente); ?>" required>
-        </div>
-        <!-- Más campos para editar -->
-        <div class="mb-3">
-            <label for="ID_Estado" class="form-label">Estado</label>
-            <select class="form-control" id="ID_Estado" name="ID_Estado" required>
-                <option value="1" <?= $pedido->ID_Estado == 1 ? 'selected' : ''; ?>>En Bodega</option>
-                <option value="2" <?= $pedido->ID_Estado == 2 ? 'selected' : ''; ?>>En Ruta</option>
-                <option value="3" <?= $pedido->ID_Estado == 3 ? 'selected' : ''; ?>>Entregado</option>
-                <option value="4" <?= $pedido->ID_Estado == 4 ? 'selected' : ''; ?>>Devuelto</option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-primary">Actualizar Pedido</button>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
+
 
 <?php include("vista/includes/footer.php"); ?>

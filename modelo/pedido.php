@@ -1,12 +1,14 @@
 <?php
 include_once "conexion.php";
 
-class PedidosModel {
+class PedidosModel
+{
 
     /* ZONA API */
 
     /* crear pedido desde el API */
-    public static function crearPedido($data) {
+    public static function crearPedido($data)
+    {
         try {
             $db = (new Conexion())->conectar();
 
@@ -44,9 +46,11 @@ class PedidosModel {
                 ":coordenadas" => "POINT($longitud $latitud)"
             ]);
 
-            return [ "numero_orden" => $data["numero_orden"],
-                
-                        "pedido_id" => $db->lastInsertId()];
+            return [
+                "numero_orden" => $data["numero_orden"],
+
+                "pedido_id" => $db->lastInsertId()
+            ];
         } catch (Exception $e) {
             throw new Exception("Error al insertar el pedido: " . $e->getMessage());
         }
@@ -54,7 +58,8 @@ class PedidosModel {
         $stmt = null;
     }
 
-    public function obtenerPedidoPorNumero($numeroOrden) {
+    public function obtenerPedidoPorNumero($numeroOrden)
+    {
         try {
 
             $db = (new Conexion())->conectar();
@@ -96,8 +101,10 @@ class PedidosModel {
 
     /*  ZONA DEL FRONT END */
 
+    /*  OBTENER PEDIDOS LISTA DE PEDIDOS COMPLETA  */
 
-    public static function obtenerPedidosExtendidos() {
+    public static function obtenerPedidosExtendidos()
+    {
         try {
             $db = (new Conexion())->conectar();
 
@@ -122,6 +129,83 @@ class PedidosModel {
             throw new Exception("Error al obtener los pedidos: " . $e->getMessage());
         }
     }
+
+    /*  OBTENER PEDIDOS POR ID  */
+
+    public static function obtenerPedidoPorId($id_pedido)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT * FROM pedidos WHERE id = :id_pedido");
+            $stmt->bindParam(':id_pedido', $id_pedido, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener el pedido: " . $e->getMessage());
+        }
+    }
+
+    /* ACTUALIZAR  */
+
+    public static function actualizarPedido($data) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                UPDATE pedidos SET
+                    destinatario = :destinatario,
+                    telefono = :telefono,
+                    direccion = :direccion,
+                    comentario = :comentario,
+                    cantidad = :cantidad,
+                    producto = :producto,
+                    precio = :precio,
+                    id_estado = :estado,
+                    id_vendedor = :vendedor
+                WHERE id = :id_pedido
+            ");
+            $stmt->execute([
+                ':destinatario' => $data['destinatario'],
+                ':telefono' => $data['telefono'],
+                ':direccion' => $data['direccion'],
+                ':comentario' => $data['comentario'],
+                ':cantidad' => $data['cantidad'],
+                ':producto' => $data['producto'],
+                ':precio' => $data['precio'],
+                ':estado' => $data['estado'],
+                ':vendedor' => $data['vendedor'],
+                ':id_pedido' => $data['id_pedido']
+            ]);
+    
+            return $stmt->rowCount() > 0; // Retorna true si hubo cambios
+        } catch (PDOException $e) {
+            throw new Exception("Error updating order: " . $e->getMessage());
+        }
+    }
+    
+
+
+    public static function obtenerEstados()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT id, nombre_estado FROM estados");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los estados: " . $e->getMessage());
+        }
+    }
+
+
+    public static function obtenerVendedores()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT id, nombre FROM vendedores");
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los vendedores: " . $e->getMessage());
+        }
+    }
 }
-
-
