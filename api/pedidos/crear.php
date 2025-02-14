@@ -16,7 +16,8 @@ require_once __DIR__ . '/../../controlador/pedido.php';
 
 
 // Obtener el token del encabezado Authorization
-$headers = getallheaders();
+$headers = apache_request_headers();
+
 if (!isset($headers['Authorization'])) {
     responder(false, 'Token requerido en el encabezado Authorization', null, 401);
     exit;
