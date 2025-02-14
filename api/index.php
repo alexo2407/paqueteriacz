@@ -11,8 +11,8 @@ require_once __DIR__ . '/../vendor/autoload.php'; // Autoload para dependencias
 header('Content-Type: application/json');
 
 // Obtener la ruta solicitada
-$path = $_SERVER['REQUEST_URI'];
-$method = $_SERVER['REQUEST_METHOD'];
+/* $path = $_SERVER['REQUEST_URI'];
+$method = $_SERVER['REQUEST_METHOD']; */
 
 // Enrutar según la solicitud
 switch (true) {
