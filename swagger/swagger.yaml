@@ -1,0 +1,54 @@
+openapi: 3.0.0
+info:
+  title: API de Paquetería
+  description: Documentación básica para la API de gestión de pedidos
+  version: 1.0.0
+servers:
+  - url: http://localhost
+paths:
+  /api/auth/login:
+    post:
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: admin@example.com
+                password:
+                  type: string
+                  example: 123456
+      responses:
+        200:
+          description: Login exitoso
+        401:
+          description: Credenciales inválidas
+paths:
+  /api/pedidos/crear:
+    post:
+      summary: Crear un pedido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                numero_orden:
+                  type: string
+                  example: "12345"
+                destinatario:
+                  type: string
+                  example: Juan Perez
+                telefono:
+                  type: string
+                  example: 50512345678
+      responses:
+        200:
+          description: Pedido creado exitosamente
+        401:
+          description: Token inválido

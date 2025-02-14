@@ -2,6 +2,10 @@
 include_once "conexion.php";
 
 class PedidosModel {
+
+    /* ZONA API */
+
+    /* crear pedido desde el API */
     public static function crearPedido($data) {
         try {
             $db = (new Conexion())->conectar();
@@ -45,6 +49,37 @@ class PedidosModel {
                         "pedido_id" => $db->lastInsertId()];
         } catch (Exception $e) {
             throw new Exception("Error al insertar el pedido: " . $e->getMessage());
+        }
+    }
+
+
+
+    /*  ZONA DEL FRONT END */
+
+
+    public static function obtenerPedidosExtendidos() {
+        try {
+            $db = (new Conexion())->conectar();
+
+            // Consulta SQL para obtener los datos necesarios
+            $query = "
+                SELECT 
+                    p.id AS ID_Pedido,
+                    p.numero_orden AS Numero_Orden,
+                    p.destinatario AS Cliente,
+                    p.comentario AS Comentario,
+                    e.nombre_estado AS Estado
+                FROM pedidos p
+                LEFT JOIN estados e ON p.id_estado = e.id
+                ORDER BY p.fecha_ingreso DESC
+            ";
+
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los pedidos: " . $e->getMessage());
         }
     }
 }

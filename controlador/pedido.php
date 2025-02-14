@@ -4,9 +4,11 @@
 class PedidosController {
 
 
+    /* ZONA API */
+
     public function crearPedidoAPI($jsonData) {
         // Decodificar el JSON recibido
-        $data = json_decode($jsonData, true);
+        $data = $jsonData;
 
         // Validar la estructura del pedido
         $validacion = $this->validarDatosPedido($data);
@@ -59,4 +61,16 @@ class PedidosController {
 
         return ["success" => true];
     }
+
+
+
+    /* ZONA DEL FRONT END */
+
+    public function listarPedidosExtendidos() {
+        // Llamar al modelo para obtener los pedidos
+        $pedidos = PedidosModel::obtenerPedidosExtendidos();
+        return $pedidos;
+    }
+
+
 }

@@ -1,40 +1,34 @@
 <?php
 
-include_once "modelo/conexion.php";
+include_once "conexion.php";
 
 
-class UsuariosModel
+class UsuarioModel {
+   
 
-{
+  
+    public function verificarCredenciales($email, $password) {
 
-    /******************************** */
-    // MOSTRAR TODOS LOS USUARIOS
-    /********************************* */
-    public static function mostrarUsuariosModels()
-    {
+        $db = (new Conexion())->conectar();
 
-        //instanciamos la BD
+        $sql = "SELECT id, nombre, id_rol, contrasena FROM usuarios WHERE email = :email";
+        $stmt = $db->prepare($sql);
+        $stmt->bindParam(':email', $email);
+       
 
-        $dataBase = new Conexion();
-        $db = $dataBase->conectar();
+        
 
-        //preparamos la consulta
+        // Validar que el usuario exista y que la contraseña sea correcta
+        if ( $stmt->execute()) {
 
-        $consulta = $db->prepare("SELECT Usuarios.ID_Usuario AS id, Usuarios.Nombre AS nombre, Usuarios.Email AS email, Usuarios.created_at AS fecha, Roles.Nombre AS rol FROM Usuarios INNER JOIN Usuarios_Roles ON Usuarios.ID_Usuario = Usuarios_Roles.ID_Usuario INNER JOIN Roles ON Usuarios_Roles.ID_Rol = Roles.ID_Rol;
-");
-
-        //ejecutamos la consulta
-
-        $consulta->execute();
-
-        //la repuesta la enviamos como un objetos
-        $repuesta = $consulta->fetchAll(PDO::FETCH_ASSOC);
-
-        return $repuesta;
-
-        //limpiar consulta
-        $consulta = null;
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            return [
+                'ID_Usuario' => $user['id'],
+                'Usuario' => $user['nombre'],
+                'Rol' => $user['id_rol']
+            ];
+        } else {
+            return false;
+        }
     }
-
-
 }
