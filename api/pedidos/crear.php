@@ -17,8 +17,8 @@ require_once __DIR__ . '/../../controlador/pedido.php';
 
 // Obtener encabezados de la solicitud
 $headers = getallheaders();
-print_r($headers);
-exit;
+/* print_r($headers);
+exit; */
 if (!isset($headers['Authorization'])) {
     echo json_encode(['success' => false, 'message' => 'Token requerido']);
     http_response_code(401);
