@@ -12,13 +12,16 @@ $ruta = isset($_GET['enlace']) ? $_GET['enlace'] : null;
 $pedidoID = explode("/", $ruta );
 
 // Instanciar el controlador
-$pedidoController = new PedidosController($pedidoID);
+$pedidoController = new PedidosController();
 
 
 
 // Si el formulario fue enviado, procesa la actualización
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+   
     $resultado = $pedidoController->guardarEdicion($_POST);
+
 
     // Mensajes de éxito o error
     if ($resultado['success']) {
@@ -34,17 +37,18 @@ $estados = $pedidoController->obtenerEstados();
 $vendedores = $pedidoController->obtenerVendedores();
 
 
-var_dump($pedido);
 
 if (!$pedido) {
     echo "<div class='alert alert-danger'>Order not found.</div>";
     exit;
 }
 ?>
-
 <div class="container mt-4">
     <h2>Edit Order</h2>
-    <form method="POST" action="<?= RUTA_URL ?>pedidos/guardarEdicion">
+
+    <?= $mensaje ?? '' ?>
+
+    <form method="POST" action="">
         <input type="hidden" name="id_pedido" value="<?= htmlspecialchars($pedido['id']) ?>">
 
         <div class="row">
@@ -72,7 +76,7 @@ if (!$pedido) {
                     <label for="estado" class="form-label">Status</label>
                     <select class="form-control" id="estado" name="estado" required>
                         <?php foreach ($estados as $estado): ?>
-                            <option value="<?= $estado['id'] ?>" <?= $pedido['id'] == $estado['id'] ? 'selected' : '' ?>>
+                            <option value="<?= $estado['id'] ?>" <?= $pedido['id_estado'] == $estado['id'] ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($estado['nombre_estado']) ?>
                             </option>
                         <?php endforeach; ?>
@@ -82,7 +86,7 @@ if (!$pedido) {
                     <label for="vendedor" class="form-label">Seller</label>
                     <select class="form-control" id="vendedor" name="vendedor" required>
                         <?php foreach ($vendedores as $vendedor): ?>
-                            <option value="<?= $vendedor['id'] ?>" <?= $pedido['id'] == $vendedor['id'] ? 'selected' : '' ?>>
+                            <option value="<?= $vendedor['id'] ?>" <?= $pedido['id_vendedor'] == $vendedor['id'] ? 'selected' : '' ?>>
                                 <?= htmlspecialchars($vendedor['nombre']) ?>
                             </option>
                         <?php endforeach; ?>
@@ -95,10 +99,84 @@ if (!$pedido) {
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-        <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-secondary">Cancel</a>
+     <!-- Mapa y Coordenadas -->
+<div class="row">
+    <div class="col-md-12 mb-3">
+        <label for="map" class="form-label">Location</label>
+        <div id="map" style="width: 100%; height: 400px; border: 1px solid #ccc;"></div>
+    </div>
+    <div class="col-md-6">
+        <label for="latitud" class="form-label">Latitude</label>
+        <input type="text" class="form-control" id="latitud" name="latitud" value="<?= htmlspecialchars($pedido['latitud']) ?>" required>
+        <div class="invalid-feedback">Please enter a valid latitude (decimal number).</div>
+    </div>
+    <div class="col-md-6">
+        <label for="longitud" class="form-label">Longitude</label>
+        <input type="text" class="form-control" id="longitud" name="longitud" value="<?= htmlspecialchars($pedido['longitud']) ?>" required>
+        <div class="invalid-feedback">Please enter a valid longitude (decimal number).</div>
+    </div>
+</div>
+
+        <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
+        <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-secondary mt-3">Cancel</a>
     </form>
 </div>
+<script src="https://maps.googleapis.com/maps/api/js?key=<?= API_MAP ?>&callback=initMap" async defer></script>
+<script>
+    let map, marker;
+
+    function initMap() {
+        // Coordenadas iniciales desde la base de datos
+        const initialPosition = {
+            lat: parseFloat(document.getElementById("latitud").value) || 12.13282,
+            lng: parseFloat(document.getElementById("longitud").value) || -86.2504
+        };
+
+        // Crear el mapa
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: initialPosition,
+            zoom: 15,
+        });
+
+        // Crear un marcador inicial
+        marker = new google.maps.Marker({
+            position: initialPosition,
+            map: map,
+            draggable: true, // Permitir arrastrar el marcador
+        });
+
+        // Actualizar los campos de latitud y longitud al mover el marcador
+        marker.addListener("dragend", (event) => {
+            const position = event.latLng;
+            document.getElementById("latitud").value = position.lat();
+            document.getElementById("longitud").value = position.lng();
+        });
+
+        // Manejar clics en el mapa para mover el marcador
+        map.addListener("click", (event) => {
+            const clickedPosition = event.latLng;
+            marker.setPosition(clickedPosition);
+            document.getElementById("latitud").value = clickedPosition.lat();
+            document.getElementById("longitud").value = clickedPosition.lng();
+        });
+
+        // Actualizar el mapa cuando se editen las coordenadas manualmente
+        document.getElementById("latitud").addEventListener("input", updateMapPosition);
+        document.getElementById("longitud").addEventListener("input", updateMapPosition);
+    }
+
+    function updateMapPosition() {
+        const lat = parseFloat(document.getElementById("latitud").value);
+        const lng = parseFloat(document.getElementById("longitud").value);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+            const newPosition = { lat: lat, lng: lng };
+            marker.setPosition(newPosition);
+            map.setCenter(newPosition);
+        }
+    }
+</script>
+
 
 
 <?php include("vista/includes/footer.php"); ?>

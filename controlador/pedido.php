@@ -109,19 +109,29 @@ class PedidosController {
 
     public function guardarEdicion($data) {
         try {
+
+
+            if (!is_numeric($data['latitud']) || !is_numeric($data['longitud'])) {
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong');
+            }
+            
+          
             // Llama al modelo para actualizar el pedido
             $resultado = PedidosModel::actualizarPedido($data);
     
+           //var_dump($data);
+
+            
             if ($resultado) {
                 // Redirigir con éxito
-                header('Location: ' . RUTA_URL . 'pedidos?success=1');
+                header('Location: ' . RUTA_URL . 'pedidos/editar/'. $data['id_pedido'] . '/success');
             } else {
                 // Redirigir con un mensaje de error si no hubo cambios
-                header('Location: ' . RUTA_URL . 'pedidos/editar?id=' . $data['id_pedido'] . '&error=No se realizaron cambios en el pedido');
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error');
             }
         } catch (Exception $e) {
             // Redirigir con mensaje de error en caso de excepción
-            header('Location: ' . RUTA_URL . 'pedidos/editar?id=' . $data['id_pedido'] . '&error=' . urlencode($e->getMessage()));
+            header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error'. urlencode($e->getMessage()));
         }
         exit;
     }

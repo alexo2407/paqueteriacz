@@ -136,9 +136,20 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("SELECT * FROM pedidos WHERE id = :id_pedido");
+            // Consulta para obtener los datos del pedido incluyendo las coordenadas descompuestas
+            $query = "
+        SELECT 
+            p.*, 
+            ST_Y(p.coordenadas) AS latitud, 
+            ST_X(p.coordenadas) AS longitud
+        FROM pedidos p
+        WHERE p.id = :id_pedido
+    ";
+
+            $stmt = $db->prepare($query);
             $stmt->bindParam(':id_pedido', $id_pedido, PDO::PARAM_INT);
             $stmt->execute();
+
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             throw new Exception("Error al obtener el pedido: " . $e->getMessage());
@@ -147,41 +158,55 @@ class PedidosModel
 
     /* ACTUALIZAR  */
 
-    public static function actualizarPedido($data) {
+    public static function actualizarPedido($data)
+    {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("
-                UPDATE pedidos SET
-                    destinatario = :destinatario,
-                    telefono = :telefono,
-                    direccion = :direccion,
-                    comentario = :comentario,
-                    cantidad = :cantidad,
-                    producto = :producto,
-                    precio = :precio,
-                    id_estado = :estado,
-                    id_vendedor = :vendedor
-                WHERE id = :id_pedido
-            ");
-            $stmt->execute([
-                ':destinatario' => $data['destinatario'],
-                ':telefono' => $data['telefono'],
-                ':direccion' => $data['direccion'],
-                ':comentario' => $data['comentario'],
-                ':cantidad' => $data['cantidad'],
-                ':producto' => $data['producto'],
-                ':precio' => $data['precio'],
-                ':estado' => $data['estado'],
-                ':vendedor' => $data['vendedor'],
-                ':id_pedido' => $data['id_pedido']
-            ]);
-    
-            return $stmt->rowCount() > 0; // Retorna true si hubo cambios
+            // Crear el formato POINT para ST_GeomFromText
+            $coordenadas = "POINT(" . $data['longitud'] . " " . $data['latitud'] . ")";
+
+            // Consulta SQL con ST_GeomFromText
+            $query = "
+            UPDATE pedidos SET
+                destinatario = :destinatario,
+                telefono = :telefono,
+                direccion = :direccion,
+                comentario = :comentario,
+                cantidad = :cantidad,
+                producto = :producto,
+                precio = :precio,
+                id_estado = :estado,
+                id_vendedor = :vendedor,
+                coordenadas = ST_GeomFromText(:coordenadas)
+            WHERE id = :id_pedido
+        ";
+
+            // Preparar la consulta
+            $stmt = $db->prepare($query);
+
+            // Asociar los valores con bindParam
+            $stmt->bindParam(':destinatario', $data['destinatario'], PDO::PARAM_STR);
+            $stmt->bindParam(':telefono', $data['telefono'], PDO::PARAM_STR);
+            $stmt->bindParam(':direccion', $data['direccion'], PDO::PARAM_STR);
+            $stmt->bindParam(':comentario', $data['comentario'], PDO::PARAM_STR);
+            $stmt->bindParam(':cantidad', $data['cantidad'], PDO::PARAM_INT);
+            $stmt->bindParam(':producto', $data['producto'], PDO::PARAM_STR);
+            $stmt->bindParam(':precio', $data['precio'], PDO::PARAM_INT);
+            $stmt->bindParam(':estado', $data['estado'], PDO::PARAM_INT);
+            $stmt->bindParam(':vendedor', $data['vendedor'], PDO::PARAM_INT);
+            $stmt->bindParam(':coordenadas', $coordenadas, PDO::PARAM_STR); // Pasamos el POINT como cadena
+            $stmt->bindParam(':id_pedido', $data['id_pedido'], PDO::PARAM_INT);
+
+            // Ejecutar la consulta
+            $stmt->execute();
+
+            // Retornar true si hubo cambios en la base de datos
+            return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
             throw new Exception("Error updating order: " . $e->getMessage());
         }
     }
-    
+
 
 
     public static function obtenerEstados()
