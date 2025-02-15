@@ -73,14 +73,7 @@ class PedidosController {
     }
 
 
-    public function obtenerPedido() {
-
-        $ruta = isset($_GET['enlace']) ? $_GET['enlace'] : null;
-
-        // Dividimos la URL en partes
-        $pedidoID = explode("/", $ruta );
-      
-      
+    public function obtenerPedido($pedidoID ) {
       if (!$pedidoID) {
           echo "<div class='alert alert-danger'>No order ID provided.</div>";
           exit;
@@ -104,7 +97,6 @@ class PedidosController {
             ];
         }
     }
-    
     
     public function obtenerEstados() {
         return PedidosModel::obtenerEstados();

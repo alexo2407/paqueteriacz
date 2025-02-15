@@ -6,12 +6,35 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);*/
 // Obtener el ID del pedido desde la URL
 
+$ruta = isset($_GET['enlace']) ? $_GET['enlace'] : null;
 
-// Obtener los datos del pedido, estados y vendedores
-$pedidoController = new PedidosController();
-$pedido = $pedidoController->obtenerPedido($pedidoID[2]);
+// Dividimos la URL en partes
+$pedidoID = explode("/", $ruta );
+
+// Instanciar el controlador
+$pedidoController = new PedidosController($pedidoID);
+
+
+
+// Si el formulario fue enviado, procesa la actualización
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $resultado = $pedidoController->guardarEdicion($_POST);
+
+    // Mensajes de éxito o error
+    if ($resultado['success']) {
+        $mensaje = "<div class='alert alert-success'>Order updated successfully.</div>";
+    } else {
+        $mensaje = "<div class='alert alert-danger'>Error: " . htmlspecialchars($resultado['message']) . "</div>";
+    }
+}
+
+// Obtener los datos actualizados del pedido
+$pedido = $pedidoController->obtenerPedido($pedidoID);
 $estados = $pedidoController->obtenerEstados();
 $vendedores = $pedidoController->obtenerVendedores();
+
+
+var_dump($pedido);
 
 if (!$pedido) {
     echo "<div class='alert alert-danger'>Order not found.</div>";
