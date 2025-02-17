@@ -17,6 +17,7 @@ class EnlacesModel
             "usuarios",
             "pedidos",
             "productos",
+            "cambiarEstados",
             "salir"
         ];
 

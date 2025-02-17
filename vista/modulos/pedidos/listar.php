@@ -1,4 +1,11 @@
-<?php include("vista/includes/header.php"); ?>
+<?php 
+
+include("vista/includes/header.php"); 
+
+
+?>
+
+
 
 <div class="row mt-2 caja">
     <div class="col-sm-12">
@@ -97,30 +104,54 @@
     </script>
 
     <script>
-        $(document).ready(function() {
-            $(".actualizarEstado").change(function() {
-                let idPedido = $(this).data("id");
-                let nuevoEstado = $(this).val();
+       $(document).ready(function() {
+    $(".actualizarEstado").change(function() {
+        let select = $(this); // Guardamos la referencia al select
+        let idPedido = select.data("id");
+        let nuevoEstado = select.val();
+        let estadoAnterior = select.data("estado"); // Guarda el estado anterior
 
-                $.post("<?= RUTA_URL ?>pedidos/listar", {
-                        id_pedido: idPedido,
-                        estado: nuevoEstado
-                    },
-                    function(response) {
-                       // console.log(response); // Muestra la respuesta en la consola
+        // Deshabilita el select mientras se procesa la petición
+        select.prop("disabled", true);
 
-                        try {
-                            let data = JSON.parse(response);
-                            if (data.success) {
-                                alert("Estado actualizado correctamente.");
-                            } else {
-                                alert("Error: " + data.message);
-                            }
-                        } catch (e) {
-                            console.error("Error procesando JSON: ", e);
-                        }
-                    });
-            });
+        $.ajax({
+            url: "cambiarEstados.php",
+            type: "POST",
+            data: {
+                id_pedido: idPedido,
+                estado: nuevoEstado
+            },
+            beforeSend: function() {
+                console.log("Enviando petición...");
+            },
+            success: function(response) {
+                console.log(response); // Ver respuesta del servidor
+
+                try {
+                    let data = JSON.parse(response);
+                    if (data.success) {
+                        alert("Estado actualizado correctamente.");
+                        select.data("estado", nuevoEstado); // Actualiza el estado anterior
+                    } else {
+                        alert("Error: " + data.message);
+                        select.val(estadoAnterior); // Revertir al estado anterior
+                    }
+                } catch (e) {
+                    console.error("Error procesando JSON: ", e);
+                    select.val(estadoAnterior);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Error AJAX:", status, error);
+                alert("Error de conexión. Intenta nuevamente.");
+                select.val(estadoAnterior);
+            },
+            complete: function() {
+                select.prop("disabled", false); // Habilita el select nuevamente
+            }
         });
+    });
+});
+
     </script>
 
