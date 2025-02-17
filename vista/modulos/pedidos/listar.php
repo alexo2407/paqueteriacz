@@ -28,7 +28,7 @@
                         
                         <!-- Celda Editable para Estado -->
                         <td class="editable" data-campo="estado">
-                        <select class="form-select actualizarEstado" data-id="<?= $pedido['ID_Pedido']; ?>">
+                        <select class="form-select actualizarEstado w-10" data-id="<?= $pedido['ID_Pedido']; ?>">
                         <?php foreach ($estados as $estado): ?>
                             <option value="<?= $estado['id']; ?>" <?= $pedido['Estado'] == $estado['nombre_estado'] ? 'selected' : ''; ?>>
                                 <?= htmlspecialchars($estado['nombre_estado']); ?>
