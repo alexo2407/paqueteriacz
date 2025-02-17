@@ -44,125 +44,36 @@ function mostrarNombreModulo()
  * FUNCION PARA CARGAR SOLO LOS CSS NECESARIOS
  */
 
-function cargarCss()
-{
-  if (isset($_SERVER['REQUEST_URI'])) {
-    // obtener el nombre del modulo
-    $urlArray = explode('/', $_SERVER['REQUEST_URI']);
-    # code...
-    // var_dump($urlArray);
 
-    switch ($urlArray[2]) {
+function cargarRecursos($pagina) {
+  $recursos = [
+      "global" => [
+          '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">',
+          '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/bootstrap-icons-1.2.1/font/bootstrap-icons.css">',
+          '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/estilos.css">',
+      ],
+      "datatables" => [
+          '<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">',
+          '<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">',
+      ],
+      "ckeditor" => [
+          '<script src="https://cdn.ckeditor.com/4.15.1/standard/ckeditor.js"></script>'
+      ],
+      "maps" => [
+          '<script src="https://maps.googleapis.com/maps/api/js?key=' . API_MAP . '&callback=initMap" async defer></script>',
+      ]
+  ];
 
-      case 'articulos':
-?>
-        <!-- DataTables -->
-        <link rel="stylesheet" href="views/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
-        <link rel="stylesheet" href="views/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
-        <link rel="stylesheet" href="views/plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
+  // Detectar la página actual y cargar los recursos específicos
+  echo implode("\n", $recursos["global"]);
 
-      <?php
-        break;
-      case 'editarArticulo':
-      ?>
-        <!-- daterange picker -->
-        <link rel="stylesheet" href="views/plugins/daterangepicker/daterangepicker.css">
+  if (in_array($pagina, ["listar", "pedidos"])) {
+      echo implode("\n", $recursos["datatables"]);
+  }
 
-        <!-- summernote -->
-        <link rel="stylesheet" href="views/plugins/summernote/summernote-bs4.min.css">
-
-      <?php
-        break;
-      case 'crearArticulo':
-      ?>
-        <!-- daterange picker -->
-        <link rel="stylesheet" href="<?= RUTA_BACKEND ?>views/plugins/daterangepicker/daterangepicker.css">
-
-        <!-- summernote -->
-        <link rel="stylesheet" href="<?= RUTA_BACKEND ?>views/plugins/summernote/summernote-bs4.min.css">
-
-      <?php
-        break;
-    }
+  if ($pagina == "editar") {
+      echo implode("\n", $recursos["ckeditor"]);
+      echo implode("\n", $recursos["maps"]);
   }
 }
-
-
-
-/**
- * FUNCION PARA CARGAR SOLAMENTE LOS SCRIPT NECESARIOS
- */
-function cargarScript()
-{
-  if (isset($_SERVER['REQUEST_URI'])) {
-    // obtener el nombre del modulo
-    $urlArray = explode('/', $_SERVER['REQUEST_URI']);
-    # code...
-    // var_dump($urlArray);
-
-    switch ($urlArray[2]) {
-
-      case 'articulos':
-      ?>
-        <!-- DataTables  & Plugins -->
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables/jquery.dataTables.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/jszip/jszip.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/pdfmake/pdfmake.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/pdfmake/vfs_fonts.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-buttons/js/buttons.html5.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-buttons/js/buttons.print.min.js"></script>
-        <script src="<?= RUTA_BACKEND ?>views/plugins/datatables-buttons/js/buttons.colVis.min.js"></script>
-        <script>
-          $(document).ready(function() {
-            $('#listarUsuarios').DataTable({
-              responsive: true,
-              lengthChange: false,
-              autoWidth: false,
-              language: {
-                url: "views/js/spanishtable.json",
-              },
-              dom: "Bfrtip",
-              buttons: ["copy", "csv", "excel", "pdf", "print"],
-
-            });
-          });
-        </script>
-      <?php
-        break;
-      case 'editarArticulo':
-      ?>
-        <!-- Editor Summernote -->
-        <script async src="../views/plugins/summernote/summernote-bs4.min.js"></script>
-        <!-- InputMask -->
-
-        <script async src="<?= RUTA_BACKEND ?>views/plugins/moment/moment.min.js"></script>
-        <script async src="<?= RUTA_BACKEND ?>views/plugins/inputmask/jquery.inputmask.min.js"></script>
-        <!-- date-range-picker -->
-        <script async src="<?= RUTA_BACKEND ?>views/plugins/daterangepicker/daterangepicker.js"></script>
-  
-      <?php
-        break;
-      case 'crearArticulo':
-      ?>
-        <!-- Editor Summernote -->
-        <script src="views/plugins/summernote/summernote-bs4.min.js"></script>
-        <!-- InputMask -->
-        <script src="views/plugins/moment/moment.min.js"></script>
-        <script src="views/plugins/inputmask/jquery.inputmask.min.js"></script>
-        <!-- date-range-picker -->
-        <script src="views/plugins/daterangepicker/daterangepicker.js"></script>
-      
-    <?php
-        break;
-    }
-  }
-}
-
-
-
 ?>

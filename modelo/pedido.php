@@ -253,4 +253,27 @@ class PedidosModel
             throw new Exception("Error al obtener los vendedores: " . $e->getMessage());
         }
     }
+
+
+
+    /* cambiar  estados en los datatable */
+
+    public static function actualizarEstado($id_pedido, $estado) {
+        try {
+            $db = (new Conexion())->conectar();
+    
+            $query = "UPDATE pedidos SET id_estado = :estado WHERE id = :id_pedido";
+            $stmt = $db->prepare($query);
+    
+            $stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
+            $stmt->bindParam(":id_pedido", $id_pedido, PDO::PARAM_INT);
+            
+            $stmt->execute();
+    
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+    
 }

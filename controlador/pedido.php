@@ -1,5 +1,9 @@
 <?php
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL); 
+
 
 class PedidosController {
 
@@ -144,6 +148,33 @@ class PedidosController {
         }
         exit;
     }
+    
+    /* cambiar estados en los datatable */
+    public function actualizarEstadoAjax() {
+        header('Content-Type: application/json'); // Asegura la respuesta en JSON
+    
+        if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["id_pedido"], $_POST["estado"])) {
+            $id_pedido = intval($_POST["id_pedido"]);
+            $nuevo_estado = intval($_POST["estado"]);
+    
+            if (empty($id_pedido) || empty($nuevo_estado)) {
+                echo json_encode(["success" => false, "message" => "Datos inválidos. ID o Estado vacío."]);
+                exit();
+            }
+    
+            $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado);
+    
+            echo json_encode([
+                "success" => $resultado,
+                "message" => $resultado ? "Estado actualizado correctamente." : "Error al actualizar el estado."
+            ]);
+            exit();
+        } else {
+            echo json_encode(["success" => false, "message" => "Método de solicitud no válido."]);
+            exit();
+        }
+    }
+    
     
     
 }
