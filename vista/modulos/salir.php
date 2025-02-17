@@ -2,6 +2,6 @@
 
 session_start();
 session_destroy();
-header("location:".RUTA_FRONT);
+header("location: inicio");
 exit();
 
