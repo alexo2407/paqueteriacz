@@ -1,5 +1,25 @@
 <?php 
 
+
+$ruta = isset($_GET['enlace']) ? explode("/", $_GET['enlace']) : ['inicio'];
+
+if ($ruta[0] === "api") {
+    // Incluir el archivo API correspondiente sin cargar el template
+    $archivoAPI = "api/" . (isset($ruta[1]) ? $ruta[1] : "index") . "/" . (isset($ruta[2]) ? $ruta[2] : "index") . ".php";
+    
+    if (file_exists($archivoAPI)) {
+        include $archivoAPI;
+    } else {
+        // Manejar error si el archivo API no existe
+        header("HTTP/1.0 404 Not Found");
+        echo json_encode(["error" => "Endpoint not found"]);
+    }
+    exit; // Detener la ejecución
+}
+
+
+
+
 //config
 
 require "config/config.php";

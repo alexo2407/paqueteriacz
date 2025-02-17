@@ -7,6 +7,8 @@ class EnlacesModel
         // Dividimos la URL en partes
         $ruta = explode("/", $link);
 
+
+        // var_dump($ruta);
         // Lista blanca de módulos permitidos para vistas
         $modulosPermitidos = [
             "inicio",
@@ -38,7 +40,7 @@ class EnlacesModel
             }
         }
 
-        // Verifica si es una ruta de la API
+       /*  // Verifica si es una ruta de la API
         if ($ruta[0] === "api") {
             $archivo = "api/" . (isset($ruta[1]) ? $ruta[1] : "index") . "/" . (isset($ruta[2]) ? $ruta[2] : "index") . ".php";
 
@@ -49,7 +51,7 @@ class EnlacesModel
                     "parametros" => array_slice($ruta, 3)
                 ];
             }
-        }
+        } */
 
         // Si no se encuentra el módulo o la ruta API, redirigir a inicio
         return [

@@ -7,23 +7,31 @@ class PedidosController {
     /* ZONA API */
 
     public function crearPedidoAPI($jsonData) {
-        // Decodificar el JSON recibido
         $data = $jsonData;
-
+    
         // Validar la estructura del pedido
         $validacion = $this->validarDatosPedido($data);
         if (!$validacion["success"]) {
-            return $validacion; // Retorna los errores de validación
+            return $validacion;
         }
-
+    
         try {
-            // Llamar al modelo para insertar el pedido
+            // Verificar si el número de orden ya existe
+            if (PedidosModel::existeNumeroOrden($data["numero_orden"])) {
+                return [
+                    "success" => false,
+                    "message" => "El número de orden ya existe en la base de datos."
+                ];
+            }
+    
+            // Insertar el pedido si no existe
             $resultado = PedidosModel::crearPedido($data);
             return [
                 "success" => true,
                 "message" => "Pedido creado correctamente.",
                 "data" => $resultado
             ];
+    
         } catch (Exception $e) {
             return [
                 "success" => false,
@@ -31,6 +39,7 @@ class PedidosController {
             ];
         }
     }
+    
 
     private function validarDatosPedido($data) {
         $errores = [];

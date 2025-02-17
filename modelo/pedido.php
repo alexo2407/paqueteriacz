@@ -6,7 +6,25 @@ class PedidosModel
 
     /* ZONA API */
 
-    /* crear pedido desde el API */
+    /* VERFICAR SI EXISTE UN NUMERO DE ORDEN ANTES DE INSERTARLA */
+    public static function existeNumeroOrden($numeroOrden) {
+        try {
+            $db = (new Conexion())->conectar();
+            $query = "SELECT COUNT(*) FROM pedidos WHERE numero_orden = :numero_orden";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(":numero_orden", $numeroOrden, PDO::PARAM_INT);
+            $stmt->execute();
+    
+            // Retorna true si hay al menos un pedido con ese número de orden
+            return $stmt->fetchColumn() > 0;
+    
+        } catch (Exception $e) {
+            throw new Exception("Error al verificar el número de orden: " . $e->getMessage());
+        }
+    }
+    
+
+    /* CREA EL PEDIDO DESDE EL API */
     public static function crearPedido($data)
     {
         try {
