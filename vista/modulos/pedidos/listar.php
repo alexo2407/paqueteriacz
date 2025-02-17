@@ -37,6 +37,18 @@
                         <td>
                             <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a>
                             <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
+                          <!-- Botón "Ir a Ruta" -->
+                          <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
+                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>&travelmode=driving" 
+                                   target="_blank" class="btn btn-success btn-sm">
+                                    <i class="bi bi-geo-alt"></i> Ir a Ruta
+                                </a>
+                            <?php else: ?>
+                                <button class="btn btn-secondary btn-sm" disabled>
+                                    <i class="bi bi-geo-alt"></i> Sin Coordenadas
+                                </button>
+                            <?php endif; ?>
+
                         </td>
                     </tr>
                 <?php endforeach; ?>

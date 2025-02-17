@@ -133,6 +133,8 @@ class PedidosModel
                     p.numero_orden AS Numero_Orden,
                     p.destinatario AS Cliente,
                     p.comentario AS Comentario,
+                    ST_Y(p.coordenadas) AS latitud, 
+                    ST_X(p.coordenadas) AS longitud,
                     e.nombre_estado AS Estado
                 FROM pedidos p
                 LEFT JOIN estados e ON p.id_estado = e.id
