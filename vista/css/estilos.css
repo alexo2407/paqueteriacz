@@ -54,3 +54,11 @@ footer {
     color: #007bff;
     font-size: 3rem;
 }
+
+
+select .form-select{
+  width: 200px; /* Cambia este valor según el tamaño deseado */
+  height: 40px; /* Ajusta la altura si es necesario */
+  font-size: 16px; /* Ajusta el tamaño del texto */
+  padding: 5px;
+}

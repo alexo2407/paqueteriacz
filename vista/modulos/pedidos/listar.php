@@ -35,7 +35,7 @@ include("vista/includes/header.php");
 
                         <!-- Celda Editable para Estado -->
                         <td class="editable" data-campo="estado">
-                            <select class="form-select actualizarEstado w-10" data-id="<?= $pedido['ID_Pedido']; ?>">
+                            <select class="form-select actualizarEstado" data-id="<?= $pedido['ID_Pedido']; ?>">
                                 <?php foreach ($estados as $estado): ?>
                                     <option value="<?= $estado['id']; ?>" <?= $pedido['Estado'] == $estado['nombre_estado'] ? 'selected' : ''; ?>>
                                         <?= htmlspecialchars($estado['nombre_estado']); ?>
@@ -45,7 +45,7 @@ include("vista/includes/header.php");
                         </td>
 
                         <td>
-                            <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a>
+                            <!-- <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a> -->
                             <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
                             <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
                                 <a href="https://www.google.com/maps/dir/?api=1&destination=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>&travelmode=driving"
