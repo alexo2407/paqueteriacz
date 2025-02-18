@@ -12,7 +12,6 @@ include("vista/includes/header.php");
         <table id="tblPedidos" class="table table-striped">
             <thead>
                 <tr>
-                    <th>ID Pedido</th>
                     <th>Número de Orden</th>
                     <th>Cliente</th>
                     <th>Comentario</th>
@@ -28,7 +27,6 @@ include("vista/includes/header.php");
 
                 foreach ($pedidos as $pedido): ?>
                     <tr data-id="<?= $pedido['ID_Pedido'] ?>">
-                        <td><?= htmlspecialchars($pedido['ID_Pedido']) ?></td>
                         <td><?= htmlspecialchars($pedido['Numero_Orden']) ?></td>
                         <td><?= htmlspecialchars($pedido['Cliente']) ?></td>
                         <td><?= htmlspecialchars($pedido['Comentario']) ?></td>

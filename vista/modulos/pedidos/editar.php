@@ -22,7 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $resultado = $pedidoController->guardarEdicion($_POST);
 
-
     // Mensajes de éxito o error
     if ($resultado['success']) {
         $mensaje = "<div class='alert alert-success'>Order updated successfully.</div>";
@@ -141,8 +140,8 @@ if (!$pedido) {
         </div>
 
 
-        <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
-        <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-secondary mt-3">Cancel</a>
+        <button type="submit" class="btn btn-primary mt-3">Guardar Cambios</button>
+        <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-secondary mt-3">Cancelar</a>
     </form>
 </div>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= API_MAP ?>&callback=initMap" async defer></script>
