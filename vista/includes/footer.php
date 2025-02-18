@@ -19,6 +19,7 @@ $scripts = [
     "global" => [
         '<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>',
         '<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"></script>',
+        '<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>'
     ],
     "datatables" => [
         '<script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>',
@@ -28,6 +29,7 @@ $scripts = [
         '<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>',
         '<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/pdfmake.min.js"></script>',
         '<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/vfs_fonts.js"></script>',
+         '<script src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>'
     ],
     "maps" => [
         '<script>

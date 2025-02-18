@@ -268,12 +268,18 @@ class PedidosModel
             $stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
             $stmt->bindParam(":id_pedido", $id_pedido, PDO::PARAM_INT);
             
-            $stmt->execute();
-    
-            return $stmt->rowCount() > 0;
+            try {
+                $stmt->execute();
+                return $stmt->rowCount() > 0;
+            } catch (PDOException $e) {
+                return ["success" => false, "message" => "Error SQL: " . $e->getMessage()];
+            }
+            
+            
         } catch (PDOException $e) {
-            return false;
+            return ["success" => false, "message" => "Error SQL: " . $e->getMessage()];
         }
+        
     }
     
 }

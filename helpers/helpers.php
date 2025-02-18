@@ -55,6 +55,7 @@ function cargarRecursos($pagina) {
       "datatables" => [
           '<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">',
           '<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">',
+          '<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">'
       ],
       "ckeditor" => [
           '<script src="https://cdn.ckeditor.com/4.15.1/standard/ckeditor.js"></script>'
