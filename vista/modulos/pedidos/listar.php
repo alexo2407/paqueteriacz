@@ -147,7 +147,13 @@ include("vista/includes/header.php");
 
                 error: function(xhr, status, error) {
                    // console.error("Error AJAX:", status, error);
-                    alert("Error de conexión. Intenta nuevamente.");
+                   Swal.fire({
+                            title: "Error",
+                            text: status.error,
+                            icon: "error",
+                            confirmButtonText: "OK"
+                        });
+                    // alert("Error de conexión. Intenta nuevamente.");
                     select.val(estadoAnterior);
                 },
                 complete: function() {
