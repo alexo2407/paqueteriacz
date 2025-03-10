@@ -177,5 +177,3 @@ class PedidosController {
     
 }
 
-
-ob_end_flush();
