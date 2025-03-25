@@ -139,7 +139,7 @@ class PedidosController {
             
             if ($resultado) {
                 // Redirigir con éxito
-                header('Location: ' . RUTA_URL . 'pedidos/editar/'. $data['id_pedido'] . '/success');
+                header('Location: '. RUTA_URL . 'pedidos/listar');
             } else {
                 // Redirigir con un mensaje de error si no hubo cambios
                 header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error');
@@ -177,5 +177,3 @@ class PedidosController {
     
 }
 
-
-ob_end_flush();
