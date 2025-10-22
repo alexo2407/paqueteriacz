@@ -24,26 +24,21 @@
                 </thead>
                 <tbody>
 
-                    <?php 
-                    
-                     $listarUsuarios = new UsuariosController();
-                    $resultadoUsuarios = $listarUsuarios->mostrarUsuariosController();
-
-                    foreach($resultadoUsuarios as $usuarios) :
-                                       
+                    <?php
+                        $provCtrl = new ProveedorController();
+                        $proveedores = $provCtrl->listarProveedores();
+                        foreach ($proveedores as $prov) :
                     ?>
-              
                     <tr>
-                        <td><?php echo $usuarios['id']; ?></td>
-                        <td><?php echo $usuarios['nombre']; ?></td>
-                        <td><?php echo $usuarios['email']; ?></td>
-                        <td><?php echo $usuarios['fecha']; ?></td>
-                        <td><?php  echo $usuarios['rol']?></td>
+                        <td><?php echo htmlspecialchars($prov['id']); ?></td>
+                        <td><?php echo htmlspecialchars($prov['nombre']); ?></td>
+                        <td><?php echo htmlspecialchars($prov['email']); ?></td>
+                        <td><?php echo htmlspecialchars($prov['telefono'] ?? ''); ?></td>
+                        <td><?php echo htmlspecialchars($prov['creado_en'] ?? ''); ?></td>
                         <td>
-                            <a href="<?= RUTA_URL ?>usuarios/editar/<?php echo $usuarios['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>                                            
+                            <a href="<?= RUTA_URL ?>prooveedor/editar/<?php echo $prov['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
                         </td>
                     </tr>
-
                     <?php endforeach; ?>
                                            
                 </tbody>       
