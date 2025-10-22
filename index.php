@@ -30,6 +30,42 @@ if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'P
     exit;
 }
 
+// Manejo de crear/actualizar proveedor vía POST
+if (isset($ruta[0]) && $ruta[0] === 'prooveedor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // acción puede ser guardar o actualizar
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once "config/config.php";
+    require_once "controlador/proveedor.php";
+
+    $ctrl = new ProveedorController();
+
+    if ($accion === 'guardar') {
+        $data = [
+            'nombre' => $_POST['nombre'] ?? null,
+            'email' => $_POST['email'] ?? null,
+            'telefono' => $_POST['telefono'] ?? null,
+        ];
+        $ctrl->crearProveedor($data);
+        header('Location: ' . RUTA_URL . 'prooveedor/listar');
+        exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : null;
+        $data = [
+            'nombre' => $_POST['nombre'] ?? null,
+            'email' => $_POST['email'] ?? null,
+            'telefono' => $_POST['telefono'] ?? null,
+        ];
+        if ($id) {
+            $ctrl->actualizarProveedor($id, $data);
+        }
+        header('Location: ' . RUTA_URL . 'prooveedor/listar');
+        exit;
+    }
+
+}
+
 
 
 
@@ -41,6 +77,10 @@ require "config/config.php";
 //helper
 
  require_once "helpers/helpers.php";
+
+// Sesión segura y helpers
+require_once __DIR__ . '/utils/session.php';
+start_secure_session();
 
 //modelos
 require_once "modelo/enlaces.php";
