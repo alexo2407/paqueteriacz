@@ -24,14 +24,19 @@ class Conexion
 
         try {
             // Crear la conexión usando PDO
-            $this->conexion = new PDO(
-                "mysql:host={$this->host};dbname={$this->dataBase}",
-                $this->userName,
-                $this->password
-            );
+            $dsn = "mysql:host={$this->host};dbname={$this->dataBase};charset=utf8mb4";
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ];
 
-            // Configurar atributos de PDO
-            $this->conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->conexion = new PDO(
+                $dsn,
+                $this->userName,
+                $this->password,
+                $options
+            );
 
         } catch (PDOException $e) {
             // Manejo de errores

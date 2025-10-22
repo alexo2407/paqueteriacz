@@ -17,6 +17,19 @@ if ($ruta[0] === "api") {
     exit; // Detener la ejecución
 }
 
+// Manejo de login vía formulario (MVC): cuando se hace POST a ?enlace=login
+if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Cargar dependencias necesarias
+    require_once "config/config.php";
+    require_once "modelo/usuario.php";
+    require_once "controlador/usuario.php";
+
+    // Llamar al controlador de usuarios para procesar el login
+    $ctrl = new UsuariosController();
+    $ctrl->login();
+    exit;
+}
+
 
 
 

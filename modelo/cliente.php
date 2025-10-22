@@ -1,13 +1,13 @@
 <?php
 
-include_once "modelo/conexion.php";
+include_once __DIR__ . '/conexion.php';
 
 class ClientesModel
 {
-    public int $ID_Cliente;
-    public string $Nombre;
+    public ?int $ID_Cliente = null;
+    public ?string $Nombre = null;
 
-    public function __construct(int $ID_Cliente = null, string $Nombre = null)
+    public function __construct(?int $ID_Cliente = null, ?string $Nombre = null)
     {
         $this->ID_Cliente = $ID_Cliente;
         $this->Nombre = $Nombre;
@@ -28,12 +28,8 @@ class ClientesModel
             // Ejecutar consulta
             $consulta->execute();
 
-            $consulta->execute();
-
-            // Devuelve los clientes inactivos como un array asociativo
+            // Devuelve los clientes activos como un array asociativo
             return $consulta->fetchAll(PDO::FETCH_ASSOC);
-
-            
         } catch (PDOException $e) {
             // Manejo de errores
             error_log("Error al obtener clientes: " . $e->getMessage(), 3, "logs/errors.log");
@@ -42,7 +38,6 @@ class ClientesModel
             $consulta = null;
             $db = null;
         }
-
 
         return $resultado;
     }
