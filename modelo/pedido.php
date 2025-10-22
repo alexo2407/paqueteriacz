@@ -31,9 +31,20 @@ class PedidosModel
             $db = (new Conexion())->conectar();
 
             // Preparar los datos
-            $coordenadas = explode(',', $data["coordenadas"]);
-            $latitud = $coordenadas[0];
-            $longitud = $coordenadas[1];
+            // Validar coordenadas (se espera "lat,long")
+            $latitud = null;
+            $longitud = null;
+            if (!empty($data["coordenadas"]) && strpos($data["coordenadas"], ',') !== false) {
+                $coordenadas = array_map('trim', explode(',', $data["coordenadas"]));
+                if (count($coordenadas) === 2) {
+                    $latitud = $coordenadas[0];
+                    $longitud = $coordenadas[1];
+                }
+            }
+
+            if ($latitud === null || $longitud === null) {
+                throw new Exception('Coordenadas inválidas');
+            }
 
 
             // var_dump($coordenadas);

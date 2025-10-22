@@ -23,11 +23,14 @@ class EnlacesModel
 
         // Verifica si es un módulo regular (vista)
         if (in_array($ruta[0], $modulosPermitidos)) {
-            $archivo = "vista/modulos/" . $ruta[0];
+            // Sanitizar partes para evitar traversal
+            $modulo = preg_replace('/[^a-zA-Z0-9_-]/', '', $ruta[0]);
+            $archivo = __DIR__ . "/../vista/modulos/" . $modulo;
 
-            // Si hay una acción (como "editar"), añádela
+            // Si hay una acción (como "editar"), añádela y sanitiza
             if (isset($ruta[1])) {
-                $archivo .= "/" . $ruta[1] . ".php";
+                $accion = preg_replace('/[^a-zA-Z0-9_-]/', '', $ruta[1]);
+                $archivo .= "/" . $accion . ".php";
             } else {
                 $archivo .= ".php";
             }
