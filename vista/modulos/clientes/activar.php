@@ -14,10 +14,15 @@ if (isset($_GET['enlace'])) {
 
         // Redirigir a la lista de clientes activos si se activa correctamente
         if ($resultadoact) {
+            require_once __DIR__ . '/../../utils/session.php';
+            set_flash('success', 'Cliente activado correctamente.');
             header("Location: " . RUTA_URL . "clientes/listar");
             exit;
         } else {
-            echo "<div class='alert alert-danger'>Error al activar el cliente. Inténtelo nuevamente.</div>";
+            require_once __DIR__ . '/../../utils/session.php';
+            set_flash('error', 'Error al activar el cliente. Inténtelo nuevamente.');
+            header("Location: " . RUTA_URL . "clientes/listar");
+            exit;
         }
     } else {
         echo "<div class='alert alert-danger'>Ruta inválida o cliente no especificado.</div>";

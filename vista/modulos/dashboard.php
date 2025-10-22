@@ -3,11 +3,11 @@
 
 //iniciar sesion
 
-session_start();
+start_secure_session();
 
 if(!isset($_SESSION['registrado']))
 {
-    header('location:'.RUTA_FRONT.'login');
+    header('location:'.RUTA_URL.'login');
     die();
 }
 else

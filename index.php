@@ -31,8 +31,7 @@ if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'P
 }
 
 // Manejo de crear/actualizar proveedor vía POST
-if (isset($ruta[0]) && $ruta[0] === 'prooveedor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    // acción puede ser guardar o actualizar
+if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = isset($ruta[1]) ? $ruta[1] : '';
     require_once "config/config.php";
     require_once "controlador/proveedor.php";
@@ -40,13 +39,21 @@ if (isset($ruta[0]) && $ruta[0] === 'prooveedor' && $_SERVER['REQUEST_METHOD'] =
     $ctrl = new ProveedorController();
 
     if ($accion === 'guardar') {
-        $data = [
+        $jsonData = [
             'nombre' => $_POST['nombre'] ?? null,
             'email' => $_POST['email'] ?? null,
             'telefono' => $_POST['telefono'] ?? null,
+            'pais' => $_POST['pais'] ?? null,
+            'contrasena' => $_POST['contrasena'] ?? null,
         ];
-        $ctrl->crearProveedor($data);
-        header('Location: ' . RUTA_URL . 'prooveedor/listar');
+        $response = $ctrl->crearProveedorAPI($jsonData);
+        require_once __DIR__ . '/utils/session.php';
+        if ($response['success']) {
+            set_flash('success', $response['message']);
+        } else {
+            set_flash('error', $response['message']);
+        }
+        header('Location: ' . RUTA_URL . 'proveedor/listar');
         exit;
     }
 
@@ -56,11 +63,19 @@ if (isset($ruta[0]) && $ruta[0] === 'prooveedor' && $_SERVER['REQUEST_METHOD'] =
             'nombre' => $_POST['nombre'] ?? null,
             'email' => $_POST['email'] ?? null,
             'telefono' => $_POST['telefono'] ?? null,
+            'pais' => $_POST['pais'] ?? null,
+            'contrasena' => $_POST['contrasena'] ?? null,
         ];
         if ($id) {
-            $ctrl->actualizarProveedor($id, $data);
+            $ok = $ctrl->actualizarProveedor($id, $data);
+            require_once __DIR__ . '/utils/session.php';
+            if ($ok) {
+                set_flash('success', 'Proveedor actualizado correctamente.');
+            } else {
+                set_flash('error', 'No se realizaron cambios en el proveedor.');
+            }
         }
-        header('Location: ' . RUTA_URL . 'prooveedor/listar');
+        header('Location: ' . RUTA_URL . 'proveedor/listar');
         exit;
     }
 

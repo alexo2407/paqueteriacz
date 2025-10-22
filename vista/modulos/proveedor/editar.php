@@ -14,7 +14,7 @@ $prov = $provCtrl->verProveedor($id);
         <?php if (!$prov) : ?>
             <div class="alert alert-danger">Proveedor no encontrado.</div>
         <?php else: ?>
-        <form method="POST" action="index.php?enlace=prooveedor/actualizar/<?php echo $id; ?>">
+    <form method="POST" action="<?= RUTA_URL ?>proveedor/actualizar/<?php echo $id; ?>">
             <div class="mb-3">
                 <label class="form-label">Nombre</label>
                 <input name="nombre" class="form-control" required value="<?php echo htmlspecialchars($prov['nombre']); ?>">
@@ -24,11 +24,19 @@ $prov = $provCtrl->verProveedor($id);
                 <input name="email" type="email" class="form-control" value="<?php echo htmlspecialchars($prov['email']); ?>">
             </div>
             <div class="mb-3">
+                <label class="form-label">País</label>
+                <input name="pais" class="form-control" value="<?php echo htmlspecialchars($prov['pais'] ?? ''); ?>">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Contraseña (dejar vacío para no cambiar)</label>
+                <input name="contrasena" type="password" class="form-control" value="">
+            </div>
+            <div class="mb-3">
                 <label class="form-label">Teléfono</label>
                 <input name="telefono" class="form-control" value="<?php echo htmlspecialchars($prov['telefono']); ?>">
             </div>
             <button class="btn btn-primary" type="submit">Actualizar</button>
-            <a class="btn btn-secondary" href="<?= RUTA_URL ?>prooveedor/listar">Cancelar</a>
+            <a class="btn btn-secondary" href="<?= RUTA_URL ?>proveedor/listar">Cancelar</a>
         </form>
         <?php endif; ?>
     </div>

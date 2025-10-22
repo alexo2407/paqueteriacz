@@ -5,7 +5,6 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);  */
 
 ob_start();
-session_start();
 
 class PedidosController {
 
@@ -127,6 +126,8 @@ class PedidosController {
 
 
             if (!is_numeric($data['latitud']) || !is_numeric($data['longitud'])) {
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', 'Las coordenadas no tienen un formato válido.');
                 header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong');
             }
             
@@ -139,9 +140,13 @@ class PedidosController {
             
             if ($resultado) {
                 // Redirigir con éxito
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('success', 'Pedido actualizado correctamente.');
                 header('Location: '. RUTA_URL . 'pedidos/listar');
             } else {
                 // Redirigir con un mensaje de error si no hubo cambios
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', 'No se realizaron cambios en el pedido.');
                 header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error');
             }
         } catch (Exception $e) {

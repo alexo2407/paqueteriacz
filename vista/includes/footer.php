@@ -65,3 +65,14 @@ if ($paginaActual == "editar") {
     echo implode("\n", $scripts["maps"]);
 }
 ?>
+
+<?php
+// Mostrar flash (SweetAlert) si existe
+require_once __DIR__ . '/../../utils/session.php';
+$flash = get_flash();
+if ($flash) {
+    $type = $flash['type'] === 'success' ? 'success' : 'error';
+    $msg = addslashes($flash['message']);
+    echo "<script>document.addEventListener('DOMContentLoaded', function(){ Swal.fire({icon: '$type', title: '', text: '$msg'}); });</script>";
+}
+?>

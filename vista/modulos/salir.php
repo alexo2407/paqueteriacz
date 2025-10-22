@@ -2,15 +2,8 @@
 // Captura cualquier salida previa para evitar errores de cabeceras
 ob_start();
 
-// Verifica si la sesión está iniciada antes de intentar destruirla
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Destruye la sesión si está activa
-if (session_status() == PHP_SESSION_ACTIVE) {
-    session_destroy();
-}
+require_once __DIR__ . '/../../utils/session.php';
+logout();
 
 // Redirecciona a index.php
 header("Location: index.php");

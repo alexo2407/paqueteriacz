@@ -1,4 +1,3 @@
-
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="<?=RUTA_URL?>">Paqueteria CruzValle</a>
@@ -26,12 +25,12 @@
 
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>pedidos/listar">pedidos</a>
-                </li>
+                </li> <!-- 
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>productos/listars">productos</a>
-                </li>
+                </li>-->
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>productos/listars">prooveedor</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>proveedor/listar">Proveedores</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>seguimientos/listar">seguimiento</a>
@@ -52,21 +51,18 @@
                             </li> -->
 
                 <?php
-                
-                if(isset($_SESSION['nombre']))
-                {
-                echo ' <li class="nav-item">
-                    <p class="text-white mt-2">Bienvenido <i class="bi bi-person-circle"> '.$_SESSION['nombre'].'</i></p>
-                </li>';
+                // Mostrar nombre de usuario si la sesión está iniciada
+                $userName = $_SESSION['nombre'] ?? null;
+                if ($userName) {
+                    echo "<li class=\"nav-item\"><p class=\"text-white mt-2\">Bienvenido <i class=\"bi bi-person-circle\"> " . htmlspecialchars($userName) . "</i></p></li>";
                 }
-                
                 ?>
                  <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>/api/doc/">Documentación API´S</a>
                 </li>
                
                 <li class="nav-item">
-                    <a class="nav-link" href="#">Salir</a>
+                    <a class="nav-link" href="<?= RUTA_URL ?>index.php?enlace=salir">Salir</a>
                 </li>
 
             </ul>

@@ -20,15 +20,14 @@ class UsuariosController
     public function login()
     {
         // Iniciar sesión si no está iniciada
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
+        require_once __DIR__ . '/../utils/session.php';
+        start_secure_session();
 
         $email = isset($_POST['email']) ? trim($_POST['email']) : null;
         $password = isset($_POST['password']) ? $_POST['password'] : null;
 
         if (!$email || !$password) {
-            $_SESSION['login_error'] = 'Faltan parámetros';
+            set_flash('error', 'Faltan parámetros');
             header('Location: index.php?enlace=login');
             exit;
         }
@@ -45,10 +44,11 @@ class UsuariosController
             $_SESSION['rol'] = $user['Rol'];
 
             // Redirigir a dashboard
+            set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
             header('Location: index.php?enlace=dashboard');
             exit;
         } else {
-            $_SESSION['login_error'] = 'Credenciales inválidas';
+            set_flash('error', 'Credenciales inválidas');
             header('Location: index.php?enlace=login');
             exit;
         }

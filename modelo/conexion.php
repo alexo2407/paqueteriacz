@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../config/config.php'; // Ensure configuration constants are loaded
 
 class Conexion
 {
