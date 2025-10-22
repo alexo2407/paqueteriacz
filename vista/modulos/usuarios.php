@@ -6,7 +6,7 @@
         <h3>Lista de Usuarios</h3>
     </div>   
     <div class="col-sm-4 offset-2">
-        <a href="<?=RUTA_URL?>crearUsuario" class="btn btn-success w-100"><i class="bi bi-plus-circle-fill"></i> Nuevo Usuario</a>
+        <a href="<?=RUTA_URL?>usuarios/crear" class="btn btn-success w-100"><i class="bi bi-plus-circle-fill"></i> Nuevo Usuario</a>
     </div>    
 </div>
 <div class="row mt-2 caja">
