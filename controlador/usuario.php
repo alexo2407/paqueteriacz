@@ -28,7 +28,8 @@ class UsuariosController
 
         if (!$email || !$password) {
             set_flash('error', 'Faltan parámetros');
-            header('Location: index.php?enlace=login');
+            $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
+            header('Location: ' . $loginUrl);
             exit;
         }
 
@@ -45,11 +46,13 @@ class UsuariosController
 
             // Redirigir a dashboard
             set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
-            header('Location: index.php?enlace=dashboard');
+            $dashboardUrl = defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard';
+            header('Location: ' . $dashboardUrl);
             exit;
         } else {
             set_flash('error', 'Credenciales inválidas');
-            header('Location: index.php?enlace=login');
+            $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
+            header('Location: ' . $loginUrl);
             exit;
         }
     }

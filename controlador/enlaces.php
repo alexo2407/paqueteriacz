@@ -11,6 +11,16 @@ class EnlacesController
         $archivo = $respuesta['archivo'];
         $parametros = $respuesta['parametros'];
 
+        // Enforce active session for private modules
+        $segmentos = explode('/', trim($url));
+        $modulo = $segmentos[0] ?? 'inicio';
+        $modulosPublicos = ['inicio', 'login', '', 'api'];
+
+        if (!in_array($modulo, $modulosPublicos, true)) {
+            require_once __DIR__ . '/../utils/session.php';
+            require_login();
+        }
+
         // Incluye la vista correspondiente
         if (file_exists($archivo)) {
             // Los parámetros estarán disponibles en la vista

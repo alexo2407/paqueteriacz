@@ -17,10 +17,20 @@ if ($ruta[0] === "api") {
     exit; // Detener la ejecución
 }
 
+//config
+require_once __DIR__ . "/config/config.php";
+
+// Manejar salida (logout) antes de generar cualquier salida HTML
+if ($ruta[0] === 'salir') {
+    require_once __DIR__ . '/utils/session.php';
+    logout();
+    header('Location: ' . RUTA_URL . 'login');
+    exit;
+}
+
 // Manejo de login vía formulario (MVC): cuando se hace POST a ?enlace=login
 if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Cargar dependencias necesarias
-    require_once "config/config.php";
     require_once "modelo/usuario.php";
     require_once "controlador/usuario.php";
 
@@ -33,7 +43,6 @@ if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'P
 // Manejo de crear/actualizar proveedor vía POST
 if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = isset($ruta[1]) ? $ruta[1] : '';
-    require_once "config/config.php";
     require_once "controlador/proveedor.php";
 
     $ctrl = new ProveedorController();
@@ -50,10 +59,12 @@ if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] ==
         require_once __DIR__ . '/utils/session.php';
         if ($response['success']) {
             set_flash('success', $response['message']);
-        } else {
-            set_flash('error', $response['message']);
+            header('Location: ' . RUTA_URL . 'proveedor/listar');
+            exit;
         }
-        header('Location: ' . RUTA_URL . 'proveedor/listar');
+
+        set_flash('error', $response['message']);
+        header('Location: ' . RUTA_URL . 'proveedor/crear');
         exit;
     }
 
@@ -71,23 +82,20 @@ if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] ==
             require_once __DIR__ . '/utils/session.php';
             if ($ok) {
                 set_flash('success', 'Proveedor actualizado correctamente.');
-            } else {
-                set_flash('error', 'No se realizaron cambios en el proveedor.');
+                header('Location: ' . RUTA_URL . 'proveedor/listar');
+                exit;
             }
+
+            set_flash('error', 'No se realizaron cambios en el proveedor.');
+            header('Location: ' . RUTA_URL . 'proveedor/editar/' . $id);
+            exit;
         }
+
         header('Location: ' . RUTA_URL . 'proveedor/listar');
         exit;
     }
 
 }
-
-
-
-
-//config
-
-require "config/config.php";
-
 
 //helper
 
@@ -96,6 +104,24 @@ require "config/config.php";
 // Sesión segura y helpers
 require_once __DIR__ . '/utils/session.php';
 start_secure_session();
+
+// Redirigir raíz según estado de sesión
+$enlaceSolicitado = $_GET['enlace'] ?? null;
+$primerSegmento = $ruta[0] ?? '';
+
+if ($enlaceSolicitado === null || $enlaceSolicitado === '') {
+    if (!empty($_SESSION['registrado'])) {
+        header('Location: ' . RUTA_URL . 'dashboard');
+    } else {
+        header('Location: ' . RUTA_URL . 'login');
+    }
+    exit;
+}
+
+if ($primerSegmento === 'inicio' && !empty($_SESSION['registrado'])) {
+    header('Location: ' . RUTA_URL . 'dashboard');
+    exit;
+}
 
 //modelos
 require_once "modelo/enlaces.php";
@@ -106,12 +132,14 @@ require_once "modelo/enlaces.php";
 require_once "modelo/usuario.php";
 require_once "modelo/cliente.php";
 require_once "modelo/pedido.php";
+require_once "modelo/proveedor.php";
 
 //controladores
 require_once "controlador/enlaces.php";
 require_once "controlador/usuario.php";
 require_once "controlador/cliente.php";
 require_once "controlador/pedido.php";
+require_once "controlador/proveedor.php";
 
 
 

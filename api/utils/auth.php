@@ -19,7 +19,7 @@ class AuthController {
                 'iss' => 'http://localhost', // Emisor
                 'aud' => 'http://localhost', // Audiencia
                 'iat' => time(),             // Fecha de emisión
-                'exp' => time() + (60 * 60), // Expira en 1 hora
+                'exp' => time() + (60 * 60 * 24 * 90), // Expira en ~3 meses
                 'data' => [
                     'id' => $user['ID_Usuario'],
                     'nombre' => $user['Usuario'],

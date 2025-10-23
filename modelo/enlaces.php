@@ -9,6 +9,11 @@ class EnlacesModel
 
 
         // var_dump($ruta);
+        // Normalizar ruta de login al módulo inicio
+        if ($ruta[0] === 'login') {
+            $ruta[0] = 'inicio';
+        }
+
         // Lista blanca de módulos permitidos para vistas
         $modulosPermitidos = [
             "inicio",
@@ -59,8 +64,13 @@ class EnlacesModel
         } */
 
         // Si no se encuentra el módulo o la ruta API, redirigir a inicio
+        $defaultView = "vista/modulos/inicio.php";
+        if (!empty($_SESSION['registrado'])) {
+            $defaultView = "vista/modulos/dashboard.php";
+        }
+
         return [
-            "archivo" => "vista/modulos/inicio.php",
+            "archivo" => $defaultView,
             "parametros" => []
         ];
     }

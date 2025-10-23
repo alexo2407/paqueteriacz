@@ -33,7 +33,8 @@ function require_login()
     start_secure_session();
     if (empty($_SESSION['registrado'])) {
         // Redirigir al login
-        header('Location: index.php?enlace=login');
+        $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
+        header('Location: ' . $loginUrl);
         exit;
     }
 }
@@ -42,19 +43,22 @@ function require_role($roles)
 {
     start_secure_session();
     if (empty($_SESSION['registrado'])) {
-        header('Location: index.php?enlace=login');
+        $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
+        header('Location: ' . $loginUrl);
         exit;
     }
 
     $userRole = $_SESSION['rol'] ?? null;
     if (is_array($roles)) {
         if (!in_array($userRole, $roles)) {
-            header('Location: index.php');
+            $homeUrl = defined('RUTA_URL') ? RUTA_URL : 'index.php';
+            header('Location: ' . $homeUrl);
             exit;
         }
     } else {
         if ($userRole !== $roles) {
-            header('Location: index.php');
+            $homeUrl = defined('RUTA_URL') ? RUTA_URL : 'index.php';
+            header('Location: ' . $homeUrl);
             exit;
         }
     }
@@ -62,21 +66,30 @@ function require_role($roles)
 
 function logout()
 {
-    start_secure_session();
-    // Unset all of the session variables.
-    $_SESSION = array();
-
-    // If it's desired to kill the session, also delete the session cookie.
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params['path'], $params['domain'],
-            $params['secure'], $params['httponly']
-        );
+    // Garantiza que la sesión esté activa antes de limpiarla
+    if (session_status() === PHP_SESSION_NONE) {
+        start_secure_session();
     }
 
-    // Finally, destroy the session.
-    session_destroy();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        $_SESSION = [];
+        session_unset();
+
+        if (ini_get('session.use_cookies')) {
+            $params = session_get_cookie_params();
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $params['path'] ?? '/',
+                $params['domain'] ?? '',
+                $params['secure'] ?? false,
+                $params['httponly'] ?? true
+            );
+        }
+
+        session_destroy();
+    }
 }
 
 // Flash message helpers (simple session-based)

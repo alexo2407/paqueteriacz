@@ -1,6 +1,21 @@
 <?php include("vista/includes/header.php"); ?>
 
 <?php
+require_once __DIR__ . '/../../../utils/session.php';
+$flashMessage = get_flash();
+if ($flashMessage): ?>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            icon: '<?= $flashMessage["type"] === "success" ? "success" : "error" ?>',
+            title: '<?= $flashMessage["type"] === "success" ? "Éxito" : "Error" ?>',
+            text: '<?= $flashMessage["message"] ?>',
+        });
+    });
+</script>
+<?php endif; ?>
+
+<?php
 // obtener id desde parametros (enlaces model provee parametros)
 $params = isset($parametros) ? $parametros : [];
 $id = isset($params[0]) ? (int)$params[0] : null;

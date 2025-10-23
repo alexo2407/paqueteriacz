@@ -1,14 +1,16 @@
 <?php include("vista/includes/header.php"); ?>
 
 <?php
-require_once __DIR__ . '/../../utils/session.php';
+require_once __DIR__ . '/../../../utils/session.php';
 $flashMessage = get_flash();
 if ($flashMessage): ?>
 <script>
-    Swal.fire({
-        icon: '<?= $flashMessage["type"] === "success" ? "success" : "error" ?>',
-        title: '<?= $flashMessage["type"] === "success" ? "Éxito" : "Error" ?>',
-        text: '<?= $flashMessage["message"] ?>',
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            icon: '<?= $flashMessage["type"] === "success" ? "success" : "error" ?>',
+            title: '<?= $flashMessage["type"] === "success" ? "Éxito" : "Error" ?>',
+            text: '<?= $flashMessage["message"] ?>',
+        });
     });
 </script>
 <?php endif; ?>
