@@ -3,6 +3,11 @@
 <?php
 require_once __DIR__ . '/../../../utils/session.php';
 $flashMessage = get_flash();
+$highlightId = $_SESSION['last_created_provider_id'] ?? null;
+if ($highlightId !== null) {
+    $highlightId = (int) $highlightId;
+    unset($_SESSION['last_created_provider_id']);
+}
 if ($flashMessage): ?>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -45,7 +50,7 @@ if ($flashMessage): ?>
                         if (!empty($proveedores)) {
                             foreach ($proveedores as $prov) :
                     ?>
-                    <tr>
+                    <tr data-provider-id="<?php echo htmlspecialchars($prov['id']); ?>" class="<?php echo ($highlightId !== null && (int)$prov['id'] === $highlightId) ? 'table-success' : ''; ?>">
                         <td><?php echo htmlspecialchars($prov['id']); ?></td>
                         <td><?php echo htmlspecialchars($prov['nombre']); ?></td>
                         <td><?php echo htmlspecialchars($prov['email']); ?></td>
@@ -71,7 +76,15 @@ if ($flashMessage): ?>
 <?php include("vista/includes/footer.php") ?>
 
 <script>
-    $(document).ready( function () {
-        $('#tblProveedores').DataTable();
+    $(document).ready(function () {
+        const table = $('#tblProveedores').DataTable({
+            order: [[0, 'desc']],
+            pageLength: 25
+        });
+
+        const highlighted = document.querySelector('#tblProveedores tr.table-success');
+        if (highlighted) {
+            highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     });
 </script>

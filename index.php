@@ -57,8 +57,12 @@ if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] ==
         ];
         $response = $ctrl->crearProveedorAPI($jsonData);
         require_once __DIR__ . '/utils/session.php';
+        start_secure_session();
         if ($response['success']) {
             set_flash('success', $response['message']);
+            if (!empty($response['data'])) {
+                $_SESSION['last_created_provider_id'] = (int) $response['data'];
+            }
             header('Location: ' . RUTA_URL . 'proveedor/listar');
             exit;
         }
