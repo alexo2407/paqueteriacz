@@ -1,20 +1,24 @@
-# #impedir lista de directorio
+# Impedir listado de directorios y evitar MultiViews
+Options -Indexes
+Options -MultiViews
 
+# Habilitar rewrite
+RewriteEngine On
 
- Options All -Indexes
- Options -MultiViews
-
-# #URL amigables
-
- RewriteEngine On
-
+# Pasar Authorization a variable de entorno (útil para JWT/Bearer)
 RewriteCond %{HTTP:Authorization} ^(.*)
-RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
- # Si el archivo o directorio solicitado existe, no lo reescribas
- RewriteCond %{REQUEST_FILENAME} !-f
- RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
 
-# #usaremos la expresion regular como una regla que captura todo lo que venga despues de la palabra clave enlaceBack
+# Si el proxy envía X-Forwarded-Proto=https, marcar HTTPS en env
+# (útil para detectar https en scripts PHP detrás de proxy/CDN)
+RewriteCond %{HTTP:X-Forwarded-Proto} =https [OR]
+RewriteCond %{HTTP:X-Forwarded-Ssl} =on
+RewriteRule .* - [E=HTTPS:on]
 
- RewriteRule ^([a-zA-Z0-9/]+)$ index.php?enlace=$1 [QSA,L]
+# No reescribir si el archivo o directorio solicitado existe
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
 
+# Reescribir todo lo demás al router PHP
+# Permitir letras, números, guiones, guion bajo, punto y barras
+RewriteRule ^([A-Za-z0-9._\-\/]+)$ index.php?enlace=$1 [QSA,L]
