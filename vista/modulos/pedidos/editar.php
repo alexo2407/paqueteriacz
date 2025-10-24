@@ -46,7 +46,7 @@ if (!$pedido) {
 
     <?= $mensaje ?? '' ?>
 
-    <form method="POST" action="">
+    <form method="POST" action="" onsubmit="return validarFormularioEditar()">
         <input type="hidden" name="id_pedido" value="<?= htmlspecialchars($pedido['id']) ?>">
 
         <div class="row">
@@ -89,6 +89,18 @@ if (!$pedido) {
                 <div class="mb-3">
                     <label for="producto" class="form-label">Producto</label>
                     <input type="text" class="form-control" id="producto" name="producto" value="<?= htmlspecialchars($pedido['producto']) ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label for="cantidad" class="form-label">Cantidad</label>
+                    <input type="number" class="form-control" id="cantidad" name="cantidad" value="<?= htmlspecialchars($pedido['cantidad'] ?? '') ?>">
+                </div>
+                <div class="mb-3">
+                    <label for="precio" class="form-label">Precio</label>
+                    <input type="text" class="form-control" id="precio" name="precio" value="<?= htmlspecialchars($pedido['precio'] ?? '') ?>">
+                </div>
+                <div class="mb-3">
+                    <label for="municipio" class="form-label">Municipio</label>
+                    <textarea class="form-control" id="municipio" name="municipio" rows="2"><?= htmlspecialchars($pedido['municipio'] ?? '') ?></textarea>
                 </div>
                 <div class="mb-3">
                     <label for="estado" class="form-label">Status</label>
@@ -201,6 +213,77 @@ if (!$pedido) {
             map.setCenter(newPosition);
         }
     }
+</script>
+
+<script>
+// Validación para el formulario de edición (tiempo real y submit)
+function setInvalidEd(el, msg) {
+    if (!el) return;
+    el.classList.remove('is-valid');
+    el.classList.add('is-invalid');
+    const fb = el.parentElement.querySelector('.invalid-feedback');
+    if (fb && msg) fb.textContent = msg;
+}
+function clearInvalidEd(el) {
+    if (!el) return;
+    el.classList.remove('is-invalid');
+    el.classList.add('is-valid');
+}
+
+function validarTelefonoEd(value) {
+    return /^\d{8,15}$/.test(value);
+}
+
+function validarDecimalEd(value) {
+    return !isNaN(parseFloat(value)) && isFinite(value);
+}
+
+function validarFormularioEditar() {
+    let valid = true;
+    const fields = [
+        {id:'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.'},
+        {id:'telefono', fn: v => validarTelefonoEd(v), msg: 'Teléfono inválido (8-15 dígitos).'},
+        {id:'producto', fn: v => v.trim().length > 0, msg: 'Por favor, especifica el producto.'},
+        {id:'cantidad', fn: v => v === '' || (Number.isInteger(Number(v)) && Number(v) >= 1), msg: 'La cantidad debe ser al menos 1 si se proporciona.'},
+        {id:'precio', fn: v => v === '' || validarDecimalEd(v), msg: 'Precio inválido.'},
+        {id:'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.'},
+        {id:'latitud', fn: v => validarDecimalEd(v), msg: 'Latitud inválida.'},
+        {id:'longitud', fn: v => validarDecimalEd(v), msg: 'Longitud inválida.'}
+    ];
+
+    for (const f of fields) {
+        const el = document.getElementById(f.id);
+        const val = el ? el.value : '';
+        if (!f.fn(val)) {
+            setInvalidEd(el, f.msg);
+            if (valid) el.focus();
+            valid = false;
+        } else {
+            clearInvalidEd(el);
+        }
+    }
+
+    return valid;
+}
+
+// Real-time listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const watch = ['destinatario','telefono','producto','cantidad','precio','direccion','latitud','longitud'];
+    watch.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+            let ok = true;
+            if (id === 'telefono') ok = validarTelefonoEd(el.value);
+            else if (id === 'cantidad') ok = el.value === '' || (Number.isInteger(Number(el.value)) && Number(el.value) >= 1);
+            else if (id === 'precio') ok = el.value === '' || validarDecimalEd(el.value);
+            else if (id === 'latitud' || id === 'longitud') ok = validarDecimalEd(el.value);
+            else ok = el.value.trim().length > 0;
+
+            if (ok) clearInvalidEd(el); else setInvalidEd(el);
+        });
+    });
+});
 </script>
 
 

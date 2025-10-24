@@ -157,6 +157,77 @@
     }
 </script>
 
+<script>
+// Validación en tiempo real y al enviar el formulario
+function setInvalid(el, msg) {
+    if (!el) return;
+    el.classList.remove('is-valid');
+    el.classList.add('is-invalid');
+    const fb = el.parentElement.querySelector('.invalid-feedback');
+    if (fb && msg) fb.textContent = msg;
+}
+function clearInvalid(el) {
+    if (!el) return;
+    el.classList.remove('is-invalid');
+    el.classList.add('is-valid');
+}
+
+function validarTelefono(value) {
+    return /^\d{8,15}$/.test(value);
+}
+
+function validarDecimal(value) {
+    return !isNaN(parseFloat(value)) && isFinite(value);
+}
+
+function validarFormulario() {
+    let valid = true;
+    const fields = [
+        {id:'numero_orden', fn: v => v !== '' && Number(v) > 0, msg: 'Por favor ingresa un número de orden válido.'},
+        {id:'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.'},
+        {id:'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).'},
+        {id:'producto', fn: v => v.trim().length > 0, msg: 'Por favor, especifica el producto.'},
+        {id:'cantidad', fn: v => Number.isInteger(Number(v)) && Number(v) >= 1, msg: 'La cantidad debe ser al menos 1.'},
+        {id:'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.'},
+        {id:'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.'},
+        {id:'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.'}
+    ];
+
+    for (const f of fields) {
+        const el = document.getElementById(f.id);
+        const val = el ? el.value : '';
+        if (!f.fn(val)) {
+            setInvalid(el, f.msg);
+            if (valid) el.focus();
+            valid = false;
+        } else {
+            clearInvalid(el);
+        }
+    }
+
+    return valid;
+}
+
+// Validación en tiempo real: añadir listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const watch = ['numero_orden','destinatario','telefono','producto','cantidad','direccion','latitud','longitud'];
+    watch.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => {
+            // small inline checks
+            let ok = true;
+            if (id === 'telefono') ok = validarTelefono(el.value);
+            else if (id === 'cantidad') ok = Number.isInteger(Number(el.value)) && Number(el.value) >= 1;
+            else if (id === 'latitud' || id === 'longitud') ok = validarDecimal(el.value);
+            else ok = el.value.trim().length > 0;
+
+            if (ok) clearInvalid(el); else setInvalid(el);
+        });
+    });
+});
+</script>
+
 
 
 <?php include("vista/includes/footer.php"); ?>
