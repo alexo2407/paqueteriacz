@@ -9,6 +9,14 @@ include("vista/includes/header.php");
 
 <div class="row mt-2 caja">
     <div class="col-sm-12">
+        <!-- Importar CSV: formulario -->
+        <div class="mb-3">
+            <form id="formImportCSV" action="<?= RUTA_URL ?>pedidos/importar" method="POST" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+                <input type="file" name="csv_file" id="csv_file" accept=".csv" class="form-control-file">
+                <button type="submit" class="btn btn-primary">Importar CSV</button>
+                <small class="form-text text-muted">El CSV debe incluir cabeceras: numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud (otras columnas opcionales)</small>
+            </form>
+        </div>
         <table id="tblPedidos" class="table table-striped">
             <thead>
                 <tr>

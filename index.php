@@ -102,6 +102,20 @@ if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] ==
 }
 
 //helper
+// Manejo de importación masiva de pedidos vía CSV
+if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once "controlador/pedido.php";
+
+    $ctrl = new PedidosController();
+
+    if ($accion === 'importar') {
+        // El método importará y redireccionará con mensajes en sesión
+        $ctrl->importarPedidosCSV();
+        exit;
+    }
+
+}
 
  require_once "helpers/helpers.php";
 

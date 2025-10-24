@@ -130,6 +130,19 @@ class PedidosController {
                 set_flash('error', 'Las coordenadas no tienen un formato válido.');
                 header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong');
             }
+            // Validación básica para cantidad y precio (si vienen)
+            if (isset($data['cantidad']) && $data['cantidad'] !== '' && !is_numeric($data['cantidad'])) {
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', 'La cantidad debe ser un número.');
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad');
+                exit;
+            }
+            if (isset($data['precio']) && $data['precio'] !== '' && !is_numeric($data['precio'])) {
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', 'El precio debe ser un valor numérico.');
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio');
+                exit;
+            }
             
           
             // Llama al modelo para actualizar el pedido
@@ -161,23 +174,136 @@ class PedidosController {
 
             $id_pedido = intval($datos["id_pedido"]);
             $nuevo_estado = intval($datos["estado"]);
-    
-            if (empty($id_pedido) || empty($nuevo_estado)) {
-                echo json_encode(["success" => false, "message" => "Datos inválidos. ID o Estado vacío."]);
+                if (empty($id_pedido) || empty($nuevo_estado)) {
+                    echo json_encode(["success" => false, "message" => "Datos inválidos. ID o Estado vacío."]);
+                    exit();
+                }
+
+                $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado);
+
+                header('Content-Type: application/json');
+                echo json_encode([
+                    "success" => $resultado,
+                    "message" => $resultado ? "Estado actualizado correctamente." : "Error al actualizar el estado."
+                ]);
                 exit();
             }
-    
-            $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado);
-            
-            header('Content-Type: application/json');
-            echo json_encode([
-                "success" => $resultado,
-                "message" => $resultado ? "Estado actualizado correctamente." : "Error al actualizar el estado."
-            ]);
-            exit();
-        
+
+        /**
+         * Importar pedidos desde archivo CSV subido por formulario
+         */
+    public function importarPedidosCSV()
+    {
+        require_once __DIR__ . '/../utils/session.php';
+
+        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            set_flash('error', 'No se recibió el archivo CSV o hubo un error al subirlo.');
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+        }
+
+        $tmp = $_FILES['csv_file']['tmp_name'];
+        $handle = fopen($tmp, 'r');
+        if ($handle === false) {
+            set_flash('error', 'No se pudo abrir el archivo CSV.');
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+        }
+
+        $header = fgetcsv($handle);
+        if ($header === false) {
+            set_flash('error', 'El CSV parece estar vacío.');
+            fclose($handle);
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+        }
+
+        // Normalizar cabeceras
+        $cols = array_map(function($c){ return strtolower(trim($c)); }, $header);
+
+        // Campos mínimos requeridos
+        $required = ['numero_orden','destinatario','telefono','producto','cantidad','direccion','latitud','longitud'];
+        $missing = [];
+        foreach ($required as $r) {
+            if (!in_array($r, $cols)) $missing[] = $r;
+        }
+        if (!empty($missing)) {
+            set_flash('error', 'Faltan columnas requeridas en el CSV: ' . implode(', ', $missing));
+            fclose($handle);
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+        }
+
+        $line = 1;
+        $success = 0;
+        $errors = [];
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $line++;
+            // Mapear fila a asociativo según cabeceras
+            $dataRow = [];
+            foreach ($cols as $i => $colName) {
+                $dataRow[$colName] = isset($row[$i]) ? $row[$i] : null;
+            }
+
+            // Preparar datos para crearPedido
+            $lat = $dataRow['latitud'] ?? null;
+            $lng = $dataRow['longitud'] ?? null;
+            if ($lat === null || $lng === null || !is_numeric($lat) || !is_numeric($lng)) {
+                $errors[] = "Línea $line: coordenadas inválidas.";
+                continue;
+            }
+
+            $pedidoData = [
+                'numero_orden' => $dataRow['numero_orden'] ?? null,
+                'destinatario' => $dataRow['destinatario'] ?? null,
+                'telefono' => $dataRow['telefono'] ?? null,
+                'precio' => $dataRow['precio'] ?? null,
+                'producto' => $dataRow['producto'] ?? null,
+                'cantidad' => isset($dataRow['cantidad']) && $dataRow['cantidad'] !== '' ? (int)$dataRow['cantidad'] : 1,
+                'pais' => $dataRow['pais'] ?? null,
+                'departamento' => $dataRow['departamento'] ?? null,
+                'municipio' => $dataRow['municipio'] ?? null,
+                'barrio' => $dataRow['barrio'] ?? null,
+                'direccion' => $dataRow['direccion'] ?? null,
+                'zona' => $dataRow['zona'] ?? null,
+                'comentario' => $dataRow['comentario'] ?? null,
+                'coordenadas' => trim($lat) . ',' . trim($lng)
+            ];
+
+            try {
+                // Evitar duplicados por numero_orden
+                if (PedidosModel::existeNumeroOrden($pedidoData['numero_orden'])) {
+                    $errors[] = "Línea $line: el número de orden {$pedidoData['numero_orden']} ya existe.";
+                    continue;
+                }
+
+                $res = PedidosModel::crearPedido($pedidoData);
+                if (!empty($res['pedido_id'])) {
+                    $success++;
+                } else {
+                    $errors[] = "Línea $line: no se pudo insertar el pedido (resultado inesperado).";
+                }
+            } catch (Exception $e) {
+                $errors[] = "Línea $line: error al insertar - " . $e->getMessage();
+            }
+        }
+
+        fclose($handle);
+
+        $msg = "$success pedidos importados correctamente.";
+        if (!empty($errors)) {
+            $msg .= " Problemas: " . count($errors) . ". Revisa errores detallados.";
+            // Guardar errores extendidos en sesión para revisar
+            $_SESSION['import_errors'] = $errors;
+            set_flash('error', $msg);
+        } else {
+            set_flash('success', $msg);
+        }
+
+        header('Location: ' . RUTA_URL . 'pedidos/listar');
+        exit;
     }
-    
     
     
 }
