@@ -196,13 +196,49 @@ class PedidosController {
     {
         require_once __DIR__ . '/../utils/session.php';
 
-        if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-            set_flash('error', 'No se recibió el archivo CSV o hubo un error al subirlo.');
+        // Envolver en try/catch global para capturar errores inesperados y retornar JSON/logs
+        try {
+
+        // Manejo de errores de subida más descriptivo
+        $uploadErrorMsg = function($code) {
+            $messages = [
+                UPLOAD_ERR_OK => 'Sin error',
+                UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize.',
+                UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido por el formulario.',
+                UPLOAD_ERR_PARTIAL => 'El archivo fue subido parcialmente.',
+                UPLOAD_ERR_NO_FILE => 'No se envió ningún archivo.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Falta carpeta temporal en el servidor.',
+                UPLOAD_ERR_CANT_WRITE => 'Fallo al escribir el archivo en disco.',
+                UPLOAD_ERR_EXTENSION => 'Subida detenida por extensión PHP.'
+            ];
+            return $messages[$code] ?? 'Error desconocido al subir el archivo.';
+        };
+
+        if (!isset($_FILES['csv_file'])) {
+            $resp = ['success' => false, 'message' => 'No se recibió el archivo CSV.'];
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode($resp);
+                exit;
+            }
+            set_flash('error', $resp['message']);
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+        }
+        if ($_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
+            $msg = $uploadErrorMsg($_FILES['csv_file']['error']);
+            $resp = ['success' => false, 'message' => 'Error al subir el archivo: ' . $msg];
+            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode($resp);
+                exit;
+            }
+            set_flash('error', $resp['message']);
             header('Location: ' . RUTA_URL . 'pedidos/listar');
             exit;
         }
 
-        $tmp = $_FILES['csv_file']['tmp_name'];
+    $tmp = $_FILES['csv_file']['tmp_name'];
         $handle = fopen($tmp, 'r');
         if ($handle === false) {
             set_flash('error', 'No se pudo abrir el archivo CSV.');
@@ -210,16 +246,37 @@ class PedidosController {
             exit;
         }
 
-        $header = fgetcsv($handle);
-        if ($header === false) {
+        // Detectar delimiter leyendo la primera línea cruda (y quitar BOM si existe)
+        $firstLine = fgets($handle);
+        if ($firstLine === false) {
             set_flash('error', 'El CSV parece estar vacío.');
             fclose($handle);
             header('Location: ' . RUTA_URL . 'pedidos/listar');
             exit;
         }
 
-        // Normalizar cabeceras
-        $cols = array_map(function($c){ return strtolower(trim($c)); }, $header);
+        // Eliminar BOM UTF-8 si existe
+        $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine);
+
+        $countComma = substr_count($firstLine, ',');
+        $countSemi = substr_count($firstLine, ';');
+        // Si hay más ; que , asumimos punto y coma como separador (locales que usan ;)
+        $delimiter = ($countSemi > $countComma) ? ';' : ',';
+
+        // Volver al inicio para usar fgetcsv correctamente
+        rewind($handle);
+
+        // Leer header con el delimitador detectado
+        $header = fgetcsv($handle, 0, $delimiter);
+        if ($header === false) {
+            set_flash('error', 'No se pudo leer la cabecera del CSV.');
+            fclose($handle);
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+        }
+
+        // Normalizar cabeceras (trim y lowercase)
+        $cols = array_map(function($c){ return strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', $c))); }, $header);
 
         // Campos mínimos requeridos
         $required = ['numero_orden','destinatario','telefono','producto','cantidad','direccion','latitud','longitud'];
@@ -228,7 +285,9 @@ class PedidosController {
             if (!in_array($r, $cols)) $missing[] = $r;
         }
         if (!empty($missing)) {
-            set_flash('error', 'Faltan columnas requeridas en el CSV: ' . implode(', ', $missing));
+            // Si faltan columnas requeridas, informar indicando el delimitador detectado
+            $detected = $delimiter === ',' ? 'coma (,)' : 'punto y coma (;)';
+            set_flash('error', 'Faltan columnas requeridas en el CSV: ' . implode(', ', $missing) . ". Detectado separador: $detected. Asegúrate de que el archivo esté correctamente tabulado. Recomendado: usar comas.");
             fclose($handle);
             header('Location: ' . RUTA_URL . 'pedidos/listar');
             exit;
@@ -238,20 +297,74 @@ class PedidosController {
         $success = 0;
         $errors = [];
 
-        while (($row = fgetcsv($handle)) !== false) {
+        // Leer filas usando coma como delimitador explícito
+        // Si el delimitador detectado no es coma, avisar al usuario pero procesar igual
+        $warnSemicolon = ($delimiter !== ',');
+
+        // Leer línea por línea y usar str_getcsv para permitir intentar distintos delimitadores
+        while (!feof($handle)) {
+            $raw = fgets($handle);
+            if ($raw === false) break;
             $line++;
+
+            // Quitar BOM en primera columna si aparece aquí
+            if ($line === 2) {
+                $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+            }
+
+            // Intentar parsear con el delimitador detectado
+            $row = str_getcsv(rtrim($raw, "\r\n"), $delimiter, '"');
+
+            // Si el número de columnas no coincide con la cabecera, intentar con el otro delimitador
+            $expectedCols = count($cols);
+            if (count($row) !== $expectedCols) {
+                $alt = $delimiter === ',' ? ';' : ',';
+                $altRow = str_getcsv(rtrim($raw, "\r\n"), $alt, '"');
+                if (count($altRow) === $expectedCols) {
+                    $row = $altRow;
+                    // marcar advertencia sobre delimitador
+                    $errors[] = "Línea $line: se detectó un delimitador alternativo ('$alt') en la fila — se procesó, pero revisa consistencia del archivo.";
+                }
+            }
+
             // Mapear fila a asociativo según cabeceras
             $dataRow = [];
             foreach ($cols as $i => $colName) {
-                $dataRow[$colName] = isset($row[$i]) ? $row[$i] : null;
+                $val = isset($row[$i]) ? $row[$i] : null;
+                // Normalizar: trim y convertir comas decimales a punto en números
+                if (is_string($val)) {
+                    $val = trim($val);
+                }
+                $dataRow[$colName] = $val;
             }
+
+            // Omitir filas vacías (todas las columnas vacías)
+            $allEmpty = true;
+            foreach ($dataRow as $v) { if ($v !== null && $v !== '') { $allEmpty = false; break; } }
+            if ($allEmpty) continue;
 
             // Preparar datos para crearPedido
             $lat = $dataRow['latitud'] ?? null;
             $lng = $dataRow['longitud'] ?? null;
+            // Normalizar decimales con coma -> punto
+            if (is_string($lat)) $lat = str_replace(',', '.', $lat);
+            if (is_string($lng)) $lng = str_replace(',', '.', $lng);
+
             if ($lat === null || $lng === null || !is_numeric($lat) || !is_numeric($lng)) {
-                $errors[] = "Línea $line: coordenadas inválidas.";
+                $rowPreview = implode($delimiter === ',' ? ',' : ';', array_slice($row, 0, 6));
+                $errors[] = "Línea $line: coordenadas inválidas. Fila: $rowPreview";
                 continue;
+            }
+
+            // Coerce to float and detect possible swapped lat/long (user provided long,lat)
+            $latF = (float)$lat;
+            $lngF = (float)$lng;
+            // Latitude valid range is -90..90, longitude -180..180. If first value outside lat range
+            // but second is inside lat range, it's likely the CSV used long,lat order — swap.
+            if (abs($latF) > 90 && abs($lngF) <= 90) {
+                // swap
+                $tmp = $latF; $latF = $lngF; $lngF = $tmp;
+                $errors[] = "Línea $line: se detectó posible inversión de lat/long y se corrigió.";
             }
 
             $pedidoData = [
@@ -273,6 +386,11 @@ class PedidosController {
 
             try {
                 // Evitar duplicados por numero_orden
+                if (empty($pedidoData['numero_orden'])) {
+                    $errors[] = "Línea $line: numero_orden vacío.";
+                    continue;
+                }
+
                 if (PedidosModel::existeNumeroOrden($pedidoData['numero_orden'])) {
                     $errors[] = "Línea $line: el número de orden {$pedidoData['numero_orden']} ya existe.";
                     continue;
@@ -292,17 +410,70 @@ class PedidosController {
         fclose($handle);
 
         $msg = "$success pedidos importados correctamente.";
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
         if (!empty($errors)) {
             $msg .= " Problemas: " . count($errors) . ". Revisa errores detallados.";
             // Guardar errores extendidos en sesión para revisar
             $_SESSION['import_errors'] = $errors;
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => $msg, 'errors' => $errors]);
+                exit;
+            }
             set_flash('error', $msg);
         } else {
-            set_flash('success', $msg);
+            // Si se detectó punto y coma como separador, avisar que la importación se realizó pero se recomienda usar comas
+            if ($warnSemicolon) {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => $msg . ' (Se detectó punto y coma como separador; se procesó, pero se recomienda usar comas para compatibilidad.)']);
+                    exit;
+                }
+                set_flash('success', $msg . ' (Se detectó punto y coma como separador; se procesó, pero se recomienda usar comas para compatibilidad.)');
+            } else {
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => $msg]);
+                    exit;
+                }
+                set_flash('success', $msg);
+            }
         }
 
         header('Location: ' . RUTA_URL . 'pedidos/listar');
         exit;
+        } catch (Exception $e) {
+            // Registrar error detallado en un archivo de log para depuración
+            $logDir = __DIR__ . '/../logs';
+            if (!is_dir($logDir)) {
+                @mkdir($logDir, 0755, true);
+            }
+            $logFile = $logDir . '/import_errors.log';
+            $errorId = date('YmdHis') . '-' . bin2hex(random_bytes(4));
+            $dump = "[{$errorId}] " . date('c') . "\n";
+            $dump .= "Message: " . $e->getMessage() . "\n";
+            $dump .= "Trace: \n" . $e->getTraceAsString() . "\n";
+            $dump .= "\
+";
+            $dump .= "\
+";
+            $dump .= "\
+";
+            $dump .= "\$_FILES: " . var_export($_FILES, true) . "\n";
+            @file_put_contents($logFile, $dump, FILE_APPEND | LOCK_EX);
+
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+            if ($isAjax) {
+                header('Content-Type: application/json', true, 500);
+                echo json_encode(['success' => false, 'message' => 'Error interno durante la importación. ID: ' . $errorId]);
+                exit;
+            }
+            // Para peticiones normales, mostrar un mensaje amigable y redirigir
+            set_flash('error', 'Ocurrió un error interno durante la importación. Contacta al administrador con el ID: ' . $errorId);
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+        }
     }
     
     

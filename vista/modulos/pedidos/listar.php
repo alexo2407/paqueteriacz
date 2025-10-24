@@ -5,6 +5,27 @@ include("vista/includes/header.php");
 
 ?>
 
+<?php
+// Mostrar errores de importación guardados en sesión (si existen)
+if (session_status() === PHP_SESSION_NONE) {
+    if (function_exists('start_secure_session')) start_secure_session();
+}
+if (!empty($_SESSION['import_errors'])): ?>
+    <div class="row mt-2">
+        <div class="col-12">
+            <div class="alert alert-danger">
+                <h5>Errores en la importación (<?= count($_SESSION['import_errors']) ?>)</h5>
+                <pre id="importErrorsPre" style="white-space:pre-wrap; text-align:left;"><?= htmlspecialchars(implode("\n", $_SESSION['import_errors'])) ?></pre>
+                <button id="downloadErrorsBtn" class="btn btn-sm btn-outline-secondary mt-2">Descargar errores</button>
+            </div>
+        </div>
+    </div>
+<?php
+    // Limpiar errores de sesión después de mostrarlos
+    unset($_SESSION['import_errors']);
+endif;
+?>
+
 
 
 <div class="row mt-2 caja">
@@ -14,9 +35,31 @@ include("vista/includes/header.php");
             <form id="formImportCSV" action="<?= RUTA_URL ?>pedidos/importar" method="POST" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
                 <input type="file" name="csv_file" id="csv_file" accept=".csv" class="form-control-file">
                 <button type="submit" class="btn btn-primary">Importar CSV</button>
-                <small class="form-text text-muted">El CSV debe incluir cabeceras: numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud (otras columnas opcionales)</small>
             </form>
+
+            <!-- Barra de progreso (oculta por defecto) -->
+            <div id="uploadProgress" class="progress mt-2 d-none" style="height: 24px;">
+                <div id="uploadProgressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+            <div id="uploadStatus" class="small text-muted mt-1 d-none"></div>
         </div>
+        <div class="col-12 mb-3">
+            <div
+                class="alert alert-primary d-flex justify-content-between align-items-center"
+                role="alert"
+            >
+                <div>
+                    <small class="form-text text-muted">El CSV debe incluir cabeceras: numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud (otras columnas opcionales)</small>
+                </div>
+                <div>
+                    <!-- Botón para descargar el CSV de ejemplo / plantilla -->
+                        <a href="<?= RUTA_URL ?>public/pedidos_template.php" class="btn btn-secondary btn-sm" download>
+                        <i class="bi bi-download"></i> Descargar formato CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+            
         <table id="tblPedidos" class="table table-striped">
             <thead>
                 <tr>
@@ -169,4 +212,124 @@ include("vista/includes/header.php");
 
         });
     });
+</script>
+
+<!-- JS para manejar el upload via AJAX y mostrar progreso -->
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var form = document.getElementById('formImportCSV');
+    var fileInput = document.getElementById('csv_file');
+    var progress = document.getElementById('uploadProgress');
+    var progressBar = document.getElementById('uploadProgressBar');
+    var status = document.getElementById('uploadStatus');
+
+    if (!form) return;
+
+    form.addEventListener('submit', function(e){
+        // Si no hay archivo seleccionado, permitir submit normal para que el servidor valide
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) return;
+
+        e.preventDefault();
+        var file = fileInput.files[0];
+        var action = form.getAttribute('action');
+        var btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+
+        var xhr = new XMLHttpRequest();
+        var fd = new FormData();
+        fd.append('csv_file', file, file.name);
+
+        xhr.upload.addEventListener('progress', function(ev){
+            if (ev.lengthComputable) {
+                var percent = Math.round((ev.loaded / ev.total) * 100);
+                progress.classList.remove('d-none');
+                progressBar.style.width = percent + '%';
+                progressBar.textContent = percent + '%';
+                status.classList.remove('d-none');
+                status.textContent = 'Subiendo ' + percent + '%';
+            }
+        });
+
+        xhr.onreadystatechange = function(){
+            if (xhr.readyState === 4) {
+                btn.disabled = false;
+                // Intentar parsear JSON si el servidor lo devuelve
+                var json = null;
+                try {
+                    json = JSON.parse(xhr.responseText);
+                } catch (e) {
+                    // no JSON
+                }
+
+                if (xhr.status >= 200 && xhr.status < 400) {
+                    if (json && typeof json.success !== 'undefined') {
+                        if (json.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Importación',
+                                text: json.message || 'Importación completada.',
+                                confirmButtonText: 'OK'
+                            }).then(function(){
+                                window.location = '<?= RUTA_URL ?>pedidos/listar';
+                            });
+                        } else {
+                            // Mostrar errores detallados si vienen
+                            var details = json.errors && json.errors.length ? json.errors.join('\n') : (json.message || 'Error al importar');
+                            console.error('Import error response:', xhr.status, xhr.responseText);
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error al importar',
+                                html: '<pre style="text-align:left; white-space:pre-wrap;">' + details + '</pre>',
+                                confirmButtonText: 'OK'
+                            });
+                        }
+                    } else {
+                        // No JSON: recargar para mostrar mensajes en sesión (compatibilidad)
+                        window.location = '<?= RUTA_URL ?>pedidos/listar';
+                    }
+                } else {
+                    // Mostrar información util para depuración
+                    var body = xhr.responseText || '(sin cuerpo)';
+                    console.error('Upload failed:', xhr.status, body);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al subir el archivo',
+                        html: '<p>Estado: ' + xhr.status + '</p><pre style="text-align:left; white-space:pre-wrap;">' + body + '</pre>',
+                        confirmButtonText: 'OK'
+                    });
+                    status.textContent = 'Error al subir el archivo. Intenta de nuevo.';
+                }
+            }
+        };
+
+        xhr.open('POST', action, true);
+        // Marcar como AJAX para que el servidor devuelva JSON
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        // Enviar cookies/credenciales si son necesarias (misma-origin)
+        xhr.withCredentials = true;
+        xhr.send(fd);
+    });
+});
+</script>
+
+<script>
+// Descargar errores mostrados en la página
+document.addEventListener('DOMContentLoaded', function(){
+    var btn = document.getElementById('downloadErrorsBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+        var pre = document.getElementById('importErrorsPre');
+        if (!pre) return;
+        var text = pre.textContent || pre.innerText;
+        var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'import_errors.txt';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
+});
 </script>

@@ -1,0 +1,6 @@
+numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud,pais,departamento,municipio,barrio,zona,comentario
+1001,Juan Pérez,55512345,Producto A,2,"Calle 1 #123, Barrio Central",12.13282,-86.25040,Nicaragua,Managua,Managua,Centro,Zona1,"Pedido de ejemplo"
+
+"Fila de ayuda: coloque valores reales o borre esta fila antes de subir","Ejemplo: nombre completo","Ejemplo: 55512345","Ejemplo: Producto X",1,"Ej. Calle 1 #123, Barrio","12.13282","-86.25040","Nicaragua","Departamento","Municipio","Barrio","Zona","Comentario opcional"
+
+,, , , , , , , , , , , ,

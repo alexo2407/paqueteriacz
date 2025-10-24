@@ -195,12 +195,25 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             // Crear el formato POINT para ST_GeomFromText
             $coordenadas = "POINT(" . $data['longitud'] . " " . $data['latitud'] . ")";
+            // Aceptar valores faltantes usando null coalescing
+            $cantidad = isset($data['cantidad']) && $data['cantidad'] !== '' ? (int)$data['cantidad'] : null;
+            $precio = isset($data['precio']) && $data['precio'] !== '' ? $data['precio'] : null;
+            $pais = $data['pais'] ?? null;
+            $departamento = $data['departamento'] ?? null;
+            $municipio = $data['municipio'] ?? null;
+            $barrio = $data['barrio'] ?? null;
+            $zona = $data['zona'] ?? null;
 
-            // Consulta SQL con ST_GeomFromText
+            // Consulta SQL con ST_GeomFromText y campos de dirección adicionales
             $query = "
             UPDATE pedidos SET
                 destinatario = :destinatario,
                 telefono = :telefono,
+                pais = :pais,
+                departamento = :departamento,
+                municipio = :municipio,
+                barrio = :barrio,
+                zona = :zona,
                 direccion = :direccion,
                 comentario = :comentario,
                 cantidad = :cantidad,
@@ -215,18 +228,31 @@ class PedidosModel
             // Preparar la consulta
             $stmt = $db->prepare($query);
 
-            // Asociar los valores con bindParam
-            $stmt->bindParam(':destinatario', $data['destinatario'], PDO::PARAM_STR);
-            $stmt->bindParam(':telefono', $data['telefono'], PDO::PARAM_STR);
-            $stmt->bindParam(':direccion', $data['direccion'], PDO::PARAM_STR);
-            $stmt->bindParam(':comentario', $data['comentario'], PDO::PARAM_STR);
-            $stmt->bindParam(':cantidad', $data['cantidad'], PDO::PARAM_INT);
-            $stmt->bindParam(':producto', $data['producto'], PDO::PARAM_STR);
-            $stmt->bindParam(':precio', $data['precio'], PDO::PARAM_INT);
-            $stmt->bindParam(':estado', $data['estado'], PDO::PARAM_INT);
-            $stmt->bindParam(':vendedor', $data['vendedor'], PDO::PARAM_INT);
-            $stmt->bindParam(':coordenadas', $coordenadas, PDO::PARAM_STR); // Pasamos el POINT como cadena
-            $stmt->bindParam(':id_pedido', $data['id_pedido'], PDO::PARAM_INT);
+            // Asociar los valores con bindValue para manejar nulls correctamente
+            $stmt->bindValue(':destinatario', $data['destinatario'] ?? null, PDO::PARAM_STR);
+            $stmt->bindValue(':telefono', $data['telefono'] ?? null, PDO::PARAM_STR);
+            $stmt->bindValue(':pais', $pais, PDO::PARAM_STR);
+            $stmt->bindValue(':departamento', $departamento, PDO::PARAM_STR);
+            $stmt->bindValue(':municipio', $municipio, PDO::PARAM_STR);
+            $stmt->bindValue(':barrio', $barrio, PDO::PARAM_STR);
+            $stmt->bindValue(':zona', $zona, PDO::PARAM_STR);
+            $stmt->bindValue(':direccion', $data['direccion'] ?? null, PDO::PARAM_STR);
+            $stmt->bindValue(':comentario', $data['comentario'] ?? null, PDO::PARAM_STR);
+            if ($cantidad === null) {
+                $stmt->bindValue(':cantidad', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':cantidad', $cantidad, PDO::PARAM_INT);
+            }
+            $stmt->bindValue(':producto', $data['producto'] ?? null, PDO::PARAM_STR);
+            if ($precio === null) {
+                $stmt->bindValue(':precio', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':precio', $precio, PDO::PARAM_STR);
+            }
+            $stmt->bindValue(':estado', isset($data['estado']) ? (int)$data['estado'] : null, PDO::PARAM_INT);
+            $stmt->bindValue(':vendedor', isset($data['vendedor']) ? (int)$data['vendedor'] : null, PDO::PARAM_INT);
+            $stmt->bindValue(':coordenadas', $coordenadas, PDO::PARAM_STR); // Pasamos el POINT como cadena
+            $stmt->bindValue(':id_pedido', isset($data['id_pedido']) ? (int)$data['id_pedido'] : null, PDO::PARAM_INT);
 
             // Ejecutar la consulta
             $stmt->execute();
