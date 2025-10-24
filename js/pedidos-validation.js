@@ -8,6 +8,7 @@
         list.innerHTML = '';
         if (!errors || errors.length === 0) {
             box.classList.add('d-none');
+            box.setAttribute('aria-hidden', 'true');
             return;
         }
         errors.forEach(function(msg){
@@ -16,15 +17,32 @@
             list.appendChild(li);
         });
         box.classList.remove('d-none');
-        box.focus && box.focus();
+        box.setAttribute('aria-hidden', 'false');
+        // accessibility: announce
+        box.setAttribute('aria-live', 'assertive');
+        if (typeof box.focus === 'function') box.focus();
     }
+
+    // default messages by field id (fallbacks)
+    const defaultMessages = {
+        'numero_orden': 'Número de orden inválido.',
+        'destinatario': 'Nombre inválido.',
+        'telefono': 'Teléfono inválido (8-15 dígitos).',
+        'producto': 'Producto requerido.',
+        'cantidad': 'Cantidad inválida.',
+        'direccion': 'Dirección inválida.',
+        'latitud': 'Latitud inválida.',
+        'longitud': 'Longitud inválida.',
+        'email': 'Email inválido.'
+    };
 
     function setInvalid(el, msg) {
         if (!el) return;
         el.classList.remove('is-valid');
         el.classList.add('is-invalid');
         const fb = el.parentElement.querySelector('.invalid-feedback');
-        if (fb && msg) fb.textContent = msg;
+        const finalMsg = msg || defaultMessages[el.id] || 'Campo inválido';
+        if (fb) fb.textContent = finalMsg;
     }
     function clearInvalid(el) {
         if (!el) return;
@@ -51,18 +69,35 @@
         return errors;
     }
 
-    function attachRealtime(fields) {
-        fields.forEach(id => {
+    // Attach realtime validation using definitions array (fieldDefs)
+    function attachRealtime(fieldDefs) {
+        // fieldDefs can be an array of ids or an array of {id, fn, msg}
+        const defsMap = {};
+        if (!fieldDefs) return;
+        if (Array.isArray(fieldDefs) && fieldDefs.length > 0 && typeof fieldDefs[0] === 'string') {
+            // convert simple id array to defs with default checks (non-empty)
+            fieldDefs.forEach(id => defsMap[id] = {id:id});
+        } else {
+            fieldDefs.forEach(d => defsMap[d.id] = d);
+        }
+
+        Object.keys(defsMap).forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
             el.addEventListener('input', function(){
+                const def = defsMap[id] || {};
                 let ok = true;
-                if (id === 'telefono') ok = validarTelefono(el.value);
-                else if (id === 'cantidad') ok = el.value === '' || (Number.isInteger(Number(el.value)) && Number(el.value) >= 1);
-                else if (id === 'precio') ok = el.value === '' || validarDecimal(el.value);
-                else if (id === 'latitud' || id === 'longitud') ok = validarDecimal(el.value);
-                else ok = el.value.trim().length > 0;
-                if (ok) clearInvalid(el); else setInvalid(el);
+                const v = el.value;
+                if (def.fn) ok = def.fn(v);
+                else {
+                    // fallback checks
+                    if (id === 'telefono') ok = validarTelefono(v);
+                    else if (id === 'cantidad') ok = v === '' || (Number.isInteger(Number(v)) && Number(v) >= 1);
+                    else if (id === 'precio') ok = v === '' || validarDecimal(v);
+                    else if (id === 'latitud' || id === 'longitud') ok = validarDecimal(v);
+                    else ok = v.trim().length > 0;
+                }
+                if (ok) clearInvalid(el); else setInvalid(el, def.msg);
             });
         });
     }
