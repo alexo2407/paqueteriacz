@@ -46,7 +46,11 @@ if (!$pedido) {
 
     <?= $mensaje ?? '' ?>
 
-    <form method="POST" action="" onsubmit="return validarFormularioEditar()">
+    <div id="formErrors" class="alert alert-danger d-none" role="alert" tabindex="-1" style="display:block">
+        <ul id="formErrorsList" class="mb-0"></ul>
+    </div>
+
+    <form id="formEditarPedido" method="POST" action="">
         <input type="hidden" name="id_pedido" value="<?= htmlspecialchars($pedido['id']) ?>">
 
         <div class="row">
@@ -268,23 +272,11 @@ function validarFormularioEditar() {
 
 // Real-time listeners
 document.addEventListener('DOMContentLoaded', function() {
-    const watch = ['destinatario','telefono','producto','cantidad','precio','direccion','latitud','longitud'];
-    watch.forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('input', () => {
-            let ok = true;
-            if (id === 'telefono') ok = validarTelefonoEd(el.value);
-            else if (id === 'cantidad') ok = el.value === '' || (Number.isInteger(Number(el.value)) && Number(el.value) >= 1);
-            else if (id === 'precio') ok = el.value === '' || validarDecimalEd(el.value);
-            else if (id === 'latitud' || id === 'longitud') ok = validarDecimalEd(el.value);
-            else ok = el.value.trim().length > 0;
-
-            if (ok) clearInvalidEd(el); else setInvalidEd(el);
-        });
-    });
+    // no-op: validation initialized from modular script
 });
 </script>
+
+<script src="<?= RUTA_URL ?>js/pedidos-validation.js"></script>
 
 
 

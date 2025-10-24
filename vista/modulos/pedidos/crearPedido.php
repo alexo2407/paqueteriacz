@@ -9,7 +9,11 @@
 
 <div class="row mt-2 caja">
     <div class="col-sm-12">
-        <form action="<?= RUTA_URL ?>pedidos/guardarPedido" method="POST" onsubmit="return validarFormulario()">
+        <div id="formErrors" class="alert alert-danger d-none" role="alert" tabindex="-1" style="display:block">
+            <ul id="formErrorsList" class="mb-0"></ul>
+        </div>
+
+        <form id="formCrearPedido" action="<?= RUTA_URL ?>pedidos/guardarPedido" method="POST">
             <div class="row">
                 <!-- Primera Columna -->
                 <div class="col-md-6">
@@ -106,79 +110,7 @@
 
 <script src="https://maps.googleapis.com/maps/api/js?key=<?=API_MAP?>&callback=initMap" async defer></script>
 <script>
-    let map, marker;
-
-    function initMap() {
-        // Coordenadas iniciales (Managua, Nicaragua)
-        const initialPosition = { lat: 12.13282, lng: -86.2504 };
-
-        // Crear el mapa
-        map = new google.maps.Map(document.getElementById("map"), {
-            center: initialPosition,
-            zoom: 15,
-        });
-
-        // Crear un marcador inicial
-        marker = new google.maps.Marker({
-            position: initialPosition,
-            map: map,
-            draggable: true, // Permitir arrastrar el marcador
-        });
-
-        // Actualizar los campos de latitud y longitud al mover el marcador
-        marker.addListener("dragend", (event) => {
-            const position = event.latLng;
-            document.getElementById("latitud").value = position.lat();
-            document.getElementById("longitud").value = position.lng();
-        });
-
-        // Manejar clics en el mapa para mover el marcador
-        map.addListener("click", (event) => {
-            const clickedPosition = event.latLng;
-            marker.setPosition(clickedPosition);
-            document.getElementById("latitud").value = clickedPosition.lat();
-            document.getElementById("longitud").value = clickedPosition.lng();
-        });
-
-        // Actualizar el mapa cuando se editen las coordenadas manualmente
-        document.getElementById("latitud").addEventListener("input", updateMapPosition);
-        document.getElementById("longitud").addEventListener("input", updateMapPosition);
-    }
-
-    function updateMapPosition() {
-        const lat = parseFloat(document.getElementById("latitud").value);
-        const lng = parseFloat(document.getElementById("longitud").value);
-
-        if (!isNaN(lat) && !isNaN(lng)) {
-            const newPosition = { lat: lat, lng: lng };
-            marker.setPosition(newPosition);
-            map.setCenter(newPosition);
-        }
-    }
-</script>
-
-<script>
-// Validación en tiempo real y al enviar el formulario
-function setInvalid(el, msg) {
-    if (!el) return;
-    el.classList.remove('is-valid');
-    el.classList.add('is-invalid');
-    const fb = el.parentElement.querySelector('.invalid-feedback');
-    if (fb && msg) fb.textContent = msg;
-}
-function clearInvalid(el) {
-    if (!el) return;
-    el.classList.remove('is-invalid');
-    el.classList.add('is-valid');
-}
-
-function validarTelefono(value) {
-    return /^\d{8,15}$/.test(value);
-}
-
-function validarDecimal(value) {
-    return !isNaN(parseFloat(value)) && isFinite(value);
-}
+<script src="<?= RUTA_URL ?>js/pedidos-validation.js"></script>
 
 function validarFormulario() {
     let valid = true;
