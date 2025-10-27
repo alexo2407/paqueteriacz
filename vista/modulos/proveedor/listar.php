@@ -56,8 +56,13 @@ if ($flashMessage): ?>
                         <td><?php echo htmlspecialchars($prov['email']); ?></td>
                         <td><?php echo htmlspecialchars($prov['telefono'] ?? ''); ?></td>
                         <td><?php echo htmlspecialchars($prov['pais'] ?? ''); ?></td>
-                        <td>
-                            <a href="<?= RUTA_URL ?>proveedor/editar/<?php echo $prov['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
+                        <td class="d-flex gap-2">
+                            <a href="<?= RUTA_URL ?>proveedor/editar/<?php echo $prov['id']; ?>" class="btn btn-warning btn-sm" title="Editar"><i class="bi bi-pencil-fill"></i></a>
+                            <form action="<?= RUTA_URL ?>proveedor/eliminar/<?php echo $prov['id']; ?>" method="POST" class="d-inline js-proveedor-delete-form">
+                                <button type="submit" class="btn btn-danger btn-sm" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     <?php
@@ -86,5 +91,32 @@ if ($flashMessage): ?>
         if (highlighted) {
             highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+
+        document.querySelectorAll('.js-proveedor-delete-form').forEach(function(form){
+            form.addEventListener('submit', function(event){
+                event.preventDefault();
+
+                const proceed = function(){
+                    form.submit();
+                };
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: '¿Eliminar proveedor?',
+                        text: 'Esta acción no se puede deshacer.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar'
+                    }).then(function(result){
+                        if (result.isConfirmed) {
+                            proceed();
+                        }
+                    });
+                } else if (confirm('¿Eliminar este proveedor?')) {
+                    proceed();
+                }
+            });
+        });
     });
 </script>

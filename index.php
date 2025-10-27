@@ -99,6 +99,23 @@ if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] ==
         exit;
     }
 
+    if ($accion === 'eliminar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : null;
+        require_once __DIR__ . '/utils/session.php';
+        start_secure_session();
+
+        if (!$id) {
+            set_flash('error', 'Proveedor no válido.');
+            header('Location: ' . RUTA_URL . 'proveedor/listar');
+            exit;
+        }
+
+        $resultado = $ctrl->eliminarProveedor($id);
+        set_flash(!empty($resultado['success']) ? 'success' : 'error', $resultado['message']);
+        header('Location: ' . RUTA_URL . 'proveedor/listar');
+        exit;
+    }
+
 }
 
 //helper

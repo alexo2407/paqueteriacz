@@ -28,13 +28,27 @@ class ProveedorController
 
     public function eliminarProveedor($id)
     {
-        $result = ProveedorModel::delete($id);
-        if ($result) {
-            $_SESSION['flash_message'] = 'Proveedor eliminado con éxito';
-        } else {
-            $_SESSION['flash_message'] = 'Error al eliminar el proveedor';
+        $idProveedor = filter_var($id, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if (!$idProveedor) {
+            return [
+                'success' => false,
+                'message' => 'Identificador de proveedor inválido.'
+            ];
         }
-        return $result;
+
+        $resultado = ProveedorModel::delete($idProveedor);
+
+        if ($resultado) {
+            return [
+                'success' => true,
+                'message' => 'Proveedor eliminado correctamente.'
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'No fue posible eliminar el proveedor.'
+        ];
     }
 
     public function crearProveedorAPI($jsonData)
