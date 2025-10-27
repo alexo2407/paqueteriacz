@@ -3,6 +3,91 @@ include_once "conexion.php";
 
 class PedidosModel
 {
+    /**
+     * Inserta múltiples pedidos reutilizando una sola conexión y statement preparado.
+     *
+     * @param array<int,array<string,mixed>> $rows
+     * @return array{inserted:int,errors:array<int,string>}
+     */
+    public static function insertarPedidosLote(array $rows)
+    {
+        $resultado = [
+            'inserted' => 0,
+            'errors' => []
+        ];
+
+        if (empty($rows)) {
+            return $resultado;
+        }
+
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
+            $sql = "
+                INSERT INTO pedidos (
+                    fecha_ingreso, numero_orden, destinatario, telefono, precio, producto, cantidad,
+                    pais, departamento, municipio, barrio, direccion, zona, comentario, coordenadas, id_estado
+                ) VALUES (
+                    NOW(), :numero_orden, :destinatario, :telefono, :precio, :producto, :cantidad,
+                    :pais, :departamento, :municipio, :barrio, :direccion, :zona, :comentario, ST_GeomFromText(:coordenadas), 1
+                )
+            ";
+
+            $stmt = $db->prepare($sql);
+
+            foreach ($rows as $row) {
+                $linea = $row['line'] ?? '?';
+
+                $cantidad = isset($row['cantidad']) && $row['cantidad'] !== '' ? (int)$row['cantidad'] : null;
+                $precio = isset($row['precio']) && $row['precio'] !== '' ? $row['precio'] : null;
+
+                $params = [
+                    ':numero_orden' => $row['numero_orden'] ?? null,
+                    ':destinatario' => $row['destinatario'] ?? null,
+                    ':telefono' => $row['telefono'] ?? null,
+                    ':precio' => $precio,
+                    ':producto' => $row['producto'] ?? null,
+                    ':cantidad' => $cantidad,
+                    ':pais' => $row['pais'] ?? null,
+                    ':departamento' => $row['departamento'] ?? null,
+                    ':municipio' => $row['municipio'] ?? null,
+                    ':barrio' => $row['barrio'] ?? null,
+                    ':direccion' => $row['direccion'] ?? null,
+                    ':zona' => $row['zona'] ?? null,
+                    ':comentario' => $row['comentario'] ?? null,
+                    ':coordenadas' => sprintf(
+                        'POINT(%s %s)',
+                        number_format((float)($row['longitud'] ?? 0), 8, '.', ''),
+                        number_format((float)($row['latitud'] ?? 0), 8, '.', '')
+                    )
+                ];
+
+                try {
+                    $stmt->execute($params);
+                    $resultado['inserted']++;
+                } catch (PDOException $e) {
+                    $sqlState = $e->errorInfo[0] ?? null;
+                    if ($sqlState === '23000') {
+                        $resultado['errors'][] = "Línea {$linea}: número de orden duplicado o restricción violada.";
+                    } else {
+                        $resultado['errors'][] = "Línea {$linea}: error SQL - " . $e->getMessage();
+                    }
+                }
+            }
+
+            if ($resultado['inserted'] > 0) {
+                $db->commit();
+            } else {
+                $db->rollBack();
+            }
+
+        } catch (Exception $e) {
+            $resultado['errors'][] = 'Error general al insertar pedidos: ' . $e->getMessage();
+        }
+
+        return $resultado;
+    }
 
     /* ZONA API */
 

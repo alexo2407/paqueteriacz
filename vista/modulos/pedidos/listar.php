@@ -49,7 +49,7 @@ endif;
                 role="alert"
             >
                 <div>
-                    <small class="form-text text-muted">El CSV debe incluir cabeceras: numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud (otras columnas opcionales)</small>
+                    <small class="form-text text-muted">El CSV debe incluir cabeceras: numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud. El formato de descarga ahora trae dos ejemplos listos como guía.</small>
                 </div>
                 <div>
                     <!-- Botón para descargar el CSV de ejemplo / plantilla -->

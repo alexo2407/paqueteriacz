@@ -20,32 +20,32 @@ function templateRows() {
         'producto' => 'Producto A',
         'cantidad' => 2,
         'direccion' => 'Calle 1 #123, Barrio Central',
-        'latitud' => '12.13282',
-        'longitud' => '-86.25040',
+        'latitud' => '12.13282000',
+        'longitud' => '-86.25040000',
         'pais' => 'Nicaragua',
         'departamento' => 'Managua',
         'municipio' => 'Managua',
         'barrio' => 'Centro',
-        'zona' => 'Zona1',
-        'comentario' => 'Pedido de ejemplo'
+        'zona' => 'Zona 1',
+        'comentario' => 'Pedido de demostración'
     ];
 
     // Row with commas, quotes and formula to test
     yield [
         'numero_orden' => '1002',
-        'destinatario' => 'Empresa "Comas, S.A."',
+        'destinatario' => 'Empresa Comas S.A.',
         'telefono' => '55598765',
-        'producto' => 'Producto "B", edición',
-        'cantidad' => '1',
-        'direccion' => 'Carrera 4 #56',
-        'latitud' => '12.14000',
-        'longitud' => '-86.26000',
+        'producto' => 'Producto B - edición especial',
+        'cantidad' => 1,
+        'direccion' => 'Residencial Vista Lago, Casa 24',
+        'latitud' => '12.85702192',
+        'longitud' => '-85.81782867',
         'pais' => 'Nicaragua',
-        'departamento' => 'Departamento',
-        'municipio' => 'Municipio',
-        'barrio' => 'Barrio',
-        'zona' => 'Zona',
-        'comentario' => 'prueba'
+        'departamento' => 'Masaya',
+        'municipio' => 'Masatepe',
+        'barrio' => 'Barrio Los Pinos',
+        'zona' => 'Zona 3',
+        'comentario' => 'Entregar en horario laboral'
     ];
 
     // Blank template row for user to fill

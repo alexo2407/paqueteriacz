@@ -1,6 +1,4 @@
 numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud,pais,departamento,municipio,barrio,zona,comentario
-1001,Juan Pérez,55512345,Producto A,2,"Calle 1 #123, Barrio Central",12.13282,-86.25040,Nicaragua,Managua,Managua,Centro,Zona1,"Pedido de ejemplo"
+1001,Juan Pérez,55512345,Producto A,2,"Calle 1 #123, Barrio Central",12.13282000,-86.25040000,Nicaragua,Managua,Managua,Centro,Zona 1,"Pedido de demostración"
+1002,Empresa Comas S.A.,55598765,"Producto B – edición especial",1,"Residencial Vista Lago, Casa 24",12.85702192,-85.81782867,Nicaragua,Masaya,Masatepe,Barrio Los Pinos,Zona 3,"Entregar en horario laboral"
 
-"Fila de ayuda: coloque valores reales o borre esta fila antes de subir","Ejemplo: nombre completo","Ejemplo: 55512345","Ejemplo: Producto X",1,"Ej. Calle 1 #123, Barrio","12.13282","-86.25040","Nicaragua","Departamento","Municipio","Barrio","Zona","Comentario opcional"
-
-,, , , , , , , , , , , ,

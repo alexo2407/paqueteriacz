@@ -105,6 +105,7 @@ if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] ==
 // Manejo de importación masiva de pedidos vía CSV
 if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once "modelo/pedido.php";
     require_once "controlador/pedido.php";
 
     $ctrl = new PedidosController();

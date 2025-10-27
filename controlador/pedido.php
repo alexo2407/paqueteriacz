@@ -293,9 +293,10 @@ class PedidosController {
             exit;
         }
 
-        $line = 1;
-        $success = 0;
-        $errors = [];
+    $line = 1;
+    $success = 0;
+    $errors = [];
+    $lotePendiente = [];
 
         // Leer filas usando coma como delimitador explícito
         // Si el delimitador detectado no es coma, avisar al usuario pero procesar igual
@@ -381,33 +382,34 @@ class PedidosController {
                 'direccion' => $dataRow['direccion'] ?? null,
                 'zona' => $dataRow['zona'] ?? null,
                 'comentario' => $dataRow['comentario'] ?? null,
-                'coordenadas' => trim($lat) . ',' . trim($lng)
+                'latitud' => $latF,
+                'longitud' => $lngF,
+                'line' => $line
             ];
 
-            try {
-                // Evitar duplicados por numero_orden
-                if (empty($pedidoData['numero_orden'])) {
-                    $errors[] = "Línea $line: numero_orden vacío.";
-                    continue;
-                }
-
-                if (PedidosModel::existeNumeroOrden($pedidoData['numero_orden'])) {
-                    $errors[] = "Línea $line: el número de orden {$pedidoData['numero_orden']} ya existe.";
-                    continue;
-                }
-
-                $res = PedidosModel::crearPedido($pedidoData);
-                if (!empty($res['pedido_id'])) {
-                    $success++;
-                } else {
-                    $errors[] = "Línea $line: no se pudo insertar el pedido (resultado inesperado).";
-                }
-            } catch (Exception $e) {
-                $errors[] = "Línea $line: error al insertar - " . $e->getMessage();
+            // Evitar duplicados por numero_orden
+            if (empty($pedidoData['numero_orden'])) {
+                $errors[] = "Línea $line: numero_orden vacío.";
+                continue;
             }
+
+            if (PedidosModel::existeNumeroOrden($pedidoData['numero_orden'])) {
+                $errors[] = "Línea $line: el número de orden {$pedidoData['numero_orden']} ya existe.";
+                continue;
+            }
+
+            $lotePendiente[] = $pedidoData;
         }
 
         fclose($handle);
+
+        if (!empty($lotePendiente)) {
+            $resultadoLote = PedidosModel::insertarPedidosLote($lotePendiente);
+            $success += $resultadoLote['inserted'];
+            if (!empty($resultadoLote['errors'])) {
+                $errors = array_merge($errors, $resultadoLote['errors']);
+            }
+        }
 
         $msg = "$success pedidos importados correctamente.";
         $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
