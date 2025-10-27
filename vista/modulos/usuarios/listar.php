@@ -18,7 +18,7 @@
                         <th>Nombre</th>
                         <th>Email</th>
                         <th>Rol</th>
-                        <th>Fecha de Creación</th>                       
+                        <th>Fecha de Creación</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -30,17 +30,18 @@
                     $resultadoUsuarios = $listarUsuarios->mostrarUsuariosController();
 
                     foreach($resultadoUsuarios as $usuarios) :
-                                       
+                        $timestampCreacion = !empty($usuarios['fecha_creacion']) ? strtotime($usuarios['fecha_creacion']) : null;
+                        $fechaCreacion = $timestampCreacion ? date('d/m/Y H:i', $timestampCreacion) : '—';
                     ?>
               
                     <tr>
                         <td><?php echo $usuarios['id']; ?></td>
                         <td><?php echo $usuarios['nombre']; ?></td>
                         <td><?php echo $usuarios['email']; ?></td>
-                        <td><?php echo $usuarios['fecha']; ?></td>
-                        <td><?php  echo $usuarios['rol']?></td>
+                        <td><?php echo $usuarios['rol_nombre']; ?></td>
+                        <td><?php echo $fechaCreacion; ?></td>
                         <td>
-                            <a href="<?= RUTA_URL ?>usuarios/editar/<?php echo $usuarios['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>                                            
+                            <a href="<?= RUTA_URL ?>usuarios/editar/<?php echo $usuarios['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
                         </td>
                     </tr>
 

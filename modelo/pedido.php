@@ -350,6 +350,92 @@ class PedidosModel
     }
 
 
+    public static function crearPedidoDesdeFormulario(array $data)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $coordenadas = sprintf(
+                'POINT(%s %s)',
+                number_format((float)$data['longitud'], 8, '.', ''),
+                number_format((float)$data['latitud'], 8, '.', '')
+            );
+
+            $comentario = isset($data['comentario']) && $data['comentario'] !== '' ? $data['comentario'] : null;
+            $pais = isset($data['pais']) && $data['pais'] !== '' ? $data['pais'] : null;
+            $departamento = isset($data['departamento']) && $data['departamento'] !== '' ? $data['departamento'] : null;
+            $municipio = isset($data['municipio']) && $data['municipio'] !== '' ? $data['municipio'] : null;
+            $barrio = isset($data['barrio']) && $data['barrio'] !== '' ? $data['barrio'] : null;
+            $zona = isset($data['zona']) && $data['zona'] !== '' ? $data['zona'] : null;
+            $precio = isset($data['precio']) && $data['precio'] !== '' ? $data['precio'] : null;
+
+            $stmt = $db->prepare('
+                INSERT INTO pedidos (
+                    fecha_ingreso,
+                    numero_orden,
+                    destinatario,
+                    telefono,
+                    producto,
+                    cantidad,
+                    direccion,
+                    comentario,
+                    id_estado,
+                    id_vendedor,
+                    coordenadas,
+                    pais,
+                    departamento,
+                    municipio,
+                    barrio,
+                    zona,
+                    precio
+                ) VALUES (
+                    NOW(),
+                    :numero_orden,
+                    :destinatario,
+                    :telefono,
+                    :producto,
+                    :cantidad,
+                    :direccion,
+                    :comentario,
+                    :estado,
+                    :vendedor,
+                    ST_GeomFromText(:coordenadas),
+                    :pais,
+                    :departamento,
+                    :municipio,
+                    :barrio,
+                    :zona,
+                    :precio
+                )
+            ');
+
+            $stmt->bindValue(':numero_orden', $data['numero_orden'], PDO::PARAM_STR);
+            $stmt->bindValue(':destinatario', $data['destinatario'], PDO::PARAM_STR);
+            $stmt->bindValue(':telefono', $data['telefono'], PDO::PARAM_STR);
+            $stmt->bindValue(':producto', $data['producto'], PDO::PARAM_STR);
+            $stmt->bindValue(':cantidad', (int)$data['cantidad'], PDO::PARAM_INT);
+            $stmt->bindValue(':direccion', $data['direccion'], PDO::PARAM_STR);
+            $stmt->bindValue(':comentario', $comentario, $comentario === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':estado', (int)$data['estado'], PDO::PARAM_INT);
+            $stmt->bindValue(':vendedor', (int)$data['vendedor'], PDO::PARAM_INT);
+            $stmt->bindValue(':coordenadas', $coordenadas, PDO::PARAM_STR);
+
+            $stmt->bindValue(':pais', $pais, $pais === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':departamento', $departamento, $departamento === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':municipio', $municipio, $municipio === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':barrio', $barrio, $barrio === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':zona', $zona, $zona === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':precio', $precio, $precio === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+
+            $stmt->execute();
+
+            return (int)$db->lastInsertId();
+        } catch (Exception $e) {
+            throw new Exception('Error al crear pedido: ' . $e->getMessage());
+        }
+    }
+
+
 
     public static function obtenerEstados()
     {
@@ -373,6 +459,28 @@ class PedidosModel
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             throw new Exception("Error al obtener los vendedores: " . $e->getMessage());
+        }
+    }
+
+    public static function obtenerProductos()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $sql = "SELECT 
+                        s.id,
+                        s.producto,
+                        s.cantidad,
+                        s.id_vendedor,
+                        v.nombre AS vendedor
+                    FROM stock s
+                    LEFT JOIN vendedores v ON v.id = s.id_vendedor
+                    WHERE s.producto IS NOT NULL AND s.producto <> ''
+                    ORDER BY s.producto ASC";
+            $stmt = $db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los productos: " . $e->getMessage());
         }
     }
 

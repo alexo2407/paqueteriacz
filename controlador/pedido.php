@@ -120,6 +120,99 @@ class PedidosController {
         return PedidosModel::obtenerVendedores();
     }
 
+    public function obtenerProductos() {
+        return PedidosModel::obtenerProductos();
+    }
+
+    public function guardarPedidoFormulario(array $data) {
+        $errores = [];
+
+        $numeroOrden = trim($data['numero_orden'] ?? '');
+        $destinatario = trim($data['destinatario'] ?? '');
+        $telefono = preg_replace('/\s+/', '', (string)($data['telefono'] ?? ''));
+        $producto = trim($data['producto'] ?? '');
+        $cantidad = filter_var($data['cantidad'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $estado = filter_var($data['estado'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $vendedor = filter_var($data['vendedor'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $comentario = trim($data['comentario'] ?? '');
+        $direccion = trim($data['direccion'] ?? '');
+        $latitud = isset($data['latitud']) ? filter_var($data['latitud'], FILTER_VALIDATE_FLOAT) : false;
+        $longitud = isset($data['longitud']) ? filter_var($data['longitud'], FILTER_VALIDATE_FLOAT) : false;
+
+        if ($numeroOrden === '') {
+            $errores[] = 'El número de orden es obligatorio.';
+        }
+        if ($destinatario === '') {
+            $errores[] = 'El destinatario es obligatorio.';
+        }
+        if ($telefono === '' || !preg_match('/^[0-9]{8,15}$/', $telefono)) {
+            $errores[] = 'El teléfono debe contener entre 8 y 15 dígitos.';
+        }
+        if ($producto === '') {
+            $errores[] = 'El producto es obligatorio.';
+        }
+        if ($cantidad === false) {
+            $errores[] = 'La cantidad debe ser un número entero mayor a cero.';
+        }
+        if ($estado === false) {
+            $errores[] = 'Selecciona un estado válido.';
+        }
+        if ($vendedor === false) {
+            $errores[] = 'Selecciona un usuario asignado válido.';
+        }
+        if ($direccion === '') {
+            $errores[] = 'La dirección es obligatoria.';
+        }
+        if ($latitud === false || $longitud === false) {
+            $errores[] = 'Las coordenadas no tienen un formato válido.';
+        }
+
+        if (empty($errores) && PedidosModel::existeNumeroOrden($numeroOrden)) {
+            $errores[] = 'El número de orden ya existe en la base de datos.';
+        }
+
+        if (!empty($errores)) {
+            return [
+                'success' => false,
+                'message' => implode(' ', $errores)
+            ];
+        }
+
+        $payload = [
+            'numero_orden' => $numeroOrden,
+            'destinatario' => $destinatario,
+            'telefono' => $telefono,
+            'producto' => $producto,
+            'cantidad' => (int)$cantidad,
+            'direccion' => $direccion,
+            'comentario' => $comentario !== '' ? $comentario : null,
+            'estado' => (int)$estado,
+            'vendedor' => (int)$vendedor,
+            'latitud' => (float)$latitud,
+            'longitud' => (float)$longitud,
+            'pais' => $data['pais'] ?? null,
+            'departamento' => $data['departamento'] ?? null,
+            'municipio' => $data['municipio'] ?? null,
+            'barrio' => $data['barrio'] ?? null,
+            'zona' => $data['zona'] ?? null,
+            'precio' => isset($data['precio']) && $data['precio'] !== '' ? $data['precio'] : null,
+        ];
+
+        try {
+            $nuevoId = PedidosModel::crearPedidoDesdeFormulario($payload);
+            return [
+                'success' => true,
+                'message' => 'Pedido guardado correctamente.',
+                'id' => $nuevoId
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error al guardar el pedido: ' . $e->getMessage()
+            ];
+        }
+    }
+
 
     public function guardarEdicion($data) {
         try {

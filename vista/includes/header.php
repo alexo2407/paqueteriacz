@@ -18,6 +18,9 @@
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>clientes/listar">Clientes</a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>stock/listar">Stock</a>
+                        </li>
                     </ul>
                 </li>
 

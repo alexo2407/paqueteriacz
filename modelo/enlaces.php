@@ -22,6 +22,7 @@ class EnlacesModel
             "usuarios",
             "pedidos",
             "productos",
+            "stock",
             "proveedor",
             "cambiarEstados",
             "salir"

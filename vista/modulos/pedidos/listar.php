@@ -28,10 +28,16 @@ endif;
 
 
 
-<div class="row mt-2 caja">
-    <div class="col-sm-12">
-        <!-- Importar CSV: formulario -->
-        <div class="mb-3">
+ <div class="card">
+   <img class="card-img-top" src="holder.js/100px180/" alt="">
+   <div class="card-body">
+
+            <div>
+                <h2 class="text-muted">Importar Pedidos</h2>
+            </div>
+
+     <!-- Importar CSV: formulario -->
+        <div class="custom-file mb-3">
             <form id="formImportCSV" action="<?= RUTA_URL ?>pedidos/importar" method="POST" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
                 <input type="file" name="csv_file" id="csv_file" accept=".csv" class="form-control-file">
                 <button type="submit" class="btn btn-primary">Importar CSV</button>
@@ -43,22 +49,42 @@ endif;
             </div>
             <div id="uploadStatus" class="small text-muted mt-1 d-none"></div>
         </div>
-        <div class="col-12 mb-3">
+
+         <div class="rowcol-12 mb-3">
             <div
                 class="alert alert-primary d-flex justify-content-between align-items-center"
                 role="alert"
             >
-                <div>
+                <div class="col-8">
                     <small class="form-text text-muted">El CSV debe incluir cabeceras: numero_orden,destinatario,telefono,producto,cantidad,direccion,latitud,longitud. El formato de descarga ahora trae dos ejemplos listos como guía.</small>
                 </div>
-                <div>
+                <div class="col-4 text-end">
                     <!-- Botón para descargar el CSV de ejemplo / plantilla -->
                         <a href="<?= RUTA_URL ?>public/pedidos_template.php" class="btn btn-secondary btn-sm" download>
-                        <i class="bi bi-download"></i> Descargar formato CSV
+                        <i class="bi bi-download"></i> Descargar plantilla CSV
                     </a>
                 </div>
             </div>
-        </div>
+   </div>
+
+
+
+
+ <div class="row">
+    <div class="col-sm-6">
+        <h3>Lista de Pedidos</h3>
+    </div>
+  <div class="col-sm-4 offset-sm-8 text-end">
+        <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="btn btn-success">
+            <i class="bi bi-plus-circle-fill"></i> Nuevo Pedido
+        </a>
+    </div>
+</div>
+
+    <div class="row mt-2 caja">
+    <div class="col-sm-12">
+        
+
             
         <table id="tblPedidos" class="table table-striped">
             <thead>
@@ -116,6 +142,7 @@ endif;
     </div>
 </div>
 
+</div>
 
 
 <?php include("vista/includes/footer.php"); ?>

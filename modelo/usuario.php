@@ -67,13 +67,114 @@ class UsuarioModel {
     {
         try {
             $db = (new Conexion())->conectar();
-            $sql = "SELECT id, nombre, email, id_rol FROM usuarios";
+            $sql = "SELECT 
+                        u.id,
+                        u.nombre,
+                        u.email,
+                        u.id_rol,
+                        NULL AS fecha_creacion,
+                        CASE u.id_rol
+                            WHEN 1 THEN 'Administrador'
+                            WHEN 2 THEN 'Vendedor'
+                            WHEN 3 THEN 'Supervisor'
+                            ELSE 'Usuario'
+                        END AS rol_nombre
+                    FROM usuarios u";
             $stmt = $db->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log('Error al obtener usuarios: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return [];
+        }
+    }
+
+    public function obtenerPorId($id)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('SELECT id, nombre, telefono, email, id_rol FROM usuarios WHERE id = :id');
+            $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            error_log('Error al obtener usuario: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return null;
+        }
+    }
+
+    public function actualizarUsuario($id, array $data)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $fields = [];
+            $params = [];
+
+            if (isset($data['nombre'])) {
+                $fields[] = 'nombre = :nombre';
+                $params[':nombre'] = [$data['nombre'], PDO::PARAM_STR];
+            }
+
+            if (isset($data['email'])) {
+                $fields[] = 'email = :email';
+                $params[':email'] = [$data['email'], PDO::PARAM_STR];
+            }
+
+            if (array_key_exists('telefono', $data)) {
+                $telefono = $data['telefono'];
+                $fields[] = 'telefono = :telefono';
+                if ($telefono === null || $telefono === '') {
+                    $params[':telefono'] = [null, PDO::PARAM_NULL];
+                } else {
+                    $params[':telefono'] = [$telefono, PDO::PARAM_STR];
+                }
+            }
+
+            if (isset($data['id_rol'])) {
+                $fields[] = 'id_rol = :id_rol';
+                $params[':id_rol'] = [(int) $data['id_rol'], PDO::PARAM_INT];
+            }
+
+            if (!empty($data['contrasena'])) {
+                $fields[] = 'contrasena = :contrasena';
+                $params[':contrasena'] = [password_hash($data['contrasena'], PASSWORD_DEFAULT), PDO::PARAM_STR];
+            }
+
+            if (empty($fields)) {
+                return [
+                    'success' => false,
+                    'message' => 'No se proporcionaron datos para actualizar.'
+                ];
+            }
+
+            $sql = 'UPDATE usuarios SET ' . implode(', ', $fields) . ' WHERE id = :id';
+            $stmt = $db->prepare($sql);
+
+            foreach ($params as $param => [$value, $type]) {
+                $stmt->bindValue($param, $value, $type);
+            }
+
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+
+            $ok = $stmt->execute();
+            if (!$ok) {
+                return [
+                    'success' => false,
+                    'message' => 'No fue posible actualizar el usuario.'
+                ];
+            }
+
+            return [
+                'success' => true,
+                'changed' => $stmt->rowCount() > 0
+            ];
+        } catch (PDOException $e) {
+            error_log('Error al actualizar usuario: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [
+                'success' => false,
+                'message' => 'Se produjo un error al actualizar el usuario.'
+            ];
         }
     }
 }

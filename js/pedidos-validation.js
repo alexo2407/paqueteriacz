@@ -31,9 +31,11 @@
         'producto': 'Producto requerido.',
         'cantidad': 'Cantidad inválida.',
         'direccion': 'Dirección inválida.',
-        'latitud': 'Latitud inválida.',
-        'longitud': 'Longitud inválida.',
-        'email': 'Email inválido.'
+    'latitud': 'Latitud inválida.',
+    'longitud': 'Longitud inválida.',
+    'estado': 'Selecciona un estado válido.',
+    'vendedor': 'Selecciona un usuario asignado.',
+    'email': 'Email inválido.'
     };
 
     function setInvalid(el, msg) {
@@ -84,7 +86,7 @@
         Object.keys(defsMap).forEach(id => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.addEventListener('input', function(){
+            const handler = function(){
                 const def = defsMap[id] || {};
                 let ok = true;
                 const v = el.value;
@@ -98,7 +100,9 @@
                     else ok = v.trim().length > 0;
                 }
                 if (ok) clearInvalid(el); else setInvalid(el, def.msg);
-            });
+            };
+            el.addEventListener('input', handler);
+            el.addEventListener('change', handler);
         });
     }
 
@@ -117,7 +121,12 @@
             {id:'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.'}
         ];
 
-        attachRealtime(['numero_orden','destinatario','telefono','producto','cantidad','direccion','latitud','longitud']);
+        summaryFields.push(
+            {id:'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.'},
+            {id:'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.'}
+        );
+
+        attachRealtime(summaryFields);
 
         form.addEventListener('submit', function(e){
             const errors = validateFields(summaryFields);
@@ -145,7 +154,12 @@
             {id:'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.'}
         ];
 
-        attachRealtime(['destinatario','telefono','producto','cantidad','precio','direccion','latitud','longitud']);
+        summaryFields.push(
+            {id:'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.'},
+            {id:'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.'}
+        );
+
+        attachRealtime(summaryFields);
 
         form.addEventListener('submit', function(e){
             const errors = validateFields(summaryFields);

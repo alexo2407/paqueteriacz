@@ -14,6 +14,29 @@ class UsuariosController
         return $repuesta;
     }
 
+    public static function obtenerRolesDisponibles()
+    {
+        return [
+            1 => 'Administrador',
+            2 => 'Vendedor',
+            3 => 'Supervisor'
+        ];
+    }
+
+    public function verUsuario($id)
+    {
+        require_once __DIR__ . '/../modelo/usuario.php';
+        $model = new UsuarioModel();
+        return $model->obtenerPorId($id);
+    }
+
+    public function actualizarUsuario($id, array $data)
+    {
+        require_once __DIR__ . '/../modelo/usuario.php';
+        $model = new UsuarioModel();
+        return $model->actualizarUsuario($id, $data);
+    }
+
     /**
      * Procesa el login desde un formulario POST
      */

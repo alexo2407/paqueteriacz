@@ -68,7 +68,16 @@ function cargarRecursos($pagina) {
   // Detectar la página actual y cargar los recursos específicos
   echo implode("\n", $recursos["global"]);
 
-  if (in_array($pagina, ["listar", "pedidos"])) {
+  $modulosConDatatables = [
+    "listar",
+    "pedidos",
+    "usuarios",
+    "clientes",
+    "proveedor",
+    "stock"
+  ];
+
+  if (in_array($pagina, $modulosConDatatables, true)) {
       echo implode("\n", $recursos["datatables"]);
   }
 
