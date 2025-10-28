@@ -16,11 +16,9 @@ class UsuariosController
 
     public static function obtenerRolesDisponibles()
     {
-        return [
-            1 => 'Administrador',
-            2 => 'Vendedor',
-            3 => 'Supervisor'
-        ];
+        require_once __DIR__ . '/../modelo/usuario.php';
+        $model = new UsuarioModel();
+        return $model->listarRoles();
     }
 
     public function verUsuario($id)

@@ -5,6 +5,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);  */
 
 ob_start();
+require_once __DIR__ . '/../modelo/producto.php';
 
 class PedidosController {
 
@@ -29,12 +30,103 @@ class PedidosController {
                 ];
             }
     
-            // Insertar el pedido si no existe
-            $resultado = PedidosModel::crearPedido($data);
+            $productoNombre = $data['producto'] ?? null;
+            if (empty($productoNombre)) {
+                return [
+                    "success" => false,
+                    "message" => "El campo producto es obligatorio."
+                ];
+            }
+
+            $producto = ProductoModel::buscarPorNombre($productoNombre);
+            $productoId = $producto['id'] ?? null;
+            if (!$productoId) {
+                $productoId = ProductoModel::crearRapido($productoNombre);
+            }
+            if (!$productoId) {
+                return [
+                    "success" => false,
+                    "message" => "No fue posible registrar el producto indicado."
+                ];
+            }
+
+            $latitud = $data['latitud'] ?? null;
+            $longitud = $data['longitud'] ?? null;
+            if ($latitud === null || $longitud === null) {
+                if (!empty($data["coordenadas"]) && strpos($data["coordenadas"], ',') !== false) {
+                    [$latitud, $longitud] = array_map('trim', explode(',', $data['coordenadas']));
+                }
+            }
+
+            if (!is_numeric($latitud) || !is_numeric($longitud)) {
+                return [
+                    "success" => false,
+                    "message" => "Coordenadas inválidas para el pedido."
+                ];
+            }
+
+            $precioLocal = null;
+            if (isset($data['precio_local']) && $data['precio_local'] !== '') {
+                $precioLocal = (float)$data['precio_local'];
+            } elseif (isset($data['precio']) && $data['precio'] !== '') {
+                $precioLocal = (float)$data['precio'];
+            }
+
+            $monedaId = isset($data['id_moneda']) ? (int)$data['id_moneda'] : null;
+            if ($monedaId === 0) {
+                $monedaId = null;
+            }
+
+            $precioUsd = null;
+            if ($precioLocal !== null && $monedaId !== null) {
+                $moneda = PedidosModel::obtenerMonedaPorId($monedaId);
+                if ($moneda && isset($moneda['tasa_usd'])) {
+                    $precioUsd = round($precioLocal * (float)$moneda['tasa_usd'], 2);
+                }
+            }
+
+            $pedidoPayload = [
+                'numero_orden' => $data['numero_orden'],
+                'destinatario' => $data['destinatario'],
+                'telefono' => $data['telefono'],
+                'direccion' => $data['direccion'] ?? '',
+                'comentario' => $data['comentario'] ?? null,
+                'estado' => isset($data['id_estado']) ? (int)$data['id_estado'] : 1,
+                'vendedor' => isset($data['id_vendedor']) ? (int)$data['id_vendedor'] : 0,
+                'proveedor' => isset($data['id_proveedor']) ? (int)$data['id_proveedor'] : 0,
+                'moneda' => $monedaId ?? 0,
+                'latitud' => (float)$latitud,
+                'longitud' => (float)$longitud,
+                'pais' => $data['pais'] ?? null,
+                'departamento' => $data['departamento'] ?? null,
+                'municipio' => $data['municipio'] ?? null,
+                'barrio' => $data['barrio'] ?? null,
+                'zona' => $data['zona'] ?? null,
+                'precio_local' => $precioLocal,
+                'precio_usd' => $precioUsd,
+            ];
+
+            if ($pedidoPayload['vendedor'] === 0) {
+                $pedidoPayload['vendedor'] = null;
+            }
+            if ($pedidoPayload['proveedor'] === 0) {
+                $pedidoPayload['proveedor'] = null;
+            }
+            if ($pedidoPayload['moneda'] === 0) {
+                $pedidoPayload['moneda'] = null;
+            }
+
+            $items = [[
+                'id_producto' => $productoId,
+                'cantidad' => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
+                'cantidad_devuelta' => isset($data['cantidad_devuelta']) ? (int)$data['cantidad_devuelta'] : 0,
+            ]];
+
+            $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
             return [
                 "success" => true,
                 "message" => "Pedido creado correctamente.",
-                "data" => $resultado
+                "data" => $nuevoId
             ];
     
         } catch (Exception $e) {
@@ -124,20 +216,57 @@ class PedidosController {
         return PedidosModel::obtenerProductos();
     }
 
+    public function obtenerProveedores() {
+        return PedidosModel::obtenerProveedores();
+    }
+
+    public function obtenerMonedas() {
+        return PedidosModel::obtenerMonedas();
+    }
+
     public function guardarPedidoFormulario(array $data) {
         $errores = [];
 
         $numeroOrden = trim($data['numero_orden'] ?? '');
         $destinatario = trim($data['destinatario'] ?? '');
         $telefono = preg_replace('/\s+/', '', (string)($data['telefono'] ?? ''));
-        $producto = trim($data['producto'] ?? '');
-        $cantidad = filter_var($data['cantidad'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $productoId = filter_var($data['producto_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $cantidadProducto = filter_var($data['cantidad_producto'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         $estado = filter_var($data['estado'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         $vendedor = filter_var($data['vendedor'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $proveedor = filter_var($data['proveedor'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $moneda = filter_var($data['moneda'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
         $comentario = trim($data['comentario'] ?? '');
         $direccion = trim($data['direccion'] ?? '');
         $latitud = isset($data['latitud']) ? filter_var($data['latitud'], FILTER_VALIDATE_FLOAT) : false;
         $longitud = isset($data['longitud']) ? filter_var($data['longitud'], FILTER_VALIDATE_FLOAT) : false;
+
+        $precioLocal = null;
+        $precioUsdEntrada = null;
+
+        if (isset($data['precio_local']) && $data['precio_local'] !== '') {
+            $precioLocalSanitized = str_replace(',', '.', (string)$data['precio_local']);
+            if (!is_numeric($precioLocalSanitized)) {
+                $errores[] = 'El precio local debe ser un número válido.';
+            } else {
+                $precioLocal = round((float)$precioLocalSanitized, 2);
+                if ($precioLocal < 0) {
+                    $errores[] = 'El precio local no puede ser negativo.';
+                }
+            }
+        }
+
+        if (isset($data['precio_usd']) && $data['precio_usd'] !== '') {
+            $precioUsdSanitized = str_replace(',', '.', (string)$data['precio_usd']);
+            if (!is_numeric($precioUsdSanitized)) {
+                $errores[] = 'El precio en USD debe ser un número válido.';
+            } else {
+                $precioUsdEntrada = round((float)$precioUsdSanitized, 2);
+                if ($precioUsdEntrada < 0) {
+                    $errores[] = 'El precio en USD no puede ser negativo.';
+                }
+            }
+        }
 
         if ($numeroOrden === '') {
             $errores[] = 'El número de orden es obligatorio.';
@@ -148,10 +277,10 @@ class PedidosController {
         if ($telefono === '' || !preg_match('/^[0-9]{8,15}$/', $telefono)) {
             $errores[] = 'El teléfono debe contener entre 8 y 15 dígitos.';
         }
-        if ($producto === '') {
-            $errores[] = 'El producto es obligatorio.';
+        if ($productoId === false) {
+            $errores[] = 'Selecciona un producto válido.';
         }
-        if ($cantidad === false) {
+        if ($cantidadProducto === false) {
             $errores[] = 'La cantidad debe ser un número entero mayor a cero.';
         }
         if ($estado === false) {
@@ -159,6 +288,12 @@ class PedidosController {
         }
         if ($vendedor === false) {
             $errores[] = 'Selecciona un usuario asignado válido.';
+        }
+        if ($proveedor === false) {
+            $errores[] = 'Selecciona un proveedor válido.';
+        }
+        if ($moneda === false) {
+            $errores[] = 'Selecciona una moneda válida.';
         }
         if ($direccion === '') {
             $errores[] = 'La dirección es obligatoria.';
@@ -169,6 +304,38 @@ class PedidosController {
 
         if (empty($errores) && PedidosModel::existeNumeroOrden($numeroOrden)) {
             $errores[] = 'El número de orden ya existe en la base de datos.';
+        }
+
+        $monedaSeleccionada = null;
+        if ($moneda !== false) {
+            $monedaSeleccionada = PedidosModel::obtenerMonedaPorId($moneda);
+            if (!$monedaSeleccionada) {
+                $errores[] = 'No fue posible encontrar la moneda seleccionada.';
+            }
+        }
+
+        if (!empty($errores)) {
+            return [
+                'success' => false,
+                'message' => implode(' ', $errores)
+            ];
+        }
+
+        $precioUsd = null;
+        if ($monedaSeleccionada) {
+            $tasa = (float)($monedaSeleccionada['tasa_usd'] ?? 0.0);
+            if (($precioLocal !== null || $precioUsdEntrada !== null) && $tasa <= 0) {
+                $errores[] = 'La tasa de cambio para la moneda seleccionada no es válida.';
+            } else {
+                if ($precioLocal !== null && $tasa > 0) {
+                    $precioUsd = round($precioLocal * $tasa, 2);
+                } elseif ($precioUsdEntrada !== null && $tasa > 0) {
+                    $precioUsd = round($precioUsdEntrada, 2);
+                    $precioLocal = round($precioUsdEntrada / $tasa, 2);
+                }
+            }
+        } elseif ($precioUsdEntrada !== null) {
+            $precioUsd = round($precioUsdEntrada, 2);
         }
 
         if (!empty($errores)) {
@@ -182,12 +349,12 @@ class PedidosController {
             'numero_orden' => $numeroOrden,
             'destinatario' => $destinatario,
             'telefono' => $telefono,
-            'producto' => $producto,
-            'cantidad' => (int)$cantidad,
             'direccion' => $direccion,
             'comentario' => $comentario !== '' ? $comentario : null,
             'estado' => (int)$estado,
             'vendedor' => (int)$vendedor,
+            'proveedor' => (int)$proveedor,
+            'moneda' => (int)$moneda,
             'latitud' => (float)$latitud,
             'longitud' => (float)$longitud,
             'pais' => $data['pais'] ?? null,
@@ -195,11 +362,18 @@ class PedidosController {
             'municipio' => $data['municipio'] ?? null,
             'barrio' => $data['barrio'] ?? null,
             'zona' => $data['zona'] ?? null,
-            'precio' => isset($data['precio']) && $data['precio'] !== '' ? $data['precio'] : null,
+            'precio_local' => $precioLocal,
+            'precio_usd' => $precioUsd,
         ];
 
+        $items = [[
+            'id_producto' => (int)$productoId,
+            'cantidad' => (int)$cantidadProducto,
+            'cantidad_devuelta' => 0,
+        ]];
+
         try {
-            $nuevoId = PedidosModel::crearPedidoDesdeFormulario($payload);
+            $nuevoId = PedidosModel::crearPedidoConProductos($payload, $items);
             return [
                 'success' => true,
                 'message' => 'Pedido guardado correctamente.',

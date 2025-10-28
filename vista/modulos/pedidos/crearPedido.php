@@ -20,6 +20,18 @@ try {
 } catch (Exception $e) {
     $productos = [];
 }
+
+try {
+    $monedas = $pedidosController->obtenerMonedas();
+} catch (Exception $e) {
+    $monedas = [];
+}
+
+try {
+    $proveedores = $pedidosController->obtenerProveedores();
+} catch (Exception $e) {
+    $proveedores = [];
+}
 ?>
 
 <div class="row">
@@ -54,29 +66,34 @@ try {
                         <div class="invalid-feedback">Por favor, ingresa un número de teléfono válido (solo números, de 8 a 15 dígitos).</div>
                     </div>
                     <div class="mb-3">
-                        <label for="producto" class="form-label">Producto</label>
-                        <div class="input-group">
-                            <select class="form-select" id="producto_sugerido" aria-label="Seleccionar producto de inventario">
-                                <option value="" selected>Selecciona del inventario</option>
-                                <?php foreach ($productos as $producto): ?>
-                                    <option value="<?= (int) $producto['id']; ?>"
-                                            data-nombre="<?= htmlspecialchars($producto['producto']); ?>"
-                                            data-cantidad="<?= htmlspecialchars($producto['cantidad']); ?>"
-                                            data-vendedor="<?= htmlspecialchars($producto['vendedor'] ?? ''); ?>">
-                                        <?= htmlspecialchars($producto['producto']); ?><?= isset($producto['cantidad']) ? ' — Stock: ' . (int) $producto['cantidad'] : ''; ?>
-                                    </option>
-                                <?php endforeach; ?>
-                                <option value="__manual__">Otro producto…</option>
-                            </select>
-                            <input type="text" class="form-control" id="producto" name="producto" required placeholder="Nombre del producto" autocomplete="off">
-                        </div>
-                        <div class="form-text" id="productoAyuda">Puedes elegir del inventario o escribir un producto nuevo.</div>
-                        <div class="invalid-feedback">Por favor, especifica el producto.</div>
+                        <label for="producto_id" class="form-label">Producto</label>
+                        <select class="form-select" id="producto_id" name="producto_id" required>
+                            <option value="" selected>Selecciona un producto</option>
+                            <?php foreach ($productos as $producto): ?>
+                                <option value="<?= (int) $producto['id']; ?>"
+                                        data-stock="<?= (int) ($producto['stock_total'] ?? 0); ?>"
+                                        data-precio-usd="<?= $producto['precio_usd'] !== null ? htmlspecialchars($producto['precio_usd']) : ''; ?>">
+                                    <?= htmlspecialchars($producto['nombre']); ?><?= isset($producto['stock_total']) ? ' — Stock: ' . (int) $producto['stock_total'] : ''; ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="form-text" id="productoAyuda">Selecciona un producto para ver el stock disponible.</div>
+                        <div class="invalid-feedback">Por favor, selecciona un producto.</div>
                     </div>
                     <div class="mb-3">
-                        <label for="cantidad" class="form-label">Cantidad</label>
-                        <input type="number" class="form-control" id="cantidad" name="cantidad" min="1" required>
+                        <label for="cantidad_producto" class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="cantidad_producto" name="cantidad_producto" min="1" required>
                         <div class="invalid-feedback">La cantidad debe ser al menos 1.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="precio_local" class="form-label">Precio (moneda seleccionada)</label>
+                        <input type="number" step="0.01" class="form-control" id="precio_local" name="precio_local" min="0">
+                        <div class="form-text">Ingresa el valor en la moneda seleccionada para calcular el equivalente en USD.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="precio_usd" class="form-label">Precio en USD</label>
+                        <input type="number" step="0.01" class="form-control" id="precio_usd" name="precio_usd" readonly>
+                        <div class="form-text">Se calcula automáticamente con la tasa de cambio registrada.</div>
                     </div>
                 </div>
 
@@ -101,6 +118,28 @@ try {
                             <?php endforeach; ?>
                         </select>
                         <div class="invalid-feedback">Por favor, selecciona un usuario.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="proveedor" class="form-label">Proveedor</label>
+                        <select class="form-select" id="proveedor" name="proveedor" required>
+                            <option value="" disabled selected>Selecciona un proveedor</option>
+                            <?php foreach ($proveedores as $proveedor): ?>
+                                <option value="<?= $proveedor['id']; ?>"><?= htmlspecialchars($proveedor['nombre']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="invalid-feedback">Por favor, selecciona un proveedor.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="moneda" class="form-label">Moneda</label>
+                        <select class="form-select" id="moneda" name="moneda" required>
+                            <option value="" disabled selected>Selecciona una moneda</option>
+                            <?php foreach ($monedas as $moneda): ?>
+                                <option value="<?= $moneda['id']; ?>" data-tasa="<?= htmlspecialchars($moneda['tasa_usd']); ?>">
+                                    <?= htmlspecialchars($moneda['nombre']); ?> (<?= htmlspecialchars($moneda['codigo']); ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="invalid-feedback">Por favor, selecciona una moneda.</div>
                     </div>
                     <div class="mb-3">
                         <label for="comentario" class="form-label">Comentario</label>
@@ -198,68 +237,6 @@ try {
 
     window.initMap = initMap;
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const selectProducto = document.getElementById('producto_sugerido');
-        const inputProducto = document.getElementById('producto');
-        const inputCantidad = document.getElementById('cantidad');
-        const ayuda = document.getElementById('productoAyuda');
-
-        if (!selectProducto || !inputProducto) {
-            return;
-        }
-
-        selectProducto.addEventListener('change', function () {
-            const opcion = selectProducto.options[selectProducto.selectedIndex];
-
-            if (!selectProducto.value) {
-                if (ayuda) {
-                    ayuda.textContent = 'Puedes elegir del inventario o escribir un producto nuevo.';
-                }
-                if (inputCantidad) {
-                    inputCantidad.removeAttribute('max');
-                    inputCantidad.placeholder = '';
-                }
-                return;
-            }
-
-            if (selectProducto.value === '__manual__') {
-                inputProducto.value = '';
-                inputProducto.focus();
-                if (ayuda) {
-                    ayuda.textContent = 'Escribe manualmente el nombre del producto.';
-                }
-                if (inputCantidad) {
-                    inputCantidad.removeAttribute('max');
-                    inputCantidad.placeholder = '';
-                }
-                return;
-            }
-
-            const nombre = opcion.getAttribute('data-nombre') || '';
-            const cantidad = opcion.getAttribute('data-cantidad');
-            const vendedor = opcion.getAttribute('data-vendedor');
-
-            inputProducto.value = nombre;
-            if (ayuda) {
-                const partes = [];
-                if (cantidad !== null && cantidad !== '' && !isNaN(Number(cantidad))) {
-                    partes.push('Stock disponible: ' + cantidad);
-                }
-                if (vendedor) {
-                    partes.push('Vendedor: ' + vendedor);
-                }
-                ayuda.textContent = partes.length ? partes.join(' | ') : 'Producto seleccionado del inventario.';
-            }
-            if (inputCantidad && cantidad !== null && cantidad !== '' && !isNaN(Number(cantidad))) {
-                inputCantidad.placeholder = 'Disponible: ' + cantidad;
-                if (Number(cantidad) > 0) {
-                    inputCantidad.max = Number(cantidad);
-                } else {
-                    inputCantidad.removeAttribute('max');
-                }
-            }
-        });
-    });
 </script>
 
 

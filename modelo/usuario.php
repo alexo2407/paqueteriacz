@@ -71,15 +71,16 @@ class UsuarioModel {
                         u.id,
                         u.nombre,
                         u.email,
+                        u.telefono,
                         u.id_rol,
-                        NULL AS fecha_creacion,
-                        CASE u.id_rol
-                            WHEN 1 THEN 'Administrador'
-                            WHEN 2 THEN 'Vendedor'
-                            WHEN 3 THEN 'Supervisor'
-                            ELSE 'Usuario'
-                        END AS rol_nombre
-                    FROM usuarios u";
+                        u.id_pais,
+                        u.activo,
+                        u.created_at,
+                        r.nombre_rol AS rol_nombre,
+                        p.nombre AS pais_nombre
+                    FROM usuarios u
+                    LEFT JOIN roles r ON r.id = u.id_rol
+                    LEFT JOIN paises p ON p.id = u.id_pais";
             $stmt = $db->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -93,7 +94,7 @@ class UsuarioModel {
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT id, nombre, telefono, email, id_rol FROM usuarios WHERE id = :id');
+            $stmt = $db->prepare('SELECT u.id, u.nombre, u.telefono, u.email, u.id_rol, u.id_pais, u.activo, u.id_estado FROM usuarios u WHERE u.id = :id');
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -136,6 +137,29 @@ class UsuarioModel {
                 $params[':id_rol'] = [(int) $data['id_rol'], PDO::PARAM_INT];
             }
 
+            if (array_key_exists('id_pais', $data)) {
+                $fields[] = 'id_pais = :id_pais';
+                if ($data['id_pais'] === null || $data['id_pais'] === '') {
+                    $params[':id_pais'] = [null, PDO::PARAM_NULL];
+                } else {
+                    $params[':id_pais'] = [(int) $data['id_pais'], PDO::PARAM_INT];
+                }
+            }
+
+            if (array_key_exists('activo', $data)) {
+                $fields[] = 'activo = :activo';
+                $params[':activo'] = [!empty($data['activo']) ? 1 : 0, PDO::PARAM_INT];
+            }
+
+            if (array_key_exists('id_estado', $data)) {
+                $fields[] = 'id_estado = :id_estado';
+                if ($data['id_estado'] === null || $data['id_estado'] === '') {
+                    $params[':id_estado'] = [null, PDO::PARAM_NULL];
+                } else {
+                    $params[':id_estado'] = [(int) $data['id_estado'], PDO::PARAM_INT];
+                }
+            }
+
             if (!empty($data['contrasena'])) {
                 $fields[] = 'contrasena = :contrasena';
                 $params[':contrasena'] = [password_hash($data['contrasena'], PASSWORD_DEFAULT), PDO::PARAM_STR];
@@ -175,6 +199,42 @@ class UsuarioModel {
                 'success' => false,
                 'message' => 'Se produjo un error al actualizar el usuario.'
             ];
+        }
+    }
+
+    public function listarRoles()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('SELECT id, nombre_rol FROM roles ORDER BY nombre_rol ASC');
+            $stmt->execute();
+            $roles = [];
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $roles[(int)$row['id']] = $row['nombre_rol'];
+            }
+            return $roles;
+        } catch (PDOException $e) {
+            error_log('Error al listar roles: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
+
+    public function obtenerUsuariosPorRolNombre($nombreRol)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $sql = 'SELECT u.id, u.nombre, u.email, u.telefono
+                    FROM usuarios u
+                    INNER JOIN roles r ON r.id = u.id_rol
+                    WHERE r.nombre_rol = :rol AND u.activo = 1
+                    ORDER BY u.nombre';
+            $stmt = $db->prepare($sql);
+            $stmt->bindValue(':rol', $nombreRol, PDO::PARAM_STR);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al obtener usuarios por rol: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
         }
     }
 }

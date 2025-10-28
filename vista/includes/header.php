@@ -35,9 +35,6 @@
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>proveedor/listar">Proveedores</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>seguimientos/listar">seguimiento</a>
-                </li>
 
             </ul>
 
