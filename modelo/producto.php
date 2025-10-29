@@ -41,6 +41,26 @@ class ProductoModel
         }
     }
 
+    /**
+     * Obtener stock total disponible para un producto (suma de stock.cantidad)
+     * Devuelve null si ocurre un error o no existe el producto
+     */
+    public static function obtenerStockTotal($id)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('SELECT COALESCE(SUM(cantidad), 0) as stock_total FROM stock WHERE id_producto = :id');
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row === false) return null;
+            return isset($row['stock_total']) ? (int)$row['stock_total'] : 0;
+        } catch (PDOException $e) {
+            error_log('Error al obtener stock del producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return null;
+        }
+    }
+
     public static function buscarPorNombre($nombre)
     {
         try {

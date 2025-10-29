@@ -22,8 +22,9 @@ class ClientesModel
             $dataBase = new Conexion();
             $db = $dataBase->conectar();
 
-            // Preparar consulta
-            $consulta = $db->prepare("SELECT ID_Cliente, Nombre, activo FROM clientes WHERE activo = 1");
+            // Preparar consulta (prefijar con el esquema configurado para evitar ambigüedades)
+            $tablaClientes = DB_SCHEMA . '.clientes';
+            $consulta = $db->prepare("SELECT ID_Cliente, Nombre, activo FROM " . $tablaClientes . " WHERE activo = 1");
 
             // Ejecutar consulta
             $consulta->execute();
@@ -54,8 +55,9 @@ class ClientesModel
             $dataBase = new Conexion();
             $db = $dataBase->conectar();
 
-            // Consulta para obtener clientes inactivos
-            $consulta = $db->prepare("SELECT ID_Cliente, Nombre, activo FROM clientes WHERE activo = 0");
+            // Consulta para obtener clientes inactivos (usar esquema configurado)
+            $tablaClientes = DB_SCHEMA . '.clientes';
+            $consulta = $db->prepare("SELECT ID_Cliente, Nombre, activo FROM " . $tablaClientes . " WHERE activo = 0");
             $consulta->execute();
 
             // Devuelve los clientes inactivos como un array asociativo
@@ -79,7 +81,8 @@ class ClientesModel
         $dataBase = new Conexion();
         $db = $dataBase->conectar();
 
-        $consulta = $db->prepare("UPDATE clientes SET activo = :estado WHERE ID_Cliente = :id");
+    $tablaClientes = DB_SCHEMA . '.clientes';
+    $consulta = $db->prepare("UPDATE " . $tablaClientes . " SET activo = :estado WHERE ID_Cliente = :id");
         $consulta->bindParam(":id", $idCliente, PDO::PARAM_INT);
         $consulta->bindParam(":estado", $estado, PDO::PARAM_INT);
 
@@ -102,8 +105,9 @@ class ClientesModel
             $dataBase = new Conexion();
             $db = $dataBase->conectar();
 
-            // Consulta preparada para evitar inyección SQL
-            $consulta = $db->prepare("SELECT ID_Cliente, Nombre, activo FROM clientes WHERE ID_Cliente = :id");
+            // Consulta preparada para evitar inyección SQL (usar esquema configurado)
+            $tablaClientes = DB_SCHEMA . '.clientes';
+            $consulta = $db->prepare("SELECT ID_Cliente, Nombre, activo FROM " . $tablaClientes . " WHERE ID_Cliente = :id");
             $consulta->bindParam(":id", $idCliente, PDO::PARAM_INT);
 
             // Ejecutar consulta
@@ -134,8 +138,9 @@ class ClientesModel
             $dataBase = new Conexion();
             $db = $dataBase->conectar();
 
-            // Consulta preparada para actualizar el cliente
-            $consulta = $db->prepare("UPDATE clientes SET Nombre = :nombre, activo = :activo WHERE ID_Cliente = :id");
+            // Consulta preparada para actualizar el cliente (usar esquema configurado)
+            $tablaClientes = DB_SCHEMA . '.clientes';
+            $consulta = $db->prepare("UPDATE " . $tablaClientes . " SET Nombre = :nombre, activo = :activo WHERE ID_Cliente = :id");
             $consulta->bindParam(":nombre", $nombre, PDO::PARAM_STR);
             $consulta->bindParam(":activo", $activo, PDO::PARAM_INT);
             $consulta->bindParam(":id", $idCliente, PDO::PARAM_INT);

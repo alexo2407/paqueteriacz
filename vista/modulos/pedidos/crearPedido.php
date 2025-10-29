@@ -57,8 +57,9 @@ try {
                     </div>
                     <div class="mb-3">
                         <label for="destinatario" class="form-label">Destinatario</label>
-                        <input type="text" class="form-control" id="destinatario" name="destinatario" pattern="[A-Za-z\s]+" required>
-                        <div class="invalid-feedback">Por favor, ingresa un nombre válido (solo letras).</div>
+                        <!-- Se eliminó el patrón estricto para permitir acentos y caracteres internacionales -->
+                        <input type="text" class="form-control" id="destinatario" name="destinatario" required>
+                        <div class="invalid-feedback">Por favor, ingresa un nombre válido.</div>
                     </div>
                     <div class="mb-3">
                         <label for="telefono" class="form-label">Teléfono</label>

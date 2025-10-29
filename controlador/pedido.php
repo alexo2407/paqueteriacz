@@ -227,15 +227,41 @@ class PedidosController {
     public function guardarPedidoFormulario(array $data) {
         $errores = [];
 
+        // DEBUG: volcar POST entrante para diagnóstico de validación de formulario
+        try {
+            $logDir = __DIR__ . '/../logs';
+            if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
+            $dbg = '[' . date('c') . '] guardarPedidoFormulario POST: ' . php_sapi_name() . "\n";
+            $dbg .= "_POST: " . var_export($data, true) . "\n";
+            // También incluir raw input si existe
+            $raw = @file_get_contents('php://input');
+            if ($raw) $dbg .= "raw: " . substr($raw, 0, 4000) . "\n";
+            file_put_contents($logDir . '/pedido_debug.log', $dbg . "\n", FILE_APPEND | LOCK_EX);
+        } catch (Exception $e) {
+            // no interrumpir la ejecución por errores de logging
+        }
+
         $numeroOrden = trim($data['numero_orden'] ?? '');
         $destinatario = trim($data['destinatario'] ?? '');
         $telefono = preg_replace('/\s+/', '', (string)($data['telefono'] ?? ''));
-        $productoId = filter_var($data['producto_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $cantidadProducto = filter_var($data['cantidad_producto'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $estado = filter_var($data['estado'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $vendedor = filter_var($data['vendedor'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $proveedor = filter_var($data['proveedor'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
-        $moneda = filter_var($data['moneda'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        // Helper: parsear enteros positivos enviados como string o int.
+        $parse_positive_int = function($arr, $key) {
+            if (!isset($arr[$key])) return null;
+            $v = $arr[$key];
+            if ($v === null || $v === '') return null;
+            // Allow numeric strings like "3"
+            if (is_numeric($v) && (int)$v >= 1) return (int)$v;
+            return false;
+        };
+
+        $productoId = $parse_positive_int($data, 'producto_id');
+        $cantidadProducto = $parse_positive_int($data, 'cantidad_producto');
+        $estado = $parse_positive_int($data, 'estado');
+        $vendedor = $parse_positive_int($data, 'vendedor');
+        $proveedor = $parse_positive_int($data, 'proveedor');
+        $moneda = $parse_positive_int($data, 'moneda');
+
         $comentario = trim($data['comentario'] ?? '');
         $direccion = trim($data['direccion'] ?? '');
         $latitud = isset($data['latitud']) ? filter_var($data['latitud'], FILTER_VALIDATE_FLOAT) : false;
@@ -270,6 +296,11 @@ class PedidosController {
 
         if ($numeroOrden === '') {
             $errores[] = 'El número de orden es obligatorio.';
+        } else {
+            // Asegurar que sea un entero positivo (la columna en BD espera un entero)
+            if (!preg_match('/^\d+$/', (string)$numeroOrden) || (int)$numeroOrden < 1) {
+                $errores[] = 'El número de orden debe ser un entero positivo.';
+            }
         }
         if ($destinatario === '') {
             $errores[] = 'El destinatario es obligatorio.';
@@ -277,22 +308,22 @@ class PedidosController {
         if ($telefono === '' || !preg_match('/^[0-9]{8,15}$/', $telefono)) {
             $errores[] = 'El teléfono debe contener entre 8 y 15 dígitos.';
         }
-        if ($productoId === false) {
+        if ($productoId === null || $productoId === false) {
             $errores[] = 'Selecciona un producto válido.';
         }
-        if ($cantidadProducto === false) {
+        if ($cantidadProducto === null || $cantidadProducto === false) {
             $errores[] = 'La cantidad debe ser un número entero mayor a cero.';
         }
-        if ($estado === false) {
+        if ($estado === null || $estado === false) {
             $errores[] = 'Selecciona un estado válido.';
         }
-        if ($vendedor === false) {
+        if ($vendedor === null || $vendedor === false) {
             $errores[] = 'Selecciona un usuario asignado válido.';
         }
-        if ($proveedor === false) {
+        if ($proveedor === null || $proveedor === false) {
             $errores[] = 'Selecciona un proveedor válido.';
         }
-        if ($moneda === false) {
+        if ($moneda === null || $moneda === false) {
             $errores[] = 'Selecciona una moneda válida.';
         }
         if ($direccion === '') {
@@ -302,12 +333,27 @@ class PedidosController {
             $errores[] = 'Las coordenadas no tienen un formato válido.';
         }
 
-        if (empty($errores) && PedidosModel::existeNumeroOrden($numeroOrden)) {
+        if (empty($errores) && PedidosModel::existeNumeroOrden((int)$numeroOrden)) {
             $errores[] = 'El número de orden ya existe en la base de datos.';
         }
 
+        // Validación server-side de stock: si el producto tiene stock registrado, no permitir cantidad mayor al stock
+        if (is_int($productoId) && is_int($cantidadProducto)) {
+            try {
+                $stockDisponible = ProductoModel::obtenerStockTotal((int)$productoId);
+                if ($stockDisponible !== null && $stockDisponible >= 0) {
+                    if ($stockDisponible > 0 && (int)$cantidadProducto > $stockDisponible) {
+                        $errores[] = 'La cantidad solicitada supera el stock disponible (' . $stockDisponible . ').';
+                    }
+                }
+            } catch (Exception $e) {
+                // no interrumpir el flujo, pero loguear
+                error_log('Error comprobando stock del producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            }
+        }
+
         $monedaSeleccionada = null;
-        if ($moneda !== false) {
+        if (is_int($moneda)) {
             $monedaSeleccionada = PedidosModel::obtenerMonedaPorId($moneda);
             if (!$monedaSeleccionada) {
                 $errores[] = 'No fue posible encontrar la moneda seleccionada.';
@@ -346,15 +392,15 @@ class PedidosController {
         }
 
         $payload = [
-            'numero_orden' => $numeroOrden,
+            'numero_orden' => (int)$numeroOrden,
             'destinatario' => $destinatario,
             'telefono' => $telefono,
             'direccion' => $direccion,
             'comentario' => $comentario !== '' ? $comentario : null,
-            'estado' => (int)$estado,
-            'vendedor' => (int)$vendedor,
-            'proveedor' => (int)$proveedor,
-            'moneda' => (int)$moneda,
+            'estado' => is_int($estado) ? (int)$estado : null,
+            'vendedor' => is_int($vendedor) ? (int)$vendedor : null,
+            'proveedor' => is_int($proveedor) ? (int)$proveedor : null,
+            'moneda' => is_int($moneda) ? (int)$moneda : null,
             'latitud' => (float)$latitud,
             'longitud' => (float)$longitud,
             'pais' => $data['pais'] ?? null,
