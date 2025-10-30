@@ -66,3 +66,54 @@ _POST: array (
   'precio_local' => '10.00',
 )
 
+[2025-10-30T16:24:28+01:00] guardarPedidoFormulario POST: cli
+_POST: array (
+  'numero_orden' => '1761837868',
+  'destinatario' => 'Prueba Unit',
+  'telefono' => '12345678',
+  'producto_id' => 3,
+  'cantidad_producto' => 1,
+  'estado' => 7,
+  'vendedor' => 3,
+  'proveedor' => 1,
+  'moneda' => 2,
+  'direccion' => 'Calle Test 123',
+  'latitud' => '12.0000',
+  'longitud' => '-86.0000',
+  'precio_local' => '10.00',
+)
+
+[2025-10-30T17:03:45+01:00] guardarPedidoFormulario POST: cli
+_POST: array (
+  'numero_orden' => '1761840225',
+  'destinatario' => 'Prueba Unit',
+  'telefono' => '12345678',
+  'producto_id' => 3,
+  'cantidad_producto' => 1,
+  'estado' => 7,
+  'vendedor' => 3,
+  'proveedor' => 1,
+  'moneda' => 2,
+  'direccion' => 'Calle Test 123',
+  'latitud' => '12.0000',
+  'longitud' => '-86.0000',
+  'precio_local' => '10.00',
+)
+
+[2025-10-30T17:10:51+01:00] guardarPedidoFormulario POST: cli
+_POST: array (
+  'numero_orden' => '1761840651',
+  'destinatario' => 'Prueba Unit',
+  'telefono' => '12345678',
+  'producto_id' => 3,
+  'cantidad_producto' => 1,
+  'estado' => 7,
+  'vendedor' => 3,
+  'proveedor' => 1,
+  'moneda' => 2,
+  'direccion' => 'Calle Test 123',
+  'latitud' => '12.0000',
+  'longitud' => '-86.0000',
+  'precio_local' => '10.00',
+)
+

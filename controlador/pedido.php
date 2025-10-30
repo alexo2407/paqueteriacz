@@ -227,19 +227,10 @@ class PedidosController {
     public function guardarPedidoFormulario(array $data) {
         $errores = [];
 
-        // DEBUG: volcar POST entrante para diagnóstico de validación de formulario
-        try {
-            $logDir = __DIR__ . '/../logs';
-            if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
-            $dbg = '[' . date('c') . '] guardarPedidoFormulario POST: ' . php_sapi_name() . "\n";
-            $dbg .= "_POST: " . var_export($data, true) . "\n";
-            // También incluir raw input si existe
-            $raw = @file_get_contents('php://input');
-            if ($raw) $dbg .= "raw: " . substr($raw, 0, 4000) . "\n";
-            file_put_contents($logDir . '/pedido_debug.log', $dbg . "\n", FILE_APPEND | LOCK_EX);
-        } catch (Exception $e) {
-            // no interrumpir la ejecución por errores de logging
-        }
+        // Nota: se eliminó el logging temporal de POST (pedido_debug.log) por motivos
+        // de seguridad y limpieza. Si necesitas reactivar el debug, usar una
+        // variable de entorno o la constante DEBUG en config/config.php y registrar
+        // sólo información no sensible o sanitizada.
 
         $numeroOrden = trim($data['numero_orden'] ?? '');
         $destinatario = trim($data['destinatario'] ?? '');
