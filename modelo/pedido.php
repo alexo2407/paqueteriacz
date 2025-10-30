@@ -75,72 +75,9 @@ class PedidosModel
                 VALUES (:id_pedido, :id_producto, :cantidad, 0)
             ');
 
-            foreach ($rows as $row) {
-                $linea = $row['line'] ?? '?';
-
-                $cantidad = isset($row['cantidad']) && $row['cantidad'] !== '' ? (int)$row['cantidad'] : 1;
-                $precioLocal = isset($row['precio']) && $row['precio'] !== '' ? (float)$row['precio'] : null;
-
-                $params = [
-                    ':numero_orden' => $row['numero_orden'] ?? null,
-                    ':destinatario' => $row['destinatario'] ?? null,
-                    ':telefono' => $row['telefono'] ?? null,
-                    ':precio_local' => $precioLocal,
-                    ':precio_usd' => null,
-                    ':pais' => $row['pais'] ?? null,
-                    ':departamento' => $row['departamento'] ?? null,
-                    ':municipio' => $row['municipio'] ?? null,
-                    ':barrio' => $row['barrio'] ?? null,
-                    ':direccion' => $row['direccion'] ?? null,
-                    ':zona' => $row['zona'] ?? null,
-                    ':comentario' => $row['comentario'] ?? null,
-                    ':coordenadas' => sprintf(
-                        'POINT(%s %s)',
-                        number_format((float)($row['longitud'] ?? 0), 8, '.', ''),
-                        number_format((float)($row['latitud'] ?? 0), 8, '.', '')
-                    ),
-                    ':id_estado' => 1,
-                    ':id_moneda' => null,
-                    ':id_vendedor' => null,
-                    ':id_proveedor' => null,
-                ];
-
-                try {
-                    $stmt->execute($params);
-                    $pedidoId = (int)$db->lastInsertId();
-
-                    $productoNombre = isset($row['producto']) ? trim((string)$row['producto']) : '';
-                    if ($productoNombre !== '') {
-                        $producto = ProductoModel::buscarPorNombre($productoNombre);
-                        $productoId = $producto['id'] ?? null;
-                        if (!$productoId) {
-                            $productoId = ProductoModel::crearRapido($productoNombre, null, null);
-                        }
-
-                        if ($productoId) {
-                            $detalleStmt->bindValue(':id_pedido', $pedidoId, PDO::PARAM_INT);
-                            $detalleStmt->bindValue(':id_producto', $productoId, PDO::PARAM_INT);
-                            $detalleStmt->bindValue(':cantidad', $cantidad, PDO::PARAM_INT);
-                            $detalleStmt->execute();
-                        }
-                    }
-
-                    $resultado['inserted']++;
-                } catch (PDOException $e) {
-                    $sqlState = $e->errorInfo[0] ?? null;
-                    if ($sqlState === '23000') {
-                        $resultado['errors'][] = "Línea {$linea}: número de orden duplicado o restricción violada.";
-                    } else {
-                        $resultado['errors'][] = "Línea {$linea}: error SQL - " . $e->getMessage();
-                    }
-                }
-            }
-
-            if ($resultado['inserted'] > 0) {
-                $db->commit();
-            } else {
-                $db->rollBack();
-            }
+            // Las operaciones de stock ahora se manejan mediante triggers en la base
+            // de datos. No intentamos modificar la tabla `stock` desde PHP para evitar
+            // inconsistencias entre esquemas en distintos despliegues.
 
         } catch (Exception $e) {
             $resultado['errors'][] = 'Error general al insertar pedidos: ' . $e->getMessage();
@@ -382,6 +319,7 @@ class PedidosModel
             // Consulta SQL con ST_GeomFromText y campos de dirección adicionales
             $query = "
             UPDATE pedidos SET
+                numero_orden = :numero_orden,
                 destinatario = :destinatario,
                 telefono = :telefono,
                 pais = :pais,
@@ -405,6 +343,7 @@ class PedidosModel
             $stmt = $db->prepare($query);
 
             // Asociar los valores con bindValue para manejar nulls correctamente
+            $stmt->bindValue(':numero_orden', $data['numero_orden'] ?? null, PDO::PARAM_STR);
             $stmt->bindValue(':destinatario', $data['destinatario'] ?? null, PDO::PARAM_STR);
             $stmt->bindValue(':telefono', $data['telefono'] ?? null, PDO::PARAM_STR);
             $stmt->bindValue(':pais', $pais, PDO::PARAM_STR);
@@ -434,6 +373,24 @@ class PedidosModel
             // Ejecutar la consulta
             $stmt->execute();
 
+            // Actualizar productos (asumiendo un solo producto por pedido)
+            if (isset($data['producto_id']) && isset($data['cantidad_producto'])) {
+                // Primero, eliminar productos existentes
+                $deleteStmt = $db->prepare('DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido');
+                $deleteStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
+                $deleteStmt->execute();
+
+                // Insertar el nuevo producto
+                $insertStmt = $db->prepare('
+                    INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
+                    VALUES (:id_pedido, :id_producto, :cantidad, 0)
+                ');
+                $insertStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
+                $insertStmt->bindValue(':id_producto', (int)$data['producto_id'], PDO::PARAM_INT);
+                $insertStmt->bindValue(':cantidad', (int)$data['cantidad_producto'], PDO::PARAM_INT);
+                $insertStmt->execute();
+            }
+
             // Retornar true si hubo cambios en la base de datos
             return $stmt->rowCount() > 0;
         } catch (PDOException $e) {
@@ -444,6 +401,12 @@ class PedidosModel
 
     public static function crearPedidoConProductos(array $pedido, array $items)
     {
+        // NOTA: La gestión de inventario (tabla `stock`) se realiza mediante
+        // triggers en la base de datos. No se deben insertar/actualizar filas
+        // en `stock` desde PHP en este flujo para evitar discrepancias entre
+        // entornos con esquemas distintos. Ver migrations/README_STOCK_TRIGGER.md
+        // para detalles y para desplegar los triggers en staging/producción.
+
         if (empty($items)) {
             throw new Exception('El pedido debe incluir al menos un producto.');
         }
@@ -457,6 +420,21 @@ class PedidosModel
                 number_format((float)$pedido['longitud'], 8, '.', ''),
                 number_format((float)$pedido['latitud'], 8, '.', '')
             );
+
+            // Verificar disponibilidad de stock para cada producto antes de insertar.
+            // Bloqueamos las filas relevantes con FOR UPDATE para evitar condiciones de carrera.
+            $stockCheckStmt = $db->prepare('SELECT COALESCE(SUM(cantidad), 0) AS stock_total FROM stock WHERE id_producto = :id_producto FOR UPDATE');
+            foreach ($items as $item) {
+                $qty = (int)$item['cantidad'];
+                if ($qty <= 0) continue;
+
+                $stockCheckStmt->execute([':id_producto' => (int)$item['id_producto']]);
+                $row = $stockCheckStmt->fetch(PDO::FETCH_ASSOC);
+                $available = $row ? (int)$row['stock_total'] : 0;
+                if ($available - $qty < 0) {
+                    throw new Exception('Stock insuficiente para el producto ID ' . (int)$item['id_producto'] . '. Disponible: ' . $available . ', requerido: ' . $qty);
+                }
+            }
 
             $stmt = $db->prepare('
                 INSERT INTO pedidos (
@@ -545,6 +523,10 @@ class PedidosModel
                 $detalleStmt->bindValue(':cantidad_devuelta', isset($item['cantidad_devuelta']) ? (int)$item['cantidad_devuelta'] : 0, PDO::PARAM_INT);
                 $detalleStmt->execute();
             }
+
+            // Las operaciones de stock ahora se manejan por triggers en la base de datos.
+            // No se realizan inserciones a la tabla `stock` desde PHP para evitar
+            // inconsistencias entre despliegues con esquemas distintos.
 
             $db->commit();
             return $pedidoId;

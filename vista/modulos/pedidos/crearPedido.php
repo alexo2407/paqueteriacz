@@ -182,7 +182,6 @@ try {
         </form>
     </div>
 </div>
-
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= API_MAP ?>&callback=initMap" async defer></script>
 <script src="<?= RUTA_URL ?>js/pedidos-validation.js"></script>
 <script>

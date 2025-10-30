@@ -117,3 +117,6 @@ _POST: array (
   'precio_local' => '10.00',
 )
 
+[2025-10-30T18:05:58+01:00] guardarPedidoFormulario DEBUG: cli
+{"numero_orden":"TEST-ERROR","destinatario":"","telefono":"***","producto_id":"","cantidad_producto":"0","estado":"","vendedor":"","proveedor":"","moneda":"","direccion":"[SANITIZED]","latitud":"not-a-number","longitud":"","precio_local":"not-a-number"}
+

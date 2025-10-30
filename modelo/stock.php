@@ -4,6 +4,16 @@ include_once __DIR__ . '/conexion.php';
 
 class StockModel
 {
+    /**
+     * NOTA: La gestión de stock está centralizada mediante triggers en la base
+     * de datos. Evitar que PHP inserte/actualice movimientos directamente
+     * desde los controladores/servicios para no duplicar la lógica.
+     *
+     * Si es necesario un método PHP para registros ad-hoc, crear uno nuevo
+     * con nombre claro y documentarlo. El método registrarSalida está
+     * deshabilitado por defecto en este repositorio para proteger la
+     * integridad cuando los esquemas de `stock` varían entre despliegues.
+     */
     public static function listar()
     {
         try {
@@ -89,5 +99,24 @@ class StockModel
             error_log('Error al ajustar cantidad de stock: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;
         }
+    }
+
+    /**
+     * Registrar un movimiento de salida (cantidad negativa) intentando varias
+     * estrategias de INSERT para adaptarse a distintos esquemas de la tabla
+     * `stock` en diferentes despliegues.
+     *
+     * @param int $idProducto
+     * @param int $cantidad
+     * @param int|null $idVendedor
+     * @return bool
+     * @throws Exception si ninguna estrategia funciona
+     */
+    public static function registrarSalida($idProducto, $cantidad, $idVendedor = null)
+    {
+        // En esta rama hemos decidido delegar la gestión de stock a triggers en
+        // la base de datos. El método PHP queda deshabilitado para evitar
+        // inserciones que puedan fallar por diferencias de esquema.
+        throw new Exception('Registro de salida de stock deshabilitado en PHP: use triggers en la base de datos.');
     }
 }

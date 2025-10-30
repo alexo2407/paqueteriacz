@@ -38,4 +38,6 @@ define('ROL_NOMBRE_REPARTIDOR', 'Repartidor');
 // Debug toggle: activar solo en entornos de desarrollo. Cuando está en true,
 // algunos controladores escribirán logs sanitizados para facilitar la depuración.
 // IMPORTANTE: dejar en false en producción.
+// Atención: habilita logs de depuración solo en entornos de desarrollo.
+// Por seguridad, dejar en false en producción.
 define('DEBUG', false);

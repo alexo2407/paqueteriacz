@@ -316,19 +316,111 @@
             });
         }
 
+        // Interceptamos el submit para enviar por AJAX (fetch). Si el navegador
+        // no soporta fetch o la llamada falla, hacemos fallback al envío tradicional.
         form.addEventListener('submit', function(e){
+            e.preventDefault();
+
+            // Estado de carga: deshabilitar el botón submit y cambiar texto
+            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+            const setLoading = function(on) {
+                if (!submitBtn) return;
+                if (on) {
+                    submitBtn.dataset._orig = submitBtn.innerHTML || submitBtn.value || '';
+                    try { submitBtn.innerHTML = 'Guardando...'; } catch (err) { submitBtn.value = 'Guardando...'; }
+                    submitBtn.disabled = true;
+                } else {
+                    if (submitBtn.dataset._orig !== undefined) {
+                        try { submitBtn.innerHTML = submitBtn.dataset._orig; } catch (err) { submitBtn.value = submitBtn.dataset._orig; }
+                        delete submitBtn.dataset._orig;
+                    }
+                    submitBtn.disabled = false;
+                }
+            };
+
             if (precioLocalInput && precioLocalInput.value.trim() !== '') {
                 calcularUsdDesdeLocal();
             } else {
                 calcularLocalDesdeUsd(true);
             }
+
             const errors = validateFields(summaryFields);
             showSummaryErrors(errors);
             if (errors.length > 0) {
-                e.preventDefault();
                 return false;
             }
-            return true;
+
+            // Preparar envío AJAX
+            const submitUrl = form.getAttribute('action') || window.location.href;
+            const fd = new FormData(form);
+
+            setLoading(true);
+
+            if (!window.fetch) {
+                // Fallback: browser no soporta fetch
+                form.submit();
+                return true;
+            }
+
+            fetch(submitUrl, {
+                method: 'POST',
+                body: fd,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            }).then(function(resp){
+                return resp.json().catch(function(){
+                    throw new Error('Respuesta no es JSON');
+                });
+            }).then(function(data){
+                // quitar loading
+                setLoading(false);
+                if (data && data.success) {
+                    // Mostrar SweetAlert de éxito y mantener los datos en pantalla
+                    if (window.Swal && typeof window.Swal.fire === 'function') {
+                        // Mostrar mensaje breve y redirigir automáticamente a la interfaz de edición
+                        // si el servidor devolvió una URL. Si no hay URL, mantenemos el formulario
+                        // con el id agregado.
+                        if (data && data.redirect) {
+                            // Usar un pequeño retardo para que el usuario vea la notificación
+                            window.Swal.fire({ icon: 'success', title: 'Pedido creado', text: data.message || 'Redirigiendo a edición...', showConfirmButton: false, timer: 800 });
+                            setTimeout(function(){ window.location.href = data.redirect; }, 900);
+                            return;
+                        }
+                        // Si no hay redirect, pero se devolvió el id, lo guardamos en el formulario
+                        if (data.id) {
+                            let idField = form.querySelector('input[name="id_pedido"]');
+                            if (!idField) {
+                                idField = document.createElement('input');
+                                idField.type = 'hidden';
+                                idField.name = 'id_pedido';
+                                form.appendChild(idField);
+                            }
+                            idField.value = data.id;
+                        }
+                    } else {
+                        alert(data.message || 'Pedido guardado correctamente.');
+                    }
+                } else {
+                    if (window.Swal && typeof window.Swal.fire === 'function') {
+                        window.Swal.fire({ icon: 'error', title: 'Error', text: (data && data.message) ? data.message : 'No fue posible guardar el pedido.' });
+                    }
+                    if (data && data.errors) showSummaryErrors(data.errors);
+                }
+            }).catch(function(err){
+                setLoading(false);
+                console.error('Error al enviar por AJAX:', err);
+                // Fallback conservador: enviar el formulario tradicionalmente
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function(){ form.submit(); });
+                } else {
+                    form.submit();
+                }
+            });
+
+            return false;
         });
     }
 
@@ -336,32 +428,156 @@
         const form = document.getElementById('formEditarPedido');
         if (!form) return;
 
+        const productoSelect = document.getElementById('producto_id');
+        const cantidadInput = document.getElementById('cantidad_producto');
+        const monedaSelect = document.getElementById('moneda');
+        const precioLocalInput = document.getElementById('precio_local');
+        const precioUsdInput = document.getElementById('precio_usd');
+
+        const getSelectedOption = function(select) {
+            if (!select || select.selectedIndex < 0) return null;
+            return select.options[select.selectedIndex] || null;
+        };
+        const getProductoUsd = function() {
+            const option = getSelectedOption(productoSelect);
+            if (!option) return NaN;
+            const raw = option.getAttribute('data-precio-usd');
+            if (raw === null || raw === '') return NaN;
+            const num = Number(raw);
+            return Number.isNaN(num) ? NaN : num;
+        };
+        const getTasaMoneda = function() {
+            const option = getSelectedOption(monedaSelect);
+            if (!option) return NaN;
+            const raw = option.getAttribute('data-tasa');
+            if (raw === null || raw === '') return NaN;
+            const num = Number(raw);
+            return Number.isNaN(num) ? NaN : num;
+        };
+
         const summaryFields = [
             {id:'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.'},
             {id:'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).'},
-            {id:'producto', fn: v => v.trim().length > 0, msg: 'Por favor, especifica el producto.'},
-            {id:'cantidad', fn: v => v === '' || (Number.isInteger(Number(v)) && Number(v) >= 1), msg: 'La cantidad debe ser al menos 1 si se proporciona.'},
-            {id:'precio', fn: v => v === '' || validarDecimal(v), msg: 'Precio inválido.'},
+            {id:'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.'},
+            {id:'cantidad_producto', fn: v => v !== '' && Number.isInteger(Number(v)) && Number(v) >= 1, msg: 'La cantidad debe ser al menos 1.'},
+            {id:'precio_local', fn: v => v === '' || validarDecimal(v), msg: 'Precio local inválido.'},
             {id:'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.'},
             {id:'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.'},
-            {id:'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.'}
-        ];
-
-        summaryFields.push(
+            {id:'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.'},
             {id:'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.'},
-            {id:'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.'}
-        );
+            {id:'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.'},
+            {id:'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.'},
+            {id:'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.'}
+        ];
 
         attachRealtime(summaryFields);
 
+        // Rellenar precio desde producto si está vacío
+        if (productoSelect) {
+            const fillFromProduct = function(force) {
+                const usd = getProductoUsd();
+                if (!Number.isNaN(usd) && (force || (precioUsdInput && precioUsdInput.value.trim() === ''))) {
+                    if (precioUsdInput) precioUsdInput.value = usd.toFixed(2);
+                    // si tenemos tasa, calcular local
+                    const tasa = getTasaMoneda();
+                    if (!Number.isNaN(tasa) && tasa > 0 && precioLocalInput) {
+                        precioLocalInput.value = (usd / tasa).toFixed(2);
+                    }
+                }
+            };
+            productoSelect.addEventListener('change', function(){ fillFromProduct(true); });
+            fillFromProduct(false);
+        }
+
+        // Recalcular precio cuando cambia moneda
+        if (monedaSelect) {
+            monedaSelect.addEventListener('change', function(){
+                if (!precioUsdInput || !precioLocalInput) return;
+                const usd = precioUsdInput.value.trim();
+                const tasa = getTasaMoneda();
+                if (usd !== '' && validarDecimal(usd) && !Number.isNaN(tasa) && tasa > 0) {
+                    precioLocalInput.value = (parseFloat(usd) / tasa).toFixed(2);
+                }
+            });
+        }
+
         form.addEventListener('submit', function(e){
+            e.preventDefault();
+
+            // Asegurar consistencia de precios antes de validar
+            if (precioLocalInput && precioLocalInput.value.trim() === '' && precioUsdInput && precioUsdInput.value.trim() !== '') {
+                const tasa = getTasaMoneda();
+                if (!Number.isNaN(tasa) && tasa > 0) {
+                    precioLocalInput.value = (parseFloat(precioUsdInput.value) / tasa).toFixed(2);
+                }
+            }
+
             const errors = validateFields(summaryFields);
             showSummaryErrors(errors);
             if (errors.length > 0) {
-                e.preventDefault();
                 return false;
             }
-            return true;
+
+            // Estado de carga para edición
+            const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+            const setLoading = function(on) {
+                if (!submitBtn) return;
+                if (on) {
+                    submitBtn.dataset._orig = submitBtn.innerHTML || submitBtn.value || '';
+                    try { submitBtn.innerHTML = 'Guardando...'; } catch (err) { submitBtn.value = 'Guardando...'; }
+                    submitBtn.disabled = true;
+                } else {
+                    if (submitBtn.dataset._orig !== undefined) {
+                        try { submitBtn.innerHTML = submitBtn.dataset._orig; } catch (err) { submitBtn.value = submitBtn.dataset._orig; }
+                        delete submitBtn.dataset._orig;
+                    }
+                    submitBtn.disabled = false;
+                }
+            };
+
+            // Envío por AJAX para edición también
+            const submitUrl = form.getAttribute('action') || window.location.href;
+            const fd = new FormData(form);
+
+            if (!window.fetch) { form.submit(); return true; }
+
+            setLoading(true);
+
+            fetch(submitUrl, {
+                method: 'POST',
+                body: fd,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            }).then(function(resp){
+                return resp.json().catch(function(){ throw new Error('Respuesta no es JSON'); });
+            }).then(function(data){
+                setLoading(false);
+                if (data && data.success) {
+                    if (window.Swal && typeof window.Swal.fire === 'function') {
+                        window.Swal.fire({ icon: 'success', title: 'Guardado', text: data.message || 'Pedido actualizado correctamente.' });
+                    } else {
+                        alert(data.message || 'Pedido actualizado correctamente.');
+                    }
+                } else {
+                    if (window.Swal && typeof window.Swal.fire === 'function') {
+                        window.Swal.fire({ icon: 'error', title: 'Error', text: (data && data.message) ? data.message : 'No fue posible actualizar el pedido.' });
+                    }
+                    if (data && data.errors) showSummaryErrors(data.errors);
+                }
+            }).catch(function(err){
+                setLoading(false);
+                console.error('Error AJAX editar:', err);
+                if (window.Swal && typeof window.Swal.fire === 'function') {
+                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function(){ form.submit(); });
+                } else {
+                    form.submit();
+                }
+            });
+
+            return false;
         });
     }
 

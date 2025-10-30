@@ -16,9 +16,6 @@
                             <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios/listar">Usuarios</a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_URL ?>clientes/listar">Clientes</a>
-                        </li>
-                        <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>stock/listar">Stock</a>
                         </li>
                     </ul>
@@ -32,9 +29,7 @@
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>productos/listars">productos</a>
                 </li>-->
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>proveedor/listar">Proveedores</a>
-                </li>
+                <!-- Proveedores ahora se administran desde Usuarios (rol Proveedor) -->
 
             </ul>
 

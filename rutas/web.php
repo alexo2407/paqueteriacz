@@ -31,14 +31,18 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
 
     if ($accion === 'guardarPedido') {
         // Construir payload desde $_POST y delegar al controlador
+        // NOTE: usamos los mismos nombres de campos que el formulario en
+        // `vista/modulos/pedidos/crearPedido.php` y que espera
+        // `PedidosController::guardarPedidoFormulario()`.
         $payload = [
             'numero_orden' => $_POST['numero_orden'] ?? '',
             'destinatario' => $_POST['destinatario'] ?? '',
             'telefono' => $_POST['telefono'] ?? '',
-            'producto' => $_POST['producto'] ?? '',
-            'cantidad' => $_POST['cantidad'] ?? null,
+            'producto_id' => $_POST['producto_id'] ?? null,
+            'cantidad_producto' => $_POST['cantidad_producto'] ?? null,
             'estado' => $_POST['estado'] ?? null,
             'vendedor' => $_POST['vendedor'] ?? null,
+            'proveedor' => $_POST['proveedor'] ?? null,
             'comentario' => $_POST['comentario'] ?? '',
             'direccion' => $_POST['direccion'] ?? '',
             'latitud' => $_POST['latitud'] ?? null,
@@ -48,13 +52,44 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'municipio' => $_POST['municipio'] ?? null,
             'barrio' => $_POST['barrio'] ?? null,
             'zona' => $_POST['zona'] ?? null,
-            'precio' => $_POST['precio'] ?? null,
+            'precio_local' => $_POST['precio_local'] ?? null,
+            'precio_usd' => $_POST['precio_usd'] ?? null,
+            'moneda' => $_POST['moneda'] ?? null,
         ];
 
         // Llamar al controlador para procesar y persistir el pedido
         $resultado = $ctrl->guardarPedidoFormulario($payload);
 
-        // Mensaje flash y redirección igual que antes
+        // Detectar si la petición viene por AJAX (fetch/XHR) o si el cliente espera JSON
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+        // Si es AJAX devolvemos JSON con la estructura estándar y no redirigimos.
+        // Esto permite que el frontend (fetch) muestre SweetAlert y mantenga el formulario
+        // en la misma página sin reload. Para peticiones tradicionales mantenemos el
+        // flujo histórico (set_flash + redirect).
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            $id = $resultado['id'] ?? $resultado['data'] ?? null;
+            $resp = [
+                'success' => !empty($resultado['success']),
+                'message' => $resultado['message'] ?? 'No fue posible guardar el pedido.',
+                'id' => $id
+            ];
+
+            // Si se creó un nuevo pedido, sugerimos la URL para editarlo. El cliente
+            // puede usar este campo `redirect` para llevar al usuario automáticamente
+            // a la página de edición.
+            if (!empty($id)) {
+                // Redirigir directamente a la página de edición sin query params
+                $resp['redirect'] = RUTA_URL . 'pedidos/editar/' . $id;
+            }
+
+            echo json_encode($resp);
+            exit;
+        }
+
+        // Mensaje flash y redirección para comportamiendo no-AJAX (fallback)
         set_flash(!empty($resultado['success']) ? 'success' : 'error', $resultado['message'] ?? 'No fue posible guardar el pedido.');
 
         $redirect = !empty($resultado['success']) ? RUTA_URL . 'pedidos/listar' : RUTA_URL . 'pedidos/crearPedido';
@@ -151,86 +186,10 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
     }
 }
 
-// -----------------------
-// Manejo de proveedores (POST a ?enlace=proveedor/<accion>)
-// -----------------------
-if (isset($ruta[0]) && $ruta[0] === 'proveedor' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-    $accion = isset($ruta[1]) ? $ruta[1] : '';
-
-    // Cargar controlador localmente
-    require_once __DIR__ . '/../controlador/proveedor.php';
-
-    $ctrl = new ProveedorController();
-
-    if ($accion === 'guardar') {
-        $jsonData = [
-            'nombre' => $_POST['nombre'] ?? null,
-            'email' => $_POST['email'] ?? null,
-            'telefono' => $_POST['telefono'] ?? null,
-            'pais' => $_POST['pais'] ?? null,
-            'contrasena' => $_POST['contrasena'] ?? null,
-        ];
-        $response = $ctrl->crearProveedorAPI($jsonData);
-        require_once __DIR__ . '/../utils/session.php';
-        start_secure_session();
-        if ($response['success']) {
-            set_flash('success', $response['message']);
-            if (!empty($response['data'])) {
-                $_SESSION['last_created_provider_id'] = (int) $response['data'];
-            }
-            header('Location: ' . RUTA_URL . 'proveedor/listar');
-            exit;
-        }
-
-        set_flash('error', $response['message']);
-        header('Location: ' . RUTA_URL . 'proveedor/crear');
-        exit;
-    }
-
-    if ($accion === 'actualizar') {
-        $id = isset($ruta[2]) ? (int)$ruta[2] : null;
-        $data = [
-            'nombre' => $_POST['nombre'] ?? null,
-            'email' => $_POST['email'] ?? null,
-            'telefono' => $_POST['telefono'] ?? null,
-            'pais' => $_POST['pais'] ?? null,
-            'contrasena' => $_POST['contrasena'] ?? null,
-        ];
-        if ($id) {
-            $ok = $ctrl->actualizarProveedor($id, $data);
-            require_once __DIR__ . '/../utils/session.php';
-            if ($ok) {
-                set_flash('success', 'Proveedor actualizado correctamente.');
-                header('Location: ' . RUTA_URL . 'proveedor/listar');
-                exit;
-            }
-
-            set_flash('error', 'No se realizaron cambios en el proveedor.');
-            header('Location: ' . RUTA_URL . 'proveedor/editar/' . $id);
-            exit;
-        }
-
-        header('Location: ' . RUTA_URL . 'proveedor/listar');
-        exit;
-    }
-
-    if ($accion === 'eliminar') {
-        $id = isset($ruta[2]) ? (int) $ruta[2] : null;
-        require_once __DIR__ . '/../utils/session.php';
-        start_secure_session();
-
-        if (!$id) {
-            set_flash('error', 'Proveedor no válido.');
-            header('Location: ' . RUTA_URL . 'proveedor/listar');
-            exit;
-        }
-
-        $resultado = $ctrl->eliminarProveedor($id);
-        set_flash(!empty($resultado['success']) ? 'success' : 'error', $resultado['message']);
-        header('Location: ' . RUTA_URL . 'proveedor/listar');
-        exit;
-    }
-}
+// Nota: el manejo de proveedores como entidad independiente fue removido.
+// Los proveedores ahora se representan como usuarios con el rol definido por
+// `ROL_NOMBRE_PROVEEDOR`. Cualquier operación sobre proveedores debe realizarse
+// a través de `UsuariosController` y/o API de usuarios.
 
 // -----------------------
 // Manejo de stock (POST a ?enlace=stock/<accion>)

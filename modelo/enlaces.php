@@ -18,12 +18,10 @@ class EnlacesModel
         $modulosPermitidos = [
             "inicio",
             "dashboard",
-            "clientes",
             "usuarios",
             "pedidos",
             "productos",
             "stock",
-            "proveedor",
             "cambiarEstados",
             "salir"
         ];

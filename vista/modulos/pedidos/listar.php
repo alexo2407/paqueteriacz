@@ -143,7 +143,7 @@ endif;
 </div>
 
 </div>
-
+</div>
 
 <?php include("vista/includes/footer.php"); ?>
 

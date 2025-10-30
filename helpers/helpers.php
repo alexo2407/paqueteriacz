@@ -72,8 +72,6 @@ function cargarRecursos($pagina) {
     "listar",
     "pedidos",
     "usuarios",
-    "clientes",
-    "proveedor",
     "stock"
   ];
 

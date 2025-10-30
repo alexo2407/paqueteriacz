@@ -1,8 +1,8 @@
 <?php
 
-/* ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);  */
+// Atención: la configuración de visualización de errores fue removida del
+// archivo. Controla la salida de logs con la constante DEBUG en
+// `config/config.php` o mediante la configuración de PHP en el entorno.
 
 ob_start();
 require_once __DIR__ . '/../modelo/producto.php';
@@ -179,13 +179,13 @@ class PedidosController {
     }
 
 
-    public function obtenerPedido($pedidoID ) {
-      if (!$pedidoID) {
-          echo "<div class='alert alert-danger'>No order ID provided.</div>";
-          exit;
-      }
-      
-        return PedidosModel::obtenerPedidoPorId($pedidoID[2]);
+    public function obtenerPedido($id_pedido) {
+        if (!$id_pedido) {
+            echo "<div class='alert alert-danger'>No order ID provided.</div>";
+            exit;
+        }
+        
+        return PedidosModel::obtenerPedidoPorId($id_pedido);
     }
 
 
@@ -451,49 +451,55 @@ class PedidosController {
 
 
     public function guardarEdicion($data) {
-        try {
+        // Soporte para peticiones AJAX: si el header X-Requested-With == XMLHttpRequest
+        // o el cliente solicita JSON por Accept, devolvemos JSON en lugar de hacer
+        // redirect + set_flash. Esto facilita que el frontend maneje la respuesta
+        // y muestre SweetAlert sin recargar la página.
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 
+        try {
+            // Validaciones mínimas
+            if (!isset($data['id_pedido']) || !is_numeric($data['id_pedido'])) {
+                $resp = ['success' => false, 'message' => 'ID de pedido inválido.'];
+                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/listar'); exit;
+            }
 
             if (!is_numeric($data['latitud']) || !is_numeric($data['longitud'])) {
-                require_once __DIR__ . '/../utils/session.php';
-                set_flash('error', 'Las coordenadas no tienen un formato válido.');
-                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong');
+                $resp = ['success' => false, 'message' => 'Las coordenadas no tienen un formato válido.'];
+                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong'); exit;
             }
+
             // Validación básica para cantidad y precio (si vienen)
-            if (isset($data['cantidad']) && $data['cantidad'] !== '' && !is_numeric($data['cantidad'])) {
-                require_once __DIR__ . '/../utils/session.php';
-                set_flash('error', 'La cantidad debe ser un número.');
-                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad');
-                exit;
+            if (isset($data['cantidad_producto']) && $data['cantidad_producto'] !== '' && !is_numeric($data['cantidad_producto'])) {
+                $resp = ['success' => false, 'message' => 'La cantidad debe ser un número.'];
+                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad'); exit;
             }
-            if (isset($data['precio']) && $data['precio'] !== '' && !is_numeric($data['precio'])) {
-                require_once __DIR__ . '/../utils/session.php';
-                set_flash('error', 'El precio debe ser un valor numérico.');
-                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio');
-                exit;
+            if (isset($data['precio_local']) && $data['precio_local'] !== '' && !is_numeric($data['precio_local'])) {
+                $resp = ['success' => false, 'message' => 'El precio local debe ser un valor numérico.'];
+                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio'); exit;
             }
-            
-          
+
             // Llama al modelo para actualizar el pedido
             $resultado = PedidosModel::actualizarPedido($data);
-    
-           //var_dump($data);
 
-            
             if ($resultado) {
-                // Redirigir con éxito
-                require_once __DIR__ . '/../utils/session.php';
-                set_flash('success', 'Pedido actualizado correctamente.');
-                header('Location: '. RUTA_URL . 'pedidos/listar');
+                $resp = ['success' => true, 'message' => 'Pedido actualizado correctamente.'];
+                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                require_once __DIR__ . '/../utils/session.php'; set_flash('success', $resp['message']); header('Location: '. RUTA_URL . 'pedidos/listar'); exit;
             } else {
-                // Redirigir con un mensaje de error si no hubo cambios
-                require_once __DIR__ . '/../utils/session.php';
-                set_flash('error', 'No se realizaron cambios en el pedido.');
-                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error');
+                $resp = ['success' => false, 'message' => 'No se realizaron cambios en el pedido.'];
+                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error'); exit;
             }
         } catch (Exception $e) {
-            // Redirigir con mensaje de error en caso de excepción
-            header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error'. urlencode($e->getMessage()));
+            $msg = 'Error interno: ' . $e->getMessage();
+            if ($isAjax) { header('Content-Type: application/json', true, 500); echo json_encode(['success' => false, 'message' => $msg]); exit; }
+            header('Location: ' . RUTA_URL . 'pedidos/editar/' . ($data['id_pedido'] ?? '') . '/error' . urlencode($e->getMessage()));
         }
         exit;
     }
