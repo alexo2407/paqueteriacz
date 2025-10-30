@@ -227,10 +227,35 @@ class PedidosController {
     public function guardarPedidoFormulario(array $data) {
         $errores = [];
 
-        // Nota: se eliminó el logging temporal de POST (pedido_debug.log) por motivos
-        // de seguridad y limpieza. Si necesitas reactivar el debug, usar una
-        // variable de entorno o la constante DEBUG en config/config.php y registrar
-        // sólo información no sensible o sanitizada.
+        // Logging condicional (solo en modo DEBUG). Guardamos información
+        // sanitizada para depuración local. DEBUG debe configurarse en
+        // `config/config.php` y mantenerse en false en producción.
+        if (defined('DEBUG') && DEBUG) {
+            try {
+                $logDir = __DIR__ . '/../logs';
+                if (!is_dir($logDir)) @mkdir($logDir, 0755, true);
+
+                // Sanitizar datos sensibles antes de escribir en disco
+                $sanitized = $data;
+                if (isset($sanitized['telefono'])) {
+                    $tel = preg_replace('/\D+/', '', (string)$sanitized['telefono']);
+                    $len = strlen($tel);
+                    if ($len > 4) {
+                        $sanitized['telefono'] = substr($tel, 0, 4) . str_repeat('*', $len - 4);
+                    } else {
+                        $sanitized['telefono'] = str_repeat('*', $len);
+                    }
+                }
+                if (isset($sanitized['direccion'])) $sanitized['direccion'] = '[SANITIZED]';
+                if (isset($sanitized['comentario'])) $sanitized['comentario'] = '[SANITIZED]';
+
+                $dbg = '[' . date('c') . '] guardarPedidoFormulario DEBUG: ' . php_sapi_name() . "\n";
+                $dbg .= json_encode($sanitized, JSON_UNESCAPED_UNICODE) . "\n";
+                file_put_contents($logDir . '/pedido_debug.log', $dbg . "\n", FILE_APPEND | LOCK_EX);
+            } catch (Exception $e) {
+                // no interrumpir la ejecución por errores de logging
+            }
+        }
 
         $numeroOrden = trim($data['numero_orden'] ?? '');
         $destinatario = trim($data['destinatario'] ?? '');
