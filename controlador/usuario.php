@@ -63,7 +63,19 @@ class UsuariosController
             // Guardar datos en sesión
             $_SESSION['registrado'] = true;
             $_SESSION['nombre'] = $user['Usuario'];
-            $_SESSION['rol'] = $user['Rol'];
+            $_SESSION['rol'] = $user['Rol']; // id_rol numérico
+            $_SESSION['user_id'] = $user['ID_Usuario'];
+
+            // Guardar también el nombre del rol para facilitar comprobaciones por vista
+            try {
+                $rolesMap = $model->listarRoles(); // [id => nombre]
+                $roleId = (int)$user['Rol'];
+                if (isset($rolesMap[$roleId])) {
+                    $_SESSION['rol_nombre'] = $rolesMap[$roleId];
+                }
+            } catch (Exception $e) {
+                // Silencioso: si falla, simplemente no seteamos rol_nombre
+            }
 
             // Redirigir a dashboard
             set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 

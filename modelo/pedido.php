@@ -592,6 +592,38 @@ class PedidosModel
         return MonedaModel::obtenerPorId($id);
     }
 
+    /**
+     * Listar pedidos asignados a un usuario (seguimiento repartidor)
+     * Por ahora usa id_vendedor como campo de asignación.
+     */
+    public static function listarPorUsuarioAsignado(int $userId)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $sql = "SELECT 
+                        p.id,
+                        p.numero_orden,
+                        p.destinatario,
+                        p.telefono,
+                        p.direccion,
+                        ST_Y(p.coordenadas) AS latitud,
+                        ST_X(p.coordenadas) AS longitud,
+                        p.fecha_ingreso,
+                        ep.nombre_estado
+                    FROM pedidos p
+                    LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                    WHERE p.id_vendedor = :uid
+                    ORDER BY p.fecha_ingreso DESC";
+            $stmt = $db->prepare($sql);
+            $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al listar pedidos asignados: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
+
 
 
     /* cambiar  estados en los datatable */

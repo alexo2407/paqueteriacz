@@ -224,6 +224,15 @@ class PedidosController {
         return PedidosModel::obtenerMonedas();
     }
 
+    // Listado de pedidos asignados al usuario (seguimiento para repartidor)
+    public function listarPedidosAsignados($userId)
+    {
+        if (!$userId || !is_numeric($userId)) return [];
+        // Nota: por ahora usamos id_vendedor como asignación. Si se agrega id_repartidor,
+        // actualizar a ese campo.
+        return PedidosModel::listarPorUsuarioAsignado((int)$userId);
+    }
+
     public function guardarPedidoFormulario(array $data) {
         $errores = [];
 

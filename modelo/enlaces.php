@@ -22,6 +22,7 @@ class EnlacesModel
             "pedidos",
             "productos",
             "stock",
+            "seguimiento",
             "cambiarEstados",
             "salir"
         ];
