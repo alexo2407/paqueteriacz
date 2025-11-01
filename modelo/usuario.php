@@ -9,7 +9,8 @@ class UsuarioModel {
 
         $db = (new Conexion())->conectar();
 
-        $sql = "SELECT id, nombre, id_rol, contrasena FROM usuarios WHERE email = :email";
+    // No dependas de usuarios.id_rol: los roles se obtienen exclusivamente desde usuarios_roles
+    $sql = "SELECT id, nombre, contrasena FROM usuarios WHERE email = :email";
         $stmt = $db->prepare($sql);
         $stmt->bindParam(':email', $email);
 
@@ -36,11 +37,28 @@ class UsuarioModel {
             ];
         }
 
-        // Fallback: migración automática si la DB contiene contraseñas en texto plano
+        // Fallbacks de migración: texto plano, MD5 o SHA1 -> password_hash
         if (defined('ALLOW_PLAINTEXT_MIGRATION') && ALLOW_PLAINTEXT_MIGRATION === true) {
-            // Si el valor en la BD coincide exactamente con la contraseña suministrada,
-            // asumimos que la contraseña estaba en texto plano y la migramos a hash.
-            if (isset($user['contrasena']) && $user['contrasena'] === $password) {
+            $stored = $user['contrasena'] ?? '';
+            $shouldMigrate = false;
+
+            // Texto plano
+            if ($stored === $password) {
+                $shouldMigrate = true;
+            } else {
+                // MD5 (32 hex)
+                $isMd5 = (bool) preg_match('/^[a-f0-9]{32}$/i', $stored);
+                if ($isMd5 && strtolower($stored) === md5($password)) {
+                    $shouldMigrate = true;
+                }
+                // SHA1 (40 hex)
+                $isSha1 = (bool) preg_match('/^[a-f0-9]{40}$/i', $stored);
+                if (!$shouldMigrate && $isSha1 && strtolower($stored) === sha1($password)) {
+                    $shouldMigrate = true;
+                }
+            }
+
+            if ($shouldMigrate) {
                 $newHash = password_hash($password, PASSWORD_DEFAULT);
                 try {
                     $update = $db->prepare("UPDATE usuarios SET contrasena = :hash WHERE id = :id");
@@ -97,7 +115,8 @@ class UsuarioModel {
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT u.id, u.nombre, u.telefono, u.email, u.id_rol, u.id_pais, u.activo, u.id_estado FROM usuarios u WHERE u.id = :id');
+            // Evitar seleccionar u.id_rol: esquema migrado a pivot usuarios_roles
+            $stmt = $db->prepare('SELECT u.id, u.nombre, u.telefono, u.email, u.id_pais, u.activo, u.id_estado FROM usuarios u WHERE u.id = :id');
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;

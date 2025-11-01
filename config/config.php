@@ -20,8 +20,8 @@ define('JWT_SECRET_KEY', 'AIzaSyBTjuPpkTWWePCndprG532i9GhEdBRr_a0');
 //agregamos las variables de parametros de conexion a la BD
 
 // Toggle para habilitar migración automática de contraseñas en texto plano.
-// Por seguridad, dejar en false en producción hasta verificar que es necesario.
-define('ALLOW_PLAINTEXT_MIGRATION', false);
+// Por seguridad, dejar en false en producción. Activar temporalmente en dev si no puedes iniciar sesión.
+define('ALLOW_PLAINTEXT_MIGRATION', true);
 
 define('DB_HOST','localhost');
 define('DB_SCHEMA','sistema_multinacional');

@@ -116,6 +116,9 @@ class UsuariosController
                 // Silencioso: si falla, simplemente no seteamos rol_nombre
             }
 
+            // Limpiar posibles errores de login previos
+            unset($_SESSION['login_error']);
+
             // Redirigir a dashboard
             set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
             $dashboardUrl = defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard';
@@ -123,6 +126,8 @@ class UsuariosController
             exit;
         } else {
             set_flash('error', 'Credenciales inválidas');
+            // También colocar el error clásico para la vista de inicio de sesión
+            $_SESSION['login_error'] = 'Credenciales inválidas';
             $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
             header('Location: ' . $loginUrl);
             exit;

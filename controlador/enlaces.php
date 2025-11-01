@@ -19,14 +19,37 @@ class EnlacesController
         if (!in_array($modulo, $modulosPublicos, true)) {
             require_once __DIR__ . '/../utils/session.php';
             require_login();
-            // Asegurar que tengamos el nombre del rol en sesión para checks por vista
+            // Hidratar datos de rol en sesión si faltan (compat con sesiones antiguas)
+            require_once __DIR__ . '/../modelo/usuario.php';
+            $um = new UsuarioModel();
+
+            // 1) Asegurar rol_nombre si falta (a partir del id en sesión)
             if (empty($_SESSION['rol_nombre'])) {
-                require_once __DIR__ . '/../modelo/usuario.php';
-                $um = new UsuarioModel();
                 $rolesMap = $um->listarRoles(); // [id => nombre]
                 $rid = $_SESSION['rol'] ?? null;
                 if ($rid !== null && isset($rolesMap[$rid])) {
                     $_SESSION['rol_nombre'] = $rolesMap[$rid];
+                }
+            }
+
+            // 2) Asegurar arrays multi-rol si faltan, usando pivot usuarios_roles
+            if (empty($_SESSION['roles']) || empty($_SESSION['roles_nombres'])) {
+                $uid = $_SESSION['user_id'] ?? null;
+                if ($uid) {
+                    $roles = $um->obtenerRolesDeUsuario((int)$uid);
+                    if (!empty($roles['ids'])) {
+                        $_SESSION['roles'] = array_values(array_unique(array_map('intval', $roles['ids'])));
+                    }
+                    if (!empty($roles['nombres'])) {
+                        $_SESSION['roles_nombres'] = array_values(array_unique(array_filter($roles['nombres'])));
+                    }
+                    // Si aún falta rol y tenemos al menos un id/nombre, setear principales
+                    if (empty($_SESSION['rol']) && !empty($_SESSION['roles'])) {
+                        $_SESSION['rol'] = (int)$_SESSION['roles'][0];
+                    }
+                    if (empty($_SESSION['rol_nombre']) && !empty($_SESSION['roles_nombres'])) {
+                        $_SESSION['rol_nombre'] = $_SESSION['roles_nombres'][0];
+                    }
                 }
             }
 
