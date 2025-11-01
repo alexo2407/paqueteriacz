@@ -32,7 +32,33 @@ class UsuariosController
     {
         require_once __DIR__ . '/../modelo/usuario.php';
         $model = new UsuarioModel();
-        return $model->actualizarUsuario($id, $data);
+
+        // Separar campos de usuario de roles
+        $roles = isset($data['roles']) && is_array($data['roles']) ? $data['roles'] : [];
+        $primaryRoleId = isset($data['id_rol']) ? (int)$data['id_rol'] : 0;
+
+        $userFields = $data;
+        unset($userFields['roles']);
+
+        $resUser = $model->actualizarUsuario($id, $userFields);
+        if (empty($resUser['success'])) {
+            return $resUser;
+        }
+
+        $changed = !empty($resUser['changed']);
+
+        if (!empty($roles)) {
+            $resRoles = $model->setRolesForUser($id, $roles, $primaryRoleId);
+            if (empty($resRoles['success'])) {
+                return $resRoles; // devolver error de roles si falló
+            }
+            $changed = true;
+        }
+
+        return [
+            'success' => true,
+            'changed' => $changed
+        ];
     }
 
     /**

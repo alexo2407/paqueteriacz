@@ -7,6 +7,11 @@ $idUsuario = isset($params[0]) ? (int) $params[0] : 0;
 $usuarioCtrl = new UsuariosController();
 $usuario = $idUsuario > 0 ? $usuarioCtrl->verUsuario($idUsuario) : null;
 $rolesDisponibles = UsuariosController::obtenerRolesDisponibles();
+// Obtener roles actuales del usuario (multi-rol)
+require_once __DIR__ . '/../../../modelo/usuario.php';
+$um = new UsuarioModel();
+$rolesUsuario = $idUsuario > 0 ? $um->obtenerRolesDeUsuario($idUsuario) : ['ids' => [], 'nombres' => []];
+$rolesUsuarioIds = $rolesUsuario['ids'] ?? [];
 ?>
 
 <div class="row">
@@ -29,15 +34,20 @@ $rolesDisponibles = UsuariosController::obtenerRolesDisponibles();
 					<input id="telefono" name="telefono" class="form-control" value="<?= htmlspecialchars($usuario['telefono'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
 				</div>
 				<div class="mb-3">
-					<label class="form-label" for="id_rol">Rol</label>
-					<select id="id_rol" name="id_rol" class="form-select" required>
-						<option value="">Seleccione un rol</option>
+					<label class="form-label">Roles</label>
+					<div class="row">
 						<?php foreach ($rolesDisponibles as $rolId => $rolNombre) : ?>
-							<option value="<?= $rolId; ?>" <?= (int) ($usuario['id_rol'] ?? 0) === (int) $rolId ? 'selected' : ''; ?>>
-								<?= htmlspecialchars($rolNombre, ENT_QUOTES, 'UTF-8'); ?>
-							</option>
+							<div class="col-md-6">
+								<div class="form-check">
+									<input class="form-check-input" type="checkbox" id="rol_<?= (int)$rolId ?>" name="roles[]" value="<?= (int)$rolId ?>" <?= in_array((int)$rolId, $rolesUsuarioIds, true) || ((int)($usuario['id_rol'] ?? 0) === (int)$rolId && empty($rolesUsuarioIds)) ? 'checked' : '' ?>>
+									<label class="form-check-label" for="rol_<?= (int)$rolId ?>">
+										<?= htmlspecialchars($rolNombre, ENT_QUOTES, 'UTF-8'); ?>
+									</label>
+								</div>
+							</div>
 						<?php endforeach; ?>
-					</select>
+					</div>
+					<div class="form-text">Selecciona uno o más roles. El primer rol marcado se usará como rol principal.</div>
 				</div>
 				<div class="mb-3">
 					<label class="form-label" for="contrasena">Contraseña</label>

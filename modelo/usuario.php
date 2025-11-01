@@ -208,6 +208,52 @@ class UsuarioModel {
         }
     }
 
+    /**
+     * Establecer los roles de un usuario (reemplaza todos por los proporcionados).
+     * Opcionalmente también actualiza el rol principal (usuarios.id_rol) si $primaryRoleId > 0.
+     */
+    public function setRolesForUser(int $userId, array $roleIds, int $primaryRoleId = 0): array
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
+            // Limpiar actuales
+            $del = $db->prepare('DELETE FROM usuarios_roles WHERE id_usuario = :uid');
+            $del->bindValue(':uid', $userId, PDO::PARAM_INT);
+            $del->execute();
+
+            // Insertar nuevos (únicos)
+            $ins = $db->prepare('INSERT INTO usuarios_roles (id_usuario, id_rol) VALUES (:uid, :rid)');
+            $added = 0;
+            $unique = array_values(array_unique(array_map('intval', $roleIds)));
+            foreach ($unique as $rid) {
+                if ($rid <= 0) continue;
+                $ins->bindValue(':uid', $userId, PDO::PARAM_INT);
+                $ins->bindValue(':rid', $rid, PDO::PARAM_INT);
+                $ins->execute();
+                $added++;
+            }
+
+            // Actualizar rol principal si corresponde
+            if ($primaryRoleId > 0) {
+                $up = $db->prepare('UPDATE usuarios SET id_rol = :rid WHERE id = :uid');
+                $up->bindValue(':rid', $primaryRoleId, PDO::PARAM_INT);
+                $up->bindValue(':uid', $userId, PDO::PARAM_INT);
+                $up->execute();
+            }
+
+            $db->commit();
+            return ['success' => true, 'added' => $added];
+        } catch (PDOException $e) {
+            if (isset($db)) {
+                $db->rollBack();
+            }
+            error_log('Error setRolesForUser: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return ['success' => false, 'message' => 'No fue posible actualizar roles del usuario.'];
+        }
+    }
+
     public function listarRoles()
     {
         try {
