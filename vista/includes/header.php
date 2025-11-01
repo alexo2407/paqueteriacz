@@ -35,7 +35,7 @@
                     <a class="nav-link" href="<?= RUTA_URL ?>productos/listars">productos</a>
                 </li>-->
                 <!-- Proveedores ahora se administran desde Usuarios (rol Proveedor) -->
-                <?php if (in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true)): ?>
+                <?php if (in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true) || in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>seguimiento/listar">Seguimiento</a>
                 </li>

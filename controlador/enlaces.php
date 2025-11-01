@@ -38,9 +38,11 @@ class EnlacesController
                 'seguimiento' => [ROL_NOMBRE_REPARTIDOR],
             ];
 
-            if (isset($allowedByModule[$modulo])) {
+            $userRoleNames = $_SESSION['roles_nombres'] ?? [];
+            $isAdmin = is_array($userRoleNames) && in_array(ROL_NOMBRE_ADMIN, $userRoleNames, true);
+
+            if (!$isAdmin && isset($allowedByModule[$modulo])) {
                 $permitidos = $allowedByModule[$modulo];
-                $userRoleNames = $_SESSION['roles_nombres'] ?? [];
                 if (!is_array($userRoleNames) || count(array_intersect($permitidos, $userRoleNames)) === 0) {
                     // Denegar acceso y redirigir con mensaje
                     set_flash('error', 'Acceso denegado para tu rol.');
