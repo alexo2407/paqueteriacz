@@ -556,10 +556,24 @@ class PedidosModel
     public static function obtenerVendedores()
     {
         try {
+            // Ahora usamos el rol Repartidor como "usuario asignado" para pedidos
             $usuarioModel = new UsuarioModel();
-            return $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_VENDEDOR);
+            return $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_REPARTIDOR);
         } catch (Exception $e) {
             throw new Exception("Error al obtener los vendedores: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Alias explícito por claridad semántica: usuarios con rol Repartidor
+     */
+    public static function obtenerRepartidores()
+    {
+        try {
+            $usuarioModel = new UsuarioModel();
+            return $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_REPARTIDOR);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los repartidores: " . $e->getMessage());
         }
     }
 

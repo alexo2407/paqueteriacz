@@ -209,6 +209,7 @@ class PedidosController {
     }
     
     public function obtenerVendedores() {
+        // "Usuario asignado" corresponde a Repartidor
         return PedidosModel::obtenerVendedores();
     }
 

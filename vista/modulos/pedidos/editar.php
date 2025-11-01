@@ -146,7 +146,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="vendedor" class="form-label">Vendedor</label>
+                    <label for="vendedor" class="form-label">Usuario Asignado</label>
                     <select class="form-control" id="vendedor" name="vendedor" required>
                         <option value="">Selecciona un vendedor</option>
                         <?php foreach ($vendedores as $vendedor): ?>
