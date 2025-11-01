@@ -30,7 +30,7 @@ class UsuarioModel {
             return [
                 'ID_Usuario' => $user['id'],
                 'Usuario' => $user['nombre'],
-                'Rol' => $user['id_rol'], // compat: rol principal
+                'Rol' => $roles['ids'][0] ?? null, // compat: primer rol
                 'Roles' => $roles['ids'],
                 'RolesNombres' => $roles['nombres']
             ];
@@ -55,7 +55,7 @@ class UsuarioModel {
                 return [
                     'ID_Usuario' => $user['id'],
                     'Usuario' => $user['nombre'],
-                    'Rol' => $user['id_rol'],
+                    'Rol' => $roles['ids'][0] ?? null,
                     'Roles' => $roles['ids'],
                     'RolesNombres' => $roles['nombres']
                 ];
@@ -78,14 +78,11 @@ class UsuarioModel {
                         u.nombre,
                         u.email,
                         u.telefono,
-                        u.id_rol,
                         u.id_pais,
                         u.activo,
                         u.created_at,
-                        r.nombre_rol AS rol_nombre,
                         p.nombre AS pais_nombre
                     FROM usuarios u
-                    LEFT JOIN roles r ON r.id = u.id_rol
                     LEFT JOIN paises p ON p.id = u.id_pais";
             $stmt = $db->prepare($sql);
             $stmt->execute();
@@ -138,10 +135,7 @@ class UsuarioModel {
                 }
             }
 
-            if (isset($data['id_rol'])) {
-                $fields[] = 'id_rol = :id_rol';
-                $params[':id_rol'] = [(int) $data['id_rol'], PDO::PARAM_INT];
-            }
+            // id_rol eliminado: roles se gestionan solo en usuarios_roles
 
             if (array_key_exists('id_pais', $data)) {
                 $fields[] = 'id_pais = :id_pais';
@@ -235,13 +229,7 @@ class UsuarioModel {
                 $added++;
             }
 
-            // Actualizar rol principal si corresponde
-            if ($primaryRoleId > 0) {
-                $up = $db->prepare('UPDATE usuarios SET id_rol = :rid WHERE id = :uid');
-                $up->bindValue(':rid', $primaryRoleId, PDO::PARAM_INT);
-                $up->bindValue(':uid', $userId, PDO::PARAM_INT);
-                $up->execute();
-            }
+            // Nota: id_rol en usuarios se depreca y no se actualiza más.
 
             $db->commit();
             return ['success' => true, 'added' => $added];

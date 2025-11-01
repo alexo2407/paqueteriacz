@@ -35,7 +35,6 @@ class UsuariosController
 
         // Separar campos de usuario de roles
         $roles = isset($data['roles']) && is_array($data['roles']) ? $data['roles'] : [];
-        $primaryRoleId = isset($data['id_rol']) ? (int)$data['id_rol'] : 0;
 
         $userFields = $data;
         unset($userFields['roles']);
@@ -48,7 +47,7 @@ class UsuariosController
         $changed = !empty($resUser['changed']);
 
         if (!empty($roles)) {
-            $resRoles = $model->setRolesForUser($id, $roles, $primaryRoleId);
+            $resRoles = $model->setRolesForUser($id, $roles);
             if (empty($resRoles['success'])) {
                 return $resRoles; // devolver error de roles si falló
             }
@@ -89,14 +88,15 @@ class UsuariosController
             // Guardar datos en sesión
             $_SESSION['registrado'] = true;
             $_SESSION['nombre'] = $user['Usuario'];
-            $_SESSION['rol'] = $user['Rol']; // id_rol numérico
+            // id numérico principal (primer rol si existe)
+            $_SESSION['rol'] = is_array($user['Roles']) && !empty($user['Roles']) ? (int)$user['Roles'][0] : ($user['Rol'] ?? null);
             $_SESSION['user_id'] = $user['ID_Usuario'];
 
             // Guardar también el nombre del rol para facilitar comprobaciones por vista
             try {
                 $rolesMap = $model->listarRoles(); // [id => nombre]
-                $roleId = (int)$user['Rol'];
-                if (isset($rolesMap[$roleId])) {
+                $roleId = $_SESSION['rol'] ?? null;
+                if ($roleId !== null && isset($rolesMap[$roleId])) {
                     $_SESSION['rol_nombre'] = $rolesMap[$roleId];
                 }
                 // Soporte multi-rol: guardar arrays con ids y nombres

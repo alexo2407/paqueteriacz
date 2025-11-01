@@ -143,14 +143,6 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
             }
             $rolesSeleccionados = array_values(array_unique(array_filter($rolesSeleccionados)));
         }
-        // Derivar rol principal del primero seleccionado
-        $idRol = 0;
-        if (!empty($rolesSeleccionados)) {
-            $idRol = (int)$rolesSeleccionados[0];
-        } else {
-            // Compat: si no llegó multi-rol, intentar con id_rol
-            $idRol = isset($_POST['id_rol']) ? (int) $_POST['id_rol'] : 0;
-        }
         $contrasena = $_POST['contrasena'] ?? '';
 
         if ($nombre === '' || $email === '') {
@@ -166,19 +158,15 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
         }
 
         $rolesDisponibles = UsuariosController::obtenerRolesDisponibles();
-        // Validar roles seleccionados (si hay)
-        if (!empty($rolesSeleccionados)) {
-            foreach ($rolesSeleccionados as $rid) {
-                if (!array_key_exists($rid, $rolesDisponibles)) {
-                    set_flash('error', 'Rol seleccionado inválido.');
-                    header('Location: ' . $redirectUrl);
-                    exit;
-                }
-            }
-        } else {
-            // Si no llegaron, validar al menos el rol principal
-            if (!array_key_exists($idRol, $rolesDisponibles)) {
-                set_flash('error', 'Debe seleccionar al menos un rol válido.');
+        // Validar que al menos un rol válido sea seleccionado
+        if (empty($rolesSeleccionados)) {
+            set_flash('error', 'Debe seleccionar al menos un rol.');
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+        foreach ($rolesSeleccionados as $rid) {
+            if (!array_key_exists($rid, $rolesDisponibles)) {
+                set_flash('error', 'Rol seleccionado inválido.');
                 header('Location: ' . $redirectUrl);
                 exit;
             }
@@ -188,7 +176,6 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
             'nombre' => $nombre,
             'email' => $email,
             'telefono' => $telefono === '' ? null : $telefono,
-            'id_rol' => $idRol,
             'roles' => $rolesSeleccionados
         ];
 
