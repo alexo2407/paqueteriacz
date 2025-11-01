@@ -263,13 +263,12 @@ class UsuarioModel {
     {
         try {
             $db = (new Conexion())->conectar();
-            // Soporta esquema con pivot usuarios_roles y fallback al campo u.id_rol
+            // Usar exclusivamente el pivot usuarios_roles (esquema normalizado)
             $sql = 'SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
                     FROM usuarios u
-                    LEFT JOIN usuarios_roles ur ON ur.id_usuario = u.id
-                    LEFT JOIN roles r2 ON r2.id = ur.id_rol
-                    LEFT JOIN roles r1 ON r1.id = u.id_rol
-                    WHERE (r2.nombre_rol = :rol OR r1.nombre_rol = :rol) AND u.activo = 1
+                    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    INNER JOIN roles r ON r.id = ur.id_rol
+                    WHERE r.nombre_rol = :rol AND u.activo = 1
                     ORDER BY u.nombre';
             $stmt = $db->prepare($sql);
             $stmt->bindValue(':rol', $nombreRol, PDO::PARAM_STR);
