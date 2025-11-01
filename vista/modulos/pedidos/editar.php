@@ -149,24 +149,30 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                 <div class="mb-3">
                     <label for="vendedor" class="form-label">Usuario Asignado</label>
                     <select class="form-control" id="vendedor" name="vendedor" required>
-                        <option value="">Selecciona un usuario</option>
+                        <option value="">Selecciona un usuario (Repartidor)</option>
                         <?php foreach ($vendedores as $vendedor): ?>
                             <option value="<?= $vendedor['id'] ?>" <?= $pedido['id_vendedor'] == $vendedor['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($vendedor['nombre']) ?>
+                                <?= htmlspecialchars($vendedor['nombre']) ?><?= isset($vendedor['email']) && $vendedor['email'] ? ' — ' . htmlspecialchars($vendedor['email']) : '' ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if (empty($vendedores)): ?>
+                        <div class="form-text text-warning">No hay usuarios con rol Repartidor activos.</div>
+                    <?php endif; ?>
                 </div>
                 <div class="mb-3">
                     <label for="proveedor" class="form-label">Proveedor</label>
                     <select class="form-control" id="proveedor" name="proveedor" required>
                         <option value="">Selecciona un proveedor</option>
                         <?php foreach ($proveedores as $proveedor): ?>
-                            <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($proveedor['nombre']) ?>
+                            <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
+                                <?= htmlspecialchars($proveedor['nombre']) ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                    <?php if (empty($proveedores)): ?>
+                        <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
+                    <?php endif; ?>
                 </div>
                 <div class="mb-3">
                     <label for="moneda" class="form-label">Moneda</label>
