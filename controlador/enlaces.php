@@ -39,9 +39,9 @@ class EnlacesController
             ];
 
             if (isset($allowedByModule[$modulo])) {
-                $rolNombre = $_SESSION['rol_nombre'] ?? '';
                 $permitidos = $allowedByModule[$modulo];
-                if (!in_array($rolNombre, $permitidos, true)) {
+                $userRoleNames = $_SESSION['roles_nombres'] ?? [];
+                if (!is_array($userRoleNames) || count(array_intersect($permitidos, $userRoleNames)) === 0) {
                     // Denegar acceso y redirigir con mensaje
                     set_flash('error', 'Acceso denegado para tu rol.');
                     $destino = defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard';

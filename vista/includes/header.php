@@ -7,8 +7,8 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
-                <?php $rolNombre = $_SESSION['rol_nombre'] ?? null; ?>
-                <?php if ($rolNombre === ROL_NOMBRE_ADMIN): ?>
+                <?php $rolesNombres = $_SESSION['roles_nombres'] ?? []; if (!is_array($rolesNombres)) { $rolesNombres = []; } ?>
+                <?php if (in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         Administración
@@ -26,7 +26,7 @@
 
 
 
-                <?php if ($rolNombre === ROL_NOMBRE_ADMIN): ?>
+                <?php if (in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>pedidos/listar">pedidos</a>
                 </li>
@@ -35,7 +35,7 @@
                     <a class="nav-link" href="<?= RUTA_URL ?>productos/listars">productos</a>
                 </li>-->
                 <!-- Proveedores ahora se administran desde Usuarios (rol Proveedor) -->
-                <?php if ($rolNombre === ROL_NOMBRE_REPARTIDOR): ?>
+                <?php if (in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true)): ?>
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>seguimiento/listar">Seguimiento</a>
                 </li>

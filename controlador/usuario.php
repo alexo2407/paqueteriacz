@@ -73,6 +73,19 @@ class UsuariosController
                 if (isset($rolesMap[$roleId])) {
                     $_SESSION['rol_nombre'] = $rolesMap[$roleId];
                 }
+                // Soporte multi-rol: guardar arrays con ids y nombres
+                $roles = $user['Roles'] ?? null;
+                $rolesNombres = $user['RolesNombres'] ?? null;
+                if (is_array($roles)) {
+                    $_SESSION['roles'] = array_values(array_unique(array_map('intval', $roles)));
+                }
+                if (is_array($rolesNombres)) {
+                    $_SESSION['roles_nombres'] = array_values(array_unique(array_filter($rolesNombres)));
+                    // Si rol_nombre no está definido, tomar el primero de nombres
+                    if (empty($_SESSION['rol_nombre']) && !empty($_SESSION['roles_nombres'])) {
+                        $_SESSION['rol_nombre'] = $_SESSION['roles_nombres'][0];
+                    }
+                }
             } catch (Exception $e) {
                 // Silencioso: si falla, simplemente no seteamos rol_nombre
             }

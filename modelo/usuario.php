@@ -26,10 +26,13 @@ class UsuarioModel {
 
         // Verificar contraseña (si está hasheada con password_hash)
         if (isset($user['contrasena']) && password_verify($password, $user['contrasena'])) {
+            $roles = $this->obtenerRolesDeUsuario((int)$user['id']);
             return [
                 'ID_Usuario' => $user['id'],
                 'Usuario' => $user['nombre'],
-                'Rol' => $user['id_rol']
+                'Rol' => $user['id_rol'], // compat: rol principal
+                'Roles' => $roles['ids'],
+                'RolesNombres' => $roles['nombres']
             ];
         }
 
@@ -48,10 +51,13 @@ class UsuarioModel {
                     error_log('Error al migrar contraseña: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
                 }
 
+                $roles = $this->obtenerRolesDeUsuario((int)$user['id']);
                 return [
                     'ID_Usuario' => $user['id'],
                     'Usuario' => $user['nombre'],
-                    'Rol' => $user['id_rol']
+                    'Rol' => $user['id_rol'],
+                    'Roles' => $roles['ids'],
+                    'RolesNombres' => $roles['nombres']
                 ];
             }
         }
@@ -223,10 +229,13 @@ class UsuarioModel {
     {
         try {
             $db = (new Conexion())->conectar();
-            $sql = 'SELECT u.id, u.nombre, u.email, u.telefono
+            // Soporta esquema con pivot usuarios_roles y fallback al campo u.id_rol
+            $sql = 'SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
                     FROM usuarios u
-                    INNER JOIN roles r ON r.id = u.id_rol
-                    WHERE r.nombre_rol = :rol AND u.activo = 1
+                    LEFT JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    LEFT JOIN roles r2 ON r2.id = ur.id_rol
+                    LEFT JOIN roles r1 ON r1.id = u.id_rol
+                    WHERE (r2.nombre_rol = :rol OR r1.nombre_rol = :rol) AND u.activo = 1
                     ORDER BY u.nombre';
             $stmt = $db->prepare($sql);
             $stmt->bindValue(':rol', $nombreRol, PDO::PARAM_STR);
@@ -236,5 +245,50 @@ class UsuarioModel {
             error_log('Error al obtener usuarios por rol: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return [];
         }
+    }
+
+    /**
+     * Obtener todos los roles de un usuario como arrays de ids y nombres.
+     * Fallback: si no hay registros en pivot, usa u.id_rol.
+     * @return array{ids:int[], nombres:string[]}
+     */
+    public function obtenerRolesDeUsuario(int $userId): array
+    {
+        $ids = [];
+        $nombres = [];
+        try {
+            $db = (new Conexion())->conectar();
+            // Intentar obtener desde pivot
+            $q = $db->prepare('SELECT r.id, r.nombre_rol FROM usuarios_roles ur INNER JOIN roles r ON r.id = ur.id_rol WHERE ur.id_usuario = :uid');
+            $q->bindValue(':uid', $userId, PDO::PARAM_INT);
+            if ($q->execute()) {
+                $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($rows as $row) {
+                    $ids[] = (int)$row['id'];
+                    $nombres[] = $row['nombre_rol'];
+                }
+            }
+
+            // Fallback: si no se encontraron roles en pivot, usar el campo simple de usuarios
+            if (empty($ids)) {
+                $q2 = $db->prepare('SELECT u.id_rol, r.nombre_rol FROM usuarios u LEFT JOIN roles r ON r.id = u.id_rol WHERE u.id = :uid');
+                $q2->bindValue(':uid', $userId, PDO::PARAM_INT);
+                if ($q2->execute()) {
+                    $row = $q2->fetch(PDO::FETCH_ASSOC);
+                    if ($row && !empty($row['id_rol'])) {
+                        $ids[] = (int)$row['id_rol'];
+                        if (!empty($row['nombre_rol'])) $nombres[] = $row['nombre_rol'];
+                    }
+                }
+            }
+        } catch (PDOException $e) {
+            error_log('Error obtenerRolesDeUsuario: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+        }
+
+        // Unificar valores únicos
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        $nombres = array_values(array_unique(array_filter($nombres, function($v){ return $v !== null && $v !== ''; })));
+
+        return ['ids' => $ids, 'nombres' => $nombres];
     }
 }
