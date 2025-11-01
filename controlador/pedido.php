@@ -213,6 +213,11 @@ class PedidosController {
         return PedidosModel::obtenerVendedores();
     }
 
+    // Exponer explícitamente repartidores para mayor claridad en vistas
+    public function obtenerRepartidores() {
+        return PedidosModel::obtenerRepartidores();
+    }
+
     public function obtenerProductos() {
         return PedidosModel::obtenerProductos();
     }

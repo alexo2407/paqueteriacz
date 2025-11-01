@@ -10,7 +10,8 @@ try {
 }
 
 try {
-    $vendedores = $pedidosController->obtenerVendedores();
+    // Listar usuarios con rol Repartidor para asignación
+    $vendedores = $pedidosController->obtenerRepartidores();
 } catch (Exception $e) {
     $vendedores = [];
 }
