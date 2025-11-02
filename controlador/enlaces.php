@@ -18,7 +18,23 @@ class EnlacesController
 
         if (!in_array($modulo, $modulosPublicos, true)) {
             require_once __DIR__ . '/../utils/session.php';
-            require_login();
+            start_secure_session();
+
+            // Detectar petición AJAX (fetch/XHR) para devolver JSON en vez de redirigir
+            $isAjaxRequest = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                            || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+            // Si no está autenticado y es AJAX, responder 401 con JSON
+            if (empty($_SESSION['registrado']) && $isAjaxRequest) {
+                header('Content-Type: application/json', true, 401);
+                echo json_encode(['success' => false, 'message' => 'No autenticado. Inicia sesión.']);
+                exit;
+            }
+
+            // Para peticiones normales, usar el comportamiento histórico (redirigir al login)
+            if (empty($_SESSION['registrado'])) {
+                require_login();
+            }
             // Hidratar datos de rol en sesión si faltan (compat con sesiones antiguas)
             require_once __DIR__ . '/../modelo/usuario.php';
             $um = new UsuarioModel();
