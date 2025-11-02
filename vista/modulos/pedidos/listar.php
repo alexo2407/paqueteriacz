@@ -222,10 +222,22 @@ endif;
                 },
 
                 error: function(xhr, status, error) {
-                   // console.error("Error AJAX:", status, error);
+                   // Mostrar mensaje más útil: si el servidor devolvió JSON, usar su campo message
+                   var serverMsg = null;
+                   try {
+                       if (xhr.responseJSON && xhr.responseJSON.message) serverMsg = xhr.responseJSON.message;
+                       else if (xhr.responseText) {
+                           // Intentar parsear JSON en texto
+                           var parsed = JSON.parse(xhr.responseText);
+                           if (parsed && parsed.message) serverMsg = parsed.message;
+                       }
+                   } catch (e) {
+                       // no hacer nada
+                   }
+                   var messageToShow = serverMsg || ('Error de conexión: ' + (error || status));
                    Swal.fire({
                             title: "Error",
-                            text: status.error,
+                            text: messageToShow,
                             icon: "error",
                             confirmButtonText: "OK"
                         });

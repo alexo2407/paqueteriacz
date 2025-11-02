@@ -521,23 +521,84 @@ class PedidosController {
     
     /* cambiar estados en los datatable */
     public static function actualizarEstadoAjax($datos) {
+        // Seguridad: sólo usuarios autenticados pueden cambiar estados
+        require_once __DIR__ . '/../utils/session.php';
+        start_secure_session();
 
-            $id_pedido = intval($datos["id_pedido"]);
-            $nuevo_estado = intval($datos["estado"]);
-                if (empty($id_pedido) || empty($nuevo_estado)) {
-                    echo json_encode(["success" => false, "message" => "Datos inválidos. ID o Estado vacío."]);
-                    exit();
-                }
+        // Detectar si la petición viene por AJAX (fetch/XHR)
+        $isAjaxRequest = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                        || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 
-                $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado);
-
-                header('Content-Type: application/json');
-                echo json_encode([
-                    "success" => $resultado,
-                    "message" => $resultado ? "Estado actualizado correctamente." : "Error al actualizar el estado."
-                ]);
+        // Si no hay sesión activa, devolver JSON 401 para AJAX en lugar de redirigir.
+        if (empty($_SESSION['registrado'])) {
+            if ($isAjaxRequest) {
+                header('Content-Type: application/json', true, 401);
+                echo json_encode(["success" => false, "message" => "No autenticado. Inicia sesión e intenta de nuevo."]);
                 exit();
             }
+            // Para peticiones normales, mantener el comportamiento histórico
+            require_login();
+        }
+
+        $id_pedido = intval($datos["id_pedido"] ?? 0);
+        $nuevo_estado = intval($datos["estado"] ?? 0);
+
+        header('Content-Type: application/json');
+
+        if ($id_pedido <= 0 || $nuevo_estado <= 0) {
+            echo json_encode(["success" => false, "message" => "Datos inválidos. ID o Estado vacío."]);
+            exit();
+        }
+
+    // Detectar roles: si el usuario es Admin, tiene permisos completos.
+    $isAdmin = user_has_any_role_names([ROL_NOMBRE_ADMIN]);
+    // Si el usuario es Repartidor y no es Admin, sólo permitir cambiar el estado
+    // para pedidos que estén asignados a ese repartidor (id_vendedor).
+    $isRepartidor = user_has_any_role_names([ROL_NOMBRE_REPARTIDOR]) && !$isAdmin;
+    if ($isRepartidor) {
+            try {
+                $pedido = PedidosModel::obtenerPedidoPorId($id_pedido);
+            } catch (Exception $e) {
+                echo json_encode(["success" => false, "message" => "Error al obtener el pedido."]);
+                exit();
+            }
+
+            if (empty($pedido)) {
+                echo json_encode(["success" => false, "message" => "Pedido no encontrado."]);
+                exit();
+            }
+
+            $userId = $_SESSION['user_id'] ?? null;
+            $asignado = isset($pedido['id_vendedor']) ? (int)$pedido['id_vendedor'] : null;
+
+            if ($asignado === null || $asignado === 0) {
+                // No está asignado a nadie: no permitir que un repartidor no asignado lo modifique
+                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."]);
+                exit();
+            }
+
+            if ($userId === null || (int)$userId !== (int)$asignado) {
+                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."]);
+                exit();
+            }
+        }
+
+        // Ejecutar la actualización (admins y otros roles pasan sin restricciones adicionales)
+        $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado);
+
+        // Normalizar respuesta: el modelo puede devolver true/false o un array con error
+        if (is_array($resultado)) {
+            // Modelo devolvió un array con error
+            $success = !empty($resultado['success']);
+            $message = $resultado['message'] ?? ($success ? 'Estado actualizado.' : 'Error al actualizar el estado.');
+        } else {
+            $success = (bool)$resultado;
+            $message = $success ? 'Estado actualizado correctamente.' : 'No se realizó ningún cambio en el estado.';
+        }
+
+        echo json_encode(["success" => $success, "message" => $message]);
+        exit();
+    }
 
         /**
          * Importar pedidos desde archivo CSV subido por formulario

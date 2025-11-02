@@ -133,13 +133,38 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
         selectEstado.addEventListener('change', async function() {
             const nuevoEstado = this.value;
             if (!nuevoEstado) return;
+            estadoMsg.textContent = '';
+            estadoMsg.className = 'form-text';
             try {
                 const resp = await fetch('<?= RUTA_URL ?>cambiarEstados', {
                     method: 'POST',
-                    headers: { 'Accept': 'application/json' },
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin',
                     body: new URLSearchParams({ id_pedido: idPedido, estado: nuevoEstado })
                 });
-                const data = await resp.json();
+
+                // Intentar parsear JSON de forma segura
+                let data = null;
+                try {
+                    data = await resp.json();
+                } catch (parseErr) {
+                    // Si no es JSON, tratar como error
+                    estadoMsg.textContent = 'Respuesta inesperada del servidor.';
+                    estadoMsg.className = 'form-text text-danger';
+                    return;
+                }
+
+                if (!resp.ok) {
+                    // Manejar errores HTTP explícitos (401, 500, ...)
+                    const msg = data && data.message ? data.message : ('Error HTTP ' + resp.status);
+                    estadoMsg.textContent = msg;
+                    estadoMsg.className = 'form-text text-danger';
+                    return;
+                }
+
                 if (data && data.success) {
                     estadoMsg.textContent = 'Estado actualizado.';
                     estadoMsg.className = 'form-text text-success';
@@ -148,6 +173,7 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
                     estadoMsg.className = 'form-text text-danger';
                 }
             } catch (e) {
+                // Error de red (no reach, conexión, DNS, etc.)
                 estadoMsg.textContent = 'Error de red al actualizar estado.';
                 estadoMsg.className = 'form-text text-danger';
             }
