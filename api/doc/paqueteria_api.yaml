@@ -1,0 +1,217 @@
+openapi: 3.0.3
+info:
+  title: PaqueteriaCZ API
+  version: 1.2.0
+  description: |
+    API para autenticación (JWT) y gestión de pedidos.
+    Incluye endpoints para login, listado de pedidos y creación de pedidos.
+servers:
+  - url: http://localhost/paqueteriacz
+paths:
+  /api/auth/login:
+    post:
+      summary: Autenticar usuario y obtener token JWT
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+            example:
+              email: admin@example.com
+              password: secret123
+      responses:
+        '200':
+          description: Token generado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Parámetros faltantes
+        '401':
+          description: Credenciales inválidas
+  /api/pedidos/listar:
+    get:
+      summary: Obtener listado de pedidos extendido
+      tags: [Pedidos]
+      responses:
+        '200':
+          description: Listado de pedidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+        '500':
+          description: Error interno
+  /api/pedidos/crear:
+    post:
+      summary: Crear un nuevo pedido
+      tags: [Pedidos]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoCreate'
+            example:
+              numero_orden: 90001
+              destinatario: Cliente Prueba
+              telefono: '0999999999'
+              producto: Producto X
+              cantidad: 1
+              coordenadas: '-0.180653,-78.467838'
+              direccion: Calle Falsa 123
+              pais: EC
+              departamento: Pichincha
+              municipio: Quito
+      responses:
+        '200':
+          description: Pedido creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResponse'
+        '400':
+          description: Datos inválidos
+        '401':
+          description: Token inválido o expirado
+        '422':
+          description: Validación fallida
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AuthRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required: [email, password]
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+      example:
+        success: true
+        message: Login exitoso
+        data:
+          token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+    PedidoProduct:
+      type: object
+      properties:
+        id_producto:
+          type: integer
+        cantidad:
+          type: integer
+        cantidad_devuelta:
+          type: integer
+    PedidoCreate:
+      type: object
+      properties:
+        numero_orden:
+          type: integer
+        destinatario:
+          type: string
+        telefono:
+          type: string
+        direccion:
+          type: string
+        comentario:
+          type: string
+        producto:
+          type: string
+        cantidad:
+          type: integer
+        coordenadas:
+          type: string
+        pais:
+          type: string
+        departamento:
+          type: string
+        municipio:
+          type: string
+        precio_local:
+          type: number
+          format: float
+        id_moneda:
+          type: integer
+      required: [numero_orden, destinatario, telefono, producto]
+    PedidoItem:
+      type: object
+      properties:
+        ID_Pedido:
+          type: integer
+        Numero_Orden:
+          type: integer
+        Cliente:
+          type: string
+        Comentario:
+          type: string
+        latitud:
+          type: number
+        longitud:
+          type: number
+        Estado:
+          type: string
+        PrecioLocal:
+          type: number
+        PrecioUSD:
+          type: number
+        Moneda:
+          type: string
+    ListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PedidoItem'
+      example:
+        success: true
+        message: Listado de pedidos
+        data:
+          - ID_Pedido: 15
+            Numero_Orden: 90001
+            Cliente: Cliente Prueba
+            Comentario: Entrega urgente
+            latitud: -0.180653
+            longitud: -78.467838
+            Estado: Nuevo
+            PrecioLocal: 25.5
+            PrecioUSD: 9.5
+            Moneda: USD
+    CreateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: integer
+      example:
+        success: true
+        message: Pedido creado correctamente.
+        data: 15

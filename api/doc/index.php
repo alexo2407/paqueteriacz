@@ -80,6 +80,10 @@
         <div class="container text-center">
             <h1>Logistics API Documentation</h1>
             <p class="lead">Guía práctica para consumir la API local del sistema de paquetería</p>
+            <p>
+                <a class="btn btn-light btn-sm" href="./swagger-ui/" target="_blank">Abrir Swagger UI</a>
+                <a class="btn btn-outline-primary btn-sm" href="./paqueteria_api.yaml" target="_blank">Ver OpenAPI (YAML)</a>
+            </p>
         </div>
         <div>
             
