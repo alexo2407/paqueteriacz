@@ -3,18 +3,53 @@
 require_once __DIR__ . '/../modelo/stock.php';
 require_once __DIR__ . '/../utils/session.php';
 
+/**
+ * Class StockController
+ *
+ * Controlador para operaciones CRUD sobre la entidad "stock".
+ * Valida entradas y delega la persistencia en modelo/stock.php (StockModel).
+ *
+ * Notas importantes:
+ * - La gestión de inventario (movimientos/ajustes) se realiza preferentemente
+ *   por triggers en la base de datos; evitar duplicar lógica en PHP que
+ *   pueda entrar en conflicto con dichos triggers.
+ */
 class StockController
 {
+    /**
+     * Obtener todos los registros de stock.
+     *
+     * @return array Lista de registros (cada registro es un array asociativo con
+     *               keys: id, id_vendedor, producto, cantidad). Devuelve [] si hay error.
+     */
     public function listar()
     {
         return StockModel::listar();
     }
 
+    /**
+     * Obtener un registro de stock por su identificador.
+     *
+     * @param int|string $id Identificador del registro.
+     * @return array|null Registro asociado o null si no existe.
+     */
     public function ver($id)
     {
         return StockModel::obtenerPorId($id);
     }
 
+    /**
+     * Crear un nuevo registro de stock tras validar los datos.
+     *
+     * @param array $data Datos del stock:
+     *                    - int    id_vendedor (obligatorio, >0)
+     *                    - string producto     (obligatorio, no vacío)
+     *                    - int    cantidad     (obligatorio, >=0)
+     * @return array Respuesta estructurada:
+     *               - Si validación falla: ['success'=>false,'message'=>...,'errors'=>[]]
+     *               - Si inserción falla: ['success'=>false,'message'=>...]
+     *               - Si éxito: ['success'=>true,'message'=>...,'id'=> <nuevoId>]
+     */
     public function crear(array $data)
     {
         $validacion = $this->validarDatos($data);
@@ -37,6 +72,13 @@ class StockController
         ];
     }
 
+    /**
+     * Actualizar un registro de stock existente.
+     *
+     * @param int $id Identificador del registro a actualizar.
+     * @param array $data Mismos campos que en crear().
+     * @return array Respuesta estructurada indicando éxito o fallo.
+     */
     public function actualizar($id, array $data)
     {
         $validacion = $this->validarDatos($data);
@@ -58,6 +100,12 @@ class StockController
         ];
     }
 
+    /**
+     * Eliminar un registro de stock por id.
+     *
+     * @param int $id Identificador del registro.
+     * @return array Respuesta estructurada indicando éxito o fallo.
+     */
     public function eliminar($id)
     {
         $ok = StockModel::eliminar($id);
@@ -74,6 +122,12 @@ class StockController
         ];
     }
 
+    /**
+     * Validar datos mínimos para crear/actualizar stock.
+     *
+     * @param array $data Datos recibidos.
+     * @return array Si falla: ['success'=>false,'message'=>...,'errors'=>[]]; si OK: ['success'=>true]
+     */
     private function validarDatos(array $data)
     {
         $errores = [];
