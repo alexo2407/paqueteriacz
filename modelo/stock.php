@@ -2,6 +2,14 @@
 
 include_once __DIR__ . '/conexion.php';
 
+/**
+ * Class StockModel
+ *
+ * Acceso a datos para la entidad `stock`.
+ * Contiene métodos CRUD básicos. La lógica de movimientos/ajustes de stock
+ * debería manejarse por triggers en la base de datos; algunos métodos de
+ * manipulación fina están deshabilitados para evitar inconsistencias.
+ */
 class StockModel
 {
     /**
@@ -13,6 +21,11 @@ class StockModel
      * con nombre claro y documentarlo. El método registrarSalida está
      * deshabilitado por defecto en este repositorio para proteger la
      * integridad cuando los esquemas de `stock` varían entre despliegues.
+     */
+    /**
+     * Listar todos los registros de stock.
+     *
+     * @return array Lista de registros (array asociativo). En caso de error devuelve [].
      */
     public static function listar()
     {
@@ -27,6 +40,12 @@ class StockModel
         }
     }
 
+    /**
+     * Obtener un registro por su id.
+     *
+     * @param int $id Identificador del registro.
+     * @return array|null Array asociativo del registro o null si no existe/error.
+     */
     public static function obtenerPorId($id)
     {
         try {
@@ -41,6 +60,12 @@ class StockModel
         }
     }
 
+    /**
+     * Crear un nuevo registro de stock.
+     *
+     * @param array $data Asociativo con claves: id_vendedor, producto, cantidad.
+     * @return int|false Nuevo id insertado o false en caso de fallo.
+     */
     public static function crear(array $data)
     {
         try {
@@ -57,6 +82,13 @@ class StockModel
         }
     }
 
+    /**
+     * Actualizar un registro existente.
+     *
+     * @param int $id Identificador del registro a actualizar.
+     * @param array $data Claves: id_vendedor, producto, cantidad.
+     * @return bool True si la ejecución fue exitosa, false en caso contrario.
+     */
     public static function actualizar($id, array $data)
     {
         try {
@@ -73,6 +105,12 @@ class StockModel
         }
     }
 
+    /**
+     * Eliminar un registro por id.
+     *
+     * @param int $id Identificador del registro.
+     * @return bool True si eliminado, false si ocurrió un error.
+     */
     public static function eliminar($id)
     {
         try {
@@ -86,6 +124,13 @@ class StockModel
         }
     }
 
+    /**
+     * Ajustar la cantidad del registro por una diferencia (positiva o negativa).
+     *
+     * @param int $id Identificador del registro.
+     * @param int $diferencia Valor a sumar (puede ser negativo).
+     * @return bool True si se afectó alguna fila, false en caso contrario.
+     */
     public static function ajustarCantidad($id, $diferencia)
     {
         try {
