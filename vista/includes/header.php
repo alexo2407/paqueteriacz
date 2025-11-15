@@ -20,6 +20,9 @@
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>stock/listar">Stock</a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>productos/listar">Productos</a>
+                        </li>
                     </ul>
                 </li>
                 <?php endif; ?>
@@ -30,10 +33,16 @@
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>pedidos/listar">pedidos</a>
                 </li>
-                <?php endif; ?> <!-- 
+                <?php endif; ?>
+
+                <?php if (in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>productos/listars">productos</a>
-                </li>-->
+                    <a class="nav-link" href="<?= RUTA_URL ?>stock/listar">Stock</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= RUTA_URL ?>productos/listar">Productos</a>
+                </li>
+                <?php endif; ?>
                 <!-- Proveedores ahora se administran desde Usuarios (rol Proveedor) -->
                 <?php if (in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true) || in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
                 <li class="nav-item">

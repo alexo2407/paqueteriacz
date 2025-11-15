@@ -31,7 +31,8 @@ class StockModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT id, id_vendedor, producto, cantidad FROM stock');
+            // Devolver información útil para la UI: id, id_usuario, id_producto, producto (nombre) y cantidad
+            $stmt = $db->prepare('SELECT s.id, s.id_usuario, s.id_producto, s.cantidad, p.nombre AS producto FROM stock s LEFT JOIN productos p ON p.id = s.id_producto ORDER BY s.id DESC');
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -50,7 +51,7 @@ class StockModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT id, id_vendedor, producto, cantidad FROM stock WHERE id = :id');
+            $stmt = $db->prepare('SELECT s.id, s.id_usuario, s.id_producto, s.cantidad, p.nombre AS producto FROM stock s LEFT JOIN productos p ON p.id = s.id_producto WHERE s.id = :id');
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -70,9 +71,10 @@ class StockModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('INSERT INTO stock (id_vendedor, producto, cantidad) VALUES (:id_vendedor, :producto, :cantidad)');
-            $stmt->bindValue(':id_vendedor', $data['id_vendedor'], PDO::PARAM_INT);
-            $stmt->bindValue(':producto', $data['producto'], PDO::PARAM_STR);
+            // Ahora asumimos columnas: id_usuario, id_producto, cantidad
+            $stmt = $db->prepare('INSERT INTO stock (id_usuario, id_producto, cantidad) VALUES (:id_usuario, :id_producto, :cantidad)');
+            $stmt->bindValue(':id_usuario', $data['id_usuario'], PDO::PARAM_INT);
+            $stmt->bindValue(':id_producto', $data['id_producto'], PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $data['cantidad'], PDO::PARAM_INT);
             $ok = $stmt->execute();
             return $ok ? (int) $db->lastInsertId() : false;
@@ -93,9 +95,9 @@ class StockModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('UPDATE stock SET id_vendedor = :id_vendedor, producto = :producto, cantidad = :cantidad WHERE id = :id');
-            $stmt->bindValue(':id_vendedor', $data['id_vendedor'], PDO::PARAM_INT);
-            $stmt->bindValue(':producto', $data['producto'], PDO::PARAM_STR);
+            $stmt = $db->prepare('UPDATE stock SET id_usuario = :id_usuario, id_producto = :id_producto, cantidad = :cantidad WHERE id = :id');
+            $stmt->bindValue(':id_usuario', $data['id_usuario'], PDO::PARAM_INT);
+            $stmt->bindValue(':id_producto', $data['id_producto'], PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $data['cantidad'], PDO::PARAM_INT);
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             return $stmt->execute();

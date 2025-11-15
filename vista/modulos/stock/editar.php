@@ -5,6 +5,17 @@ $params = isset($parametros) ? $parametros : [];
 $idStock = isset($params[0]) ? (int) $params[0] : 0;
 $ctrl = new StockController();
 $registro = $idStock > 0 ? $ctrl->ver($idStock) : null;
+// Cargar modelo Producto desde la raíz del proyecto
+$pathProd = __DIR__ . '/../../../modelo/producto.php';
+if (file_exists($pathProd)) {
+    require_once $pathProd;
+} else {
+    @require_once __DIR__ . '/../../modelo/producto.php';
+}
+$productos = [];
+if (class_exists('ProductoModel')) {
+    $productos = ProductoModel::listarConInventario();
+}
 ?>
 
 <div class="row">
@@ -15,12 +26,17 @@ $registro = $idStock > 0 ? $ctrl->ver($idStock) : null;
         <?php else: ?>
             <form method="POST" action="<?= RUTA_URL ?>stock/actualizar/<?= $idStock; ?>">
                 <div class="mb-3">
-                    <label class="form-label" for="id_vendedor">ID Vendedor</label>
-                    <input id="id_vendedor" name="id_vendedor" type="number" min="1" class="form-control" required value="<?= htmlspecialchars($registro['id_vendedor']); ?>">
+                    <label class="form-label" for="id_usuario">ID Usuario (propietario)</label>
+                    <input id="id_usuario" name="id_usuario" type="number" min="1" class="form-control" required value="<?= htmlspecialchars($registro['id_usuario'] ?? ''); ?>">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="producto">Producto</label>
-                    <input id="producto" name="producto" class="form-control" required value="<?= htmlspecialchars($registro['producto']); ?>">
+                    <label class="form-label" for="id_producto">Producto</label>
+                    <select id="id_producto" name="id_producto" class="form-select" required>
+                        <option value="">Selecciona un producto</option>
+                        <?php foreach ($productos as $p): ?>
+                            <option value="<?= (int)$p['id'] ?>" <?= (isset($registro['id_producto']) && (int)$registro['id_producto'] === (int)$p['id']) ? 'selected' : '' ?> ><?= htmlspecialchars($p['nombre']) ?><?= isset($p['stock_total']) ? ' — Stock: ' . (int)$p['stock_total'] : '' ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="cantidad">Cantidad</label>

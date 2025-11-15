@@ -98,4 +98,85 @@ class ProductoModel
             return null;
         }
     }
+
+    /**
+     * Crear un producto con campos completos
+     * @param string $nombre
+     * @param string|null $descripcion
+     * @param float|null $precioUsd
+     * @return int|null ID creado o null en error
+     */
+    public static function crear($nombre, $descripcion = null, $precioUsd = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('INSERT INTO productos (nombre, descripcion, precio_usd) VALUES (:nombre, :descripcion, :precio_usd)');
+            $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
+            if ($descripcion === null || $descripcion === '') {
+                $stmt->bindValue(':descripcion', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':descripcion', $descripcion, PDO::PARAM_STR);
+            }
+            if ($precioUsd === null || $precioUsd === '') {
+                $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':precio_usd', $precioUsd);
+            }
+            $stmt->execute();
+            return (int)$db->lastInsertId();
+        } catch (PDOException $e) {
+            error_log('Error al crear producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return null;
+        }
+    }
+
+    /**
+     * Actualizar un producto existente
+     * @param int $id
+     * @param string $nombre
+     * @param string|null $descripcion
+     * @param float|null $precioUsd
+     * @return bool True si se actualizó, False si no o en error
+     */
+    public static function actualizar($id, $nombre, $descripcion = null, $precioUsd = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('UPDATE productos SET nombre = :nombre, descripcion = :descripcion, precio_usd = :precio_usd WHERE id = :id');
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
+            if ($descripcion === null || $descripcion === '') {
+                $stmt->bindValue(':descripcion', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':descripcion', $descripcion, PDO::PARAM_STR);
+            }
+            if ($precioUsd === null || $precioUsd === '') {
+                $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':precio_usd', $precioUsd);
+            }
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log('Error al actualizar producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return false;
+        }
+    }
+
+    /**
+     * Eliminar un producto por su ID
+     * @param int $id
+     * @return bool True si se eliminó, False en error
+     */
+    public static function eliminar($id)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('DELETE FROM productos WHERE id = :id');
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log('Error al eliminar producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return false;
+        }
+    }
 }

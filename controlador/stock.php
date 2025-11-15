@@ -41,10 +41,10 @@ class StockController
     /**
      * Crear un nuevo registro de stock tras validar los datos.
      *
-     * @param array $data Datos del stock:
-     *                    - int    id_vendedor (obligatorio, >0)
-     *                    - string producto     (obligatorio, no vacío)
-     *                    - int    cantidad     (obligatorio, >=0)
+    * @param array $data Datos del stock:
+    *                    - int    id_usuario (obligatorio, >0)
+    *                    - int    id_producto (obligatorio, >0)
+    *                    - int    cantidad     (obligatorio, >=0)
      * @return array Respuesta estructurada:
      *               - Si validación falla: ['success'=>false,'message'=>...,'errors'=>[]]
      *               - Si inserción falla: ['success'=>false,'message'=>...]
@@ -52,6 +52,17 @@ class StockController
      */
     public function crear(array $data)
     {
+        // Normalizar claves para StockModel (id_usuario, id_producto)
+        if (isset($data['id_vendedor']) && !isset($data['id_usuario'])) {
+            $data['id_usuario'] = (int)$data['id_vendedor'];
+        }
+        if (isset($data['producto']) && !isset($data['id_producto'])) {
+            // intentar resolver producto si vino como nombre (no intentamos crear aquí)
+            if (is_numeric($data['producto'])) {
+                $data['id_producto'] = (int)$data['producto'];
+            }
+        }
+
         $validacion = $this->validarDatos($data);
         if (!$validacion['success']) {
             return $validacion;
@@ -81,6 +92,16 @@ class StockController
      */
     public function actualizar($id, array $data)
     {
+        // Normalizar claves para StockModel
+        if (isset($data['id_vendedor']) && !isset($data['id_usuario'])) {
+            $data['id_usuario'] = (int)$data['id_vendedor'];
+        }
+        if (isset($data['producto']) && !isset($data['id_producto'])) {
+            if (is_numeric($data['producto'])) {
+                $data['id_producto'] = (int)$data['producto'];
+            }
+        }
+
         $validacion = $this->validarDatos($data);
         if (!$validacion['success']) {
             return $validacion;
@@ -132,16 +153,22 @@ class StockController
     {
         $errores = [];
 
-        $idVendedor = isset($data['id_vendedor']) ? (int) $data['id_vendedor'] : 0;
-        $producto = isset($data['producto']) ? trim($data['producto']) : '';
+    $idUsuario = isset($data['id_usuario']) ? (int) $data['id_usuario'] : 0;
+    // Aceptamos id_producto o producto (nombre) — preferimos id_producto
+    $idProducto = isset($data['id_producto']) ? (int) $data['id_producto'] : null;
+    $productoNombre = isset($data['producto']) ? trim($data['producto']) : '';
+    $cantidad = isset($data['cantidad']) ? (int) $data['cantidad'] : null;
         $cantidad = isset($data['cantidad']) ? (int) $data['cantidad'] : null;
 
-        if ($idVendedor <= 0) {
-            $errores[] = 'El vendedor es obligatorio.';
+        if ($idUsuario <= 0) {
+            $errores[] = 'El usuario (id_usuario) es obligatorio.';
         }
 
-        if ($producto === '') {
-            $errores[] = 'El producto es obligatorio.';
+        if ($idProducto === null || $idProducto <= 0) {
+            // permitir que se envíe nombre de producto y resolver fuera del validador
+            if ($productoNombre === '') {
+                $errores[] = 'El producto es obligatorio (id_producto o nombre).';
+            }
         }
 
         if ($cantidad === null || $cantidad < 0) {

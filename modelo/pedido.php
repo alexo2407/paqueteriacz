@@ -25,7 +25,6 @@ class PedidosModel
 
         try {
             $db = (new Conexion())->conectar();
-            $db->beginTransaction();
 
             $sql = "
                 INSERT INTO pedidos (
@@ -74,6 +73,97 @@ class PedidosModel
                 INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
                 VALUES (:id_pedido, :id_producto, :cantidad, 0)
             ');
+
+            // Procesar fila por fila: cada pedido se inserta en su propia transacción
+            // para minimizar el impacto de errores en filas individuales.
+            foreach ($rows as $idx => $row) {
+                try {
+                    $db->beginTransaction();
+
+                    // Normalizar campos básicos
+                    $numeroOrden = $row['numero_orden'] ?? null;
+                    $destinatario = $row['destinatario'] ?? null;
+                    $telefono = $row['telefono'] ?? null;
+                    $direccion = $row['direccion'] ?? null;
+                    $comentario = $row['comentario'] ?? null;
+                    $pais = $row['pais'] ?? null;
+                    $departamento = $row['departamento'] ?? null;
+                    $municipio = $row['municipio'] ?? null;
+                    $barrio = $row['barrio'] ?? null;
+                    $zona = $row['zona'] ?? null;
+
+                    // Coordenadas: aceptar lat/long o campo 'coordenadas' (lat,long)
+                    $lat = $row['latitud'] ?? null;
+                    $lng = $row['longitud'] ?? null;
+                    if (($lat === null || $lng === null) && !empty($row['coordenadas'])) {
+                        $parts = array_map('trim', explode(',', $row['coordenadas']));
+                        if (count($parts) === 2) {
+                            $lat = $parts[0];
+                            $lng = $parts[1];
+                        }
+                    }
+                    if ($lat === null || $lng === null) {
+                        throw new Exception('Coordenadas inválidas para fila index ' . $idx);
+                    }
+
+                    $precio_local = $row['precio'] ?? $row['precio_local'] ?? null;
+                    $precio_usd = $row['precio_usd'] ?? null;
+
+                    // Ejecutar inserción del pedido
+                    $stmt->execute([
+                        ':numero_orden' => $numeroOrden,
+                        ':destinatario' => $destinatario,
+                        ':telefono' => $telefono,
+                        ':precio_local' => $precio_local,
+                        ':precio_usd' => $precio_usd,
+                        ':pais' => $pais,
+                        ':departamento' => $departamento,
+                        ':municipio' => $municipio,
+                        ':barrio' => $barrio,
+                        ':direccion' => $direccion,
+                        ':zona' => $zona,
+                        ':comentario' => $comentario,
+                        ':coordenadas' => 'POINT(' . (float)$lng . ' ' . (float)$lat . ')',
+                        ':id_estado' => $row['id_estado'] ?? 1,
+                        ':id_moneda' => $row['id_moneda'] ?? null,
+                        ':id_vendedor' => $row['id_vendedor'] ?? null,
+                        ':id_proveedor' => $row['id_proveedor'] ?? null,
+                    ]);
+
+                    $pedidoId = (int)$db->lastInsertId();
+
+                    // Resolver producto a id
+                    $productoId = null;
+                    if (isset($row['producto_id']) && is_numeric($row['producto_id'])) {
+                        $productoId = (int)$row['producto_id'];
+                    } elseif (!empty($row['producto'])) {
+                        $p = ProductoModel::buscarPorNombre($row['producto']);
+                        if ($p && isset($p['id'])) {
+                            $productoId = (int)$p['id'];
+                        } else {
+                            // Crear producto rápido si no existe
+                            $productoId = ProductoModel::crearRapido($row['producto']);
+                        }
+                    }
+
+                    $cantidad = isset($row['cantidad']) ? (int)$row['cantidad'] : 1;
+                    if ($productoId !== null && $cantidad > 0) {
+                        $detalleStmt->execute([
+                            ':id_pedido' => $pedidoId,
+                            ':id_producto' => $productoId,
+                            ':cantidad' => $cantidad
+                        ]);
+                    }
+
+                    $db->commit();
+                    $resultado['inserted']++;
+                } catch (Exception $eRow) {
+                    // Rollback de esta fila y registrar error
+                    if ($db->inTransaction()) $db->rollBack();
+                    $resultado['errors'][] = 'Fila ' . ($idx + 1) . ' error: ' . $eRow->getMessage();
+                    // continuar con la siguiente fila
+                }
+            }
 
             // Las operaciones de stock ahora se manejan mediante triggers en la base
             // de datos. No intentamos modificar la tabla `stock` desde PHP para evitar
@@ -130,23 +220,27 @@ class PedidosModel
 
 
             // var_dump($coordenadas);
-            // Insertar el pedido en la base de datos
-            $stmt = $db->prepare("
-                INSERT INTO pedidos (
-                    fecha_ingreso, numero_orden, destinatario, telefono, precio, producto, cantidad,
+            // Insertar el pedido en la base de datos (sin columnas producto/cantidad)
+            // Los productos se insertan en la tabla pivot `pedidos_productos`.
+            $stmt = $db->prepare(
+                "INSERT INTO pedidos (
+                    fecha_ingreso, numero_orden, destinatario, telefono, precio_local, precio_usd,
                     pais, departamento, municipio, barrio, direccion, zona, comentario, coordenadas, id_estado
                 ) VALUES (
-                    NOW(), :numero_orden, :destinatario, :telefono, :precio, :producto, :cantidad,
+                    NOW(), :numero_orden, :destinatario, :telefono, :precio_local, :precio_usd,
                     :pais, :departamento, :municipio, :barrio, :direccion, :zona, :comentario, ST_GeomFromText(:coordenadas), 1
-                )
-            ");
+                )"
+            );
+
+            $precio_local = $data['precio'] ?? $data['precio_local'] ?? null;
+            $precio_usd = $data['precio_usd'] ?? null;
+
             $stmt->execute([
                 ":numero_orden" => $data["numero_orden"],
                 ":destinatario" => $data["destinatario"],
                 ":telefono" => $data["telefono"],
-                ":precio" => $data["precio"] ?? null,
-                ":producto" => $data["producto"],
-                ":cantidad" => $data["cantidad"],
+                ":precio_local" => $precio_local,
+                ":precio_usd" => $precio_usd,
                 ":pais" => $data["pais"],
                 ":departamento" => $data["departamento"],
                 ":municipio" => $data["municipio"],
@@ -157,10 +251,34 @@ class PedidosModel
                 ":coordenadas" => "POINT($longitud $latitud)"
             ]);
 
+            $pedidoId = (int)$db->lastInsertId();
+
+            // Insertar producto(s) en la tabla pivot cuando se provean.
+            // Aceptamos dos formatos en $data: (1) 'producto_id' + 'cantidad'
+            // o (2) 'producto' (nombre) + 'cantidad' — en este caso intentamos resolver el id.
+            $productoId = null;
+            $cantidad = isset($data['cantidad']) ? (int)$data['cantidad'] : null;
+
+            if (isset($data['producto_id'])) {
+                $productoId = (int)$data['producto_id'];
+            } elseif (!empty($data['producto'])) {
+                // Intentar resolver por nombre (retorna null si no existe)
+                $p = ProductoModel::buscarPorNombre($data['producto']);
+                $productoId = $p['id'] ?? null;
+            }
+
+            if ($productoId !== null && $cantidad !== null) {
+                $detalle = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
+                $detalle->execute([
+                    ':id_pedido' => $pedidoId,
+                    ':id_producto' => $productoId,
+                    ':cantidad' => $cantidad
+                ]);
+            }
+
             return [
                 "numero_orden" => $data["numero_orden"],
-
-                "pedido_id" => $db->lastInsertId()
+                "pedido_id" => $pedidoId
             ];
         } catch (Exception $e) {
             throw new Exception("Error al insertar el pedido: " . $e->getMessage());
@@ -174,19 +292,18 @@ class PedidosModel
         try {
 
             $db = (new Conexion())->conectar();
-            // Consulta para obtener los datos del pedido y su estado
+            // Consulta para obtener los datos del pedido y su estado (adaptada al esquema actual)
             $sql = "SELECT 
-                        p.numero_orden, 
-                        p.destinatario, 
-                        p.telefono, 
-                        p.precio, 
-                        p.producto, 
-                        p.cantidad, 
-                        p.pais, 
-                        p.coordenadas, 
-                        e.nombre_estado 
+                        p.numero_orden,
+                        p.destinatario,
+                        p.telefono,
+                        p.precio_local,
+                        p.precio_usd,
+                        p.pais,
+                        p.coordenadas,
+                        ep.nombre_estado AS nombre_estado
                     FROM pedidos p
-                    INNER JOIN estados e ON p.estado_id = e.id_estado
+                    LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
                     WHERE p.numero_orden = :numero_orden";
 
             // Preparar la consulta
