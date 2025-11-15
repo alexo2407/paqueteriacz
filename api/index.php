@@ -10,56 +10,43 @@ require_once __DIR__ . '/../vendor/autoload.php'; // Autoload para dependencias
 
 header('Content-Type: application/json');
 
-// Obtener la ruta solicitada
-$path = $_SERVER['REQUEST_URI'];
+// Normalizar la ruta solicitada (sin query string) y quitar slash final
+$rawPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$path = rtrim($rawPath, '/');
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Enrutar según la solicitud
-switch (true) {
-    case preg_match('/^\/api\/auth\/login$/', $path) && $method === 'POST':
-        require_once __DIR__ . '/api/auth/login.php';
-        break;
-
-    case preg_match('/^\/api\/pedidos\/listar$/', $path) && $method === 'GET':
-        require_once __DIR__ . '/api/pedidos/listar.php';
-        break;
-
-    case preg_match('/^\/api\/pedidos\/crear$/', $path) && $method === 'POST':
-        require_once __DIR__ . '/api/pedidos/crear.php';
-        break;
-
-    // Agrega más rutas según sea necesario
-    default:
-    http_response_code(404);
-
-     // Redirigir a una página de error 404 si no es una solicitud API
-     header("Location: 404/");
-     exit;
-
-    // Detectar si la solicitud es una API
-    /*$isApiRequest = strpos($path, '/api/') === 0;
-
-    if ($isApiRequest) {
-        // Respuesta JSON mejorada
-        $response = [
-            'success' => false,
-            'error' => [
-                'code' => 404,
-                'message' => 'El endpoint solicitado no existe.',
-                'path' => $path,
-                'timestamp' => date('Y-m-d H:i:s')
-            ]
-        ];
-
-        // Configurar encabezado de respuesta como JSON
-        header('Content-Type: application/json');
-        echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-        exit;
-    } else {
-        // Redirigir a una página de error 404 si no es una solicitud API
-        header("Location: 404/");
-        exit;
-    }*/
-
-    
+// Rutas explícitas mínimas (usar includes relativos correctos)
+if (preg_match('/\/api\/auth\/login$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/auth/login.php';
+    exit;
 }
+
+if (preg_match('/\/api\/pedidos\/listar$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/pedidos/listar.php';
+    exit;
+}
+
+if (preg_match('/\/api\/pedidos\/crear$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/pedidos/crear.php';
+    exit;
+}
+
+// Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
+if (strpos($path, '/api/') === 0) {
+    http_response_code(404);
+    echo json_encode([
+        'success' => false,
+        'error' => [
+            'code' => 404,
+            'message' => 'El endpoint solicitado no existe.',
+            'path' => $path,
+            'timestamp' => date('c')
+        ]
+    ]);
+    exit;
+}
+
+// No es una ruta API: redirigir a la página 404 del sitio
+http_response_code(404);
+header("Location: 404/");
+exit;

@@ -1,12 +1,15 @@
 <?php
-/* require_once '../../config/config.php';
-require_once '../../modelo/PedidosModel.php';
-require_once '../utils/responder.php';
+require_once __DIR__ . '/../../controlador/pedido.php';
+require_once __DIR__ . '/../utils/responder.php';
 
-$controller = new PedidosController();
-$pedidos = $controller->listarPedidos();
+header('Content-Type: application/json');
 
-responder(true, "Listado de pedidos", $pedidos, 200); */
+try {
+	$controller = new PedidosController();
+	$pedidos = $controller->listarPedidosExtendidos();
+	responder(true, 'Listado de pedidos', $pedidos, 200);
+} catch (Exception $e) {
+	responder(false, 'Error al obtener listado de pedidos: ' . $e->getMessage(), null, 500);
+}
+
 ?>
-
-<h1>Listar</h1>

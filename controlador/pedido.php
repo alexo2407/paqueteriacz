@@ -141,15 +141,20 @@ class PedidosController {
     private function validarDatosPedido($data) {
         $errores = [];
 
-        // Validar campos obligatorios
+        // Validar campos obligatorios (aceptamos 'producto' como nombre o 'producto_id')
         $camposObligatorios = [
-            "numero_orden", "destinatario", "telefono", "producto", "cantidad",
+            "numero_orden", "destinatario", "telefono", "cantidad",
             "pais", "departamento", "municipio", "direccion", "coordenadas"
         ];
         foreach ($camposObligatorios as $campo) {
-            if (!isset($data[$campo]) || empty($data[$campo])) {
+            if (!isset($data[$campo]) || $data[$campo] === '') {
                 $errores[] = "El campo '$campo' es obligatorio.";
             }
+        }
+
+        // Producto: aceptar 'producto_id' (preferido) o 'producto' (nombre)
+        if ((!isset($data['producto_id']) || $data['producto_id'] === '') && (!isset($data['producto']) || trim($data['producto']) === '')) {
+            $errores[] = "El campo 'producto' o 'producto_id' es obligatorio.";
         }
 
         // Validar formato de las coordenadas

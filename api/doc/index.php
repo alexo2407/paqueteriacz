@@ -79,7 +79,11 @@
         </div>
         <div class="container text-center">
             <h1>Logistics API Documentation</h1>
-            <p class="lead">A complete guide to using your logistics system API</p>
+            <p class="lead">Guía práctica para consumir la API local del sistema de paquetería</p>
+            <p>
+                <a class="btn btn-light btn-sm" href="./swagger-ui/" target="_blank">Abrir Swagger UI</a>
+                <a class="btn btn-outline-primary btn-sm" href="./paqueteria_api.yaml" target="_blank">Ver OpenAPI (YAML)</a>
+            </p>
         </div>
         <div>
             
@@ -93,7 +97,7 @@
             <p>Authenticate users and generate a JWT token for secure access to the API.</p>
             <h4>Endpoint:</h4>
             <div class="code-block">
-                <span class="badge-endpoint">POST</span> https://cruzvalle.website/api/auth/login
+                <span class="badge-endpoint">POST</span> http://localhost/paqueteriacz/api/auth/login
             </div>
             <h4>Request Parameters:</h4>
             <ul>
@@ -111,7 +115,8 @@
             <div class="code-block">
                 {
                 "success": true,
-                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                "message": "Login exitoso",
+                "data": { "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
                 }
             </div>
         </div>
@@ -136,11 +141,11 @@
             <p>Add a new order to the system.</p>
             <h4>Endpoint:</h4>
             <div class="code-block">
-                <span class="badge-endpoint">POST</span> https://cruzvalle.website/api/pedidos/crear
+                <span class="badge-endpoint">POST</span> http://localhost/paqueteriacz/api/pedidos/crear
             </div>
             <h4>Headers:</h4>
             <div class="code-block">
-                Authorization: Bearer [YOUR_JWT_TOKEN]
+                Authorization: Bearer &lt;TOKEN_OBTENIDO_EN_LOGIN&gt;
             </div>
             <h4>Example Response:</h4>
             <div class="code-block">
@@ -161,17 +166,45 @@
                 "coordenadas": "12.437532,-86.879175"
                 }
             </div>
-            <h4>Example Response:</h4>
-            <div class="code-block">
-                {
-                "success": true,
-                "message": "Order successfully created",
-                "data": {
-                "id": 15,
-                "numero_orden": 14522001
-                }
-                }
-            </div>
+                        <h4>Example Response:</h4>
+                        <div class="code-block">
+                                {
+                                "success": true,
+                                "message": "Pedido creado correctamente.",
+                                "data": 15
+                                }
+                        </div>
+
+                        <h4>cURL ejemplo (Create):</h4>
+                        <div class="code-block">
+curl -X POST "http://localhost/paqueteriacz/api/pedidos/crear" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer <TOKEN>" \
+    -d '{
+        "numero_orden": 90001,
+        "destinatario": "Cliente Prueba",
+        "telefono": "0999999999",
+        "producto": "Producto X",
+        "cantidad": 1,
+        "coordenadas": "-0.180653,-78.467838",
+        "direccion": "Calle Falsa 123",
+        "pais": "EC",
+        "departamento": "Pichincha",
+        "municipio": "Quito"
+    }'
+                        </div>
+
+                        <h4>cURL ejemplo (Listar):</h4>
+                        <div class="code-block">
+curl "http://localhost/paqueteriacz/api/pedidos/listar"
+                        </div>
+
+                        <h4>Postman</h4>
+                        <p>Importa la colección y el environment incluidos en el repositorio:</p>
+                        <ul>
+                                <li><strong>postman/Paqueteria_API.postman_collection.json</strong></li>
+                                <li><strong>postman/Paqueteria_Local.postman_environment.json</strong></li>
+                        </ul>
 
 
         </div>

@@ -1,16 +1,34 @@
 <?php include("vista/includes/header.php"); ?>
+<?php
+$pathProd = __DIR__ . '/../../../modelo/producto.php';
+if (file_exists($pathProd)) {
+    require_once $pathProd;
+} else {
+    // Fallback: intentar ruta relativa antigua por compatibilidad
+    @require_once __DIR__ . '/../../modelo/producto.php';
+}
+$productos = [];
+if (class_exists('ProductoModel')) {
+    $productos = ProductoModel::listarConInventario();
+}
+?>
 
 <div class="row">
     <div class="col-sm-8">
         <h3>Nuevo registro de stock</h3>
         <form method="POST" action="<?= RUTA_URL ?>stock/guardar">
             <div class="mb-3">
-                <label class="form-label" for="id_vendedor">ID Vendedor</label>
-                <input id="id_vendedor" name="id_vendedor" type="number" min="1" class="form-control" required>
+                <label class="form-label" for="id_usuario">ID Usuario (propietario)</label>
+                <input id="id_usuario" name="id_usuario" type="number" min="1" class="form-control" required>
             </div>
             <div class="mb-3">
-                <label class="form-label" for="producto">Producto</label>
-                <input id="producto" name="producto" class="form-control" required>
+                <label class="form-label" for="id_producto">Producto</label>
+                <select id="id_producto" name="id_producto" class="form-select" required>
+                    <option value="">Selecciona un producto</option>
+                    <?php foreach ($productos as $p): ?>
+                        <option value="<?= (int)$p['id'] ?>" data-stock="<?= (int)($p['stock_total'] ?? 0) ?>" data-precio-usd="<?= htmlspecialchars($p['precio_usd']) ?>"><?= htmlspecialchars($p['nombre']) ?><?= isset($p['stock_total']) ? ' — Stock: ' . (int)$p['stock_total'] : '' ?></option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="cantidad">Cantidad</label>

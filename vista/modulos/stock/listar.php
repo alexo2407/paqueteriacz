@@ -20,7 +20,7 @@ $registros = $stockController->listar();
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>ID Vendedor</th>
+                    <th>ID Usuario</th>
                     <th>Producto</th>
                     <th>Cantidad</th>
                     <th>Acciones</th>
@@ -30,8 +30,8 @@ $registros = $stockController->listar();
                 <?php foreach ($registros as $item): ?>
                     <tr>
                         <td><?= htmlspecialchars($item['id']); ?></td>
-                        <td><?= htmlspecialchars($item['id_vendedor']); ?></td>
-                        <td><?= htmlspecialchars($item['producto']); ?></td>
+                        <td><?= htmlspecialchars($item['id_usuario'] ?? ''); ?></td>
+                        <td><?= htmlspecialchars($item['producto'] ?? ($item['producto_nombre'] ?? '')); ?></td>
                         <td><?= (int) $item['cantidad']; ?></td>
                         <td>
                             <a href="<?= RUTA_URL ?>stock/editar/<?= $item['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>

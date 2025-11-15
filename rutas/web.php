@@ -98,6 +98,56 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
     }
 }
 
+// -----------------------
+// Manejo de productos (POST a ?enlace=productos/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/producto.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    $ctrl = new ProductosController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = [
+            'nombre' => $_POST['nombre'] ?? '',
+            'descripcion' => $_POST['descripcion'] ?? null,
+            'precio_usd' => isset($_POST['precio_usd']) && $_POST['precio_usd'] !== '' ? $_POST['precio_usd'] : null,
+        ];
+        $response = $ctrl->crear($payload);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'productos/listar');
+        exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        if ($id <= 0) {
+            set_flash('error', 'Producto inválido.');
+            header('Location: ' . RUTA_URL . 'productos/listar');
+            exit;
+        }
+        $payload = [
+            'nombre' => $_POST['nombre'] ?? '',
+            'descripcion' => $_POST['descripcion'] ?? null,
+            'precio_usd' => isset($_POST['precio_usd']) && $_POST['precio_usd'] !== '' ? $_POST['precio_usd'] : null,
+        ];
+        $response = $ctrl->actualizar($id, $payload);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'productos/editar/' . $id);
+        exit;
+    }
+
+    if ($accion === 'eliminar') {
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        $response = $ctrl->eliminar($id);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'productos/listar');
+        exit;
+    }
+}
+
 // Manejo de login vía formulario (POST a ?enlace=login)
 if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Cargar dependencias necesarias para el login
@@ -218,9 +268,18 @@ if (isset($ruta[0]) && $ruta[0] === 'stock' && $_SERVER['REQUEST_METHOD'] === 'P
     $ctrl = new StockController();
 
     if ($accion === 'guardar') {
+        // Aceptamos nombres legacy (id_vendedor, producto) y nuevos (id_usuario, id_producto)
+        $idUsuario = null;
+        if (isset($_POST['id_vendedor'])) $idUsuario = (int) $_POST['id_vendedor'];
+        if (isset($_POST['id_usuario'])) $idUsuario = (int) $_POST['id_usuario'];
+
+        $productoField = null;
+        if (isset($_POST['producto'])) $productoField = $_POST['producto'];
+        if (isset($_POST['id_producto']) && $productoField === null) $productoField = $_POST['id_producto'];
+
         $data = [
-            'id_vendedor' => isset($_POST['id_vendedor']) ? (int) $_POST['id_vendedor'] : 0,
-            'producto' => $_POST['producto'] ?? '',
+            'id_vendedor' => $idUsuario ?? 0,
+            'producto' => $productoField ?? '',
             'cantidad' => isset($_POST['cantidad']) ? (int) $_POST['cantidad'] : null,
         ];
         $response = $ctrl->crear($data);
@@ -237,9 +296,18 @@ if (isset($ruta[0]) && $ruta[0] === 'stock' && $_SERVER['REQUEST_METHOD'] === 'P
             exit;
         }
 
+        // Accept legacy and new field names
+        $idUsuario = null;
+        if (isset($_POST['id_vendedor'])) $idUsuario = (int) $_POST['id_vendedor'];
+        if (isset($_POST['id_usuario'])) $idUsuario = (int) $_POST['id_usuario'];
+
+        $productoField = null;
+        if (isset($_POST['producto'])) $productoField = $_POST['producto'];
+        if (isset($_POST['id_producto']) && $productoField === null) $productoField = $_POST['id_producto'];
+
         $data = [
-            'id_vendedor' => isset($_POST['id_vendedor']) ? (int) $_POST['id_vendedor'] : 0,
-            'producto' => $_POST['producto'] ?? '',
+            'id_vendedor' => $idUsuario ?? 0,
+            'producto' => $productoField ?? '',
             'cantidad' => isset($_POST['cantidad']) ? (int) $_POST['cantidad'] : null,
         ];
         $response = $ctrl->actualizar($id, $data);

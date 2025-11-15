@@ -2,6 +2,14 @@
 
 include_once __DIR__ . '/conexion.php';
 
+/**
+ * Class StockModel
+ *
+ * Acceso a datos para la entidad `stock`.
+ * Contiene métodos CRUD básicos. La lógica de movimientos/ajustes de stock
+ * debería manejarse por triggers en la base de datos; algunos métodos de
+ * manipulación fina están deshabilitados para evitar inconsistencias.
+ */
 class StockModel
 {
     /**
@@ -14,11 +22,17 @@ class StockModel
      * deshabilitado por defecto en este repositorio para proteger la
      * integridad cuando los esquemas de `stock` varían entre despliegues.
      */
+    /**
+     * Listar todos los registros de stock.
+     *
+     * @return array Lista de registros (array asociativo). En caso de error devuelve [].
+     */
     public static function listar()
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT id, id_vendedor, producto, cantidad FROM stock');
+            // Devolver información útil para la UI: id, id_usuario, id_producto, producto (nombre) y cantidad
+            $stmt = $db->prepare('SELECT s.id, s.id_usuario, s.id_producto, s.cantidad, p.nombre AS producto FROM stock s LEFT JOIN productos p ON p.id = s.id_producto ORDER BY s.id DESC');
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -27,11 +41,17 @@ class StockModel
         }
     }
 
+    /**
+     * Obtener un registro por su id.
+     *
+     * @param int $id Identificador del registro.
+     * @return array|null Array asociativo del registro o null si no existe/error.
+     */
     public static function obtenerPorId($id)
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT id, id_vendedor, producto, cantidad FROM stock WHERE id = :id');
+            $stmt = $db->prepare('SELECT s.id, s.id_usuario, s.id_producto, s.cantidad, p.nombre AS producto FROM stock s LEFT JOIN productos p ON p.id = s.id_producto WHERE s.id = :id');
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -41,13 +61,20 @@ class StockModel
         }
     }
 
+    /**
+     * Crear un nuevo registro de stock.
+     *
+     * @param array $data Asociativo con claves: id_vendedor, producto, cantidad.
+     * @return int|false Nuevo id insertado o false en caso de fallo.
+     */
     public static function crear(array $data)
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('INSERT INTO stock (id_vendedor, producto, cantidad) VALUES (:id_vendedor, :producto, :cantidad)');
-            $stmt->bindValue(':id_vendedor', $data['id_vendedor'], PDO::PARAM_INT);
-            $stmt->bindValue(':producto', $data['producto'], PDO::PARAM_STR);
+            // Ahora asumimos columnas: id_usuario, id_producto, cantidad
+            $stmt = $db->prepare('INSERT INTO stock (id_usuario, id_producto, cantidad) VALUES (:id_usuario, :id_producto, :cantidad)');
+            $stmt->bindValue(':id_usuario', $data['id_usuario'], PDO::PARAM_INT);
+            $stmt->bindValue(':id_producto', $data['id_producto'], PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $data['cantidad'], PDO::PARAM_INT);
             $ok = $stmt->execute();
             return $ok ? (int) $db->lastInsertId() : false;
@@ -57,13 +84,20 @@ class StockModel
         }
     }
 
+    /**
+     * Actualizar un registro existente.
+     *
+     * @param int $id Identificador del registro a actualizar.
+     * @param array $data Claves: id_vendedor, producto, cantidad.
+     * @return bool True si la ejecución fue exitosa, false en caso contrario.
+     */
     public static function actualizar($id, array $data)
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('UPDATE stock SET id_vendedor = :id_vendedor, producto = :producto, cantidad = :cantidad WHERE id = :id');
-            $stmt->bindValue(':id_vendedor', $data['id_vendedor'], PDO::PARAM_INT);
-            $stmt->bindValue(':producto', $data['producto'], PDO::PARAM_STR);
+            $stmt = $db->prepare('UPDATE stock SET id_usuario = :id_usuario, id_producto = :id_producto, cantidad = :cantidad WHERE id = :id');
+            $stmt->bindValue(':id_usuario', $data['id_usuario'], PDO::PARAM_INT);
+            $stmt->bindValue(':id_producto', $data['id_producto'], PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $data['cantidad'], PDO::PARAM_INT);
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             return $stmt->execute();
@@ -73,6 +107,12 @@ class StockModel
         }
     }
 
+    /**
+     * Eliminar un registro por id.
+     *
+     * @param int $id Identificador del registro.
+     * @return bool True si eliminado, false si ocurrió un error.
+     */
     public static function eliminar($id)
     {
         try {
@@ -86,6 +126,13 @@ class StockModel
         }
     }
 
+    /**
+     * Ajustar la cantidad del registro por una diferencia (positiva o negativa).
+     *
+     * @param int $id Identificador del registro.
+     * @param int $diferencia Valor a sumar (puede ser negativo).
+     * @return bool True si se afectó alguna fila, false en caso contrario.
+     */
     public static function ajustarCantidad($id, $diferencia)
     {
         try {

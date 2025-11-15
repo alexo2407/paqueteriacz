@@ -1,6 +1,23 @@
 (function(window, document){
     'use strict';
+    /**
+     * pedidos-validation.js
+     *
+     * Valida formularios de creación/edición de pedidos en el frontend.
+     * Proporciona validación en tiempo real, mensajes resumen y envío por AJAX
+     * (fetch) con manejo de respuestas JSON y fallback a envío tradicional.
+     *
+     * API pública:
+     *  - PedidosValidation.initCrear()
+     *  - PedidosValidation.initEditar()
+     *
+     * El script se auto-inicializa en DOMContentLoaded si detecta los formularios
+     * con ids `formCrearPedido` o `formEditarPedido`.
+     */
 
+    // Mostrar caja resumen de errores en la parte superior del formulario.
+    // `errors` es un array de mensajes. El HTML esperado contiene
+    // un contenedor con id `formErrors` y una lista con id `formErrorsList`.
     function showSummaryErrors(errors) {
         const box = document.getElementById('formErrors');
         const list = document.getElementById('formErrorsList');
@@ -22,6 +39,8 @@
         if (typeof box.focus === 'function') box.focus();
     }
 
+    // Mensajes por defecto usados cuando no se pasa un mensaje específico
+    // en las definiciones de validación.
     const defaultMessages = {
         'numero_orden': 'Número de orden inválido.',
         'destinatario': 'Nombre inválido.',
@@ -39,6 +58,8 @@
         'email': 'Email inválido.'
     };
 
+    // Marca un control como inválido aplicando clases Bootstrap y mostrando
+    // el mensaje en el elemento `.invalid-feedback` más cercano.
     function setInvalid(el, msg) {
         if (!el) return;
         el.classList.remove('is-valid');
@@ -48,20 +69,26 @@
         if (fb) fb.textContent = finalMsg;
     }
 
+    // Marca un control como válido (quita is-invalid y añade is-valid).
     function clearInvalid(el) {
         if (!el) return;
         el.classList.remove('is-invalid');
         el.classList.add('is-valid');
     }
 
+    // Validador simple para teléfonos: sólo dígitos (8-15 caracteres).
     function validarTelefono(value) {
         return /^\d{8,15}$/.test(value);
     }
 
+    // Validador para números decimales (acepta notación con punto).
     function validarDecimal(value) {
         return !isNaN(parseFloat(value)) && isFinite(value);
     }
 
+    // Valida un conjunto de campos definido como array de objetos:
+    // { id: 'elementId', fn: validatorFn, msg: 'mensaje' }
+    // Devuelve un array con los mensajes de error.
     function validateFields(fieldDefs) {
         const errors = [];
         fieldDefs.forEach(function(field){
@@ -78,6 +105,9 @@
         return errors;
     }
 
+    // Adjunta validación en tiempo real a los campos listados en fieldDefs.
+    // Esto permite feedback instantáneo cuando el usuario escribe o cambia
+    // el valor del campo.
     function attachRealtime(fieldDefs) {
         if (!Array.isArray(fieldDefs)) return;
         const defsMap = {};
