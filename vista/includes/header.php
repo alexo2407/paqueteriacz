@@ -17,11 +17,21 @@
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios/listar">Usuarios</a>
                         </li>
+                  
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_URL ?>stock/listar">Stock</a>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>monedas/listar">Monedas</a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_URL ?>productos/listar">Productos</a>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>paises/listar">Países</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>departamentos/listar">Departamentos</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>municipios/listar">Municipios</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>barrios/listar">Barrios</a>
                         </li>
                     </ul>
                 </li>

@@ -26,8 +26,18 @@ if (class_exists('ProductoModel')) {
         <?php else: ?>
             <form method="POST" action="<?= RUTA_URL ?>stock/actualizar/<?= $idStock; ?>">
                 <div class="mb-3">
+                    <?php
+                    $sessionUserId = $_SESSION['user_id'] ?? null;
+                    $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+                    $isAdmin = is_array($rolesNombres) && in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+                    ?>
                     <label class="form-label" for="id_usuario">ID Usuario (propietario)</label>
-                    <input id="id_usuario" name="id_usuario" type="number" min="1" class="form-control" required value="<?= htmlspecialchars($registro['id_usuario'] ?? ''); ?>">
+                    <?php if ($isAdmin): ?>
+                        <input id="id_usuario" name="id_usuario" type="number" min="1" class="form-control" required value="<?= htmlspecialchars($registro['id_usuario'] ?? $sessionUserId ?? '') ?>">
+                    <?php else: ?>
+                        <input id="id_usuario" name="id_usuario" type="hidden" value="<?= htmlspecialchars($registro['id_usuario'] ?? $sessionUserId ?? '') ?>">
+                        <input class="form-control" disabled value="<?= htmlspecialchars($registro['id_usuario'] ?? $sessionUserId ?? 'N/A') ?>">
+                    <?php endif; ?>
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="id_producto">Producto</label>

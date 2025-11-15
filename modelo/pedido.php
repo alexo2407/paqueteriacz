@@ -7,6 +7,25 @@ include_once __DIR__ . '/usuario.php';
 class PedidosModel
 {
     /**
+     * Comprueba si una tabla contiene una columna dada en la base de datos actual.
+     *
+     * @param PDO $db
+     * @param string $table
+     * @param string $column
+     * @return bool
+     */
+    private static function tableHasColumn($db, $table, $column)
+    {
+        try {
+            $stmt = $db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column");
+            $stmt->execute([':table' => $table, ':column' => $column]);
+            return (int)$stmt->fetchColumn() > 0;
+        } catch (Exception $e) {
+            // Si hay algún error al consultar information_schema devolvemos true por compatibilidad
+            return true;
+        }
+    }
+    /**
      * Inserta múltiples pedidos reutilizando una sola conexión y statement preparado.
      *
      * @param array<int,array<string,mixed>> $rows
@@ -26,48 +45,30 @@ class PedidosModel
         try {
             $db = (new Conexion())->conectar();
 
-            $sql = "
-                INSERT INTO pedidos (
-                    fecha_ingreso,
-                    numero_orden,
-                    destinatario,
-                    telefono,
-                    precio_local,
-                    precio_usd,
-                    pais,
-                    departamento,
-                    municipio,
-                    barrio,
-                    direccion,
-                    zona,
-                    comentario,
-                    coordenadas,
-                    id_estado,
-                    id_moneda,
-                    id_vendedor,
-                    id_proveedor
-                ) VALUES (
-                    NOW(),
-                    :numero_orden,
-                    :destinatario,
-                    :telefono,
-                    :precio_local,
-                    :precio_usd,
-                    :pais,
-                    :departamento,
-                    :municipio,
-                    :barrio,
-                    :direccion,
-                    :zona,
-                    :comentario,
-                    ST_GeomFromText(:coordenadas),
-                    :id_estado,
-                    :id_moneda,
-                    :id_vendedor,
-                    :id_proveedor
-                )
-            ";
+            // Construir INSERT dinámico según columnas disponibles (compatibilidad con esquemas)
+            $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
+            // Lista de columnas candidatas que algunas bases pueden no tener
+            $candidates = ['precio_local','precio_usd','pais','departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            foreach ($candidates as $c) {
+                if (self::tableHasColumn($db, 'pedidos', $c)) {
+                    $columns[] = $c;
+                }
+            }
 
+            $placeholders = [];
+            foreach ($columns as $col) {
+                if ($col === 'fecha_ingreso') {
+                    $placeholders[] = 'NOW()';
+                    continue;
+                }
+                if ($col === 'coordenadas') {
+                    $placeholders[] = 'ST_GeomFromText(:coordenadas)';
+                    continue;
+                }
+                $placeholders[] = ':' . $col;
+            }
+
+            $sql = 'INSERT INTO pedidos (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
             $stmt = $db->prepare($sql);
             $detalleStmt = $db->prepare('
                 INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
@@ -109,26 +110,65 @@ class PedidosModel
                     $precio_local = $row['precio'] ?? $row['precio_local'] ?? null;
                     $precio_usd = $row['precio_usd'] ?? null;
 
-                    // Ejecutar inserción del pedido
-                    $stmt->execute([
-                        ':numero_orden' => $numeroOrden,
-                        ':destinatario' => $destinatario,
-                        ':telefono' => $telefono,
-                        ':precio_local' => $precio_local,
-                        ':precio_usd' => $precio_usd,
-                        ':pais' => $pais,
-                        ':departamento' => $departamento,
-                        ':municipio' => $municipio,
-                        ':barrio' => $barrio,
-                        ':direccion' => $direccion,
-                        ':zona' => $zona,
-                        ':comentario' => $comentario,
-                        ':coordenadas' => 'POINT(' . (float)$lng . ' ' . (float)$lat . ')',
-                        ':id_estado' => $row['id_estado'] ?? 1,
-                        ':id_moneda' => $row['id_moneda'] ?? null,
-                        ':id_vendedor' => $row['id_vendedor'] ?? null,
-                        ':id_proveedor' => $row['id_proveedor'] ?? null,
-                    ]);
+                    // Ejecutar inserción del pedido: preparar array de parámetros acorde a las columnas construidas
+                    $params = [];
+                    foreach ($columns as $col) {
+                        switch ($col) {
+                            case 'coordenadas':
+                                $params[':coordenadas'] = 'POINT(' . (float)$lng . ' ' . (float)$lat . ')';
+                                break;
+                            case 'numero_orden':
+                                $params[':numero_orden'] = $numeroOrden;
+                                break;
+                            case 'destinatario':
+                                $params[':destinatario'] = $destinatario;
+                                break;
+                            case 'telefono':
+                                $params[':telefono'] = $telefono;
+                                break;
+                            case 'precio_local':
+                                $params[':precio_local'] = $precio_local;
+                                break;
+                            case 'precio_usd':
+                                $params[':precio_usd'] = $precio_usd;
+                                break;
+                            case 'pais':
+                                $params[':pais'] = $pais;
+                                break;
+                            case 'departamento':
+                                $params[':departamento'] = $departamento;
+                                break;
+                            case 'municipio':
+                                $params[':municipio'] = $municipio;
+                                break;
+                            case 'barrio':
+                                $params[':barrio'] = $barrio;
+                                break;
+                            case 'direccion':
+                                $params[':direccion'] = $direccion;
+                                break;
+                            case 'zona':
+                                $params[':zona'] = $zona;
+                                break;
+                            case 'comentario':
+                                $params[':comentario'] = $comentario;
+                                break;
+                            case 'id_estado':
+                                $params[':id_estado'] = $row['id_estado'] ?? 1;
+                                break;
+                            case 'id_moneda':
+                                $params[':id_moneda'] = $row['id_moneda'] ?? null;
+                                break;
+                            case 'id_vendedor':
+                                $params[':id_vendedor'] = $row['id_vendedor'] ?? null;
+                                break;
+                            case 'id_proveedor':
+                                $params[':id_proveedor'] = $row['id_proveedor'] ?? null;
+                                break;
+                        }
+                    }
+
+                    $stmt->execute($params);
 
                     $pedidoId = (int)$db->lastInsertId();
 
@@ -221,35 +261,84 @@ class PedidosModel
 
             // var_dump($coordenadas);
             // Insertar el pedido en la base de datos (sin columnas producto/cantidad)
-            // Los productos se insertan en la tabla pivot `pedidos_productos`.
-            $stmt = $db->prepare(
-                "INSERT INTO pedidos (
-                    fecha_ingreso, numero_orden, destinatario, telefono, precio_local, precio_usd,
-                    pais, departamento, municipio, barrio, direccion, zona, comentario, coordenadas, id_estado
-                ) VALUES (
-                    NOW(), :numero_orden, :destinatario, :telefono, :precio_local, :precio_usd,
-                    :pais, :departamento, :municipio, :barrio, :direccion, :zona, :comentario, ST_GeomFromText(:coordenadas), 1
-                )"
-            );
+            // Construir INSERT dinámico según columnas disponibles para compatibilidad
+            $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
+            $candidates = ['precio_local','precio_usd','pais','departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado'];
+            foreach ($candidates as $c) {
+                if (self::tableHasColumn($db, 'pedidos', $c)) {
+                    $columns[] = $c;
+                }
+            }
+
+            $placeholders = [];
+            foreach ($columns as $col) {
+                if ($col === 'fecha_ingreso') {
+                    $placeholders[] = 'NOW()';
+                    continue;
+                }
+                if ($col === 'coordenadas') {
+                    $placeholders[] = 'ST_GeomFromText(:coordenadas)';
+                    continue;
+                }
+                $placeholders[] = ':' . $col;
+            }
+
+            $sql = 'INSERT INTO pedidos (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
+            $stmt = $db->prepare($sql);
 
             $precio_local = $data['precio'] ?? $data['precio_local'] ?? null;
             $precio_usd = $data['precio_usd'] ?? null;
 
-            $stmt->execute([
-                ":numero_orden" => $data["numero_orden"],
-                ":destinatario" => $data["destinatario"],
-                ":telefono" => $data["telefono"],
-                ":precio_local" => $precio_local,
-                ":precio_usd" => $precio_usd,
-                ":pais" => $data["pais"],
-                ":departamento" => $data["departamento"],
-                ":municipio" => $data["municipio"],
-                ":barrio" => $data["barrio"] ?? null,
-                ":direccion" => $data["direccion"],
-                ":zona" => $data["zona"] ?? null,
-                ":comentario" => $data["comentario"] ?? null,
-                ":coordenadas" => "POINT($longitud $latitud)"
-            ]);
+            // Preparar parámetros según columnas
+            $params = [];
+            foreach ($columns as $col) {
+                switch ($col) {
+                    case 'coordenadas':
+                        $params[':coordenadas'] = "POINT($longitud $latitud)";
+                        break;
+                    case 'numero_orden':
+                        $params[':numero_orden'] = $data['numero_orden'];
+                        break;
+                    case 'destinatario':
+                        $params[':destinatario'] = $data['destinatario'];
+                        break;
+                    case 'telefono':
+                        $params[':telefono'] = $data['telefono'];
+                        break;
+                    case 'precio_local':
+                        $params[':precio_local'] = $precio_local;
+                        break;
+                    case 'precio_usd':
+                        $params[':precio_usd'] = $precio_usd;
+                        break;
+                    case 'pais':
+                        $params[':pais'] = $data['pais'];
+                        break;
+                    case 'departamento':
+                        $params[':departamento'] = $data['departamento'];
+                        break;
+                    case 'municipio':
+                        $params[':municipio'] = $data['municipio'] ?? null;
+                        break;
+                    case 'barrio':
+                        $params[':barrio'] = $data['barrio'] ?? null;
+                        break;
+                    case 'direccion':
+                        $params[':direccion'] = $data['direccion'] ?? null;
+                        break;
+                    case 'zona':
+                        $params[':zona'] = $data['zona'] ?? null;
+                        break;
+                    case 'comentario':
+                        $params[':comentario'] = $data['comentario'] ?? null;
+                        break;
+                    case 'id_estado':
+                        $params[':id_estado'] = 1;
+                        break;
+                }
+            }
+
+            $stmt->execute($params);
 
             $pedidoId = (int)$db->lastInsertId();
 
@@ -553,76 +642,95 @@ class PedidosModel
                 }
             }
 
-            $stmt = $db->prepare('
-                INSERT INTO pedidos (
-                    fecha_ingreso,
-                    numero_orden,
-                    destinatario,
-                    telefono,
-                    precio_local,
-                    precio_usd,
-                    pais,
-                    departamento,
-                    municipio,
-                    barrio,
-                    direccion,
-                    zona,
-                    comentario,
-                    coordenadas,
-                    id_estado,
-                    id_moneda,
-                    id_vendedor,
-                    id_proveedor
-                ) VALUES (
-                    NOW(),
-                    :numero_orden,
-                    :destinatario,
-                    :telefono,
-                    :precio_local,
-                    :precio_usd,
-                    :pais,
-                    :departamento,
-                    :municipio,
-                    :barrio,
-                    :direccion,
-                    :zona,
-                    :comentario,
-                    ST_GeomFromText(:coordenadas),
-                    :estado,
-                    :moneda,
-                    :vendedor,
-                    :proveedor
-                )
-            ');
-
-            $stmt->bindValue(':numero_orden', $pedido['numero_orden'], PDO::PARAM_STR);
-            $stmt->bindValue(':destinatario', $pedido['destinatario'], PDO::PARAM_STR);
-            $stmt->bindValue(':telefono', $pedido['telefono'], PDO::PARAM_STR);
-
-            if ($pedido['precio_local'] === null) {
-                $stmt->bindValue(':precio_local', null, PDO::PARAM_NULL);
-            } else {
-                $stmt->bindValue(':precio_local', $pedido['precio_local']);
+            // Construir INSERT dinámico para compatibilidad con esquemas
+            $columns = ['fecha_ingreso','numero_orden','destinatario','telefono'];
+            $candidates = ['precio_local','precio_usd','pais','departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            foreach ($candidates as $c) {
+                if (self::tableHasColumn($db, 'pedidos', $c)) {
+                    $columns[] = $c;
+                }
             }
 
-            if ($pedido['precio_usd'] === null) {
-                $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
-            } else {
-                $stmt->bindValue(':precio_usd', $pedido['precio_usd']);
+            $placeholders = [];
+            foreach ($columns as $col) {
+                if ($col === 'fecha_ingreso') {
+                    $placeholders[] = 'NOW()';
+                    continue;
+                }
+                if ($col === 'coordenadas') {
+                    $placeholders[] = 'ST_GeomFromText(:coordenadas)';
+                    continue;
+                }
+                $placeholders[] = ':' . $col;
             }
 
-            $stmt->bindValue(':pais', $pedido['pais'] ?? null, empty($pedido['pais']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':departamento', $pedido['departamento'] ?? null, empty($pedido['departamento']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':municipio', $pedido['municipio'] ?? null, empty($pedido['municipio']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':barrio', $pedido['barrio'] ?? null, empty($pedido['barrio']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':direccion', $pedido['direccion'], PDO::PARAM_STR);
-            $stmt->bindValue(':zona', $pedido['zona'] ?? null, empty($pedido['zona']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':comentario', $pedido['comentario'] ?? null, empty($pedido['comentario']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':coordenadas', $coordenadas, PDO::PARAM_STR);
-            $stmt->bindValue(':estado', (int)$pedido['estado'], PDO::PARAM_INT);
-            $stmt->bindValue(':moneda', (int)$pedido['moneda'], PDO::PARAM_INT);
-            $stmt->bindValue(':vendedor', (int)$pedido['vendedor'], PDO::PARAM_INT);
-            $stmt->bindValue(':proveedor', (int)$pedido['proveedor'], PDO::PARAM_INT);
+            $sql = 'INSERT INTO pedidos (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
+            $stmt = $db->prepare($sql);
+
+            // Bind dinámico con tipos donde es necesario
+            foreach ($columns as $col) {
+                switch ($col) {
+                    case 'numero_orden':
+                        $stmt->bindValue(':numero_orden', $pedido['numero_orden'], PDO::PARAM_STR);
+                        break;
+                    case 'destinatario':
+                        $stmt->bindValue(':destinatario', $pedido['destinatario'], PDO::PARAM_STR);
+                        break;
+                    case 'telefono':
+                        $stmt->bindValue(':telefono', $pedido['telefono'], PDO::PARAM_STR);
+                        break;
+                    case 'precio_local':
+                        if ($pedido['precio_local'] === null) {
+                            $stmt->bindValue(':precio_local', null, PDO::PARAM_NULL);
+                        } else {
+                            $stmt->bindValue(':precio_local', $pedido['precio_local']);
+                        }
+                        break;
+                    case 'precio_usd':
+                        if ($pedido['precio_usd'] === null) {
+                            $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
+                        } else {
+                            $stmt->bindValue(':precio_usd', $pedido['precio_usd']);
+                        }
+                        break;
+                    case 'pais':
+                        $stmt->bindValue(':pais', $pedido['pais'] ?? null, empty($pedido['pais']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                        break;
+                    case 'departamento':
+                        $stmt->bindValue(':departamento', $pedido['departamento'] ?? null, empty($pedido['departamento']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                        break;
+                    case 'municipio':
+                        $stmt->bindValue(':municipio', $pedido['municipio'] ?? null, empty($pedido['municipio']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                        break;
+                    case 'barrio':
+                        $stmt->bindValue(':barrio', $pedido['barrio'] ?? null, empty($pedido['barrio']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                        break;
+                    case 'direccion':
+                        $stmt->bindValue(':direccion', $pedido['direccion'], PDO::PARAM_STR);
+                        break;
+                    case 'zona':
+                        $stmt->bindValue(':zona', $pedido['zona'] ?? null, empty($pedido['zona']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                        break;
+                    case 'comentario':
+                        $stmt->bindValue(':comentario', $pedido['comentario'] ?? null, empty($pedido['comentario']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                        break;
+                    case 'coordenadas':
+                        $stmt->bindValue(':coordenadas', $coordenadas, PDO::PARAM_STR);
+                        break;
+                    case 'id_estado':
+                        $stmt->bindValue(':id_estado', (int)($pedido['estado'] ?? null), PDO::PARAM_INT);
+                        break;
+                    case 'id_moneda':
+                        $stmt->bindValue(':id_moneda', (int)($pedido['moneda'] ?? null), PDO::PARAM_INT);
+                        break;
+                    case 'id_vendedor':
+                        $stmt->bindValue(':id_vendedor', (int)($pedido['vendedor'] ?? null), PDO::PARAM_INT);
+                        break;
+                    case 'id_proveedor':
+                        $stmt->bindValue(':id_proveedor', (int)($pedido['proveedor'] ?? null), PDO::PARAM_INT);
+                        break;
+                }
+            }
 
             $stmt->execute();
 

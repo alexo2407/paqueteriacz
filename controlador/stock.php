@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../modelo/stock.php';
 require_once __DIR__ . '/../utils/session.php';
+require_once __DIR__ . '/../modelo/usuario.php';
 
 /**
  * Class StockController
@@ -55,6 +56,10 @@ class StockController
         // Normalizar claves para StockModel (id_usuario, id_producto)
         if (isset($data['id_vendedor']) && !isset($data['id_usuario'])) {
             $data['id_usuario'] = (int)$data['id_vendedor'];
+        }
+        // Si no se proporcionó id_usuario, intentar usar el usuario en sesión
+        if ((!isset($data['id_usuario']) || (int)$data['id_usuario'] <= 0) && isset($_SESSION['user_id'])) {
+            $data['id_usuario'] = (int) $_SESSION['user_id'];
         }
         if (isset($data['producto']) && !isset($data['id_producto'])) {
             // intentar resolver producto si vino como nombre (no intentamos crear aquí)
@@ -162,6 +167,15 @@ class StockController
 
         if ($idUsuario <= 0) {
             $errores[] = 'El usuario (id_usuario) es obligatorio.';
+        }
+
+        // Verificar que el usuario exista en la tabla usuarios
+        if ($idUsuario > 0) {
+            $um = new UsuarioModel();
+            $usuario = $um->obtenerPorId($idUsuario);
+            if (!$usuario) {
+                $errores[] = 'El usuario indicado no existe.';
+            }
         }
 
         if ($idProducto === null || $idProducto <= 0) {

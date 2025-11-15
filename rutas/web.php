@@ -99,6 +99,158 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
 }
 
 // -----------------------
+// Manejo de monedas (POST a ?enlace=monedas/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'monedas' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/moneda.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    $ctrl = new MonedasController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = [
+            'codigo' => $_POST['codigo'] ?? '',
+            'nombre' => $_POST['nombre'] ?? '',
+            'tasa_usd' => isset($_POST['tasa_usd']) && $_POST['tasa_usd'] !== '' ? $_POST['tasa_usd'] : null,
+        ];
+        $response = $ctrl->crear($payload);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'monedas/listar');
+        exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        if ($id <= 0) { set_flash('error', 'Moneda inválida.'); header('Location: ' . RUTA_URL . 'monedas/listar'); exit; }
+        $payload = [
+            'codigo' => $_POST['codigo'] ?? '',
+            'nombre' => $_POST['nombre'] ?? '',
+            'tasa_usd' => isset($_POST['tasa_usd']) && $_POST['tasa_usd'] !== '' ? $_POST['tasa_usd'] : null,
+        ];
+        $response = $ctrl->actualizar($id, $payload);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'monedas/editar/' . $id);
+        exit;
+    }
+
+    if ($accion === 'eliminar') {
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        $response = $ctrl->eliminar($id);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'monedas/listar');
+        exit;
+    }
+}
+
+// -----------------------
+// Manejo de paises (POST a ?enlace=paises/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'paises' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/pais.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    $ctrl = new PaisesController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = ['nombre' => $_POST['nombre'] ?? '', 'codigo_iso' => $_POST['codigo_iso'] ?? null];
+        $response = $ctrl->crear($payload);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'paises/listar'); exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0; if ($id <= 0) { set_flash('error','País inválido'); header('Location: '.RUTA_URL.'paises/listar'); exit; }
+        $payload = ['nombre'=> $_POST['nombre'] ?? '', 'codigo_iso' => $_POST['codigo_iso'] ?? null];
+        $response = $ctrl->actualizar($id, $payload);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: '.RUTA_URL.'paises/editar/'.$id); exit;
+    }
+
+    if ($accion === 'eliminar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'paises/listar'); exit;
+    }
+}
+
+// -----------------------
+// Manejo de departamentos (POST a ?enlace=departamentos/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'departamentos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/departamento.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    $ctrl = new DepartamentosController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_pais' => $_POST['id_pais'] ?? null];
+        $response = $ctrl->crear($payload);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'departamentos/listar'); exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0; if ($id<=0) { set_flash('error','Departamento inválido'); header('Location: '.RUTA_URL.'departamentos/listar'); exit; }
+        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_pais' => $_POST['id_pais'] ?? null];
+        $response = $ctrl->actualizar($id, $payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'departamentos/editar/'.$id); exit;
+    }
+
+    if ($accion === 'eliminar') { $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'departamentos/listar'); exit; }
+}
+
+// -----------------------
+// Manejo de municipios (POST a ?enlace=municipios/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'municipios' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/municipio.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    $ctrl = new MunicipiosController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_departamento' => $_POST['id_departamento'] ?? null];
+        $response = $ctrl->crear($payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/listar'); exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0; if ($id<=0) { set_flash('error','Municipio inválido'); header('Location: '.RUTA_URL.'municipios/listar'); exit; }
+        $payload = ['nombre'=> $_POST['nombre'] ?? '', 'id_departamento' => $_POST['id_departamento'] ?? null]; $response = $ctrl->actualizar($id,$payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/editar/'.$id); exit;
+    }
+
+    if ($accion === 'eliminar') { $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/listar'); exit; }
+}
+
+// -----------------------
+// Manejo de barrios (POST a ?enlace=barrios/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'barrios' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/barrio.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    $ctrl = new BarriosController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_municipio' => $_POST['id_municipio'] ?? null];
+        $response = $ctrl->crear($payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'barrios/listar'); exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0; if ($id<=0) { set_flash('error','Barrio inválido'); header('Location: '.RUTA_URL.'barrios/listar'); exit; }
+        $payload = ['nombre'=> $_POST['nombre'] ?? '', 'id_municipio' => $_POST['id_municipio'] ?? null]; $response = $ctrl->actualizar($id,$payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'barrios/editar/'.$id); exit;
+    }
+
+    if ($accion === 'eliminar') { $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'barrios/listar'); exit; }
+}
+
+
+// -----------------------
 // Manejo de productos (POST a ?enlace=productos/<accion>)
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] === 'POST') {

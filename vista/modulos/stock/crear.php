@@ -18,8 +18,19 @@ if (class_exists('ProductoModel')) {
         <h3>Nuevo registro de stock</h3>
         <form method="POST" action="<?= RUTA_URL ?>stock/guardar">
             <div class="mb-3">
+                <?php
+                // Prefill id_usuario from session. Show editable field only for admins.
+                $sessionUserId = $_SESSION['user_id'] ?? null;
+                $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+                $isAdmin = is_array($rolesNombres) && in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+                ?>
                 <label class="form-label" for="id_usuario">ID Usuario (propietario)</label>
-                <input id="id_usuario" name="id_usuario" type="number" min="1" class="form-control" required>
+                <?php if ($isAdmin): ?>
+                    <input id="id_usuario" name="id_usuario" type="number" min="1" class="form-control" required value="<?= htmlspecialchars($sessionUserId ?? '') ?>">
+                <?php else: ?>
+                    <input id="id_usuario" name="id_usuario" type="hidden" value="<?= htmlspecialchars($sessionUserId ?? '') ?>">
+                    <input class="form-control" disabled value="<?= htmlspecialchars($sessionUserId ?? 'N/A') ?>">
+                <?php endif; ?>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="id_producto">Producto</label>
