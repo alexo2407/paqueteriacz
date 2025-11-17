@@ -22,7 +22,12 @@ class EnlacesModel
             "pedidos",
             "productos",
             "stock",
+            "monedas",
+            "paises",
+            "departamentos",
+            "municipios",
             "seguimiento",
+            "barrios",
             "cambiarEstados",
             "salir"
         ];

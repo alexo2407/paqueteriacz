@@ -12,10 +12,12 @@
 
     <style>
         body {
-            background-color: #f9fafc;
+            background-color: #ffffffff;
             font-family: 'Roboto', sans-serif;
-            color: #212529; /* ensure readable dark text (Bootstrap body color) */
+            color: #212529 !important; /* ensure readable dark text (Bootstrap body color) */
         }
+
+       
 
         header {
             background: linear-gradient(to right, #007bff, #6610f2);
@@ -43,7 +45,7 @@
         }
 
         .code-block {
-            background: #f8f9fa;
+            background: #ebeaeaff;
             border-left: 4px solid #007bff;
             padding: 15px;
             border-radius: 8px;
@@ -89,16 +91,43 @@
         <div>
             
         </div>
-    <div class="container mt-5">
+    <div class="container mt-5" style="color: #212529;">
         <!-- Section: Documentation Overview -->
-        <div class="section-container">
+        <div class="section-container" style="color: #212529;">
             <h2 class="section-title">Quick Reference</h2>
             <p>This documentation describes the most used endpoints for integration: <strong>Authentication</strong>, <strong>Products</strong> and <strong>Orders (Pedidos)</strong>. Examples show request shape, response shape and common errors.</p>
             <p>OpenAPI (machine-readable): <a href="./paqueteria_api.yaml" target="_blank">paqueteria_api.yaml</a> — use it with Swagger UI (<a href="./swagger-ui/" target="_blank">Open Swagger UI</a>).</p>
         </div>
 
+        <!-- Table of contents / Quickstart -->
+        <div class="section-container" id="quickstart">
+            <h2 class="section-title">Quickstart</h2>
+            <p>Minimal steps to call the API successfully:</p>
+            <ol style="color: #212529;">
+                <li>Obtain a JWT token: <code>POST /api/auth/login</code> with <code>{ "email", "password" }</code>.</li>
+                <li>Take the token from the login response at <code>response.data.token</code> (important: the token is inside <code>data.token</code>, not at the top level).</li>
+                <li>Call protected endpoints adding header: <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+                <li>When creating orders, provide required address fields and a unique <code>numero_orden</code>, and ensure the product has enough stock.</li>
+            </ol>
+
+            <h4>Example: get token (curl)</h4>
+            <div class="code-block">curl -s -X POST "http://localhost/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"123456"}'</div>
+
+            <h4>Login response (important)</h4>
+            <div class="code-block">{
+    "success": true,
+    "message": "Login exitoso",
+    "data": { "token": "&lt;JWT_TOKEN&gt;" }
+}
+            </div>
+
+            <p>Note: always use the token value located at <code>data.token</code> when setting the <code>Authorization</code> header.</p>
+        </div>
+
         <!-- Authentication (detailed table + examples) -->
-        <div class="section-container">
+        <div class="section-container" style="color: #212529;">
             <h2 class="section-title">Authentication (Login)</h2>
             <p>Obtain a JWT token. NOTE: the HTTP response envelope is <code>{ success, message, data: { token } }</code>.</p>
 
@@ -181,7 +210,7 @@
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/pedidos/crear</div>
 
             <h4>Important notes</h4>
-            <ul>
+            <ul style="color: #212529;">
                 <li>The API response envelope is <code>{ success, message, data }</code>.</li>
                 <li>Fields <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> are stored in <code>pedidos</code> and have foreign key constraints — they must reference existing rows.</li>
                 <li>Products are stored in <code>pedidos_productos</code> (pivot). If you provide <code>producto</code> (string) the system will try to resolve or create it; if you provide <code>producto_id</code> it will use that id.</li>
@@ -217,7 +246,10 @@
     "direccion": "Calle Falsa 123",
     "id_moneda": 1,
     "id_vendedor": 5,
-    "id_proveedor": 6
+    "id_proveedor": 6,
+    "pais": "EC",
+    "departamento": "Pichincha",
+    "municipio": "Quito"
 }</div>
 
             <h4>Possible successful response</h4>
@@ -242,10 +274,13 @@
         <!-- Troubleshooting / tips -->
         <div class="section-container">
             <h2 class="section-title">Troubleshooting & tips</h2>
-            <ul>
+            <ul style="color: #212529;">
                 <li>If you get FK errors when creating orders, check that <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> exist in their respective tables.</li>
                 <li>To create a product and give it stock (dev): create product via <code>/api/productos/crear</code>, then use the stock UI or insert into <code>stock</code> table.</li>
                 <li>Coordinates must be provided; the API will reject requests missing valid coordinates.</li>
+                <li>Address fields required: the API validates <code>pais</code>, <code>departamento</code> and <code>municipio</code>. If any are missing you will receive a validation error listing the missing fields.</li>
+                <li><strong>numero_orden</strong> must be unique. If you get <em>"El número de orden ya existe"</em>, use a different number.</li>
+                <li>If you receive <em>"Stock insuficiente"</em> for a product, either increase stock for that product (via stock creation) or reduce the requested <code>cantidad</code>.</li>
             </ul>
         </div>
     </div>

@@ -77,6 +77,11 @@ require_once "modelo/cliente.php";
 require_once "modelo/pedido.php";
 require_once "modelo/stock.php";
 require_once "modelo/producto.php";
+require_once "modelo/moneda.php";
+require_once "modelo/barrio.php";
+require_once "modelo/departamento.php";
+require_once "modelo/municipio.php";
+require_once "modelo/pais.php"; 
 
 //controladores
 require_once "controlador/enlaces.php";
@@ -85,7 +90,11 @@ require_once "controlador/cliente.php";
 require_once "controlador/pedido.php";
 require_once "controlador/stock.php";
 require_once "controlador/producto.php";
-
+require_once "controlador/moneda.php";
+require_once "controlador/barrio.php";
+require_once "controlador/departamento.php";
+require_once "controlador/municipio.php";
+require_once "controlador/pais.php";
 
 
 
