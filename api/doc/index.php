@@ -115,7 +115,10 @@
             <div class="code-block">
                 {
                 "success": true,
-                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                "message": "Login exitoso",
+                "data": {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
                 }
             </div>
         </div>

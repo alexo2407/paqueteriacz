@@ -227,11 +227,18 @@ paths:
               properties:
                 success:
                   type: boolean
-                token:
+                message:
                   type: string
+                data:
+                  type: object
+                  properties:
+                    token:
+                      type: string
               example:
                 success: true
-                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                message: Autenticación exitosa
+                data:
+                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
             PedidoProduct:
               type: object
               properties:
