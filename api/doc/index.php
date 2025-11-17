@@ -115,8 +115,7 @@
             <div class="code-block">
                 {
                 "success": true,
-                "message": "Login exitoso",
-                "data": { "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+                "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                 }
             </div>
         </div>
@@ -130,6 +129,11 @@
                 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
             </div>
             <p>The API validates the token before processing any request. Ensure the token is valid and not expired.</p>
+            <h4>Where the secret is configured</h4>
+            <p>The JWT secret key used to sign/verify tokens is defined in the application configuration: <code>config/config.php</code> as the constant <code>JWT_SECRET_KEY</code>. Example:</p>
+            <div class="code-block">// config/config.php
+define('JWT_SECRET_KEY', 'your_secret_key_here');</div>
+            <p><strong>Security note:</strong> Keep this key secret. In production prefer to load it from an environment variable and not commit secrets to source control.</p>
         </div>
 
         <!-- CRUD Section -->
@@ -207,6 +211,45 @@ curl "http://localhost/paqueteriacz/api/pedidos/listar"
                         </ul>
 
 
+        </div>
+        <!-- Products Section -->
+        <div class="section-container">
+            <h2 class="section-title">4. Products (CRUD)</h2>
+            <p>Endpoints to manage products. All endpoints that change data require a valid JWT in the <code>Authorization</code> header.</p>
+            <h4>Endpoints (examples):</h4>
+            <div class="code-block">
+                <strong>List:</strong> GET http://localhost/paqueteriacz/api/productos/listar
+            </div>
+            <div class="code-block">
+                <strong>Create:</strong> POST http://localhost/paqueteriacz/api/productos/crear
+            </div>
+            <div class="code-block">
+                <strong>View:</strong> GET http://localhost/paqueteriacz/api/productos/ver/{id}
+            </div>
+            <div class="code-block">
+                <strong>Update:</strong> POST http://localhost/paqueteriacz/api/productos/actualizar/{id}
+            </div>
+            <div class="code-block">
+                <strong>Delete:</strong> POST http://localhost/paqueteriacz/api/productos/eliminar/{id}
+            </div>
+
+            <h4>Example create body:</h4>
+            <div class="code-block">
+                {
+                "nombre": "Producto X",
+                "descripcion": "Descripción opcional",
+                "precio_usd": 9.5
+                }
+            </div>
+
+            <h4>Example create response:</h4>
+            <div class="code-block">
+                {
+                "success": true,
+                "message": "Producto creado correctamente.",
+                "id": 42
+                }
+            </div>
         </div>
     </div>
 

@@ -105,6 +105,107 @@ paths:
                   description: Token inválido o expirado
                 '422':
                   description: Validación fallida
+          /api/productos/listar:
+            get:
+              summary: Listar productos
+              tags: [Productos]
+              responses:
+                '200':
+                  description: Lista de productos
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          success:
+                            type: boolean
+                          data:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ProductoItem'
+        
+          /api/productos/crear:
+            post:
+              summary: Crear producto
+              tags: [Productos]
+              security:
+                - bearerAuth: []
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/ProductoCreate'
+              responses:
+                '200':
+                  description: Producto creado
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          success:
+                            type: boolean
+                          message:
+                            type: string
+                          id:
+                            type: integer
+        
+          /api/productos/ver/{id}:
+            get:
+              summary: Ver producto
+              tags: [Productos]
+              parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: integer
+              responses:
+                '200':
+                  description: Detalle de producto
+                  content:
+                    application/json:
+                      schema:
+                        $ref: '#/components/schemas/ProductoItem'
+        
+          /api/productos/actualizar/{id}:
+            post:
+              summary: Actualizar producto
+              tags: [Productos]
+              security:
+                - bearerAuth: []
+              parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: integer
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      $ref: '#/components/schemas/ProductoCreate'
+              responses:
+                '200':
+                  description: Producto actualizado
+        
+          /api/productos/eliminar/{id}:
+            post:
+              summary: Eliminar producto
+              tags: [Productos]
+              security:
+                - bearerAuth: []
+              parameters:
+                - in: path
+                  name: id
+                  required: true
+                  schema:
+                    type: integer
+              responses:
+                '200':
+                  description: Producto eliminado
         components:
           securitySchemes:
             bearerAuth:
@@ -126,18 +227,11 @@ paths:
               properties:
                 success:
                   type: boolean
-                message:
+                token:
                   type: string
-                data:
-                  type: object
-                  properties:
-                    token:
-                      type: string
               example:
                 success: true
-                message: Login exitoso
-                data:
-                  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
             PedidoProduct:
               type: object
               properties:
@@ -239,3 +333,26 @@ paths:
                 success: true
                 message: Pedido creado correctamente.
                 data: 15
+            ProductoCreate:
+              type: object
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                precio_usd:
+                  type: number
+                  format: float
+              required: [nombre]
+            ProductoItem:
+              type: object
+              properties:
+                id:
+                  type: integer
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                precio_usd:
+                  type: number
+                  format: float
