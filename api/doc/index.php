@@ -249,16 +249,6 @@
             </ul>
         </div>
     </div>
-            <h4>Example create response:</h4>
-            <div class="code-block">
-                {
-                "success": true,
-                "message": "Producto creado correctamente.",
-                "id": 42
-                }
-            </div>
-        </div>
-    </div>
 
     <footer>
         <p>&copy; 2025 Logistics API - All Rights Reserved</p>
