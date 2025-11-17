@@ -14,6 +14,7 @@
         body {
             background-color: #f9fafc;
             font-family: 'Roboto', sans-serif;
+            color: #212529; /* ensure readable dark text */
         }
 
         header {
