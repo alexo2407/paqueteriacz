@@ -88,204 +88,166 @@
         <div>
             
         </div>
-    </header>
-
     <div class="container mt-5">
-        <!-- Authentication Section -->
+        <!-- Section: Documentation Overview -->
         <div class="section-container">
-            <h2 class="section-title">1. Authentication (Login)</h2>
-            <p>Authenticate users and generate a JWT token for secure access to the API.</p>
-            <h4>Endpoint:</h4>
-            <div class="code-block">
-                <span class="badge-endpoint">POST</span> http://localhost/paqueteriacz/api/auth/login
-            </div>
-            <h4>Request Parameters:</h4>
+            <h2 class="section-title">Quick Reference</h2>
+            <p>This documentation describes the most used endpoints for integration: <strong>Authentication</strong>, <strong>Products</strong> and <strong>Orders (Pedidos)</strong>. Examples show request shape, response shape and common errors.</p>
+            <p>OpenAPI (machine-readable): <a href="./paqueteria_api.yaml" target="_blank">paqueteria_api.yaml</a> — use it with Swagger UI (<a href="./swagger-ui/" target="_blank">Open Swagger UI</a>).</p>
+        </div>
+
+        <!-- Authentication (detailed table + examples) -->
+        <div class="section-container">
+            <h2 class="section-title">Authentication (Login)</h2>
+            <p>Obtain a JWT token. NOTE: the HTTP response envelope is <code>{ success, message, data: { token } }</code>.</p>
+
+            <h4>Endpoint</h4>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/auth/login</div>
+
+            <h4>Request body (JSON)</h4>
+            <table class="table table-sm table-bordered">
+                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>email</code></td><td>string (email)</td><td>yes</td><td>User email</td></tr>
+                    <tr><td><code>password</code></td><td>string</td><td>yes</td><td>User password</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Example request</h4>
+            <div class="code-block">{
+    "email": "admin@example.com",
+    "password": "123456"
+}</div>
+
+            <h4>Success response (200)</h4>
+            <div class="code-block">{
+    "success": true,
+    "message": "Login exitoso",
+    "data": { "token": "&lt;JWT_TOKEN&gt;" }
+}</div>
+
+            <h4>Usage</h4>
+            <div class="code-block">Authorization: Bearer &lt;JWT_TOKEN from response.data.token&gt;</div>
+        </div>
+
+        <!-- Products: detailed -->
+        <div class="section-container">
+            <h2 class="section-title">Products (CRUD)</h2>
+            <p>Manage products. Mutating endpoints require a valid <code>Authorization</code> header.</p>
+
+            <h4>List products</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/productos/listar</div>
+            <p>Returns a list of products with aggregated stock (field <code>stock_total</code>).</p>
+            <h4>Response (200)</h4>
+            <div class="code-block">{
+    "success": true,
+    "data": [
+        { "id": 1, "nombre": "Matcha Slim", "precio_usd": "25.00", "stock_total": 2 },
+        { "id": 2, "nombre": "Protein Shake", "precio_usd": "40.00", "stock_total": 60 }
+    ]
+}</div>
+
+            <h4>Create product</h4>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/productos/crear</div>
+            <table class="table table-sm table-bordered">
+                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead>
+                <tbody>
+                    <tr><td><code>nombre</code></td><td>string</td><td>yes</td><td>Unique-ish name used by lookup functions</td></tr>
+                    <tr><td><code>descripcion</code></td><td>string</td><td>no</td><td>Optional</td></tr>
+                    <tr><td><code>precio_usd</code></td><td>number</td><td>no</td><td>Decimal, stored as string in responses</td></tr>
+                </tbody>
+            </table>
+            <h4>Example create request</h4>
+            <div class="code-block">{
+    "nombre": "Producto X",
+    "descripcion": "Descripción opcional",
+    "precio_usd": 9.5
+}</div>
+            <h4>Success response</h4>
+            <div class="code-block">{
+    "success": true,
+    "message": "Producto creado correctamente.",
+    "id": 42
+}</div>
+        </div>
+
+        <!-- Orders / Pedidos: detailed -->
+        <div class="section-container">
+            <h2 class="section-title">Orders (Pedidos)</h2>
+            <p>Endpoint to create and list orders. The server expects coordinates in <code>"lat,long"</code> format (stored as POINT).</p>
+
+            <h4>Create order</h4>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/pedidos/crear</div>
+
+            <h4>Important notes</h4>
             <ul>
-                <li><strong>email</strong> (string): User's email</li>
-                <li><strong>password</strong> (string): User's password</li>
+                <li>The API response envelope is <code>{ success, message, data }</code>.</li>
+                <li>Fields <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> are stored in <code>pedidos</code> and have foreign key constraints — they must reference existing rows.</li>
+                <li>Products are stored in <code>pedidos_productos</code> (pivot). If you provide <code>producto</code> (string) the system will try to resolve or create it; if you provide <code>producto_id</code> it will use that id.</li>
+                <li>Stock validation: the system checks stock (via DB triggers and application checks). If stock is insufficient the request will fail with an error message.</li>
             </ul>
-            <h4>Example Request Body:</h4>
-            <div class="code-block">
-                {
-                "email": "admin@example.com",
-                "password": "123456"
-                }
-            </div>
-            <h4>Example Response:</h4>
-            <div class="code-block">
-                {
-                "success": true,
-                "message": "Login exitoso",
-                "data": {
-                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                }
-                }
-            </div>
+
+            <h4>Request fields (common)</h4>
+            <table class="table table-sm table-bordered">
+                <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>numero_orden</code></td><td>integer</td><td>yes</td><td>Unique order number</td></tr>
+                    <tr><td><code>destinatario</code></td><td>string</td><td>yes</td><td>Recipient name</td></tr>
+                    <tr><td><code>telefono</code></td><td>string</td><td>yes</td><td>Phone number</td></tr>
+                    <tr><td><code>coordenadas</code></td><td>string</td><td>yes</td><td>Latitude and longitude as <code>"lat,long"</code></td></tr>
+                    <tr><td><code>direccion</code></td><td>string</td><td>no</td><td>Full address</td></tr>
+                    <tr><td><code>producto</code></td><td>string</td><td>yes (or use producto_id)</td><td>Product name to resolve or create</td></tr>
+                    <tr><td><code>producto_id</code></td><td>integer</td><td>yes (or use producto)</td><td>Prefer this when you already know the id</td></tr>
+                    <tr><td><code>cantidad</code></td><td>integer</td><td>yes</td><td>Quantity requested</td></tr>
+                    <tr><td><code>id_moneda</code></td><td>integer</td><td>recommended</td><td>FK to <code>monedas.id</code></td></tr>
+                    <tr><td><code>id_vendedor</code></td><td>integer</td><td>recommended</td><td>FK to <code>usuarios.id</code> (assigned seller)</td></tr>
+                    <tr><td><code>id_proveedor</code></td><td>integer</td><td>recommended</td><td>FK to <code>usuarios.id</code> (supplier)</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Example create request (minimal)</h4>
+            <div class="code-block">{
+    "numero_orden": 90001,
+    "destinatario": "Cliente Prueba",
+    "telefono": "0999999999",
+    "producto": "Producto X",
+    "cantidad": 1,
+    "coordenadas": "-0.180653,-78.467838",
+    "direccion": "Calle Falsa 123",
+    "id_moneda": 1,
+    "id_vendedor": 5,
+    "id_proveedor": 6
+}</div>
+
+            <h4>Possible successful response</h4>
+            <div class="code-block">{
+    "success": true,
+    "message": "Pedido creado correctamente.",
+    "data": 15
+}</div>
+
+            <h4>Examples of error responses</h4>
+            <div class="code-block">{
+    "success": false,
+    "message": "Error al insertar el pedido: Stock insuficiente para el producto ID 11. Disponible: 0, requerido: 1"
+}
+
+{
+    "success": false,
+    "message": "Error al insertar el pedido: Cannot add or update a child row: a foreign key constraint fails (...)"
+}</div>
         </div>
 
-        <!-- Token Usage Section -->
+        <!-- Troubleshooting / tips -->
         <div class="section-container">
-            <h2 class="section-title">2. Using the JWT Token</h2>
-            <p>Include the generated token in the <strong>Authorization</strong> header for all API requests.</p>
-            <h4>Header Example:</h4>
-            <div class="code-block">
-                Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-            </div>
-            <p>The API validates the token before processing any request. Ensure the token is valid and not expired.</p>
-            <h4>Where the secret is configured</h4>
-            <p>The JWT secret key used to sign/verify tokens is defined in the application configuration: <code>config/config.php</code> as the constant <code>JWT_SECRET_KEY</code>. Example:</p>
-            <div class="code-block">// config/config.php
-define('JWT_SECRET_KEY', 'your_secret_key_here');</div>
-            <p><strong>Security note:</strong> Keep this key secret. In production prefer to load it from an environment variable and not commit secrets to source control.</p>
+            <h2 class="section-title">Troubleshooting & tips</h2>
+            <ul>
+                <li>If you get FK errors when creating orders, check that <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> exist in their respective tables.</li>
+                <li>To create a product and give it stock (dev): create product via <code>/api/productos/crear</code>, then use the stock UI or insert into <code>stock</code> table.</li>
+                <li>Coordinates must be provided; the API will reject requests missing valid coordinates.</li>
+            </ul>
         </div>
-
-        <!-- Quick token usage example -->
-        <div class="section-container">
-            <h3 class="section-title">Quick: login & use the token</h3>
-            <p>Steps to obtain and use the token (the login response places the token at <code>data.token</code>):</p>
-            <ol>
-                <li>Call <code>POST /api/auth/login</code> with email &amp; password.</li>
-                <li>Read the token from the response: <code>response.data.token</code>.</li>
-                <li>Send subsequent requests with the header <code>Authorization: Bearer &lt;token&gt;</code>.</li>
-            </ol>
-            <h4>Example (login request):</h4>
-            <div class="code-block">
-                POST http://localhost/paqueteriacz/api/auth/login
-                {
-                "email": "admin@example.com",
-                "password": "123456"
-                }
-            </div>
-            <h4>Example (login response):</h4>
-            <div class="code-block">
-                {
-                "success": true,
-                "message": "Login exitoso",
-                "data": {
-                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                }
-                }
-            </div>
-            <h4>Usage example (Authorization header):</h4>
-            <div class="code-block">
-                Authorization: Bearer &lt;value-from-response.data.token&gt;
-            </div>
-        </div>
-
-        <!-- CRUD Section -->
-        <div class="section-container">
-            <h2 class="section-title">3. Operations for Orders</h2>
-
-            <!-- Create Order -->
-            <h3>3.1 Create an Order</h3>
-            <p>Add a new order to the system.</p>
-            <h4>Endpoint:</h4>
-            <div class="code-block">
-                <span class="badge-endpoint">POST</span> http://localhost/paqueteriacz/api/pedidos/crear
-            </div>
-            <h4>Headers:</h4>
-            <div class="code-block">
-                Authorization: Bearer &lt;TOKEN_OBTENIDO_EN_LOGIN&gt;
-            </div>
-            <h4>Example Response:</h4>
-            <div class="code-block">
-                {
-                "numero_orden": 14522001,
-                "destinatario": "Carlos Perez",
-                "telefono": "50588889999",
-                "precio": 2500,
-                "producto": "Green Coffee - 3",
-                "cantidad": 3,
-                "id_moneda": 1,
-                "id_vendedor": 5,
-                "id_proveedor": 6,
-                "pais": "Nicaragua",
-                "departamento": "León",
-                "municipio": "León",
-                "barrio": "San Felipe",
-                "direccion": "De la Catedral 2 cuadras al norte.",
-                "zona": "Centro",
-                "comentario": "Entrega urgente",
-                "coordenadas": "12.437532,-86.879175"
-                }
-            </div>
-                        <h4>Example Response:</h4>
-                        <div class="code-block">
-                                {
-                                "success": true,
-                                "message": "Pedido creado correctamente.",
-                                "data": 15
-                                }
-                        </div>
-
-                        <h4>cURL ejemplo (Create):</h4>
-                        <div class="code-block">
-curl -X POST "http://localhost/paqueteriacz/api/pedidos/crear" \
-    -H "Content-Type: application/json" \
-    -H "Authorization: Bearer <TOKEN>" \
-    -d '{
-        "numero_orden": 90001,
-        "destinatario": "Cliente Prueba",
-        "telefono": "0999999999",
-        "producto": "Producto X",
-        "cantidad": 1,
-        "coordenadas": "-0.180653,-78.467838",
-        "direccion": "Calle Falsa 123",
-        "pais": "EC",
-        "departamento": "Pichincha",
-        "municipio": "Quito",
-        "id_moneda": 1,
-        "id_vendedor": 5,
-        "id_proveedor": 6
-    }'
-                        </div>
-                        <p class="mt-2"><strong>Nota:</strong> En entornos reales estas tres claves (
-                        <code>id_moneda</code>, <code>id_vendedor</code>, <code>id_proveedor</code>) deben existir en la base de datos. Si faltan o son inválidas la creación fallará con errores de integridad referencial o validación. Asegúrate de tener stock suficiente para el producto solicitado.</p>
-
-                        <h4>cURL ejemplo (Listar):</h4>
-                        <div class="code-block">
-curl "http://localhost/paqueteriacz/api/pedidos/listar"
-                        </div>
-
-                        <h4>Postman</h4>
-                        <p>Importa la colección y el environment incluidos en el repositorio:</p>
-                        <ul>
-                                <li><strong>postman/Paqueteria_API.postman_collection.json</strong></li>
-                                <li><strong>postman/Paqueteria_Local.postman_environment.json</strong></li>
-                        </ul>
-
-
-        </div>
-        <!-- Products Section -->
-        <div class="section-container">
-            <h2 class="section-title">4. Products (CRUD)</h2>
-            <p>Endpoints to manage products. All endpoints that change data require a valid JWT in the <code>Authorization</code> header.</p>
-            <h4>Endpoints (examples):</h4>
-            <div class="code-block">
-                <strong>List:</strong> GET http://localhost/paqueteriacz/api/productos/listar
-            </div>
-            <div class="code-block">
-                <strong>Create:</strong> POST http://localhost/paqueteriacz/api/productos/crear
-            </div>
-            <div class="code-block">
-                <strong>View:</strong> GET http://localhost/paqueteriacz/api/productos/ver/{id}
-            </div>
-            <div class="code-block">
-                <strong>Update:</strong> POST http://localhost/paqueteriacz/api/productos/actualizar/{id}
-            </div>
-            <div class="code-block">
-                <strong>Delete:</strong> POST http://localhost/paqueteriacz/api/productos/eliminar/{id}
-            </div>
-
-            <h4>Example create body:</h4>
-            <div class="code-block">
-                {
-                "nombre": "Producto X",
-                "descripcion": "Descripción opcional",
-                "precio_usd": 9.5
-                }
-            </div>
-
+    </div>
             <h4>Example create response:</h4>
             <div class="code-block">
                 {
