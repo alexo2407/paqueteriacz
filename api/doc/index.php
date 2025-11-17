@@ -139,6 +139,39 @@ define('JWT_SECRET_KEY', 'your_secret_key_here');</div>
             <p><strong>Security note:</strong> Keep this key secret. In production prefer to load it from an environment variable and not commit secrets to source control.</p>
         </div>
 
+        <!-- Quick token usage example -->
+        <div class="section-container">
+            <h3 class="section-title">Quick: login & use the token</h3>
+            <p>Steps to obtain and use the token (the login response places the token at <code>data.token</code>):</p>
+            <ol>
+                <li>Call <code>POST /api/auth/login</code> with email &amp; password.</li>
+                <li>Read the token from the response: <code>response.data.token</code>.</li>
+                <li>Send subsequent requests with the header <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+            </ol>
+            <h4>Example (login request):</h4>
+            <div class="code-block">
+                POST http://localhost/paqueteriacz/api/auth/login
+                {
+                "email": "admin@example.com",
+                "password": "123456"
+                }
+            </div>
+            <h4>Example (login response):</h4>
+            <div class="code-block">
+                {
+                "success": true,
+                "message": "Login exitoso",
+                "data": {
+                    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+                }
+            </div>
+            <h4>Usage example (Authorization header):</h4>
+            <div class="code-block">
+                Authorization: Bearer &lt;value-from-response.data.token&gt;
+            </div>
+        </div>
+
         <!-- CRUD Section -->
         <div class="section-container">
             <h2 class="section-title">3. Operations for Orders</h2>
@@ -163,6 +196,9 @@ define('JWT_SECRET_KEY', 'your_secret_key_here');</div>
                 "precio": 2500,
                 "producto": "Green Coffee - 3",
                 "cantidad": 3,
+                "id_moneda": 1,
+                "id_vendedor": 5,
+                "id_proveedor": 6,
                 "pais": "Nicaragua",
                 "departamento": "León",
                 "municipio": "León",
@@ -197,9 +233,14 @@ curl -X POST "http://localhost/paqueteriacz/api/pedidos/crear" \
         "direccion": "Calle Falsa 123",
         "pais": "EC",
         "departamento": "Pichincha",
-        "municipio": "Quito"
+        "municipio": "Quito",
+        "id_moneda": 1,
+        "id_vendedor": 5,
+        "id_proveedor": 6
     }'
                         </div>
+                        <p class="mt-2"><strong>Nota:</strong> En entornos reales estas tres claves (
+                        <code>id_moneda</code>, <code>id_vendedor</code>, <code>id_proveedor</code>) deben existir en la base de datos. Si faltan o son inválidas la creación fallará con errores de integridad referencial o validación. Asegúrate de tener stock suficiente para el producto solicitado.</p>
 
                         <h4>cURL ejemplo (Listar):</h4>
                         <div class="code-block">
