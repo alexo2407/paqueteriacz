@@ -159,6 +159,31 @@
             <div class="code-block">Authorization: Bearer &lt;JWT_TOKEN from response.data.token&gt;</div>
         </div>
 
+        <!-- Geographic & Reference Data (GeoInfo) -->
+        <div class="section-container">
+            <h2 class="section-title">Geographic & Reference Data (GeoInfo)</h2>
+            <p>Endpoint to retrieve reference lists used by the front-end selects: countries, departments, municipalities, neighborhoods and currencies.</p>
+
+            <h4>Endpoint</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/listar</div>
+
+            <p>Returns an object <code>data</code> containing arrays for <code>paises</code> (countries), <code>departamentos</code> (departments), <code>municipios</code> (municipalities), <code>barrios</code> (neighborhoods) and <code>monedas</code> (currencies). Useful to initialize forms and dependent selects.</p>
+
+            <h4>Response example</h4>
+            <div class="code-block">{
+    "success": true,
+    "message": "GeoInfo listed",
+    "data": {
+        "paises": [{ "id": 1, "nombre": "Nicaragua", "codigo_iso": "NI" }],
+        "departamentos": [{ "id": 1, "nombre": "Managua", "id_pais": 1 }],
+        "municipios": [{ "id": 1, "nombre": "Managua", "id_departamento": 1 }],
+        "barrios": [{ "id": 1, "nombre": "Altamira", "id_municipio": 1 }],
+        "monedas": [{ "id":1, "codigo":"USD", "nombre":"US Dollar", "tasa_usd":"1.0000" }]
+    }
+}</div>
+
+        </div>
+
         <!-- Products: detailed -->
         <div class="section-container">
             <h2 class="section-title">Products (CRUD)</h2>
@@ -353,28 +378,6 @@
         </div>
 
         <!-- Troubleshooting / tips -->
-        <div class="section-container">
-            <h2 class="section-title">Geographic & Reference Data (GeoInfo)</h2>
-            <p>Endpoint para obtener listados de referencia usados en selects: países, departamentos, municipios, barrios y monedas.</p>
-
-            <h4>Endpoint</h4>
-            <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/listar</div>
-
-            <p>Devuelve un objeto <code>data</code> con arrays para <code>paises</code>, <code>departamentos</code>, <code>municipios</code>, <code>barrios</code> y <code>monedas</code>. Útil para inicializar formularios y selects dependientes.</p>
-
-            <h4>Response example</h4>
-            <div class="code-block">{
-    "success": true,
-    "message": "Geoinfo listada",
-    "data": {
-        "paises": [{ "id": 1, "nombre": "Nicaragua", "codigo_iso": "NI" }],
-        "departamentos": [{ "id": 1, "nombre": "Managua", "id_pais": 1 }],
-        "municipios": [{ "id": 1, "nombre": "Managua", "id_departamento": 1 }],
-        "barrios": [{ "id": 1, "nombre": "Altamira", "id_municipio": 1 }],
-        "monedas": [{ "id":1, "codigo":"USD", "nombre":"Dólar estadounidense", "tasa_usd":"1.0000" }]
-    }
-}</div>
-        </div>
         <div class="section-container">
             <h2 class="section-title">Troubleshooting & tips</h2>
             <ul style="color: #212529;">
