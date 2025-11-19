@@ -1,8 +1,19 @@
 <?php
 include_once __DIR__ . '/conexion.php';
 
+/**
+ * DepartamentoModel
+ *
+ * CRUD y búsquedas por país para la entidad departamentos.
+ */
 class DepartamentoModel
 {
+    /**
+     * Listar departamentos, opcionalmente filtrados por país.
+     *
+     * @param int|null $paisId
+     * @return array Lista de departamentos.
+     */
     public static function listarPorPais($paisId = null)
     {
         try {
@@ -21,6 +32,11 @@ class DepartamentoModel
         }
     }
 
+    /**
+     * Obtener departamento por id.
+     * @param int $id
+     * @return array|null
+     */
     public static function obtenerPorId($id)
     {
         try {
@@ -35,6 +51,12 @@ class DepartamentoModel
         }
     }
 
+    /**
+     * Crear un departamento asociado a un país.
+     * @param string $nombre
+     * @param int $id_pais
+     * @return int|null ID creado o null en error
+     */
     public static function crear($nombre, $id_pais)
     {
         try {
@@ -50,6 +72,13 @@ class DepartamentoModel
         }
     }
 
+    /**
+     * Actualizar un departamento.
+     * @param int $id
+     * @param string $nombre
+     * @param int $id_pais
+     * @return bool True si se actualizó.
+     */
     public static function actualizar($id, $nombre, $id_pais)
     {
         try {
@@ -65,6 +94,11 @@ class DepartamentoModel
         }
     }
 
+    /**
+     * Eliminar un departamento por id.
+     * @param int $id
+     * @return bool True si eliminado.
+     */
     public static function eliminar($id)
     {
         try {

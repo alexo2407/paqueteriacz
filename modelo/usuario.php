@@ -2,9 +2,24 @@
 
 include_once __DIR__ . '/conexion.php';
 
-
+/**
+ * UsuarioModel
+ *
+ * Encapsula operaciones sobre la tabla `usuarios` y tablas relacionadas
+ * (usuarios_roles, roles, etc.). Provee utilidades para autenticación,
+ * gestión de roles y CRUD de usuarios.
+ */
 class UsuarioModel {
-
+    /**
+     * Verificar credenciales de un usuario.
+     *
+     * - Devuelve un array con datos del usuario y roles cuando la autenticación es exitosa.
+     * - Soporta migración de contraseñas (texto plano / MD5 / SHA1) cuando ALLOW_PLAINTEXT_MIGRATION está activado.
+     *
+     * @param string $email
+     * @param string $password
+     * @return array|false Array con claves ID_Usuario, Usuario, Rol, Roles, RolesNombres o false si falla.
+     */
     public function verificarCredenciales($email, $password) {
 
         $db = (new Conexion())->conectar();
@@ -87,6 +102,10 @@ class UsuarioModel {
     /**
      * Obtener todos los usuarios (sin contraseñas)
      */
+    /**
+     * Obtener lista de usuarios (sin contraseñas).
+     * @return array Lista de usuarios como arrays asociativos.
+     */
     public function mostrarUsuarios()
     {
         try {
@@ -111,6 +130,11 @@ class UsuarioModel {
         }
     }
 
+    /**
+     * Obtener usuario por id.
+     * @param int $id
+     * @return array|null
+     */
     public function obtenerPorId($id)
     {
         try {
@@ -126,6 +150,16 @@ class UsuarioModel {
         }
     }
 
+    /**
+     * Actualizar campos de un usuario.
+     *
+     * Acepta un array con campos opcionales (nombre, email, telefono, id_pais, activo, id_estado, contrasena).
+     * Retorna ['success'=>bool, 'changed'=>bool] o un arreglo de error.
+     *
+     * @param int $id
+     * @param array $data
+     * @return array
+     */
     public function actualizarUsuario($id, array $data)
     {
         try {
@@ -261,6 +295,10 @@ class UsuarioModel {
         }
     }
 
+    /**
+     * Listar roles disponibles (mapa id => nombre_rol).
+     * @return array
+     */
     public function listarRoles()
     {
         try {
@@ -278,6 +316,11 @@ class UsuarioModel {
         }
     }
 
+    /**
+     * Obtener usuarios activos asignados a un rol por nombre.
+     * @param string $nombreRol
+     * @return array Lista de usuarios.
+     */
     public function obtenerUsuariosPorRolNombre($nombreRol)
     {
         try {
@@ -302,6 +345,13 @@ class UsuarioModel {
     /**
      * Obtener todos los roles de un usuario como arrays de ids y nombres.
      * Fallback: si no hay registros en pivot, usa u.id_rol.
+     * @return array{ids:int[], nombres:string[]}
+     */
+    /**
+     * Obtener roles de un usuario como arrays de ids y nombres.
+     * Fallback: si pivot vacío, utiliza usuarios.id_rol.
+     *
+     * @param int $userId
      * @return array{ids:int[], nombres:string[]}
      */
     public function obtenerRolesDeUsuario(int $userId): array

@@ -1,8 +1,19 @@
 <?php
 include_once __DIR__ . '/conexion.php';
 
+/**
+ * BarrioModel
+ *
+ * Operaciones CRUD y búsquedas por municipio para la entidad barrios.
+ */
 class BarrioModel
 {
+    /**
+     * Listar barrios, opcionalmente filtrados por municipio.
+     *
+     * @param int|null $munId Identificador del municipio o null para todos.
+     * @return array Lista de barrios (arrays asociativos) o [] en caso de error.
+     */
     public static function listarPorMunicipio($munId = null)
     {
         try {
@@ -21,6 +32,12 @@ class BarrioModel
         }
     }
 
+    /**
+     * Obtener un barrio por su id.
+     *
+     * @param int $id
+     * @return array|null Array asociativo con el barrio o null si no existe.
+     */
     public static function obtenerPorId($id)
     {
         try {
@@ -35,6 +52,13 @@ class BarrioModel
         }
     }
 
+    /**
+     * Crear un nuevo barrio para un municipio dado.
+     *
+     * @param string $nombre
+     * @param int $id_municipio
+     * @return int|null ID insertado o null si hubo un error.
+     */
     public static function crear($nombre, $id_municipio)
     {
         try {
@@ -50,6 +74,14 @@ class BarrioModel
         }
     }
 
+    /**
+     * Actualizar los datos de un barrio.
+     *
+     * @param int $id
+     * @param string $nombre
+     * @param int $id_municipio
+     * @return bool True si la actualización fue exitosa, false en caso contrario.
+     */
     public static function actualizar($id, $nombre, $id_municipio)
     {
         try {
@@ -65,6 +97,12 @@ class BarrioModel
         }
     }
 
+    /**
+     * Eliminar un barrio por su id.
+     *
+     * @param int $id
+     * @return bool True si la eliminación fue exitosa, false en caso de error.
+     */
     public static function eliminar($id)
     {
         try {

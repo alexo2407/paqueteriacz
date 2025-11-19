@@ -1,6 +1,16 @@
 <?php
 require_once __DIR__ . '/../config/config.php'; // Ensure configuration constants are loaded
 
+/**
+ * Conexion
+ *
+ * Simple PDO-based database connection wrapper used across models.
+ * Reads DB_* constants from `config/config.php` and returns a PDO instance
+ * configured with sensible defaults (exceptions, native prepares, utf8mb4).
+ *
+ * Usage:
+ *   $db = (new Conexion())->conectar();
+ */
 class Conexion
 {
     // Parámetros de configuración de la BD
@@ -18,7 +28,16 @@ class Conexion
         $this->password = DB_PASSWORD;
     }
 
-    // Método para conectar a la BD
+    /**
+     * Establecer y retornar una conexión PDO a la base de datos.
+     *
+     * Configura PDO con:
+     * - ERRMODE => EXCEPTION
+     * - EMULATE_PREPARES => false
+     * - DEFAULT_FETCH_MODE => ASSOC
+     *
+     * @return PDO Instancia de conexión a la base de datos
+     */
     public function conectar()
     {
         $this->conexion = null;
@@ -48,7 +67,12 @@ class Conexion
         return $this->conexion;
     }
 
-    // Método para cerrar la conexión (opcional)
+    /**
+     * Cerrar la conexión establecida (libera el objeto PDO).
+     * Método opcional; en PHP la conexión se cierra al destruir el objeto.
+     *
+     * @return void
+     */
     public function desconectar()
     {
         $this->conexion = null;

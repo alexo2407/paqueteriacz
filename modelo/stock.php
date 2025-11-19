@@ -40,13 +40,6 @@ class StockModel
             return [];
         }
     }
-
-    /**
-     * Obtener un registro por su id.
-     *
-     * @param int $id Identificador del registro.
-     * @return array|null Array asociativo del registro o null si no existe/error.
-     */
     public static function obtenerPorId($id)
     {
         try {
@@ -60,6 +53,13 @@ class StockModel
             return null;
         }
     }
+
+    /**
+     * Obtener un registro de stock por id.
+     *
+     * @param int $id
+     * @return array|null Registro o null si no existe o en error.
+     */
 
     /**
      * Crear un nuevo registro de stock.

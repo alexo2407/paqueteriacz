@@ -2,6 +2,13 @@
 
 include_once __DIR__ . '/conexion.php';
 
+/**
+ * ProductoModel
+ *
+ * Modelo encargado de las operaciones CRUD sobre la tabla `productos` y
+ * consultas relacionadas con inventario (stock). Todos los métodos usan
+ * la clase `Conexion` para obtener una instancia PDO.
+ */
 class ProductoModel
 {
     public static function listarConInventario()

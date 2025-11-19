@@ -219,6 +219,13 @@ class PedidosModel
     /* ZONA API */
 
     /* VERFICAR SI EXISTE UN NUMERO DE ORDEN ANTES DE INSERTARLA */
+    /**
+     * Comprobar existencia de un número de orden en la tabla `pedidos`.
+     *
+     * @param int|string $numeroOrden Número de orden a comprobar.
+     * @return bool True si existe al menos un pedido con ese número, false en caso contrario.
+     * @throws Exception En caso de error de consulta.
+     */
     public static function existeNumeroOrden($numeroOrden) {
         try {
             $db = (new Conexion())->conectar();
@@ -236,7 +243,18 @@ class PedidosModel
     }
     
 
-    /* CREA EL PEDIDO DESDE EL API */
+    /**
+     * Crear un pedido simple (API legacy).
+     *
+     * Inserta una fila en `pedidos` y, opcionalmente, una fila en
+     * `pedidos_productos` si se proporcionan `producto_id`/`cantidad`.
+     * Este método construye el INSERT dinámicamente según columnas presentes
+     * en la base de datos (compatibilidad entre despliegues).
+     *
+     * @param array $data Datos del pedido (numero_orden, destinatario, telefono, coordenadas, precio, producto, cantidad, etc.)
+     * @return array Retorna ['numero_orden' => ..., 'pedido_id' => int]
+     * @throws Exception Si falla la validación o la inserción.
+     */
     public static function crearPedido($data)
     {
         try {
@@ -376,6 +394,13 @@ class PedidosModel
         $stmt = null;
     }
 
+    /**
+     * Obtener un pedido por su número de orden.
+     *
+     * @param int|string $numeroOrden
+     * @return array|null Array asociativo con los campos seleccionados o null si no existe.
+     * @throws Exception En caso de error en la consulta.
+     */
     public function obtenerPedidoPorNumero($numeroOrden)
     {
         try {
@@ -456,6 +481,16 @@ class PedidosModel
 
     /*  OBTENER PEDIDOS POR ID  */
 
+    /**
+     * Obtener un pedido completo por su identificador.
+     *
+     * Incluye la lista de productos asociados en la clave 'productos'.
+     * Retorna null si no existe.
+     *
+     * @param int $id_pedido
+     * @return array|null
+     * @throws Exception En caso de fallo en la consulta.
+     */
     public static function obtenerPedidoPorId($id_pedido)
     {
         try {
@@ -510,6 +545,17 @@ class PedidosModel
 
     /* ACTUALIZAR  */
 
+    /**
+     * Actualizar los datos de un pedido existente.
+     *
+     * Acepta coordenadas (latitud/longitud) y campos opcionales. También
+     * puede actualizar la relación pedidos_productos cuando se proveen
+     * `producto_id` y `cantidad_producto`.
+     *
+     * @param array $data Debe contener 'id_pedido' y los campos a modificar.
+     * @return bool True si se aplicaron cambios, False si no o en caso de error.
+     * @throws Exception En caso de error de base de datos.
+     */
     public static function actualizarPedido($data)
     {
         try {
@@ -606,6 +652,18 @@ class PedidosModel
     }
 
 
+    /**
+     * Crear un pedido y sus productos en una transacción.
+     *
+     * - Valida stock disponible (SELECT ... FOR UPDATE) antes de insertar.
+     * - Inserta en `pedidos` y en `pedidos_productos`.
+     * - Devuelve el id del pedido creado.
+     *
+     * @param array $pedido Datos del pedido (numero_orden, destinatario, telefono, latitud, longitud, etc.)
+     * @param array<int,array{ id_producto:int, cantidad:int, cantidad_devuelta?:int }> $items Lista de items
+     * @return int ID del pedido creado
+     * @throws Exception Si no hay items, stock insuficiente o error en la transacción.
+     */
     public static function crearPedidoConProductos(array $pedido, array $items)
     {
         // NOTA: La gestión de inventario (tabla `stock`) se realiza mediante

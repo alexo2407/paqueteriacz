@@ -1,9 +1,20 @@
 <?php
 
 include_once __DIR__ . '/conexion.php';
-
+/**
+ * MonedaModel
+ *
+ * Operaciones CRUD y búsquedas relacionadas con la tabla `monedas`.
+ * Todos los métodos devuelven datos primitivos/arrays o valores booleanos
+ * en caso de error. Los errores se registran en logs/errors.log.
+ */
 class MonedaModel
 {
+    /**
+     * Listar todas las monedas.
+     *
+     * @return array Lista de monedas (arrays asociativos) o [] en caso de error.
+     */
     public static function listar()
     {
         try {
@@ -17,6 +28,12 @@ class MonedaModel
         }
     }
 
+    /**
+     * Obtener moneda por id.
+     *
+     * @param int $id
+     * @return array|null Array asociativo con la moneda o null si no existe.
+     */
     public static function obtenerPorId($id)
     {
         try {
@@ -31,6 +48,14 @@ class MonedaModel
         }
     }
 
+    /**
+     * Crear una nueva moneda.
+     *
+     * @param string $codigo
+     * @param string $nombre
+     * @param float|null $tasa_usd
+     * @return int|null ID insertado o null en caso de error.
+     */
     public static function crear($codigo, $nombre, $tasa_usd = null)
     {
         try {
@@ -51,6 +76,15 @@ class MonedaModel
         }
     }
 
+    /**
+     * Actualizar una moneda existente.
+     *
+     * @param int $id
+     * @param string $codigo
+     * @param string $nombre
+     * @param float|null $tasa_usd
+     * @return bool True si la actualización tuvo éxito.
+     */
     public static function actualizar($id, $codigo, $nombre, $tasa_usd = null)
     {
         try {
@@ -71,6 +105,12 @@ class MonedaModel
         }
     }
 
+    /**
+     * Eliminar una moneda por id.
+     *
+     * @param int $id
+     * @return bool True si se eliminó correctamente.
+     */
     public static function eliminar($id)
     {
         try {
@@ -84,6 +124,12 @@ class MonedaModel
         }
     }
 
+    /**
+     * Buscar una moneda por su código.
+     *
+     * @param string $codigo
+     * @return array|null Array asociativo con la moneda o null si no existe.
+     */
     public static function buscarPorCodigo($codigo)
     {
         try {

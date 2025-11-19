@@ -1,8 +1,17 @@
 <?php
 include_once __DIR__ . '/conexion.php';
 
+/**
+ * PaisModel
+ *
+ * CRUD para tabla `paises`.
+ */
 class PaisModel
 {
+    /**
+     * Listar países ordenados por nombre.
+     * @return array Lista de países o [] en caso de error.
+     */
     public static function listar()
     {
         try {
@@ -16,6 +25,11 @@ class PaisModel
         }
     }
 
+    /**
+     * Obtener país por id.
+     * @param int $id
+     * @return array|null Array asociativo o null si no existe.
+     */
     public static function obtenerPorId($id)
     {
         try {
@@ -30,6 +44,12 @@ class PaisModel
         }
     }
 
+    /**
+     * Crear un nuevo país.
+     * @param string $nombre
+     * @param string|null $codigo_iso
+     * @return int|null ID creado o null en error
+     */
     public static function crear($nombre, $codigo_iso = null)
     {
         try {
@@ -45,6 +65,13 @@ class PaisModel
         }
     }
 
+    /**
+     * Actualizar un país.
+     * @param int $id
+     * @param string $nombre
+     * @param string|null $codigo_iso
+     * @return bool True si se actualizó.
+     */
     public static function actualizar($id, $nombre, $codigo_iso = null)
     {
         try {
@@ -60,6 +87,11 @@ class PaisModel
         }
     }
 
+    /**
+     * Eliminar país por id.
+     * @param int $id
+     * @return bool True si se eliminó correctamente.
+     */
     public static function eliminar($id)
     {
         try {

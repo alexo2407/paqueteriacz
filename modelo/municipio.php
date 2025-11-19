@@ -1,8 +1,18 @@
 <?php
 include_once __DIR__ . '/conexion.php';
 
+/**
+ * MunicipioModel
+ *
+ * CRUD y búsquedas por departamento para la entidad municipios.
+ */
 class MunicipioModel
 {
+    /**
+     * Listar municipios, opcionalmente filtrados por departamento.
+     * @param int|null $depId
+     * @return array
+     */
     public static function listarPorDepartamento($depId = null)
     {
         try {
@@ -21,6 +31,11 @@ class MunicipioModel
         }
     }
 
+    /**
+     * Obtener municipio por id.
+     * @param int $id
+     * @return array|null
+     */
     public static function obtenerPorId($id)
     {
         try {
@@ -35,6 +50,12 @@ class MunicipioModel
         }
     }
 
+    /**
+     * Crear un municipio asociado a un departamento.
+     * @param string $nombre
+     * @param int $id_departamento
+     * @return int|null ID creado o null en error
+     */
     public static function crear($nombre, $id_departamento)
     {
         try {
@@ -50,6 +71,13 @@ class MunicipioModel
         }
     }
 
+    /**
+     * Actualizar un municipio.
+     * @param int $id
+     * @param string $nombre
+     * @param int $id_departamento
+     * @return bool True si se actualizó.
+     */
     public static function actualizar($id, $nombre, $id_departamento)
     {
         try {
@@ -65,6 +93,11 @@ class MunicipioModel
         }
     }
 
+    /**
+     * Eliminar un municipio por id.
+     * @param int $id
+     * @return bool True si eliminado.
+     */
     public static function eliminar($id)
     {
         try {

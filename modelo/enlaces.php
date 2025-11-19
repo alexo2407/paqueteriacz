@@ -1,7 +1,23 @@
 <?php 
 
+/**
+ * EnlacesModel
+ *
+ * Modelo que resuelve qué archivo de vista debe incluirse para una ruta
+ * dada. Devuelve la ruta del archivo y parámetros extra.
+ */
 class EnlacesModel
 {
+    /**
+     * Resolver la ruta de la vista a partir del parámetro `link`.
+     *
+     * - Retorna ['archivo' => <ruta>, 'parametros' => []]
+     * - Sanitiza segmentos para evitar directory traversal.
+     * - Si no encuentra la vista retorna la vista por defecto (inicio/dashboard).
+     *
+     * @param string $link Ruta solicitada (por ejemplo 'pedidos/editar/123')
+     * @return array
+     */
     public static function enlacesModel($link)
     {
         // Dividimos la URL en partes

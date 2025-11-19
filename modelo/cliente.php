@@ -13,7 +13,22 @@ class ClientesModel
         $this->Nombre = $Nombre;
     }
 
+    /**
+     * Obtener una instancia lógica de cliente (POPO).
+     *
+     * Este constructor es un simple contenedor de datos y no realiza
+     * operaciones I/O.
+     *
+     * @param int|null $ID_Cliente
+     * @param string|null $Nombre
+     */
+
     // Obtiene todos los clientes activos
+    /**
+     * Obtener todos los clientes activos.
+     *
+     * @return array Lista de clientes (arrays asociativos) o [] en caso de error.
+     */
     public static function getAll(): array
     {
         $resultado = [];
@@ -48,6 +63,11 @@ class ClientesModel
      *
      * @return array Lista de clientes inactivos
      */
+    /**
+     * Obtener todos los clientes inactivos.
+     *
+     * @return array Lista de clientes inactivos o [] en caso de error.
+     */
     public static function obtenerClientesInactivos()
     {
         try {
@@ -75,6 +95,13 @@ class ClientesModel
      * @param int $idCliente
      * @return bool True si la activación fue exitosa, False en caso contrario
      */
+    /**
+     * Actualizar el estado (activo/inactivo) de un cliente.
+     *
+     * @param int $idCliente
+     * @param int $estado Valor 0/1
+     * @return bool True si la actualización fue exitosa.
+     */
     public static function actualizarEstadoCliente($idCliente, $estado)
 {
     try {
@@ -97,6 +124,12 @@ class ClientesModel
      *
      * @param int $idCliente
      * @return object|null Cliente como objeto o null si no existe
+     */
+    /**
+     * Obtener un cliente por su ID.
+     *
+     * @param int $idCliente
+     * @return object|null Objeto cliente (PDO::FETCH_OBJ) o null si no existe.
      */
     public static function obtenerClientePorId($idCliente)
     {
@@ -131,6 +164,14 @@ class ClientesModel
      * @param string $nombre
      * @param int $activo
      * @return bool True si la actualización fue exitosa, False si falló
+     */
+    /**
+     * Actualizar datos de un cliente.
+     *
+     * @param int $idCliente
+     * @param string $nombre
+     * @param int $activo
+     * @return bool True si la actualización fue exitosa.
      */
     public static function actualizarCliente($idCliente, $nombre, $activo)
     {
