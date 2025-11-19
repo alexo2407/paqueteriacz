@@ -263,22 +263,17 @@ class PedidosController {
     private function validarDatosPedido($data) {
         $errores = [];
 
-        // Validar campos obligatorios (aceptamos 'producto' como nombre o 'producto_id')
-        $camposObligatorios = [
-            "numero_orden", "destinatario", "telefono",
-            "pais", "departamento", "municipio", "direccion", "coordenadas"
-        ];
-
-        // Si se envía un array 'productos' entonces la cantidad se valida por item
-        if (!isset($data['productos']) || !is_array($data['productos']) || count($data['productos']) === 0) {
-            // en el payload simple se espera campo 'cantidad' a nivel superior
-            $camposObligatorios[] = 'cantidad';
-        }
+        // Minimal required fields for provider API: número de orden and destinatario.
+        // Productos must be provided by id (array 'productos' or top-level 'producto_id').
+        $camposObligatorios = ["numero_orden", "destinatario"];
         foreach ($camposObligatorios as $campo) {
             if (!isset($data[$campo]) || $data[$campo] === '') {
                 $errores[] = "El campo '$campo' es obligatorio.";
             }
         }
+
+        // If no products array is provided, the top-level cantidad is not required here
+        // because products may be sent as an array. Quantity is validated per-item below.
 
         // Producto: require producto_id (either top-level or inside 'productos'). No longer accept product names.
         $hasProductsArray = isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0;
@@ -295,8 +290,9 @@ class PedidosController {
             }
         }
 
-        // Validar formato de las coordenadas
-        if (isset($data["coordenadas"])) {
+
+        // Validar formato de las coordenadas si se proporcionan
+        if (isset($data["coordenadas"]) && $data["coordenadas"] !== '') {
             $coords = explode(',', $data["coordenadas"]);
             if (count($coords) !== 2 || !is_numeric($coords[0]) || !is_numeric($coords[1])) {
                 $errores[] = "El campo 'coordenadas' debe estar en el formato 'latitud,longitud'.";

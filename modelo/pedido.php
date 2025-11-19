@@ -680,6 +680,19 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
+            // If a fallback user id for stock is configured, and the pedido
+            // doesn't include a vendedor/proveedor, apply the fallback so
+            // DB triggers that reference the user don't attempt to insert
+            // an invalid id (which can violate FK constraints).
+            if (defined('FALLBACK_USER_FOR_STOCK') && FALLBACK_USER_FOR_STOCK !== null) {
+                if (empty($pedido['vendedor']) || $pedido['vendedor'] === null) {
+                    $pedido['vendedor'] = (int)FALLBACK_USER_FOR_STOCK;
+                }
+                if (empty($pedido['proveedor']) || $pedido['proveedor'] === null) {
+                    $pedido['proveedor'] = (int)FALLBACK_USER_FOR_STOCK;
+                }
+            }
+
             $coordenadas = sprintf(
                 'POINT(%s %s)',
                 number_format((float)$pedido['longitud'], 8, '.', ''),
@@ -777,16 +790,32 @@ class PedidosModel
                         $stmt->bindValue(':coordenadas', $coordenadas, PDO::PARAM_STR);
                         break;
                     case 'id_estado':
-                        $stmt->bindValue(':id_estado', (int)($pedido['estado'] ?? null), PDO::PARAM_INT);
+                        if (isset($pedido['estado']) && $pedido['estado'] !== null && $pedido['estado'] !== '') {
+                            $stmt->bindValue(':id_estado', (int)$pedido['estado'], PDO::PARAM_INT);
+                        } else {
+                            $stmt->bindValue(':id_estado', null, PDO::PARAM_NULL);
+                        }
                         break;
                     case 'id_moneda':
-                        $stmt->bindValue(':id_moneda', (int)($pedido['moneda'] ?? null), PDO::PARAM_INT);
+                        if (isset($pedido['moneda']) && $pedido['moneda'] !== null && $pedido['moneda'] !== '') {
+                            $stmt->bindValue(':id_moneda', (int)$pedido['moneda'], PDO::PARAM_INT);
+                        } else {
+                            $stmt->bindValue(':id_moneda', null, PDO::PARAM_NULL);
+                        }
                         break;
                     case 'id_vendedor':
-                        $stmt->bindValue(':id_vendedor', (int)($pedido['vendedor'] ?? null), PDO::PARAM_INT);
+                        if (isset($pedido['vendedor']) && $pedido['vendedor'] !== null && $pedido['vendedor'] !== '') {
+                            $stmt->bindValue(':id_vendedor', (int)$pedido['vendedor'], PDO::PARAM_INT);
+                        } else {
+                            $stmt->bindValue(':id_vendedor', null, PDO::PARAM_NULL);
+                        }
                         break;
                     case 'id_proveedor':
-                        $stmt->bindValue(':id_proveedor', (int)($pedido['proveedor'] ?? null), PDO::PARAM_INT);
+                        if (isset($pedido['proveedor']) && $pedido['proveedor'] !== null && $pedido['proveedor'] !== '') {
+                            $stmt->bindValue(':id_proveedor', (int)$pedido['proveedor'], PDO::PARAM_INT);
+                        } else {
+                            $stmt->bindValue(':id_proveedor', null, PDO::PARAM_NULL);
+                        }
                         break;
                 }
             }

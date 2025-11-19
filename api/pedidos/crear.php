@@ -76,6 +76,14 @@ if (!$data || !is_array($data)) {
 
 // Delegar la creación del pedido al controlador centralizado
 $pedidoController = new PedidosController();
+// Si tenemos datos del usuario autenticado, prefijar id_proveedor para el pedido
+if ($validacion['success'] && isset($validacion['data']['id'])) {
+    // No sobreescribir si el cliente explícitamente envió un proveedor
+    if (!isset($data['id_proveedor']) || $data['id_proveedor'] === null || $data['id_proveedor'] === '') {
+        $data['id_proveedor'] = (int)$validacion['data']['id'];
+    }
+}
+
 $response = $pedidoController->crearPedidoAPI($data);
 
 // El controlador ya devuelve el sobre { success, message, data }

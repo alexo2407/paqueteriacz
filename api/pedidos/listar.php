@@ -10,6 +10,8 @@
  * Response: { success, message, data }
  */
 
+// Asegurar que el modelo de Pedidos esté disponible para el controlador.
+require_once __DIR__ . '/../../modelo/pedido.php';
 require_once __DIR__ . '/../../controlador/pedido.php';
 require_once __DIR__ . '/../utils/responder.php';
 

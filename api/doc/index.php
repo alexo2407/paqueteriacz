@@ -167,6 +167,7 @@
             <h4>List products</h4>
             <div class="code-block"><span class="badge-endpoint">GET</span> /api/productos/listar</div>
             <p>Returns a list of products with aggregated stock (field <code>stock_total</code>).</p>
+            <p>Optional query parameter: <code>include_stock=1</code> — when set, the response includes a <code>stock_entries</code> array for each product with recent stock movements (fields: <code>id</code>, <code>id_producto</code>, <code>id_usuario</code>, <code>cantidad</code>, <code>updated_at</code>).</p>
             <h4>Response (200)</h4>
             <div class="code-block">{
     "success": true,
@@ -176,6 +177,24 @@
     ]
 }</div>
 
+            <h5>Response with include_stock=1 (example)</h5>
+            <div class="code-block">{
+    "success": true,
+    "data": [
+        {
+            "id": 2,
+            "nombre": "Protein Shake",
+            "precio_usd": "40.00",
+            "stock_total": "48",
+            "stock_entries": [
+                { "id": 28, "id_producto": 2, "id_usuario": 5, "cantidad": -11, "updated_at": "2025-11-19 11:57:38" },
+                { "id": 9,  "id_producto": 2, "id_usuario": 1, "cantidad": 29,  "updated_at": "2025-10-31 12:56:52" }
+            ]
+        }
+    ]
+}
+</div>
+
             <h4>Create product</h4>
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/productos/crear</div>
             <table class="table table-sm table-bordered">
@@ -184,19 +203,21 @@
                     <tr><td><code>nombre</code></td><td>string</td><td>yes</td><td>Unique-ish name used by lookup functions</td></tr>
                     <tr><td><code>descripcion</code></td><td>string</td><td>no</td><td>Optional</td></tr>
                     <tr><td><code>precio_usd</code></td><td>number</td><td>no</td><td>Decimal, stored as string in responses</td></tr>
+                    <tr><td><code>stock</code></td><td>integer</td><td>no</td><td>Optional initial stock quantity — when provided the API inserts a stock movement for the authenticated user (or uses FALLBACK_USER_FOR_STOCK if configured).</td></tr>
                 </tbody>
             </table>
             <h4>Example create request</h4>
             <div class="code-block">{
     "nombre": "Producto X",
     "descripcion": "Descripción opcional",
-    "precio_usd": 9.5
+    "precio_usd": 9.5,
+    "stock": 12
 }</div>
             <h4>Success response</h4>
             <div class="code-block">{
     "success": true,
     "message": "Producto creado correctamente.",
-    "id": 42
+    "data": { "id": 42, "stock_inserted": 99 }
 }</div>
         </div>
 
@@ -286,6 +307,24 @@
   "coordenadas": "-0.180653,-78.467838",
   "direccion": "Calle Falsa 123",
   "id_moneda": 1
+}</div>
+
+                                                <h4>Ejemplo que funciona (payload real)</h4>
+                                                <p>Ejemplo de JSON que se ha probado y funciona con el endpoint <code>/api/pedidos/crear</code> — usa <code>productos</code> con <code>producto_id</code> (aquí el producto 2: "Protein Shake").</p>
+                        <div class="code-block">{
+    "numero_orden": 1700385600,
+    "destinatario": "Proveedor Prueba",
+    "telefono": "0999999999",
+    "productos": [
+        { "producto_id": 2, "cantidad": 1 }
+    ],
+    "coordenadas": "-0.180653,-78.467838",
+    "direccion": "Calle Falsa 123",
+    "id_moneda": 1,
+    "pais": "EC",
+    "departamento": "Pichincha",
+    "municipio": "Quito",
+    "comentario": "Pedido de prueba via Postman"
 }</div>
 
             <h4>Example (curl) - create order</h4>

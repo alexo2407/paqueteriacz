@@ -6,8 +6,11 @@ header('Content-Type: application/json');
 header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Access-Control-Allow-Headers, Content-Type, Authorization');
 
-require_once __DIR__ . '/../../utils/autenticacion.php';
-require_once __DIR__ . '/../../utils/responder.php';
+// Cargar helpers y modelos con rutas relativas correctas desde /api/pedidos
+require_once __DIR__ . '/../utils/autenticacion.php';
+require_once __DIR__ . '/../utils/responder.php';
+// Asegurar que el modelo de Pedidos esté disponible antes de incluir el controlador
+require_once __DIR__ . '/../../modelo/pedido.php';
 require_once __DIR__ . '/../../controlador/pedido.php';
 
 // Obtener encabezados de la solicitud

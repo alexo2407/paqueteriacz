@@ -49,6 +49,51 @@ class ProductoModel
     }
 
     /**
+     * Listar movimientos/entradas de stock para un producto
+     * Devuelve un array de filas con: id, id_producto, id_usuario, cantidad, updated_at
+     * @param int $id
+     * @return array
+     */
+    public static function listarStockPorProducto($id)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('SELECT id, id_producto, id_usuario, cantidad, updated_at FROM stock WHERE id_producto = :id ORDER BY updated_at DESC');
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al listar stock por producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
+
+    /**
+     * Agregar un movimiento de stock para un producto.
+     * Inserta una fila en la tabla `stock` con id_producto, id_usuario y cantidad.
+     * Retorna el id insertado o null en error.
+     * @param int $idProducto
+     * @param int $idUsuario
+     * @param int $cantidad
+     * @return int|null
+     */
+    public static function agregarMovimientoStock($idProducto, $idUsuario, $cantidad)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad) VALUES (:id_producto, :id_usuario, :cantidad)');
+            $stmt->bindValue(':id_producto', $idProducto, PDO::PARAM_INT);
+            $stmt->bindValue(':id_usuario', $idUsuario, PDO::PARAM_INT);
+            $stmt->bindValue(':cantidad', $cantidad, PDO::PARAM_INT);
+            $stmt->execute();
+            return (int)$db->lastInsertId();
+        } catch (PDOException $e) {
+            error_log('Error al agregar movimiento de stock: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return null;
+        }
+    }
+
+    /**
      * Obtener stock total disponible para un producto (suma de stock.cantidad)
      * Devuelve null si ocurre un error o no existe el producto
      */
