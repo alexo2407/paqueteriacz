@@ -6,6 +6,10 @@
 
 ob_start();
 require_once __DIR__ . '/../modelo/producto.php';
+require_once __DIR__ . '/../modelo/usuario.php';
+require_once __DIR__ . '/../modelo/moneda.php';
+require_once __DIR__ . '/../modelo/municipio.php';
+require_once __DIR__ . '/../modelo/barrio.php';
 
 class PedidosController {
 
@@ -121,6 +125,37 @@ class PedidosController {
                 $monedaId = null;
             }
 
+            // Validate referenced ids at application level: if the referenced row doesn't exist,
+            // prefer to store NULL instead of sending an invalid FK to the database.
+            if ($monedaId !== null) {
+                $m = MonedaModel::obtenerPorId($monedaId);
+                if (!$m) $monedaId = null;
+            }
+
+            $vendedorId = isset($data['id_vendedor']) && is_numeric($data['id_vendedor']) ? (int)$data['id_vendedor'] : null;
+            if ($vendedorId !== null) {
+                $uv = (new UsuarioModel())->obtenerPorId($vendedorId);
+                if (!$uv) $vendedorId = null;
+            }
+
+            $proveedorId = isset($data['id_proveedor']) && is_numeric($data['id_proveedor']) ? (int)$data['id_proveedor'] : null;
+            if ($proveedorId !== null) {
+                $up = (new UsuarioModel())->obtenerPorId($proveedorId);
+                if (!$up) $proveedorId = null;
+            }
+
+            $municipioId = isset($data['id_municipio']) && is_numeric($data['id_municipio']) ? (int)$data['id_municipio'] : null;
+            if ($municipioId !== null) {
+                $mm = MunicipioModel::obtenerPorId($municipioId);
+                if (!$mm) $municipioId = null;
+            }
+
+            $barrioId = isset($data['id_barrio']) && is_numeric($data['id_barrio']) ? (int)$data['id_barrio'] : null;
+            if ($barrioId !== null) {
+                $bb = BarrioModel::obtenerPorId($barrioId);
+                if (!$bb) $barrioId = null;
+            }
+
             $precioUsd = null;
             if ($precioLocal !== null && $monedaId !== null) {
                 $moneda = PedidosModel::obtenerMonedaPorId($monedaId);
@@ -136,15 +171,16 @@ class PedidosController {
                 'direccion' => $data['direccion'] ?? '',
                 'comentario' => $data['comentario'] ?? null,
                 'estado' => isset($data['id_estado']) ? (int)$data['id_estado'] : 1,
-                'vendedor' => isset($data['id_vendedor']) ? (int)$data['id_vendedor'] : 0,
-                'proveedor' => isset($data['id_proveedor']) ? (int)$data['id_proveedor'] : 0,
+                'vendedor' => $vendedorId ?? null,
+                'proveedor' => $proveedorId ?? null,
                 'moneda' => $monedaId ?? 0,
                 'latitud' => (float)$latitud,
                 'longitud' => (float)$longitud,
                 'pais' => $data['pais'] ?? null,
                 'departamento' => $data['departamento'] ?? null,
-                'municipio' => $data['municipio'] ?? null,
-                'barrio' => $data['barrio'] ?? null,
+                // prefer id fields when provided; otherwise fall back to the string names
+                'municipio' => $municipioId ?? ($data['municipio'] ?? null),
+                'barrio' => $barrioId ?? ($data['barrio'] ?? null),
                 'zona' => $data['zona'] ?? null,
                 'precio_local' => $precioLocal,
                 'precio_usd' => $precioUsd,
