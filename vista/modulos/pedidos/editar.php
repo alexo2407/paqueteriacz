@@ -47,6 +47,16 @@ try {
     $proveedores = [];
 }
 
+// Cargar países, departamentos, municipios y barrios para selects de dirección
+require_once __DIR__ . '/../../../modelo/pais.php';
+require_once __DIR__ . '/../../../modelo/departamento.php';
+require_once __DIR__ . '/../../../modelo/municipio.php';
+require_once __DIR__ . '/../../../modelo/barrio.php';
+try { $paises = PaisModel::listar(); } catch (Exception $e) { $paises = []; }
+try { $departamentosAll = DepartamentoModel::listarPorPais(null); } catch (Exception $e) { $departamentosAll = []; }
+try { $municipiosAll = MunicipioModel::listarPorDepartamento(null); } catch (Exception $e) { $municipiosAll = []; }
+try { $barriosAll = BarrioModel::listarPorMunicipio(null); } catch (Exception $e) { $barriosAll = []; }
+
 
 
 // Si el formulario fue enviado, procesa la actualización
@@ -69,6 +79,22 @@ $pedido = $pedidoController->obtenerPedido($id_pedido);
 if (!$pedido) {
     echo "<div class='alert alert-danger'>Order not found.</div>";
     exit;
+}
+
+// If the previous non-AJAX edit submit failed, repopulate fields from session
+require_once __DIR__ . '/../../../utils/session.php'; start_secure_session();
+$old_edit = $_SESSION['old_pedido_edit_' . $id_pedido] ?? null;
+if (isset($_SESSION['old_pedido_edit_' . $id_pedido])) unset($_SESSION['old_pedido_edit_' . $id_pedido]);
+if ($old_edit) {
+    // override scalar values present in old edit
+    $fieldsToCopy = ['numero_orden','destinatario','telefono','direccion','comentario','latitud','longitud','precio_local','precio_usd','id_pais','id_departamento','id_municipio','id_barrio','proveedor','moneda','vendedor','estado'];
+    foreach ($fieldsToCopy as $f) {
+        if (isset($old_edit[$f])) $pedido[$f] = $old_edit[$f];
+    }
+    // override products array if provided
+    if (isset($old_edit['productos']) && is_array($old_edit['productos'])) {
+        $pedido['productos'] = $old_edit['productos'];
+    }
 }
 
 // Si no tiene proveedor o moneda, asignar el primero por defecto para que se seleccione
@@ -107,22 +133,11 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="invalid-feedback">Teléfono inválido (8-15 dígitos).</div>
                 </div>
                 <div class="mb-3">
-                    <label for="producto_id" class="form-label">Producto</label>
-                    <select class="form-control" id="producto_id" name="producto_id" required>
-                        <option value="">Selecciona un producto</option>
-                        <?php foreach ($productos as $producto): ?>
-                            <option value="<?= $producto['id'] ?>"
-                                    data-stock="<?= htmlspecialchars($producto['stock_total']) ?>"
-                                    data-precio-usd="<?= htmlspecialchars($producto['precio_usd']) ?>"
-                                    <?= (!empty($pedido['productos'][0]['id_producto']) && (int)$pedido['productos'][0]['id_producto'] === (int)$producto['id']) ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($producto['nombre']) ?> (Stock: <?= htmlspecialchars($producto['stock_total']) ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="cantidad_producto" class="form-label">Cantidad</label>
-                    <input type="number" class="form-control" id="cantidad_producto" name="cantidad_producto" min="1" value="<?= htmlspecialchars($pedido['productos'][0]['cantidad'] ?? '') ?>" required>
+                    <label class="form-label">Productos</label>
+                    <div id="productosContainer">
+                        <!-- product rows will be injected here -->
+                    </div>
+                    <button type="button" id="btnAddProducto" class="btn btn-sm btn-outline-primary mt-2">Agregar producto</button>
                 </div>
                 <div class="mb-3">
                     <label for="precio_local" class="form-label">Precio Local</label>
@@ -187,6 +202,26 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="id_pais" class="form-label">País</label>
+                        <select class="form-select" id="id_pais" name="id_pais">
+                            <option value="" selected>Selecciona un país</option>
+                            <?php foreach ($paises as $p): ?>
+                                <option value="<?= (int)$p['id'] ?>" <?= (!empty($pedido['id_pais']) && (int)$pedido['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="id_departamento" class="form-label">Departamento</label>
+                        <select class="form-select" id="id_departamento" name="id_departamento">
+                            <option value="" selected>Selecciona un departamento</option>
+                            <?php foreach ($departamentosAll as $d): ?>
+                                <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
                 <div class="mb-3">
                     <label for="comentario" class="form-label">Comentario</label>
                     <textarea class="form-control" id="comentario" name="comentario" maxlength="500" rows="3"><?= htmlspecialchars($pedido['comentario']) ?></textarea>
@@ -218,6 +253,31 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
         <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-secondary mt-3">Cancelar</a>
     </form>
 </div>
+<script>
+// Sync first product row into legacy hidden inputs for compatibility (editar)
+(function(){
+    const form = document.getElementById('formEditarPedido');
+    if (!form) return;
+    // create hidden legacy inputs if not present
+    if (!document.getElementById('producto_id')) {
+        const hidProd = document.createElement('input'); hidProd.type = 'hidden'; hidProd.id = 'producto_id'; hidProd.name = 'producto_id'; form.appendChild(hidProd);
+    }
+    if (!document.getElementById('cantidad_producto')) {
+        const hidQty = document.createElement('input'); hidQty.type = 'hidden'; hidQty.id = 'cantidad_producto'; hidQty.name = 'cantidad_producto'; form.appendChild(hidQty);
+    }
+    form.addEventListener('submit', function(){
+        const firstRow = document.querySelector('#productosContainer .producto-row');
+        const hidProd = document.getElementById('producto_id');
+        const hidQty = document.getElementById('cantidad_producto');
+        if (!hidProd || !hidQty) return;
+        if (!firstRow) { hidProd.value = ''; hidQty.value = ''; return; }
+        const sel = firstRow.querySelector('.producto-select');
+        const qty = firstRow.querySelector('.producto-cantidad');
+        hidProd.value = sel ? sel.value : '';
+        hidQty.value = qty ? qty.value : '';
+    });
+})();
+</script>
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= API_MAP ?>&callback=initMap" async defer></script>
 <script>
     let map, marker;
@@ -247,17 +307,26 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
             const position = event.latLng;
             document.getElementById("latitud").value = position.lat();
             document.getElementById("longitud").value = position.lng();
-        });
+            form.addEventListener('submit', function() {
+                // Remove empty product rows so the server receives only valid items
+                const rows = document.querySelectorAll('#productosContainer .producto-row');
+                rows.forEach(row => {
+                    const sel = row.querySelector('.producto-select');
+                    const qty = row.querySelector('.producto-cantidad');
+                    if (!sel || sel.value === '' || !qty || qty.value === '' || parseInt(qty.value) < 1) {
+                        row.remove();
+                    }
+                });
 
-        // Manejar clics en el mapa para mover el marcador
-        map.addListener("click", (event) => {
-            const clickedPosition = event.latLng;
-            marker.setPosition(clickedPosition);
-            document.getElementById("latitud").value = clickedPosition.lat();
-            document.getElementById("longitud").value = clickedPosition.lng();
-        });
-
-        // Actualizar el mapa cuando se editen las coordenadas manualmente
+                const firstRow = document.querySelector('#productosContainer .producto-row');
+                const hidProd = document.getElementById('producto_id');
+                const hidQty = document.getElementById('cantidad_producto');
+                if (!hidProd || !hidQty) return;
+                if (!firstRow) { hidProd.value = ''; hidQty.value = ''; return; }
+                const sel = firstRow.querySelector('.producto-select');
+                const qty = firstRow.querySelector('.producto-cantidad');
+                hidProd.value = sel ? sel.value : '';
+                hidQty.value = qty ? qty.value : '';
         document.getElementById("latitud").addEventListener("input", updateMapPosition);
         document.getElementById("longitud").addEventListener("input", updateMapPosition);
     }
@@ -364,6 +433,121 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script src="<?= RUTA_URL ?>js/pedidos-validation.js"></script>
+
+<script>
+// Dynamic products rows for editar.php
+(function(){
+    const productos = <?php echo json_encode(array_map(function($p){
+        return [ 'id' => (int)$p['id'], 'nombre' => $p['nombre'], 'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0, 'precio_usd' => isset($p['precio_usd']) ? $p['precio_usd'] : null ];
+    }, $productos)); ?>;
+
+    const existingItems = <?php echo json_encode($pedido['productos'] ?? []); ?>;
+    const productosContainer = document.getElementById('productosContainer');
+    const btnAdd = document.getElementById('btnAddProducto');
+
+    function escapeHtml(s) { if (!s) return ''; return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+    function makeProductOptions(selectedId) {
+        let opts = '<option value="">Selecciona un producto</option>';
+        productos.forEach(p => {
+            const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
+            opts += `<option value="${p.id}" data-stock="${p.stock}" data-precio-usd="${p.precio_usd ?? ''}"${sel}>${escapeHtml(p.nombre)}${p.stock !== null ? ' — Stock: ' + p.stock : ''}</option>`;
+        });
+        return opts;
+    }
+
+    function addProductRow(selectedId, qty) {
+        const row = document.createElement('div');
+        row.className = 'input-group mb-2 producto-row';
+        row.innerHTML = `
+            <select name="productos[][producto_id]" class="form-select producto-select" required>
+                ${makeProductOptions(selectedId)}
+            </select>
+            <input type="number" name="productos[][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" required>
+            <button type="button" class="btn btn-outline-danger btnRemove">Eliminar</button>
+        `;
+        productosContainer.appendChild(row);
+        row.querySelector('.btnRemove').addEventListener('click', () => row.remove());
+    }
+
+    // initialize rows from existingItems, or create one if empty
+    document.addEventListener('DOMContentLoaded', function(){
+        if (existingItems && existingItems.length > 0) {
+            existingItems.forEach(it => {
+                addProductRow(it.id_producto ?? it.id_producto ?? '', it.cantidad ?? 1);
+            });
+        } else {
+            addProductRow('', 1);
+        }
+    });
+    btnAdd.addEventListener('click', function(){ addProductRow('', 1); });
+})();
+
+// Dependent selects for editar: departamento -> municipio -> barrio
+(function(){
+    const deptSelect = document.getElementById('id_departamento');
+    const paisSelect = document.getElementById('id_pais');
+    const municipios = <?php echo json_encode($municipiosAll); ?>;
+    const barrios = <?php echo json_encode($barriosAll); ?>;
+
+    // create municipio and barrio selects if not present
+    let munSelect = document.getElementById('id_municipio');
+    let barrioSelect = document.getElementById('id_barrio');
+    if (!munSelect) {
+        const munWrapper = document.createElement('div');
+        munWrapper.className = 'col-md-6 mb-3';
+        munWrapper.innerHTML = `\n            <label for="id_municipio" class="form-label">Municipio</label>\n            <select class="form-select" id="id_municipio" name="id_municipio">\n                <option value="" selected>Selecciona un municipio</option>\n            </select>`;
+        deptSelect.parentElement.parentElement.insertBefore(munWrapper, deptSelect.parentElement.nextSibling);
+        munSelect = document.getElementById('id_municipio');
+    }
+    if (!barrioSelect) {
+        const barrioWrapper = document.createElement('div');
+        barrioWrapper.className = 'col-md-6 mb-3';
+        barrioWrapper.innerHTML = `\n            <label for="id_barrio" class="form-label">Barrio</label>\n            <select class="form-select" id="id_barrio" name="id_barrio">\n                <option value="" selected>Selecciona un barrio</option>\n            </select>`;
+        munSelect.parentElement.insertBefore(barrioWrapper, munSelect.nextSibling);
+        barrioSelect = document.getElementById('id_barrio');
+    }
+
+    function populateMunicipios(depId, selectedMunId) {
+        munSelect.innerHTML = '<option value="" selected>Selecciona un municipio</option>';
+        municipios.forEach(m => {
+            if (!depId || depId === '' || parseInt(m.id_departamento) === parseInt(depId)) {
+                const opt = document.createElement('option');
+                opt.value = m.id; opt.textContent = m.nombre; opt.setAttribute('data-id-departamento', m.id_departamento); if (selectedMunId && parseInt(selectedMunId) === parseInt(m.id)) opt.selected = true;
+                munSelect.appendChild(opt);
+            }
+        });
+        populateBarrios(munSelect.value, <?= json_encode($pedido['id_barrio'] ?? '') ?>);
+    }
+
+    function populateBarrios(munId, selectedBarrioId) {
+        barrioSelect.innerHTML = '<option value="" selected>Selecciona un barrio</option>';
+        barrios.forEach(b => {
+            if (!munId || munId === '' || parseInt(b.id_municipio) === parseInt(munId)) {
+                const opt = document.createElement('option'); opt.value = b.id; opt.textContent = b.nombre; opt.setAttribute('data-id-municipio', b.id_municipio); if (selectedBarrioId && parseInt(selectedBarrioId) === parseInt(b.id)) opt.selected = true; barrioSelect.appendChild(opt);
+            }
+        });
+    }
+
+    deptSelect.addEventListener('change', function(){
+        const dep = deptSelect.value;
+        populateMunicipios(dep, <?= json_encode($pedido['id_municipio'] ?? '') ?>);
+    });
+    munSelect.addEventListener('change', function(){ populateBarrios(munSelect.value); });
+
+    document.addEventListener('DOMContentLoaded', function(){
+        // trigger initial population and set selections based on pedido
+        const dep = <?= json_encode($pedido['id_departamento'] ?? '') ?>;
+        if (dep && dep !== '') {
+            // ensure department filter (if any) runs
+            const evt = new Event('change'); deptSelect.dispatchEvent(evt);
+        } else {
+            populateMunicipios('', <?= json_encode($pedido['id_municipio'] ?? '') ?>);
+        }
+    });
+})();
+</script>
+
 
 
 

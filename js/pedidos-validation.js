@@ -142,7 +142,17 @@
         const form = document.getElementById('formCrearPedido');
         if (!form) return;
 
-        const productoSelect = document.getElementById('producto_id');
+        // Primary product select: prefer the first dynamic '.producto-select' row, fall back to legacy '#producto_id'
+        function getPrimaryProductSelect() {
+            // Prefer the first dynamic producto-select that already has a value (user filled).
+            const dyns = document.querySelectorAll('#productosContainer .producto-select');
+            for (let i = 0; i < dyns.length; i++) {
+                const s = dyns[i];
+                if (s && s.value && s.value !== '') return s;
+            }
+            // Fallback to the first dynamic select (even if empty) or legacy select
+            return document.querySelector('#productosContainer .producto-select') || document.getElementById('producto_id');
+        }
         const cantidadInput = document.getElementById('cantidad_producto');
         const productoAyuda = document.getElementById('productoAyuda');
         const monedaSelect = document.getElementById('moneda');
@@ -155,7 +165,7 @@
         };
 
         const getStockDisponible = function() {
-            const option = getSelectedOption(productoSelect);
+            const option = getSelectedOption(getPrimaryProductSelect());
             if (!option) return NaN;
             const raw = option.getAttribute('data-stock');
             if (raw === null || raw === '') return NaN;
@@ -164,7 +174,7 @@
         };
 
         const getProductoUsd = function() {
-            const option = getSelectedOption(productoSelect);
+            const option = getSelectedOption(getPrimaryProductSelect());
             if (!option) return NaN;
             const raw = option.getAttribute('data-precio-usd');
             if (raw === null || raw === '') return NaN;
@@ -210,11 +220,45 @@
             {id:'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.'}
         );
 
+        // If the form uses multiple product rows (productos[]), validate them instead
+        const productosContainer = document.getElementById('productosContainer');
+        if (productosContainer) {
+            summaryFields.push({
+                id: 'productos',
+                fn: function() {
+                    const rows = productosContainer.querySelectorAll('.producto-row');
+                    if (!rows || rows.length === 0) return false;
+                    for (let i=0;i<rows.length;i++) {
+                        const sel = rows[i].querySelector('.producto-select');
+                        const qty = rows[i].querySelector('.producto-cantidad');
+                        if (!sel || !qty) return false;
+                        const val = sel.value;
+                        const qv = qty.value;
+                        if (!val || val === '') return false;
+                        const num = Number(qv);
+                        if (!Number.isInteger(num) || num < 1) return false;
+                        // check stock if available
+                        const opt = sel.options[sel.selectedIndex];
+                        if (opt) {
+                            const stockRaw = opt.getAttribute('data-stock');
+                            if (stockRaw !== null && stockRaw !== '') {
+                                const stock = Number(stockRaw);
+                                if (!Number.isNaN(stock) && stock > 0 && num > stock) return false;
+                            }
+                        }
+                    }
+                    return true;
+                },
+                msg: 'Agrega al menos un producto con cantidad válida.'
+            });
+        }
+
         attachRealtime(summaryFields);
 
         const actualizarAyudaProducto = function() {
-            if (!productoSelect) return;
-            const option = getSelectedOption(productoSelect);
+            const primary = getPrimaryProductSelect();
+            if (!primary) return;
+            const option = getSelectedOption(primary);
             const stock = getStockDisponible();
             if (!option || option.value === '') {
                 if (productoAyuda) {
@@ -289,7 +333,8 @@
         };
 
         const rellenarPrecioDesdeProducto = function(force) {
-            if (!productoSelect || !precioUsdInput) return;
+            const primary = getPrimaryProductSelect();
+            if (!primary || !precioUsdInput) return;
             const usd = getProductoUsd();
             if (Number.isNaN(usd)) {
                 if (force) {
@@ -306,14 +351,18 @@
             calcularLocalDesdeUsd(force);
         };
 
-        if (productoSelect) {
-            productoSelect.addEventListener('change', function(){
-                actualizarAyudaProducto();
-                rellenarPrecioDesdeProducto(true);
+        // Use event delegation: when any dynamic product select changes, update stock/help and price
+        if (productosContainer) {
+            productosContainer.addEventListener('change', function(e){
+                if (e.target && e.target.classList && e.target.classList.contains('producto-select')) {
+                    actualizarAyudaProducto();
+                    rellenarPrecioDesdeProducto(true);
+                }
             });
-            actualizarAyudaProducto();
-            rellenarPrecioDesdeProducto(false);
         }
+        // initialize helpers on load
+        actualizarAyudaProducto();
+        rellenarPrecioDesdeProducto(false);
 
         if (cantidadInput) {
             cantidadInput.addEventListener('input', function(){
@@ -373,6 +422,16 @@
             } else {
                 calcularLocalDesdeUsd(true);
             }
+
+            // Prune empty product rows first so validation sees only real items
+            const rows = productosContainer ? productosContainer.querySelectorAll('.producto-row') : [];
+            rows.forEach(row => {
+                const sel = row.querySelector('.producto-select');
+                const qty = row.querySelector('.producto-cantidad');
+                if (!sel || sel.value === '' || !qty || qty.value === '' || parseInt(qty.value) < 1) {
+                    row.remove();
+                }
+            });
 
             const errors = validateFields(summaryFields);
             showSummaryErrors(errors);
@@ -499,6 +558,30 @@
             {id:'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.'},
             {id:'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.'}
         ];
+
+        // If the form uses multiple product rows (productos[]), validate them instead
+        const productosContainerEd = document.getElementById('productosContainer');
+        if (productosContainerEd) {
+            summaryFields.push({
+                id: 'productos',
+                fn: function() {
+                    const rows = productosContainerEd.querySelectorAll('.producto-row');
+                    if (!rows || rows.length === 0) return false;
+                    for (let i=0;i<rows.length;i++) {
+                        const sel = rows[i].querySelector('.producto-select');
+                        const qty = rows[i].querySelector('.producto-cantidad');
+                        if (!sel || !qty) return false;
+                        const val = sel.value;
+                        const qv = qty.value;
+                        if (!val || val === '') return false;
+                        const num = Number(qv);
+                        if (!Number.isInteger(num) || num < 1) return false;
+                    }
+                    return true;
+                },
+                msg: 'Agrega al menos un producto con cantidad válida.'
+            });
+        }
 
         attachRealtime(summaryFields);
 

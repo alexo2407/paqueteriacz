@@ -176,8 +176,9 @@ class PedidosController {
                 'moneda' => $monedaId ?? 0,
                 'latitud' => (float)$latitud,
                 'longitud' => (float)$longitud,
-                'pais' => $data['pais'] ?? null,
-                'departamento' => $data['departamento'] ?? null,
+                // prefer explicit id fields when provided; accept legacy names for resolution
+                'id_pais' => isset($data['id_pais']) ? $data['id_pais'] : ($data['pais'] ?? null),
+                'id_departamento' => isset($data['id_departamento']) ? $data['id_departamento'] : ($data['departamento'] ?? null),
                 // prefer id fields when provided; otherwise fall back to the string names
                 'municipio' => $municipioId ?? ($data['municipio'] ?? null),
                 'barrio' => $barrioId ?? ($data['barrio'] ?? null),
@@ -629,8 +630,8 @@ class PedidosController {
             'moneda' => is_int($moneda) ? (int)$moneda : null,
             'latitud' => (float)$latitud,
             'longitud' => (float)$longitud,
-            'pais' => $data['pais'] ?? null,
-            'departamento' => $data['departamento'] ?? null,
+            'id_pais' => isset($data['id_pais']) ? $data['id_pais'] : ($data['pais'] ?? null),
+            'id_departamento' => isset($data['id_departamento']) ? $data['id_departamento'] : ($data['departamento'] ?? null),
             'municipio' => $data['municipio'] ?? null,
             'barrio' => $data['barrio'] ?? null,
             'zona' => $data['zona'] ?? null,
@@ -638,11 +639,36 @@ class PedidosController {
             'precio_usd' => $precioUsd,
         ];
 
-        $items = [[
-            'id_producto' => (int)$productoId,
-            'cantidad' => (int)$cantidadProducto,
-            'cantidad_devuelta' => 0,
-        ]];
+        // Support multiple products from the form: productos is an array of { producto_id, cantidad }
+        $items = [];
+        if (isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0) {
+            foreach ($data['productos'] as $i => $it) {
+                $pid = $it['producto_id'] ?? null;
+                $qty = $it['cantidad'] ?? null;
+                if (!is_numeric($pid) || !is_numeric($qty) || (int)$qty <= 0) continue;
+                $items[] = [
+                    'id_producto' => (int)$pid,
+                    'cantidad' => (int)$qty,
+                    'cantidad_devuelta' => 0,
+                ];
+            }
+
+            // If productos[] was provided but no valid items were parsed, return a clear validation
+            // error instead of letting the model throw a generic exception later.
+            if (count($items) === 0) {
+                return [
+                    'success' => false,
+                    'message' => 'El pedido debe incluir al menos un producto válido en la lista.'
+                ];
+            }
+        } else {
+            // Fallback to single-product fields
+            $items = [[
+                'id_producto' => (int)$productoId,
+                'cantidad' => (int)$cantidadProducto,
+                'cantidad_devuelta' => 0,
+            ]];
+        }
 
         try {
             $nuevoId = PedidosModel::crearPedidoConProductos($payload, $items);
@@ -675,17 +701,31 @@ class PedidosController {
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                  || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 
+        // Helper to persist the submitted edit data in session for non-AJAX redirects
+        $persistOldEdit = function($d) {
+            try {
+                require_once __DIR__ . '/../utils/session.php'; start_secure_session();
+                $id = isset($d['id_pedido']) ? (int)$d['id_pedido'] : 'new';
+                $_SESSION['old_pedido_edit_' . $id] = $d;
+            } catch (Exception $e) {
+                // ignore session persistence errors
+            }
+        };
+
         try {
             // Validaciones mínimas
             if (!isset($data['id_pedido']) || !is_numeric($data['id_pedido'])) {
                 $resp = ['success' => false, 'message' => 'ID de pedido inválido.'];
                 if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                // persist submitted data for repopulation when redirecting back
+                $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/listar'); exit;
             }
 
             if (!is_numeric($data['latitud']) || !is_numeric($data['longitud'])) {
                 $resp = ['success' => false, 'message' => 'Las coordenadas no tienen un formato válido.'];
                 if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong'); exit;
             }
 
@@ -693,11 +733,13 @@ class PedidosController {
             if (isset($data['cantidad_producto']) && $data['cantidad_producto'] !== '' && !is_numeric($data['cantidad_producto'])) {
                 $resp = ['success' => false, 'message' => 'La cantidad debe ser un número.'];
                 if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad'); exit;
             }
             if (isset($data['precio_local']) && $data['precio_local'] !== '' && !is_numeric($data['precio_local'])) {
                 $resp = ['success' => false, 'message' => 'El precio local debe ser un valor numérico.'];
                 if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio'); exit;
             }
 
@@ -711,11 +753,15 @@ class PedidosController {
             } else {
                 $resp = ['success' => false, 'message' => 'No se realizaron cambios en el pedido.'];
                 if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                // persist submitted edit payload so the edit page can repopulate fields
+                $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error'); exit;
             }
         } catch (Exception $e) {
             $msg = 'Error interno: ' . $e->getMessage();
             if ($isAjax) { header('Content-Type: application/json', true, 500); echo json_encode(['success' => false, 'message' => $msg]); exit; }
+            // persist submitted edit payload before redirecting back
+            $persistOldEdit($data);
             header('Location: ' . RUTA_URL . 'pedidos/editar/' . ($data['id_pedido'] ?? '') . '/error' . urlencode($e->getMessage()));
         }
         exit;
