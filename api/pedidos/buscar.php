@@ -38,5 +38,10 @@ if (!$numeroOrden) {
 $pedidoController = new PedidosController();
 $response = $pedidoController->buscarPedidoPorNumero($numeroOrden);
 
-echo json_encode($response);
+// Usar el helper responder() para mantener el sobre de respuesta consistente
+if (isset($response['success']) && $response['success']) {
+    responder(true, $response['message'] ?? 'Pedido encontrado', $response['data'] ?? null, 200);
+} else {
+    responder(false, $response['message'] ?? 'Pedido no encontrado', null, 404);
+}
 ?>

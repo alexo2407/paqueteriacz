@@ -389,7 +389,8 @@ class PedidosModel
                         p.precio_local,
                         p.precio_usd,
                         p.pais,
-                        p.coordenadas,
+                        ST_Y(p.coordenadas) AS latitud,
+                        ST_X(p.coordenadas) AS longitud,
                         ep.nombre_estado AS nombre_estado
                     FROM pedidos p
                     LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id

@@ -136,6 +136,38 @@ class PedidosController {
             ];
         }
     }
+
+    /**
+     * Buscar un pedido por su número de orden.
+     * Devuelve un arreglo con la estructura: { success, message, data }
+     * donde data es el resultado de PedidosModel::obtenerPedidoPorNumero o null.
+     */
+    public function buscarPedidoPorNumero($numeroOrden)
+    {
+        try {
+            $model = new PedidosModel();
+            $res = $model->obtenerPedidoPorNumero($numeroOrden);
+            if ($res) {
+                return [
+                    'success' => true,
+                    'message' => 'Pedido encontrado',
+                    'data' => $res
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Pedido no encontrado',
+                    'data' => null
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error al buscar pedido: ' . $e->getMessage(),
+                'data' => null
+            ];
+        }
+    }
     
 
     private function validarDatosPedido($data) {
