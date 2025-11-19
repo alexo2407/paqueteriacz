@@ -12,6 +12,27 @@ class PedidosController {
 
     /* ZONA API */
 
+    /**
+     * Crear un pedido desde la API.
+     *
+     * Entrada: $jsonData - arreglo/objeto con la estructura del pedido tal como
+     * viene del cliente (numero_orden, destinatario, telefono, producto, cantidad,
+     * coordenadas/datos de dirección, etc.).
+     *
+     * Salida: arreglo con la forma estándar: ['success' => bool, 'message' => string, 'data' => mixed]
+     * - success: true si se creó el pedido.
+     * - data: id del nuevo pedido en caso de éxito.
+     *
+     * Errores: devuelve ['success'=>false,'message'=>...] con detalles de validación
+     * o errores de creación. El método atrapa excepciones y las convierte en mensaje
+     * legible para la API.
+     *
+     * Notas: valida existencia de producto y crea uno rápido si hace falta. Calcula
+     * precio USD cuando se proporciona moneda con tasa.
+     *
+     * @param array|object $jsonData
+     * @return array
+     */
     public function crearPedidoAPI($jsonData) {
         $data = $jsonData;
     
@@ -142,6 +163,12 @@ class PedidosController {
      * Devuelve un arreglo con la estructura: { success, message, data }
      * donde data es el resultado de PedidosModel::obtenerPedidoPorNumero o null.
      */
+    /**
+     * Buscar un pedido por su número de orden.
+     *
+     * @param int|string $numeroOrden Número de orden a buscar (se acepta string o int).
+     * @return array Envelope: ['success' => bool, 'message' => string, 'data' => array|null]
+     */
     public function buscarPedidoPorNumero($numeroOrden)
     {
         try {
@@ -170,6 +197,16 @@ class PedidosController {
     }
     
 
+    /**
+     * Validar la estructura mínima de un pedido recibido vía API o formulario.
+     *
+     * Comprueba la presencia de campos obligatorios y el formato de coordenadas.
+     * Devuelve ['success'=>true] cuando todo está bien o
+     * ['success'=>false,'message'=>..., 'data'=>[errores]] cuando hay problemas.
+     *
+     * @param array $data Datos del pedido
+     * @return array
+     */
     private function validarDatosPedido($data) {
         $errores = [];
 
@@ -209,6 +246,12 @@ class PedidosController {
 
     /* ZONA DEL FRONT END */
 
+    /**
+     * Obtener listado de pedidos con información extendida para la vista.
+     *
+     * Retorna un array listo para renderizar en el frontend.
+     * @return array
+     */
     public function listarPedidosExtendidos() {
         // Llamar al modelo para obtener los pedidos
         $pedidos = PedidosModel::obtenerPedidosExtendidos();
@@ -216,16 +259,28 @@ class PedidosController {
     }
 
 
+    /**
+     * Obtener un pedido por su id (uso en vistas y controladores internos).
+     *
+     * @param int $id_pedido
+     * @return array|null
+     */
     public function obtenerPedido($id_pedido) {
         if (!$id_pedido) {
             echo "<div class='alert alert-danger'>No order ID provided.</div>";
             exit;
         }
-        
+
         return PedidosModel::obtenerPedidoPorId($id_pedido);
     }
 
 
+    /**
+     * Actualizar un pedido con datos proporcionados.
+     *
+     * @param array $data Campos a actualizar (debe incluir id y campos editables).
+     * @return array Envelope con success/message
+     */
     public function actualizarPedido($data) {
         $resultado = PedidosModel::actualizarPedido($data);
         if ($resultado) {
@@ -241,33 +296,62 @@ class PedidosController {
         }
     }
     
+    /**
+     * Obtener lista de estados posibles de pedidos.
+     * @return array
+     */
     public function obtenerEstados() {
         return PedidosModel::obtenerEstados();
     }
     
+    /**
+     * Obtener la lista de vendedores/repartidores disponibles.
+     * @return array
+     */
     public function obtenerVendedores() {
         // "Usuario asignado" corresponde a Repartidor
         return PedidosModel::obtenerVendedores();
     }
 
     // Exponer explícitamente repartidores para mayor claridad en vistas
+    /**
+     * Alias explícito para obtener repartidores (útil en vistas).
+     * @return array
+     */
     public function obtenerRepartidores() {
         return PedidosModel::obtenerRepartidores();
     }
 
+    /**
+     * Obtener productos disponibles.
+     * @return array
+     */
     public function obtenerProductos() {
         return PedidosModel::obtenerProductos();
     }
 
+    /**
+     * Obtener proveedores registrados.
+     * @return array
+     */
     public function obtenerProveedores() {
         return PedidosModel::obtenerProveedores();
     }
 
+    /**
+     * Obtener monedas existentes (incluye tasa_usd si aplica).
+     * @return array
+     */
     public function obtenerMonedas() {
         return PedidosModel::obtenerMonedas();
     }
 
     // Listado de pedidos asignados al usuario (seguimiento para repartidor)
+    /**
+     * Listar pedidos asignados a un usuario (repartidor).
+     * @param int $userId
+     * @return array
+     */
     public function listarPedidosAsignados($userId)
     {
         if (!$userId || !is_numeric($userId)) return [];
@@ -276,6 +360,15 @@ class PedidosController {
         return PedidosModel::listarPorUsuarioAsignado((int)$userId);
     }
 
+    /**
+     * Guardar pedido proveniente desde el formulario del frontend.
+     *
+     * Realiza validaciones server-side, logging en DEBUG y llama al modelo para
+     * persistir. Devuelve envelope con success/message o hace redirect según contexto.
+     *
+     * @param array $data
+     * @return array|void
+     */
     public function guardarPedidoFormulario(array $data) {
         $errores = [];
 
@@ -502,6 +595,13 @@ class PedidosController {
     }
 
 
+    /**
+     * Guardar edición de un pedido (uso desde formularios/AJAX).
+     *
+     * Si la petición es AJAX devuelve JSON. Si no, redirige a la lista con flash.
+     * @param array $data
+     * @return void
+     */
     public function guardarEdicion($data) {
         // Soporte para peticiones AJAX: si el header X-Requested-With == XMLHttpRequest
         // o el cliente solicita JSON por Accept, devolvemos JSON en lugar de hacer
@@ -557,6 +657,15 @@ class PedidosController {
     }
     
     /* cambiar estados en los datatable */
+    /**
+     * Actualizar el estado de un pedido vía AJAX.
+     *
+     * Seguridad: sólo usuarios autenticados con permisos pueden modificar.
+     * Responde siempre JSON con ['success'=>bool,'message'=>string].
+     *
+     * @param array $datos Contiene id_pedido y estado
+     * @return void (imprime JSON y hace exit)
+     */
     public static function actualizarEstadoAjax($datos) {
         // Seguridad: sólo usuarios autenticados pueden cambiar estados
         require_once __DIR__ . '/../utils/session.php';
@@ -640,6 +749,16 @@ class PedidosController {
         /**
          * Importar pedidos desde archivo CSV subido por formulario
          */
+    /**
+     * Importar pedidos desde un CSV subido por formulario.
+     *
+     * Soporta delimitadores comunes, normaliza cabeceras y valida filas antes de
+     * insertar en lote. Registra errores en session/logs para revisión.
+     *
+     * Responde con redirect y flash o JSON en caso de AJAX.
+     *
+     * @return void
+     */
     public function importarPedidosCSV()
     {
         require_once __DIR__ . '/../utils/session.php';

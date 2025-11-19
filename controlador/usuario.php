@@ -12,6 +12,12 @@ class UsuariosController
     /******************************** */
     // MOSTRAR TODOS LOS USUARIOS
     /********************************* */
+    /**
+     * Retornar todos los usuarios registrados.
+     * Delegado al modelo UsuarioModel::mostrarUsuarios.
+     *
+     * @return array Lista de usuarios o estructura vacía en caso de error.
+     */
     public static function mostrarUsuariosController()
     {
         require_once __DIR__ . '/../modelo/usuario.php';
@@ -21,6 +27,11 @@ class UsuariosController
         return $repuesta;
     }
 
+    /**
+     * Obtener el mapa/lista de roles disponibles en el sistema.
+     *
+     * @return array Mapa id => nombre de rol
+     */
     public static function obtenerRolesDisponibles()
     {
         require_once __DIR__ . '/../modelo/usuario.php';
@@ -28,6 +39,12 @@ class UsuariosController
         return $model->listarRoles();
     }
 
+    /**
+     * Obtener la información de un usuario por id.
+     *
+     * @param int $id
+     * @return array|null
+     */
     public function verUsuario($id)
     {
         require_once __DIR__ . '/../modelo/usuario.php';
@@ -35,6 +52,16 @@ class UsuariosController
         return $model->obtenerPorId($id);
     }
 
+    /**
+     * Actualiza un usuario y sus roles.
+     *
+     * - Actualiza campos de usuario mediante UsuarioModel::actualizarUsuario
+     * - Si se envían roles, actualiza asignaciones con setRolesForUser
+     *
+     * @param int $id
+     * @param array $data Campos del usuario y opcionalmente 'roles' => []
+     * @return array Envelope con success y changed
+     */
     public function actualizarUsuario($id, array $data)
     {
         require_once __DIR__ . '/../modelo/usuario.php';
@@ -69,6 +96,15 @@ class UsuariosController
 
     /**
      * Procesa el login desde un formulario POST
+     */
+    /**
+     * Procesar el login desde el formulario del frontend.
+     *
+     * - Valida parámetros POST (email, password), verifica credenciales con
+     *   UsuarioModel::verificarCredenciales y establece la sesión.
+     * - Redirige a dashboard en caso de éxito o vuelve a login con flash en fallo.
+     *
+     * @return void
      */
     public function login()
     {

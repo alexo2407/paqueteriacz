@@ -9,16 +9,30 @@ require_once __DIR__ . '/../modelo/pais.php';
  */
 class PaisesController
 {
+    /**
+     * Listar países disponibles.
+     * @return array
+     */
     public function listar()
     {
         return PaisModel::listar();
     }
 
+    /**
+     * Obtener país por id.
+     * @param int $id
+     * @return array|null
+     */
     public function ver($id)
     {
         return PaisModel::obtenerPorId($id);
     }
 
+    /**
+     * Crear un nuevo país.
+     * @param array $data Espera 'nombre' y opcionalmente 'codigo_iso'
+     * @return array Envelope con success/message/id
+     */
     public function crear(array $data)
     {
         $nombre = trim($data['nombre'] ?? '');
@@ -28,6 +42,12 @@ class PaisesController
         return $id ? ['success' => true, 'message' => 'País creado.', 'id' => $id] : ['success' => false, 'message' => 'No fue posible crear.','id'=>null];
     }
 
+    /**
+     * Actualizar país.
+     * @param int $id
+     * @param array $data
+     * @return array Envelope con success/message
+     */
     public function actualizar($id, array $data)
     {
         $nombre = trim($data['nombre'] ?? '');
@@ -37,6 +57,11 @@ class PaisesController
         return $ok ? ['success' => true, 'message' => 'País actualizado.'] : ['success' => false, 'message' => 'No fue posible actualizar.'];
     }
 
+    /**
+     * Eliminar país por id.
+     * @param int $id
+     * @return array Envelope con success/message
+     */
     public function eliminar($id)
     {
         if ($id <= 0) return ['success' => false, 'message' => 'ID inválido.'];

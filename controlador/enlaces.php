@@ -12,6 +12,16 @@
  */
 class EnlacesController
 {
+    /**
+     * Resolver la ruta solicitada y cargar la vista correspondiente.
+     *
+     * - Extrae el parámetro `enlace` de la query string.
+     * - Consulta al modelo para obtener el archivo y parámetros.
+     * - Aplica comprobaciones de sesión/rol para módulos privados.
+     * - Incluye la vista o muestra 404 si no existe.
+     *
+     * @return void
+     */
     public static function enlacesController()
     {
         // Obtén la URL solicitada
