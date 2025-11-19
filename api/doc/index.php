@@ -248,20 +248,21 @@
                     <tr><td><code>telefono</code></td><td>string</td><td>yes</td><td>Phone number</td></tr>
                     <tr><td><code>coordenadas</code></td><td>string</td><td>yes</td><td>Latitude and longitude as <code>"lat,long"</code> (or provide <code>latitud</code> and <code>longitud</code> separately)</td></tr>
                     <tr><td><code>direccion</code></td><td>string</td><td>no</td><td>Full address</td></tr>
-                    <tr><td><code>producto</code> / <code>producto_id</code></td><td>string / integer</td><td>yes (one of these)</td><td>Single product (name or id) when using the simple payload</td></tr>
+                    <tr><td><code>producto_id</code></td><td>integer</td><td>yes</td><td>Product id (preferred). The API expects existing product IDs so stock checks work.</td></tr>
+                    <tr><td><code>producto</code></td><td>string</td><td>no (deprecated)</td><td>Deprecated: providing product by name is no longer supported in the API — use <code>producto_id</code>.</td></tr>
                     <tr><td><code>cantidad</code></td><td>integer</td><td>yes</td><td>Quantity requested (for the single-product payload)</td></tr>
                     <tr><td><code>productos</code></td><td>array</td><td>no</td><td>Advanced: array of items { "producto_id": int, "cantidad": int } — internal model supports multiple items, see note below</td></tr>
                     <tr><td><code>id_moneda</code></td><td>integer</td><td>recommended</td><td>FK to <code>monedas.id</code></td></tr>
                 </tbody>
             </table>
 
-            <h4>Example create request (single product)</h4>
+                        <h4>Example create request (single product)</h4>
             <div class="code-block">{
   "numero_orden": 90001,
   "destinatario": "Cliente Prueba",
   "telefono": "0999999999",
-  "producto": "Producto X",
-  "cantidad": 1,
+    "producto_id": 12,
+    "cantidad": 1,
   "coordenadas": "-0.180653,-78.467838",
   "direccion": "Calle Falsa 123",
   "id_moneda": 1,
@@ -272,16 +273,16 @@
   "municipio": "Quito"
 }</div>
 
-            <h4>Example create request (multiple products - advanced)</h4>
-            <p><em>Note:</em> the controller's simple API accepts the single-product payload above. The underlying model supports multiple items; if you want this API to accept an array of products in JSON (field <code>productos</code>), I can implement that behavior. Example of the advanced payload:</p>
+                        <h4>Example create request (multiple products)</h4>
+                        <p>Provide product IDs in the <code>productos</code> array. Each item must include <code>producto_id</code> (integer) and <code>cantidad</code> (int).</p>
             <div class="code-block">{
   "numero_orden": 90002,
   "destinatario": "Cliente Prueba",
   "telefono": "0999999999",
-  "productos": [
-    { "producto_id": 12, "cantidad": 2 },
-    { "producto": "Producto Y", "cantidad": 1 }
-  ],
+    "productos": [
+        { "producto_id": 12, "cantidad": 2 },
+        { "producto_id": 13, "cantidad": 1 }
+    ],
   "coordenadas": "-0.180653,-78.467838",
   "direccion": "Calle Falsa 123",
   "id_moneda": 1

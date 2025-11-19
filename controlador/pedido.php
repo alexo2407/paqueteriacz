@@ -51,24 +51,47 @@ class PedidosController {
                 ];
             }
     
-            $productoNombre = $data['producto'] ?? null;
-            if (empty($productoNombre)) {
-                return [
-                    "success" => false,
-                    "message" => "El campo producto es obligatorio."
-                ];
-            }
+            // Support multiple products: either provide single 'producto' + 'cantidad'
+            // or an array 'productos' with items { producto_id|producto, cantidad }.
+            $items = [];
+            // Require product IDs only: do NOT create products from names.
+            if (!empty($data['productos']) && is_array($data['productos'])) {
+                foreach ($data['productos'] as $pi) {
+                    if (empty($pi['producto_id']) || !is_numeric($pi['producto_id'])) {
+                        return [
+                            "success" => false,
+                            "message" => "Cada item en 'productos' debe incluir 'producto_id' numérico."
+                        ];
+                    }
+                    $prodId = (int)$pi['producto_id'];
+                    $cantidadItem = isset($pi['cantidad']) ? (int)$pi['cantidad'] : 0;
+                    if ($cantidadItem <= 0) {
+                        return [
+                            "success" => false,
+                            "message" => "Cada item en 'productos' debe incluir 'cantidad' mayor a cero."
+                        ];
+                    }
 
-            $producto = ProductoModel::buscarPorNombre($productoNombre);
-            $productoId = $producto['id'] ?? null;
-            if (!$productoId) {
-                $productoId = ProductoModel::crearRapido($productoNombre);
-            }
-            if (!$productoId) {
-                return [
-                    "success" => false,
-                    "message" => "No fue posible registrar el producto indicado."
-                ];
+                    $items[] = [
+                        'id_producto' => $prodId,
+                        'cantidad' => $cantidadItem,
+                        'cantidad_devuelta' => isset($pi['cantidad_devuelta']) ? (int)$pi['cantidad_devuelta'] : 0,
+                    ];
+                }
+            } else {
+                // Single-product payload must provide producto_id
+                if (empty($data['producto_id']) || !is_numeric($data['producto_id'])) {
+                    return [
+                        "success" => false,
+                        "message" => "El campo 'producto_id' es obligatorio y debe ser numérico cuando no se usa 'productos'."
+                    ];
+                }
+                $productoId = (int)$data['producto_id'];
+                $items = [[
+                    'id_producto' => $productoId,
+                    'cantidad' => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
+                    'cantidad_devuelta' => isset($data['cantidad_devuelta']) ? (int)$data['cantidad_devuelta'] : 0,
+                ]];
             }
 
             $latitud = $data['latitud'] ?? null;
@@ -136,12 +159,6 @@ class PedidosController {
             if ($pedidoPayload['moneda'] === 0) {
                 $pedidoPayload['moneda'] = null;
             }
-
-            $items = [[
-                'id_producto' => $productoId,
-                'cantidad' => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
-                'cantidad_devuelta' => isset($data['cantidad_devuelta']) ? (int)$data['cantidad_devuelta'] : 0,
-            ]];
 
             $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
             return [
@@ -212,18 +229,34 @@ class PedidosController {
 
         // Validar campos obligatorios (aceptamos 'producto' como nombre o 'producto_id')
         $camposObligatorios = [
-            "numero_orden", "destinatario", "telefono", "cantidad",
+            "numero_orden", "destinatario", "telefono",
             "pais", "departamento", "municipio", "direccion", "coordenadas"
         ];
+
+        // Si se envía un array 'productos' entonces la cantidad se valida por item
+        if (!isset($data['productos']) || !is_array($data['productos']) || count($data['productos']) === 0) {
+            // en el payload simple se espera campo 'cantidad' a nivel superior
+            $camposObligatorios[] = 'cantidad';
+        }
         foreach ($camposObligatorios as $campo) {
             if (!isset($data[$campo]) || $data[$campo] === '') {
                 $errores[] = "El campo '$campo' es obligatorio.";
             }
         }
 
-        // Producto: aceptar 'producto_id' (preferido) o 'producto' (nombre)
-        if ((!isset($data['producto_id']) || $data['producto_id'] === '') && (!isset($data['producto']) || trim($data['producto']) === '')) {
-            $errores[] = "El campo 'producto' o 'producto_id' es obligatorio.";
+        // Producto: require producto_id (either top-level or inside 'productos'). No longer accept product names.
+        $hasProductsArray = isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0;
+        $hasSingleProductId = isset($data['producto_id']) && is_numeric($data['producto_id']);
+        if (!$hasSingleProductId && !$hasProductsArray) {
+            $errores[] = "El campo 'producto_id' o 'productos' es obligatorio.";
+        }
+
+        // Si se envía 'productos' validar su estructura mínima: cada item debe incluir producto_id numérico y cantidad>0
+        if ($hasProductsArray) {
+            foreach ($data['productos'] as $i => $pi) {
+                if (!isset($pi['producto_id']) || !is_numeric($pi['producto_id'])) $errores[] = "El elemento productos[$i] debe incluir 'producto_id' numérico.";
+                if (!isset($pi['cantidad']) || !is_numeric($pi['cantidad']) || (int)$pi['cantidad'] <= 0) $errores[] = "El elemento productos[$i] debe incluir 'cantidad' mayor a cero.";
+            }
         }
 
         // Validar formato de las coordenadas
