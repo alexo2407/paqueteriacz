@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../modelo/departamento.php';
 require_once __DIR__ . '/../modelo/pais.php';
 
+/**
+ * DepartamentosController
+ *
+ * Controller para gestión de departamentos/regiones. Valida datos mínimos
+ * y delega operaciones CRUD a `DepartamentoModel`.
+ */
 class DepartamentosController
 {
     public function listar($paisId = null)

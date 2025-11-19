@@ -1,4 +1,15 @@
 <?php 
+/**
+ * EnlacesController
+ *
+ * Controlador encargado de resolver la ruta/archivo que se debe incluir
+ * para cada enlace (parámetro `enlace` en la URL). También aplica políticas
+ * de acceso (sesiones y roles) para proteger módulos privados.
+ *
+ * Este controlador actúa como un pequeño dispatcher para el frontend
+ * (vistas) y no debe contener lógica de negocio compleja; esa lógica debe
+ * residir en los modelos.
+ */
 class EnlacesController
 {
     public static function enlacesController()

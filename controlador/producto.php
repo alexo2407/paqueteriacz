@@ -2,6 +2,13 @@
 
 require_once __DIR__ . '/../modelo/producto.php';
 
+/**
+ * ProductosController
+ *
+ * Controlador para operaciones CRUD de productos y consultas relacionadas
+ * con inventario. Valida entradas mínimas y delega persistencia a
+ * `ProductoModel`.
+ */
 class ProductosController
 {
     /**

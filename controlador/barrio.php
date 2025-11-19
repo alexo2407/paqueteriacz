@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../modelo/barrio.php';
 require_once __DIR__ . '/../modelo/municipio.php';
 
+/**
+ * BarriosController
+ *
+ * CRUD y operaciones auxiliares sobre la entidad Barrio. Trabaja con
+ * BarrioModel para las consultas y mantiene validaciones simples.
+ */
 class BarriosController
 {
     public function listar($munId = null)

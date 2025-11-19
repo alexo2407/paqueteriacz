@@ -1,5 +1,18 @@
 <?php
 
+/**
+ * ClientesController
+ *
+ * Controlador que expone operaciones de negocio relacionadas con clientes.
+ * Se apoya en el modelo `ClientesModel` para la persistencia.
+ *
+ * Métodos principales:
+ *  - mostrarClientesController(): array - devuelve lista de clientes activos
+ *  - obtenerClientePorId(int): object|null - obtiene un cliente por ID
+ *  - actualizarCliente(int,string,int): bool - actualiza datos básicos
+ *  - listarClientesInactivos(): array - lista clientes inactivos
+ *  - estadoCliente(int,int): bool - cambiar estado/activo
+ */
 class ClientesController
 {
     /**

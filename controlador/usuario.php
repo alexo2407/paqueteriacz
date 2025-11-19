@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * UsuariosController
+ *
+ * Controlador que expone operaciones relacionadas con usuarios: listado,
+ * visualización, actualización y procesos de login para el frontend.
+ * Todas las operaciones de persistencia se delegan a `UsuarioModel`.
+ */
 class UsuariosController
 {
     /******************************** */

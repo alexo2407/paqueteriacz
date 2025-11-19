@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/../modelo/pais.php';
 
+/**
+ * PaisesController
+ *
+ * Controlador para CRUD de países. Encapsula validaciones sencillas y
+ * delega la persistencia a `PaisModel`.
+ */
 class PaisesController
 {
     public function listar()

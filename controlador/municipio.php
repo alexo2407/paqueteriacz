@@ -2,6 +2,12 @@
 require_once __DIR__ . '/../modelo/municipio.php';
 require_once __DIR__ . '/../modelo/departamento.php';
 
+/**
+ * MunicipiosController
+ *
+ * Controlador para CRUD de municipios. Realiza validaciones simples y
+ * delega la persistencia a `MunicipioModel`.
+ */
 class MunicipiosController
 {
     public function listar($depId = null)

@@ -1,6 +1,12 @@
 <?php
 require_once __DIR__ . '/../modelo/moneda.php';
 
+/**
+ * MonedasController
+ *
+ * Controlador para CRUD de monedas. Valida entradas mínimas y delega la
+ * persistencia a `MonedaModel`.
+ */
 class MonedasController
 {
     public function listar()
