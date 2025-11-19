@@ -294,11 +294,16 @@
                     <tr><td><code>telefono</code></td><td>string</td><td>yes</td><td>Phone number</td></tr>
                     <tr><td><code>coordenadas</code></td><td>string</td><td>yes</td><td>Latitude and longitude as <code>"lat,long"</code> (or provide <code>latitud</code> and <code>longitud</code> separately)</td></tr>
                     <tr><td><code>direccion</code></td><td>string</td><td>no</td><td>Full address</td></tr>
-                    <tr><td><code>producto_id</code></td><td>integer</td><td>yes</td><td>Product id (preferred). The API expects existing product IDs so stock checks work.</td></tr>
+                    <tr><td><code>producto_id</code></td><td>integer</td><td>yes</td><td>Product id (preferred). Use the numeric <code>id</code> from <code>/api/productos/listar</code>. The API expects existing product IDs so stock checks work.</td></tr>
                     <tr><td><code>producto</code></td><td>string</td><td>no (deprecated)</td><td>Deprecated: providing product by name is no longer supported in the API — use <code>producto_id</code>.</td></tr>
                     <tr><td><code>cantidad</code></td><td>integer</td><td>yes</td><td>Quantity requested (for the single-product payload)</td></tr>
                     <tr><td><code>productos</code></td><td>array</td><td>no</td><td>Advanced: array of items { "producto_id": int, "cantidad": int } — internal model supports multiple items, see note below</td></tr>
-                    <tr><td><code>id_moneda</code></td><td>integer</td><td>recommended</td><td>FK to <code>monedas.id</code></td></tr>
+                    <tr><td><code>id_moneda</code></td><td>integer</td><td>recommended</td><td>FK to <code>monedas.id</code>. Use the <code>id</code> value from <code>/api/geoinfo/listar</code> → <code>monedas</code>.</td></tr>
+                    <tr><td><code>id_vendedor</code></td><td>integer</td><td>optional</td><td>FK to <code>usuarios.id</code> for seller/repartidor. Use IDs from your users administration or <code>/api/usuarios/listar</code> if available.</td></tr>
+                    <tr><td><code>id_proveedor</code></td><td>integer</td><td>optional</td><td>FK to <code>usuarios.id</code> for provider. When calling the API you can omit this and the authenticated token's user will be used. To provide explicitly, use a numeric id from your users list.</td></tr>
+                    <tr><td><code>pais</code></td><td>string</td><td>recommended</td><td>Country identifier - use the <code>id</code> from <code>/api/geoinfo/listar</code> → <code>paises</code> (numeric) or the country code string depending on your frontend mapping. Prefer numeric ids where the field expects an integer.</td></tr>
+                    <tr><td><code>departamento</code></td><td>integer|string</td><td>recommended</td><td>Department id (numeric) or name. For numeric ids, use <code>/api/geoinfo/listar</code> → <code>departamentos</code>.</td></tr>
+                    <tr><td><code>municipio</code></td><td>integer|string</td><td>recommended</td><td>Municipality id (numeric) or name. For numeric ids, use <code>/api/geoinfo/listar</code> → <code>municipios</code>.</td></tr>
                 </tbody>
             </table>
 
