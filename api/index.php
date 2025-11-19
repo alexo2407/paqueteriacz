@@ -1,4 +1,21 @@
 <?php
+/**
+ * Lightweight API router
+ *
+ * This file provides a minimal router for the local API under /api/.
+ * It maps specific request paths and methods to the corresponding
+ * PHP endpoint scripts located in the `api/` subfolders.
+ *
+ * Behavior summary:
+ *  - Normalizes the request path and checks explicit routes (auth, pedidos).
+ *  - If the path starts with /api/ and no route matches, returns a JSON 404
+ *    describing the requested path (helpful for API clients).
+ *  - Non-API requests are redirected to the site's 404 page.
+ *
+ * Notes for maintainers:
+ *  - Keep this file minimal. For more routes consider using a micro-router
+ *    or framework. Routes are matched using regex against the normalized path.
+ */
 
 /*ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
