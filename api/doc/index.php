@@ -203,7 +203,30 @@
         <!-- Orders / Pedidos: detailed -->
         <div class="section-container">
             <h2 class="section-title">Orders (Pedidos)</h2>
-            <p>Endpoint to create and list orders. The server expects coordinates in <code>"lat,long"</code> format (stored as POINT).</p>
+            <p>Endpoints to create, search and list orders. The server stores coordinates as a POINT; for API requests provide coordinates as <code>"lat,long"</code> or as numeric <code>latitud</code> and <code>longitud</code> fields.</p>
+
+            <h4>Search order by numero_orden</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/pedidos/buscar?numero_orden=&lt;NUMBER&gt;</div>
+            <p>Requires Authorization header: <code>Authorization: Bearer &lt;token&gt;</code>. Returns the order data (latitud/longitud as numbers) when found.</p>
+            <h5>Example (curl)</h5>
+            <div class="code-block">curl -s "http://localhost/api/pedidos/buscar?numero_orden=90001" \
+  -H "Authorization: Bearer &lt;JWT_TOKEN&gt;"</div>
+            <h5>Success response (200)</h5>
+            <div class="code-block">{
+  "success": true,
+  "message": "Pedido encontrado",
+  "data": {
+    "numero_orden": "90001",
+    "destinatario": "Cliente Prueba",
+    "telefono": "0999999999",
+    "pais": "EC",
+    "latitud": -0.180653,
+    "longitud": -78.467838,
+    "nombre_estado": "Pendiente"
+  }
+}</div>
+
+            <hr />
 
             <h4>Create order</h4>
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/pedidos/crear</div>
@@ -212,7 +235,7 @@
             <ul style="color: #212529;">
                 <li>The API response envelope is <code>{ success, message, data }</code>.</li>
                 <li>Fields <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> are stored in <code>pedidos</code> and have foreign key constraints — they must reference existing rows.</li>
-                <li>Products are stored in <code>pedidos_productos</code> (pivot). If you provide <code>producto</code> (string) the system will try to resolve or create it; if you provide <code>producto_id</code> it will use that id.</li>
+                <li>Products are stored in <code>pedidos_productos</code> (pivot). The API accepts the simple format using top-level <code>producto</code> or <code>producto_id</code> plus <code>cantidad</code>. Internally the model supports creating an order with multiple items (see <code>crearPedidoConProductos</code> in the model).</li>
                 <li>Stock validation: the system checks stock (via DB triggers and application checks). If stock is insufficient the request will fail with an error message.</li>
             </ul>
 
@@ -223,33 +246,52 @@
                     <tr><td><code>numero_orden</code></td><td>integer</td><td>yes</td><td>Unique order number</td></tr>
                     <tr><td><code>destinatario</code></td><td>string</td><td>yes</td><td>Recipient name</td></tr>
                     <tr><td><code>telefono</code></td><td>string</td><td>yes</td><td>Phone number</td></tr>
-                    <tr><td><code>coordenadas</code></td><td>string</td><td>yes</td><td>Latitude and longitude as <code>"lat,long"</code></td></tr>
+                    <tr><td><code>coordenadas</code></td><td>string</td><td>yes</td><td>Latitude and longitude as <code>"lat,long"</code> (or provide <code>latitud</code> and <code>longitud</code> separately)</td></tr>
                     <tr><td><code>direccion</code></td><td>string</td><td>no</td><td>Full address</td></tr>
-                    <tr><td><code>producto</code></td><td>string</td><td>yes (or use producto_id)</td><td>Product name to resolve or create</td></tr>
-                    <tr><td><code>producto_id</code></td><td>integer</td><td>yes (or use producto)</td><td>Prefer this when you already know the id</td></tr>
-                    <tr><td><code>cantidad</code></td><td>integer</td><td>yes</td><td>Quantity requested</td></tr>
+                    <tr><td><code>producto</code> / <code>producto_id</code></td><td>string / integer</td><td>yes (one of these)</td><td>Single product (name or id) when using the simple payload</td></tr>
+                    <tr><td><code>cantidad</code></td><td>integer</td><td>yes</td><td>Quantity requested (for the single-product payload)</td></tr>
+                    <tr><td><code>productos</code></td><td>array</td><td>no</td><td>Advanced: array of items { "producto_id": int, "cantidad": int } — internal model supports multiple items, see note below</td></tr>
                     <tr><td><code>id_moneda</code></td><td>integer</td><td>recommended</td><td>FK to <code>monedas.id</code></td></tr>
-                    <tr><td><code>id_vendedor</code></td><td>integer</td><td>recommended</td><td>FK to <code>usuarios.id</code> (assigned seller)</td></tr>
-                    <tr><td><code>id_proveedor</code></td><td>integer</td><td>recommended</td><td>FK to <code>usuarios.id</code> (supplier)</td></tr>
                 </tbody>
             </table>
 
-            <h4>Example create request (minimal)</h4>
+            <h4>Example create request (single product)</h4>
             <div class="code-block">{
-    "numero_orden": 90001,
-    "destinatario": "Cliente Prueba",
-    "telefono": "0999999999",
-    "producto": "Producto X",
-    "cantidad": 1,
-    "coordenadas": "-0.180653,-78.467838",
-    "direccion": "Calle Falsa 123",
-    "id_moneda": 1,
-    "id_vendedor": 5,
-    "id_proveedor": 6,
-    "pais": "EC",
-    "departamento": "Pichincha",
-    "municipio": "Quito"
+  "numero_orden": 90001,
+  "destinatario": "Cliente Prueba",
+  "telefono": "0999999999",
+  "producto": "Producto X",
+  "cantidad": 1,
+  "coordenadas": "-0.180653,-78.467838",
+  "direccion": "Calle Falsa 123",
+  "id_moneda": 1,
+  "id_vendedor": 5,
+  "id_proveedor": 6,
+  "pais": "EC",
+  "departamento": "Pichincha",
+  "municipio": "Quito"
 }</div>
+
+            <h4>Example create request (multiple products - advanced)</h4>
+            <p><em>Note:</em> the controller's simple API accepts the single-product payload above. The underlying model supports multiple items; if you want this API to accept an array of products in JSON (field <code>productos</code>), I can implement that behavior. Example of the advanced payload:</p>
+            <div class="code-block">{
+  "numero_orden": 90002,
+  "destinatario": "Cliente Prueba",
+  "telefono": "0999999999",
+  "productos": [
+    { "producto_id": 12, "cantidad": 2 },
+    { "producto": "Producto Y", "cantidad": 1 }
+  ],
+  "coordenadas": "-0.180653,-78.467838",
+  "direccion": "Calle Falsa 123",
+  "id_moneda": 1
+}</div>
+
+            <h4>Example (curl) - create order</h4>
+            <div class="code-block">curl -s -X POST "http://localhost/api/pedidos/crear" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer &lt;JWT_TOKEN&gt;" \
+  -d '{ "numero_orden": 90001, "destinatario": "Cliente Prueba", "telefono": "0999999999", "producto": "Producto X", "cantidad": 1, "coordenadas": "-0.180653,-78.467838" }'</div>
 
             <h4>Possible successful response</h4>
             <div class="code-block">{
