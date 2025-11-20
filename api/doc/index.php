@@ -109,7 +109,7 @@
 <body>
     <header>
         <div class="container">
-            <a class="navbar-brand" href="https://cruzvalle.website/">Home</a>
+            <a class="navbar-brand" href="./">Home</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -145,9 +145,9 @@
             </ol>
 
             <h4>Example: get token (curl)</h4>
-            <div class="code-block">curl -s -X POST "https://cruzvalle.website/api/auth/login" \
+            <div class="code-block">curl -s -X POST "{API_BASE_URL}/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"123456"}'</div>
+  -d '{"email":"user@example.com","password":"<REPLACE_WITH_PASSWORD>"}'</div>
 
             <h4>Login response (important)</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
@@ -192,6 +192,7 @@
 
             <h4>Usage</h4>
             <div class="code-block">Authorization: Bearer &lt;JWT_TOKEN from response.data.token&gt;</div>
+            <p style="color:#6c757d;font-size:0.9rem;">Security note: never embed real credentials or long-lived tokens in public documentation or examples. Use placeholders and environment variables when running commands.</p>
         </div>
 
         <!-- Geographic & Reference Data (GeoInfo) -->
@@ -290,7 +291,7 @@
             <div class="code-block"><span class="badge-endpoint">GET</span> /api/pedidos/buscar?numero_orden=&lt;NUMBER&gt;</div>
             <p>Requires Authorization header: <code>Authorization: Bearer &lt;token&gt;</code>. Returns the order data (latitud/longitud as numbers) when found.</p>
             <h5>Example (curl)</h5>
-            <div class="code-block">curl -s "https://cruzvalle.website/api/pedidos/buscar?numero_orden=90001" \
+            <div class="code-block">curl -s "{API_BASE_URL}/api/pedidos/buscar?numero_orden=90001" \
   -H "Authorization: Bearer &lt;JWT_TOKEN&gt;"</div>
                         <h5>Success response (200)</h5>
                         <pre class="code-block line-numbers"><code class="language-json">{
@@ -409,7 +410,7 @@
                         }</code></pre>
 
             <h4>Example (curl) - create order</h4>
-            <div class="code-block">curl -s -X POST "https://cruzvalle.website/api/pedidos/crear" \
+            <div class="code-block">curl -s -X POST "{API_BASE_URL}/api/pedidos/crear" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;JWT_TOKEN&gt;" \
   -d '{ "numero_orden": 90001, "destinatario": "Cliente Prueba", "telefono": "0999999999", "producto_id": 12, "cantidad": 1, "coordenadas": "-0.180653,-78.467838", "id_municipio": 12 }'</div>
@@ -540,7 +541,7 @@
 }</code></pre>
 
             <h4>Example (curl)</h4>
-            <div class="code-block">curl -s -X POST "https://cruzvalle.website/api/pedidos/multiple" \
+            <div class="code-block">curl -s -X POST "{API_BASE_URL}/api/pedidos/multiple" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;JWT_TOKEN&gt;" \
   -d '@pedidos_batch.json'
