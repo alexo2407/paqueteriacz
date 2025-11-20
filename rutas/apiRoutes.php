@@ -30,6 +30,26 @@ class ApiRouter {
 
                     $response = $controller->crearPedidoAPI($data);
                     responder(true, $response['message'], $response['data']);
+                } elseif ($action === 'multiple' && $method === 'POST') {
+                    // Bulk import endpoint for authenticated clients
+                    $headers = apache_request_headers();
+                    if (!isset($headers['Authorization'])) {
+                        responder(false, 'Authorization token is missing', null, 401);
+                        exit;
+                    }
+
+                    $token = str_replace('Bearer ', '', $headers['Authorization']);
+                    $auth = new AuthMiddleware();
+                    $valid = $auth->validarToken($token);
+
+                    if (!$valid['success']) {
+                        responder(false, $valid['message'], null, 401);
+                        exit;
+                    }
+
+                    // The controller prints JSON and sets headers itself.
+                    $controller->createMultiple();
+                    exit;
                 } elseif ($action === 'buscar' && $method === 'GET') {
                     $numeroOrden = $parts[2] ?? null;
                     if (!$numeroOrden) {
