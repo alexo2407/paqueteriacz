@@ -9,6 +9,12 @@
     <!-- Bootstrap CSS v5.2.1 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous" />
+    <!-- Editor-like font -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Prism.js theme (editor-like dark theme) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+    <!-- Prism line numbers plugin CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.css" />
 
     <style>
         body {
@@ -45,12 +51,41 @@
         }
 
         .code-block {
-            background: #ebeaeaff;
-            border-left: 4px solid #007bff;
-            padding: 15px;
+            background: #2d2d2d; /* dark editor background */
+            color: #dcdcdc;
+            padding: 14px;
             border-radius: 8px;
-            font-family: monospace;
+            font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace;
             font-size: 0.95rem;
+            overflow: auto;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            border-left: 4px solid rgba(255,255,255,0.03);
+        }
+
+        /* Prism token colors tweaks to look more like a code editor */
+        .token.property, .token.key { color: #9cdcfe; }
+        .token.string { color: #ce9178; }
+        .token.number { color: #b5cea8; }
+        .token.boolean, .token.null { color: #569cd6; }
+        .token.punctuation, .token.operator { color: #d4d4d4; }
+        .token.comment { color: #6a9955; font-style: italic; }
+
+        /* Print-friendly styles */
+        @media print {
+            .code-block {
+                background: #ffffff !important;
+                color: #000000 !important;
+                box-shadow: none !important;
+                border-left: 4px solid #e0e0e0 !important;
+                font-size: 0.85rem !important;
+                overflow: visible !important;
+                white-space: pre-wrap !important;
+                word-break: break-word !important;
+            }
+            /* Make line numbers visible and subtle when printing */
+            .line-numbers .line-numbers-rows {
+                color: #6c757d !important;
+            }
         }
 
         footer {
@@ -115,12 +150,12 @@
   -d '{"email":"admin@example.com","password":"123456"}'</div>
 
             <h4>Login response (important)</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Login exitoso",
     "data": { "token": "&lt;JWT_TOKEN&gt;" }
 }
-            </div>
+</code></pre>
 
             <p>Note: always use the token value located at <code>data.token</code> when setting the <code>Authorization</code> header.</p>
         </div>
@@ -143,17 +178,17 @@
             </table>
 
             <h4>Example request</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "email": "admin@example.com",
     "password": "123456"
-}</div>
+}</code></pre>
 
             <h4>Success response (200)</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Login exitoso",
     "data": { "token": "&lt;JWT_TOKEN&gt;" }
-}</div>
+}</code></pre>
 
             <h4>Usage</h4>
             <div class="code-block">Authorization: Bearer &lt;JWT_TOKEN from response.data.token&gt;</div>
@@ -170,7 +205,7 @@
             <p>Returns an object <code>data</code> containing arrays for <code>paises</code> (countries), <code>departamentos</code> (departments), <code>municipios</code> (municipalities), <code>barrios</code> (neighborhoods) and <code>monedas</code> (currencies). Useful to initialize forms and dependent selects.</p>
 
             <h4>Response example</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "GeoInfo listed",
     "data": {
@@ -180,7 +215,7 @@
         "barrios": [{ "id": 1, "nombre": "Altamira", "id_municipio": 1 }],
         "monedas": [{ "id":1, "codigo":"USD", "nombre":"US Dollar", "tasa_usd":"1.0000" }]
     }
-}</div>
+}</code></pre>
 
         </div>
 
@@ -194,16 +229,16 @@
             <p>Returns a list of products with aggregated stock (field <code>stock_total</code>).</p>
             <p>Optional query parameter: <code>include_stock=1</code> — when set, the response includes a <code>stock_entries</code> array for each product with recent stock movements (fields: <code>id</code>, <code>id_producto</code>, <code>id_usuario</code>, <code>cantidad</code>, <code>updated_at</code>).</p>
             <h4>Response (200)</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "data": [
         { "id": 1, "nombre": "Matcha Slim", "precio_usd": "25.00", "stock_total": 2 },
         { "id": 2, "nombre": "Protein Shake", "precio_usd": "40.00", "stock_total": 60 }
     ]
-}</div>
+}</code></pre>
 
             <h5>Response with include_stock=1 (example)</h5>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "data": [
         {
@@ -218,7 +253,7 @@
         }
     ]
 }
-</div>
+</code></pre>
 
             <h4>Create product</h4>
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/productos/crear</div>
@@ -232,18 +267,18 @@
                 </tbody>
             </table>
             <h4>Example create request</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "nombre": "Producto X",
     "descripcion": "Descripción opcional",
     "precio_usd": 9.5,
     "stock": 12
-}</div>
+}</code></pre>
             <h4>Success response</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Producto creado correctamente.",
     "data": { "id": 42, "stock_inserted": 99 }
-}</div>
+}</code></pre>
         </div>
 
         <!-- Orders: detailed -->
@@ -258,7 +293,7 @@
             <div class="code-block">curl -s "https://cruzvalle.website/api/pedidos/buscar?numero_orden=90001" \
   -H "Authorization: Bearer &lt;JWT_TOKEN&gt;"</div>
                         <h5>Success response (200)</h5>
-                        <div class="code-block">{
+                        <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Order found",
     "data": {
@@ -270,7 +305,7 @@
         "longitud": -78.467838,
         "nombre_estado": "Pending"
     }
-}</div>
+}</code></pre>
 
             <hr />
 
@@ -314,7 +349,7 @@
             </table>
 
                         <h4>Example create request (single product)</h4>
-                        <div class="code-block">{
+                        <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 90001,
     "destinatario": "Cliente Prueba",
     "telefono": "0999999999",
@@ -333,17 +368,17 @@
     "id_municipio": 12,
     "id_barrio": 7,
     "comentario": "Entrega en horario de oficina"
-}</div>
+}</code></pre>
 
-                        <h4>Example create request (multiple products)</h4>
-                        <p>Provide product IDs in the <code>productos</code> array. Each item must include <code>producto_id</code> (integer) and <code>cantidad</code> (int).</p>
-                        <div class="code-block">{
+            <h4>Example create request (multiple products)</h4>
+            <p>Provide product IDs in the <code>productos</code> array. Each item must include <code>producto_id</code> (integer) and <code>cantidad</code> (int).</p>
+        <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 90002,
     "destinatario": "Cliente Prueba",
     "telefono": "0999999999",
     "productos": [
-            { "producto_id": 12, "cantidad": 2 },
-            { "producto_id": 13, "cantidad": 1 }
+        { "producto_id": 12, "cantidad": 2 },
+        { "producto_id": 13, "cantidad": 1 }
     ],
     "coordenadas": "-0.180653,-78.467838",
     "direccion": "Calle Falsa 123",
@@ -351,27 +386,27 @@
     "id_pais": 3,
     "id_departamento": 5,
     "id_municipio": 12
-}</div>
+}</code></pre>
 
                                                 <h4>Working example (real payload)</h4>
-                                                                        <p>Example JSON that has been tested with the <code>/api/pedidos/crear</code> endpoint — it uses the <code>productos</code> array with <code>producto_id</code> (product 2: "Protein Shake").</p>
-                        <div class="code-block">{
-    "numero_orden": 1700385600,
-    "destinatario": "Proveedor Prueba",
-    "telefono": "0999999999",
-    "productos": [
-        { "producto_id": 2, "cantidad": 1 }
-    ],
-    "coordenadas": "-0.180653,-78.467838",
-    "direccion": "Calle Falsa 123",
-    "zona": "Centro",
-    "id_moneda": 1,
-    "pais": 3,
-    "departamento": 5,
-    "id_municipio": 12,
-    "id_barrio": 7,
-    "comentario": "Pedido de prueba via Postman"
-}</div>
+                                                                                                <p>Example JSON that has been tested with the <code>/api/pedidos/crear</code> endpoint — it uses the <code>productos</code> array with <code>producto_id</code> (product 2: "Protein Shake").</p>
+                                                <pre class="code-block line-numbers"><code class="language-json">{
+                            "numero_orden": 1700385600,
+                            "destinatario": "Proveedor Prueba",
+                            "telefono": "0999999999",
+                            "productos": [
+                                { "producto_id": 2, "cantidad": 1 }
+                            ],
+                            "coordenadas": "-0.180653,-78.467838",
+                            "direccion": "Calle Falsa 123",
+                            "zona": "Centro",
+                            "id_moneda": 1,
+                            "pais": 3,
+                            "departamento": 5,
+                            "id_municipio": 12,
+                            "id_barrio": 7,
+                            "comentario": "Pedido de prueba via Postman"
+                        }</code></pre>
 
             <h4>Example (curl) - create order</h4>
             <div class="code-block">curl -s -X POST "https://cruzvalle.website/api/pedidos/crear" \
@@ -392,14 +427,14 @@
                                     </ul>
 
             <h4>Possible successful response</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Order created successfully.",
     "data": 15
-}</div>
+}</code></pre>
 
             <h4>Examples of error responses</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "success": false,
     "message": "Error inserting order: Insufficient stock for product ID 11. Available: 0, required: 1"
 }
@@ -407,7 +442,7 @@
 {
     "success": false,
     "message": "Error inserting order: Cannot add or update a child row: a foreign key constraint fails (...)"
-}</div>
+}</code></pre>
         </div>
 
         <!-- Bulk orders documentation (ENGLISH) -->
@@ -422,7 +457,7 @@
             <p>Send a JSON object with a <code>pedidos</code> array. Each order must include <code>numero_orden</code>, recipient details and at least one product in the <code>productos</code> array. Coordinates may be provided as a string <code>"lat,long"</code> or as numeric fields <code>latitud</code> and <code>longitud</code>.</p>
 
             <h4>Example request (batch of 5 orders)</h4>
-            <pre class="code-block"><code class="language-json">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "pedidos": [
         {
             "numero_orden": 1001,
@@ -494,7 +529,7 @@
             <p>The endpoint returns a JSON object with a <code>results</code> array. Each item corresponds to one submitted order and contains <code>numero_orden</code>, <code>success</code> (boolean) and either <code>id_pedido</code> when the insertion succeeded or <code>error</code> with a message describing why that particular order failed. Processing continues for remaining orders even if some fail.</p>
 
             <h4>Example response (success + errors)</h4>
-            <div class="code-block">{
+            <pre class="code-block line-numbers"><code class="language-json">{
     "results": [
         { "numero_orden": 1001, "success": true, "id_pedido": 201 },
         { "numero_orden": 1002, "success": false, "error": "Insufficient stock for product ID 2" },
@@ -502,7 +537,7 @@
         { "numero_orden": 1004, "success": true, "id_pedido": 204 },
         { "numero_orden": 1005, "success": true, "id_pedido": 205 }
     ]
-}</div>
+}</code></pre>
 
             <h4>Example (curl)</h4>
             <div class="code-block">curl -s -X POST "https://cruzvalle.website/api/pedidos/multiple" \
@@ -537,6 +572,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.min.js"
         integrity="sha384-BBtl+eGJRgqQAUMxJ7pMwbEyER4l1g+O15P+16Ep7Q9Q+zqX6gSbd85u4mG4QzX+"
         crossorigin="anonymous"></script>
+    <!-- Prism.js for JSON syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <!-- Prism line numbers plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
 </body>
 
 </html>
