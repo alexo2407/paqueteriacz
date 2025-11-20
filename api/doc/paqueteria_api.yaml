@@ -6,7 +6,7 @@ info:
     API para autenticación (JWT) y gestión de pedidos.
     Incluye endpoints para login, listado de pedidos y creación de pedidos.
 servers:
-  - url: http://localhost/paqueteriacz
+  - url: https://cruzvalle.website/api
 paths:
   /api/auth/login:
     post:

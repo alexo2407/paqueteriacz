@@ -160,8 +160,18 @@
         const precioUsdInput = document.getElementById('precio_usd');
 
         const getSelectedOption = function(select) {
-            if (!select || select.selectedIndex < 0) return null;
-            return select.options[select.selectedIndex] || null;
+            // Defensive: ensure select is a HTMLSelectElement and has options
+            if (!select) return null;
+            try {
+                // selectedIndex sometimes may be undefined for non-select elements
+                if (typeof select.selectedIndex !== 'number') return null;
+                const idx = select.selectedIndex;
+                if (!select.options || idx < 0) return null;
+                return select.options[idx] || null;
+            } catch (err) {
+                // In case select is not a proper DOM element or other runtime issue
+                return null;
+            }
         };
 
         const getStockDisponible = function() {

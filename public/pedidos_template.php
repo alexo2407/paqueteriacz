@@ -8,7 +8,7 @@ $bom = !isset($_GET['bom']) || $_GET['bom'] !== '0';
 
 // Ordered headers (stable)
 $headers = [
-    'numero_orden','destinatario','telefono','producto','cantidad','direccion','latitud','longitud','pais','departamento','municipio','barrio','zona','comentario'
+    'numero_orden','destinatario','telefono','producto','cantidad','direccion','latitud','longitud','id_pais','id_departamento','municipio','barrio','zona','comentario'
 ];
 
 // Example rows as generator
@@ -22,8 +22,9 @@ function templateRows() {
         'direccion' => 'Calle 1 #123, Barrio Central',
         'latitud' => '12.13282000',
         'longitud' => '-86.25040000',
-        'pais' => 'Nicaragua',
-        'departamento' => 'Managua',
+    // Use numeric IDs for country/department (replace with real ids in your DB)
+    'id_pais' => 3,
+    'id_departamento' => 12,
         'municipio' => 'Managua',
         'barrio' => 'Centro',
         'zona' => 'Zona 1',
@@ -40,8 +41,8 @@ function templateRows() {
         'direccion' => 'Residencial Vista Lago, Casa 24',
         'latitud' => '12.85702192',
         'longitud' => '-85.81782867',
-        'pais' => 'Nicaragua',
-        'departamento' => 'Masaya',
+    'id_pais' => 3,
+    'id_departamento' => 34,
         'municipio' => 'Masatepe',
         'barrio' => 'Barrio Los Pinos',
         'zona' => 'Zona 3',

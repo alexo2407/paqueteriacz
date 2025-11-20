@@ -38,8 +38,10 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'numero_orden' => $_POST['numero_orden'] ?? '',
             'destinatario' => $_POST['destinatario'] ?? '',
             'telefono' => $_POST['telefono'] ?? '',
+            // Support multiple products via productos[] array or single producto_id/cantidad_producto
             'producto_id' => $_POST['producto_id'] ?? null,
             'cantidad_producto' => $_POST['cantidad_producto'] ?? null,
+            'productos' => isset($_POST['productos']) ? $_POST['productos'] : null,
             'estado' => $_POST['estado'] ?? null,
             'vendedor' => $_POST['vendedor'] ?? null,
             'proveedor' => $_POST['proveedor'] ?? null,
@@ -47,8 +49,8 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'direccion' => $_POST['direccion'] ?? '',
             'latitud' => $_POST['latitud'] ?? null,
             'longitud' => $_POST['longitud'] ?? null,
-            'pais' => $_POST['pais'] ?? null,
-            'departamento' => $_POST['departamento'] ?? null,
+            'id_pais' => $_POST['id_pais'] ?? ($_POST['pais'] ?? null),
+            'id_departamento' => $_POST['id_departamento'] ?? ($_POST['departamento'] ?? null),
             'municipio' => $_POST['municipio'] ?? null,
             'barrio' => $_POST['barrio'] ?? null,
             'zona' => $_POST['zona'] ?? null,
@@ -89,8 +91,28 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             exit;
         }
 
-        // Mensaje flash y redirección para comportamiendo no-AJAX (fallback)
+        // Mensaje flash y redirección para comportamiento no-AJAX (fallback)
         set_flash(!empty($resultado['success']) ? 'success' : 'error', $resultado['message'] ?? 'No fue posible guardar el pedido.');
+
+        // If saving failed and this is a normal (non-AJAX) request, persist the submitted
+        // payload into session so the create form can repopulate the user's inputs.
+        if (empty($resultado['success'])) {
+            // keep only relevant fields to avoid storing huge or sensitive data
+            $store = $payload;
+            // normalize productos to a safe structure
+            if (isset($store['productos']) && is_array($store['productos'])) {
+                $safeItems = [];
+                foreach ($store['productos'] as $it) {
+                    $safeItems[] = [
+                        'producto_id' => isset($it['producto_id']) ? $it['producto_id'] : null,
+                        'cantidad' => isset($it['cantidad']) ? $it['cantidad'] : null
+                    ];
+                }
+                $store['productos'] = $safeItems;
+            }
+            // Save to session for a single-use repopulation in the view
+            $_SESSION['old_pedido'] = $store;
+        }
 
         $redirect = !empty($resultado['success']) ? RUTA_URL . 'pedidos/listar' : RUTA_URL . 'pedidos/crearPedido';
         header('Location: ' . $redirect);
