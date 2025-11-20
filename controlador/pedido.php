@@ -213,6 +213,116 @@ class PedidosController {
     }
 
     /**
+     * API endpoint: Crear múltiples pedidos desde JSON.
+     * Lee php://input, decodifica JSON y espera la clave 'pedidos' como array.
+     * Para cada pedido inserta una fila en `pedidos` y sus productos en `pedido_detalle`.
+     * Continúa en errores por pedido y devuelve un resumen por pedido.
+     *
+     * Uso: POST /api/pedidos/multiple (o la ruta que corresponda) con body JSON.
+     */
+    public function createMultiple()
+    {
+        // incluir conexión si no está presente
+        require_once __DIR__ . '/../modelo/conexion.php';
+
+        $raw = file_get_contents('php://input');
+        $payload = json_decode($raw, true);
+
+        header('Content-Type: application/json');
+
+        if (!is_array($payload) || !isset($payload['pedidos']) || !is_array($payload['pedidos'])) {
+            http_response_code(400);
+            echo json_encode(['error' => "JSON inválido o falta la clave 'pedidos' (esperado array)."], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $results = [];
+
+        try {
+            $db = (new Conexion())->conectar();
+
+            $sqlInsertPedido = 'INSERT INTO pedidos (numero_orden, destinatario, telefono, direccion, coordenadas, id_proveedor) VALUES (:numero_orden, :destinatario, :telefono, :direccion, :coordenadas, :id_proveedor)';
+            $stmtInsertPedido = $db->prepare($sqlInsertPedido);
+
+            $sqlInsertDetalle = 'INSERT INTO pedido_detalle (id_pedido, id_producto, cantidad) VALUES (:id_pedido, :id_producto, :cantidad)';
+            $stmtInsertDetalle = $db->prepare($sqlInsertDetalle);
+
+            foreach ($payload['pedidos'] as $pedido) {
+                $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
+
+                // validaciones mínimas
+                if (!isset($pedido['numero_orden']) || $pedido['numero_orden'] === '') {
+                    $itemResult['error'] = 'Falta numero_orden';
+                    $results[] = $itemResult;
+                    continue;
+                }
+                if (!isset($pedido['productos']) || !is_array($pedido['productos']) || count($pedido['productos']) === 0) {
+                    $itemResult['error'] = 'El pedido debe contener al menos un producto en products.';
+                    $results[] = $itemResult;
+                    continue;
+                }
+
+                try {
+                    $db->beginTransaction();
+
+                    $stmtInsertPedido->bindValue(':numero_orden', $pedido['numero_orden'], PDO::PARAM_INT);
+                    $stmtInsertPedido->bindValue(':destinatario', $pedido['destinatario'] ?? null, PDO::PARAM_STR);
+                    $stmtInsertPedido->bindValue(':telefono', $pedido['telefono'] ?? null, PDO::PARAM_STR);
+                    $stmtInsertPedido->bindValue(':direccion', $pedido['direccion'] ?? null, PDO::PARAM_STR);
+                    $stmtInsertPedido->bindValue(':coordenadas', $pedido['coordenadas'] ?? null, PDO::PARAM_STR);
+                    if (isset($pedido['id_proveedor']) && $pedido['id_proveedor'] !== '') {
+                        $stmtInsertPedido->bindValue(':id_proveedor', (int)$pedido['id_proveedor'], PDO::PARAM_INT);
+                    } else {
+                        $stmtInsertPedido->bindValue(':id_proveedor', null, PDO::PARAM_NULL);
+                    }
+
+                    $stmtInsertPedido->execute();
+                    $idPedido = (int)$db->lastInsertId();
+
+                    $inserted = 0;
+                    foreach ($pedido['productos'] as $prod) {
+                        if (!isset($prod['producto_id']) || !isset($prod['cantidad'])) continue;
+                        $pid = (int)$prod['producto_id'];
+                        $qty = (int)$prod['cantidad'];
+                        if ($qty <= 0) continue;
+
+                        $stmtInsertDetalle->bindValue(':id_pedido', $idPedido, PDO::PARAM_INT);
+                        $stmtInsertDetalle->bindValue(':id_producto', $pid, PDO::PARAM_INT);
+                        $stmtInsertDetalle->bindValue(':cantidad', $qty, PDO::PARAM_INT);
+                        $stmtInsertDetalle->execute();
+                        $inserted++;
+                    }
+
+                    if ($inserted === 0) {
+                        $db->rollBack();
+                        $itemResult['error'] = 'No se insertaron productos válidos para este pedido.';
+                        $results[] = $itemResult;
+                        continue;
+                    }
+
+                    $db->commit();
+                    $itemResult['success'] = true;
+                    $itemResult['id_pedido'] = $idPedido;
+                    $results[] = $itemResult;
+                } catch (Exception $e) {
+                    if ($db->inTransaction()) $db->rollBack();
+                    $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
+                    $results[] = $itemResult;
+                    continue;
+                }
+            }
+
+            echo json_encode(['results' => $results], JSON_UNESCAPED_UNICODE);
+            return;
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error interno: ' . $e->getMessage()]);
+            return;
+        }
+    }
+
+    /**
      * Buscar un pedido por su número de orden.
      * Devuelve un arreglo con la estructura: { success, message, data }
      * donde data es el resultado de PedidosModel::obtenerPedidoPorNumero o null.
