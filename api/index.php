@@ -47,6 +47,10 @@ if (preg_match('/\/api\/pedidos\/crear$/', $path) && $method === 'POST') {
     require_once __DIR__ . '/pedidos/crear.php';
     exit;
 }
+if (preg_match('/\/api\/pedidos\/multiple$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/pedidos/multiple.php';
+    exit;
+}
 
 // Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
 if (strpos($path, '/api/') === 0) {
