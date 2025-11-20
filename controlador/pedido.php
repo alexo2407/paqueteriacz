@@ -215,7 +215,7 @@ class PedidosController {
     /**
      * API endpoint: Crear múltiples pedidos desde JSON.
      * Lee php://input, decodifica JSON y espera la clave 'pedidos' como array.
-     * Para cada pedido inserta una fila en `pedidos` y sus productos en `pedido_detalle`.
+    * Para cada pedido inserta una fila en `pedidos` y sus productos en `pedidos_productos`.
      * Continúa en errores por pedido y devuelve un resumen por pedido.
      *
      * Uso: POST /api/pedidos/multiple (o la ruta que corresponda) con body JSON.
@@ -244,7 +244,8 @@ class PedidosController {
             $sqlInsertPedido = 'INSERT INTO pedidos (numero_orden, destinatario, telefono, direccion, coordenadas, id_proveedor) VALUES (:numero_orden, :destinatario, :telefono, :direccion, :coordenadas, :id_proveedor)';
             $stmtInsertPedido = $db->prepare($sqlInsertPedido);
 
-            $sqlInsertDetalle = 'INSERT INTO pedido_detalle (id_pedido, id_producto, cantidad) VALUES (:id_pedido, :id_producto, :cantidad)';
+            // The project uses the `pedidos_productos` table for order items
+            $sqlInsertDetalle = 'INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad) VALUES (:id_pedido, :id_producto, :cantidad)';
             $stmtInsertDetalle = $db->prepare($sqlInsertDetalle);
 
             foreach ($payload['pedidos'] as $pedido) {
