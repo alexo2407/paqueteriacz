@@ -217,9 +217,7 @@ class PedidosController {
      */
     public function createMultiple()
     {
-        // incluir conexión si no está presente
-        require_once __DIR__ . '/../modelo/conexion.php';
-
+        // Read and decode JSON payload
         $raw = file_get_contents('php://input');
         $payload = json_decode($raw, true);
 
@@ -233,89 +231,82 @@ class PedidosController {
 
         $results = [];
 
-        try {
-            $db = (new Conexion())->conectar();
+        // Ensure model is available
+        require_once __DIR__ . '/../modelo/pedido.php';
 
-            $sqlInsertPedido = 'INSERT INTO pedidos (numero_orden, destinatario, telefono, direccion, coordenadas, id_proveedor) VALUES (:numero_orden, :destinatario, :telefono, :direccion, :coordenadas, :id_proveedor)';
-            $stmtInsertPedido = $db->prepare($sqlInsertPedido);
+        foreach ($payload['pedidos'] as $pedido) {
+            $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
 
-            // The project uses the `pedidos_productos` table for order items
-            $sqlInsertDetalle = 'INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad) VALUES (:id_pedido, :id_producto, :cantidad)';
-            $stmtInsertDetalle = $db->prepare($sqlInsertDetalle);
+            // Basic validation using existing helper
+            $valid = $this->validarDatosPedido($pedido);
+            if (!$valid['success']) {
+                $itemResult['error'] = is_string($valid['message']) ? $valid['message'] : json_encode($valid['data']);
+                $results[] = $itemResult;
+                continue;
+            }
 
-            foreach ($payload['pedidos'] as $pedido) {
-                $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
+            // Build payload expected by the model
+            $modelPayload = [
+                'numero_orden' => isset($pedido['numero_orden']) ? (int)$pedido['numero_orden'] : null,
+                'destinatario' => $pedido['destinatario'] ?? null,
+                'telefono' => $pedido['telefono'] ?? null,
+                'direccion' => $pedido['direccion'] ?? null,
+                'comentario' => $pedido['comentario'] ?? null,
+                'estado' => isset($pedido['estado']) ? (int)$pedido['estado'] : null,
+                'vendedor' => isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null,
+                'proveedor' => isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : (isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null),
+                'moneda' => isset($pedido['moneda']) ? (int)$pedido['moneda'] : null,
+                'latitud' => isset($pedido['latitud']) ? (float)$pedido['latitud'] : (isset($pedido['latitude']) ? (float)$pedido['latitude'] : null),
+                'longitud' => isset($pedido['longitud']) ? (float)$pedido['longitud'] : (isset($pedido['longitude']) ? (float)$pedido['longitude'] : null),
+                'id_pais' => isset($pedido['id_pais']) ? $pedido['id_pais'] : ($pedido['pais'] ?? null),
+                'id_departamento' => isset($pedido['id_departamento']) ? $pedido['id_departamento'] : ($pedido['departamento'] ?? null),
+                'municipio' => $pedido['municipio'] ?? null,
+                'barrio' => $pedido['barrio'] ?? null,
+                'zona' => $pedido['zona'] ?? null,
+                'precio_local' => isset($pedido['precio_local']) ? $pedido['precio_local'] : ($pedido['precio'] ?? null),
+                'precio_usd' => $pedido['precio_usd'] ?? null,
+            ];
 
-                // validaciones mínimas
-                if (!isset($pedido['numero_orden']) || $pedido['numero_orden'] === '') {
-                    $itemResult['error'] = 'Falta numero_orden';
-                    $results[] = $itemResult;
-                    continue;
+            // Build items array.
+            $items = [];
+            if (isset($pedido['productos']) && is_array($pedido['productos']) && count($pedido['productos']) > 0) {
+                foreach ($pedido['productos'] as $pi) {
+                    // Accept different key names
+                    $pid = $pi['producto_id'] ?? $pi['id_producto'] ?? $pi['id'] ?? null;
+                    $qty = $pi['cantidad'] ?? $pi['qty'] ?? $pi['cantidad_producto'] ?? null;
+                    if (!is_numeric($pid) || !is_numeric($qty) || (int)$qty <= 0) continue;
+                    $items[] = ['id_producto' => (int)$pid, 'cantidad' => (int)$qty, 'cantidad_devuelta' => 0];
                 }
-                if (!isset($pedido['productos']) || !is_array($pedido['productos']) || count($pedido['productos']) === 0) {
-                    $itemResult['error'] = 'El pedido debe contener al menos un producto en products.';
-                    $results[] = $itemResult;
-                    continue;
-                }
-
-                try {
-                    $db->beginTransaction();
-
-                    $stmtInsertPedido->bindValue(':numero_orden', $pedido['numero_orden'], PDO::PARAM_INT);
-                    $stmtInsertPedido->bindValue(':destinatario', $pedido['destinatario'] ?? null, PDO::PARAM_STR);
-                    $stmtInsertPedido->bindValue(':telefono', $pedido['telefono'] ?? null, PDO::PARAM_STR);
-                    $stmtInsertPedido->bindValue(':direccion', $pedido['direccion'] ?? null, PDO::PARAM_STR);
-                    $stmtInsertPedido->bindValue(':coordenadas', $pedido['coordenadas'] ?? null, PDO::PARAM_STR);
-                    if (isset($pedido['id_proveedor']) && $pedido['id_proveedor'] !== '') {
-                        $stmtInsertPedido->bindValue(':id_proveedor', (int)$pedido['id_proveedor'], PDO::PARAM_INT);
-                    } else {
-                        $stmtInsertPedido->bindValue(':id_proveedor', null, PDO::PARAM_NULL);
-                    }
-
-                    $stmtInsertPedido->execute();
-                    $idPedido = (int)$db->lastInsertId();
-
-                    $inserted = 0;
-                    foreach ($pedido['productos'] as $prod) {
-                        if (!isset($prod['producto_id']) || !isset($prod['cantidad'])) continue;
-                        $pid = (int)$prod['producto_id'];
-                        $qty = (int)$prod['cantidad'];
-                        if ($qty <= 0) continue;
-
-                        $stmtInsertDetalle->bindValue(':id_pedido', $idPedido, PDO::PARAM_INT);
-                        $stmtInsertDetalle->bindValue(':id_producto', $pid, PDO::PARAM_INT);
-                        $stmtInsertDetalle->bindValue(':cantidad', $qty, PDO::PARAM_INT);
-                        $stmtInsertDetalle->execute();
-                        $inserted++;
-                    }
-
-                    if ($inserted === 0) {
-                        $db->rollBack();
-                        $itemResult['error'] = 'No se insertaron productos válidos para este pedido.';
-                        $results[] = $itemResult;
-                        continue;
-                    }
-
-                    $db->commit();
-                    $itemResult['success'] = true;
-                    $itemResult['id_pedido'] = $idPedido;
-                    $results[] = $itemResult;
-                } catch (Exception $e) {
-                    if ($db->inTransaction()) $db->rollBack();
-                    $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
-                    $results[] = $itemResult;
-                    continue;
+            } else {
+                // fallback to single product fields
+                $pid = $pedido['producto_id'] ?? $pedido['id_producto'] ?? null;
+                $qty = $pedido['cantidad'] ?? $pedido['cantidad_producto'] ?? null;
+                if (is_numeric($pid) && is_numeric($qty) && (int)$qty > 0) {
+                    $items[] = ['id_producto' => (int)$pid, 'cantidad' => (int)$qty, 'cantidad_devuelta' => 0];
                 }
             }
 
-            echo json_encode(['results' => $results], JSON_UNESCAPED_UNICODE);
-            return;
+            if (count($items) === 0) {
+                $itemResult['error'] = 'El pedido debe incluir al menos un producto válido.';
+                $results[] = $itemResult;
+                continue;
+            }
 
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Error interno: ' . $e->getMessage()]);
-            return;
+            try {
+                // Delegate to model which sets fecha_ingreso and handles pivot inserts/transactions
+                $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items);
+                $itemResult['success'] = true;
+                $itemResult['id_pedido'] = $nuevoId;
+                $results[] = $itemResult;
+            } catch (Exception $e) {
+                $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
+                $results[] = $itemResult;
+                continue;
+            }
         }
+
+        echo json_encode(['results' => $results], JSON_UNESCAPED_UNICODE);
+        return;
     }
 
     /**

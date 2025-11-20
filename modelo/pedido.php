@@ -3,6 +3,8 @@ include_once "conexion.php";
 include_once __DIR__ . '/producto.php';
 include_once __DIR__ . '/moneda.php';
 include_once __DIR__ . '/usuario.php';
+include_once __DIR__ . '/pais.php';
+include_once __DIR__ . '/departamento.php';
 
 class PedidosModel
 {
@@ -24,6 +26,57 @@ class PedidosModel
             // Si hay algún error al consultar information_schema devolvemos true por compatibilidad
             return true;
         }
+    }
+
+    /**
+     * Resolver un valor de país (id o nombre/codigo) a su id numérico.
+     * Devuelve null si no se puede resolver.
+     * @param mixed $value
+     * @return int|null
+     */
+    private static function resolvePaisId($value)
+    {
+        if ($value === null || $value === '') return null;
+        if (is_numeric($value)) return (int)$value;
+        // Intentar resolver por nombre o codigo_iso
+        $paises = PaisModel::listar();
+        $needle = mb_strtolower(trim((string)$value));
+        foreach ($paises as $p) {
+            if (mb_strtolower($p['nombre']) === $needle) return (int)$p['id'];
+            if (isset($p['codigo_iso']) && mb_strtolower($p['codigo_iso']) === $needle) return (int)$p['id'];
+        }
+        return null;
+    }
+
+    /**
+     * Resolver departamento a id. Si se proporciona $paisHint puede filtrar la búsqueda.
+     * @param mixed $value
+     * @param mixed $paisHint (id or name)
+     * @return int|null
+     */
+    private static function resolveDepartamentoId($value, $paisHint = null)
+    {
+        if ($value === null || $value === '') return null;
+        if (is_numeric($value)) return (int)$value;
+        // intentar resolver id_pais desde hint
+        $paisId = null;
+        if ($paisHint !== null) {
+            if (is_numeric($paisHint)) $paisId = (int)$paisHint;
+            else $paisId = self::resolvePaisId($paisHint);
+        }
+        $departamentos = DepartamentoModel::listarPorPais($paisId);
+        $needle = mb_strtolower(trim((string)$value));
+        foreach ($departamentos as $d) {
+            if (mb_strtolower($d['nombre']) === $needle) return (int)$d['id'];
+        }
+        // si no encontró y no filtramos por país, intentar buscar en todos
+        if ($paisId !== null) {
+            $departamentosAll = DepartamentoModel::listarPorPais(null);
+            foreach ($departamentosAll as $d) {
+                if (mb_strtolower($d['nombre']) === $needle) return (int)$d['id'];
+            }
+        }
+        return null;
     }
     /**
      * Inserta múltiples pedidos reutilizando una sola conexión y statement preparado.
@@ -48,7 +101,8 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles (compatibilidad con esquemas)
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
-            $candidates = ['precio_local','precio_usd','pais','departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            // Note: DB schema uses foreign keys id_pais and id_departamento now
+            $candidates = ['precio_local','precio_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -132,11 +186,12 @@ class PedidosModel
                             case 'precio_usd':
                                 $params[':precio_usd'] = $precio_usd;
                                 break;
-                            case 'pais':
-                                $params[':pais'] = $pais;
+                            case 'id_pais':
+                                // accept numeric id or try to resolve by name/code
+                                $params[':id_pais'] = self::resolvePaisId($pais);
                                 break;
-                            case 'departamento':
-                                $params[':departamento'] = $departamento;
+                            case 'id_departamento':
+                                $params[':id_departamento'] = self::resolveDepartamentoId($departamento, $pais);
                                 break;
                             case 'municipio':
                                 $params[':municipio'] = $municipio;
@@ -281,7 +336,8 @@ class PedidosModel
             // Insertar el pedido en la base de datos (sin columnas producto/cantidad)
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','pais','departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado'];
+            // Use id_pais / id_departamento (FKs) in schema-aware inserts
+            $candidates = ['precio_local','precio_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -329,11 +385,14 @@ class PedidosModel
                     case 'precio_usd':
                         $params[':precio_usd'] = $precio_usd;
                         break;
-                    case 'pais':
-                        $params[':pais'] = $data['pais'];
+                    case 'id_pais':
+                        // accept numeric id or try to resolve by name/code
+                        $params[':id_pais'] = self::resolvePaisId($data['pais'] ?? null);
                         break;
-                    case 'departamento':
-                        $params[':departamento'] = $data['departamento'];
+                    case 'id_departamento':
+                        // try to resolve departamento, optionally using provided pais hint
+                        $params[':id_departamento'] = self::resolveDepartamentoId($data['departamento'] ?? null, $data['pais'] ?? null);
+                        break;
                         break;
                     case 'municipio':
                         $params[':municipio'] = $data['municipio'] ?? null;
@@ -413,7 +472,8 @@ class PedidosModel
                         p.telefono,
                         p.precio_local,
                         p.precio_usd,
-                        p.pais,
+                        p.id_pais,
+                        p.id_departamento,
                         ST_Y(p.coordenadas) AS latitud,
                         ST_X(p.coordenadas) AS longitud,
                         ep.nombre_estado AS nombre_estado
@@ -575,8 +635,8 @@ class PedidosModel
                 numero_orden = :numero_orden,
                 destinatario = :destinatario,
                 telefono = :telefono,
-                pais = :pais,
-                departamento = :departamento,
+                id_pais = :id_pais,
+                id_departamento = :id_departamento,
                 municipio = :municipio,
                 barrio = :barrio,
                 zona = :zona,
@@ -599,8 +659,19 @@ class PedidosModel
             $stmt->bindValue(':numero_orden', $data['numero_orden'] ?? null, PDO::PARAM_STR);
             $stmt->bindValue(':destinatario', $data['destinatario'] ?? null, PDO::PARAM_STR);
             $stmt->bindValue(':telefono', $data['telefono'] ?? null, PDO::PARAM_STR);
-            $stmt->bindValue(':pais', $pais, PDO::PARAM_STR);
-            $stmt->bindValue(':departamento', $departamento, PDO::PARAM_STR);
+            // Resolve and bind id_pais / id_departamento (accept names or ids)
+            $resolvedPaisId = self::resolvePaisId($pais);
+            if ($resolvedPaisId !== null) {
+                $stmt->bindValue(':id_pais', (int)$resolvedPaisId, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(':id_pais', null, PDO::PARAM_NULL);
+            }
+            $resolvedDepartamentoId = self::resolveDepartamentoId($departamento, $pais);
+            if ($resolvedDepartamentoId !== null) {
+                $stmt->bindValue(':id_departamento', (int)$resolvedDepartamentoId, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(':id_departamento', null, PDO::PARAM_NULL);
+            }
             $stmt->bindValue(':municipio', $municipio, PDO::PARAM_STR);
             $stmt->bindValue(':barrio', $barrio, PDO::PARAM_STR);
             $stmt->bindValue(':zona', $zona, PDO::PARAM_STR);
@@ -680,17 +751,64 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
-            // If a fallback user id for stock is configured, and the pedido
-            // doesn't include a vendedor/proveedor, apply the fallback so
-            // DB triggers that reference the user don't attempt to insert
-            // an invalid id (which can violate FK constraints).
-            if (defined('FALLBACK_USER_FOR_STOCK') && FALLBACK_USER_FOR_STOCK !== null) {
-                if (empty($pedido['vendedor']) || $pedido['vendedor'] === null) {
-                    $pedido['vendedor'] = (int)FALLBACK_USER_FOR_STOCK;
+            // Determine a safe user id to satisfy stock-related DB triggers
+            // which may attempt to insert rows into `stock` with a non-null
+            // `id_usuario`. Priority:
+            // 1) If the caller provided vendedor/proveedor keep them.
+            // 2) If FALLBACK_USER_FOR_STOCK is configured, use it.
+            // 3) Try to pick the current session user (if session available).
+            // 4) Query the DB for any active user id and use that.
+            // 5) If none found, throw an informative exception to prompt config.
+            $resolvedFallbackUser = null;
+            if (!empty($pedido['vendedor'])) {
+                $resolvedFallbackUser = (int)$pedido['vendedor'];
+            } elseif (!empty($pedido['proveedor'])) {
+                $resolvedFallbackUser = (int)$pedido['proveedor'];
+            }
+
+            if ($resolvedFallbackUser === null) {
+                if (defined('FALLBACK_USER_FOR_STOCK') && FALLBACK_USER_FOR_STOCK !== null) {
+                    $resolvedFallbackUser = (int)FALLBACK_USER_FOR_STOCK;
                 }
-                if (empty($pedido['proveedor']) || $pedido['proveedor'] === null) {
-                    $pedido['proveedor'] = (int)FALLBACK_USER_FOR_STOCK;
+            }
+
+            // Try to obtain a session user id if available
+            if ($resolvedFallbackUser === null) {
+                try {
+                    if (session_status() === PHP_SESSION_NONE) {
+                        @session_start();
+                    }
+                    if (!empty($_SESSION['user_id'])) {
+                        $resolvedFallbackUser = (int)$_SESSION['user_id'];
+                    }
+                } catch (Exception $e) {
+                    // ignore session problems
                 }
+            }
+
+            // As a last resort, query the usuarios table for any user id
+            if ($resolvedFallbackUser === null) {
+                try {
+                    $q = $db->query('SELECT id FROM usuarios WHERE activo = 1 LIMIT 1');
+                    $row = $q->fetch(PDO::FETCH_ASSOC);
+                    if ($row && isset($row['id'])) {
+                        $resolvedFallbackUser = (int)$row['id'];
+                    }
+                } catch (Exception $e) {
+                    // ignore DB read issues here; we'll throw below if still null
+                }
+            }
+
+            if ($resolvedFallbackUser === null) {
+                throw new Exception('No se pudo determinar un id de usuario válido para operaciones de stock. Define FALLBACK_USER_FOR_STOCK en la configuración o asegúrate de que la tabla usuarios contenga al menos un usuario activo.');
+            }
+
+            // Apply resolved fallback where missing so DB triggers get a valid id
+            if (empty($pedido['vendedor']) || $pedido['vendedor'] === null) {
+                $pedido['vendedor'] = $resolvedFallbackUser;
+            }
+            if (empty($pedido['proveedor']) || $pedido['proveedor'] === null) {
+                $pedido['proveedor'] = $resolvedFallbackUser;
             }
 
             $coordenadas = sprintf(
@@ -716,7 +834,7 @@ class PedidosModel
 
             // Construir INSERT dinámico para compatibilidad con esquemas
             $columns = ['fecha_ingreso','numero_orden','destinatario','telefono'];
-            $candidates = ['precio_local','precio_usd','pais','departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            $candidates = ['precio_local','precio_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -765,11 +883,22 @@ class PedidosModel
                             $stmt->bindValue(':precio_usd', $pedido['precio_usd']);
                         }
                         break;
-                    case 'pais':
-                        $stmt->bindValue(':pais', $pedido['pais'] ?? null, empty($pedido['pais']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                    case 'id_pais':
+                        $resolvedIdPais = self::resolvePaisId($pedido['pais'] ?? null);
+                        if ($resolvedIdPais !== null) {
+                            $stmt->bindValue(':id_pais', (int)$resolvedIdPais, PDO::PARAM_INT);
+                        } else {
+                            $stmt->bindValue(':id_pais', null, PDO::PARAM_NULL);
+                        }
                         break;
-                    case 'departamento':
-                        $stmt->bindValue(':departamento', $pedido['departamento'] ?? null, empty($pedido['departamento']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
+                    case 'id_departamento':
+                        $resolvedIdDep = self::resolveDepartamentoId($pedido['departamento'] ?? null, $pedido['pais'] ?? null);
+                        if ($resolvedIdDep !== null) {
+                            $stmt->bindValue(':id_departamento', (int)$resolvedIdDep, PDO::PARAM_INT);
+                        } else {
+                            $stmt->bindValue(':id_departamento', null, PDO::PARAM_NULL);
+                        }
+                        break;
                         break;
                     case 'municipio':
                         $stmt->bindValue(':municipio', $pedido['municipio'] ?? null, empty($pedido['municipio']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
