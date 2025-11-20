@@ -39,13 +39,13 @@ class PedidosController {
      */
     public function crearPedidoAPI($jsonData) {
         $data = $jsonData;
-    
+
         // Validar la estructura del pedido
         $validacion = $this->validarDatosPedido($data);
         if (!$validacion["success"]) {
             return $validacion;
         }
-    
+
         try {
             // Verificar si el número de orden ya existe
             if (PedidosModel::existeNumeroOrden($data["numero_orden"])) {
@@ -54,11 +54,10 @@ class PedidosController {
                     "message" => "El número de orden ya existe en la base de datos."
                 ];
             }
-    
+
             // Support multiple products: either provide single 'producto' + 'cantidad'
-            // or an array 'productos' with items { producto_id|producto, cantidad }.
+            // or an array 'productos' with items { producto_id, cantidad }.
             $items = [];
-            // Require product IDs only: do NOT create products from names.
             if (!empty($data['productos']) && is_array($data['productos'])) {
                 foreach ($data['productos'] as $pi) {
                     if (empty($pi['producto_id']) || !is_numeric($pi['producto_id'])) {
@@ -125,8 +124,6 @@ class PedidosController {
                 $monedaId = null;
             }
 
-            // Validate referenced ids at application level: if the referenced row doesn't exist,
-            // prefer to store NULL instead of sending an invalid FK to the database.
             if ($monedaId !== null) {
                 $m = MonedaModel::obtenerPorId($monedaId);
                 if (!$m) $monedaId = null;
@@ -176,10 +173,8 @@ class PedidosController {
                 'moneda' => $monedaId ?? 0,
                 'latitud' => (float)$latitud,
                 'longitud' => (float)$longitud,
-                // prefer explicit id fields when provided; accept legacy names for resolution
                 'id_pais' => isset($data['id_pais']) ? $data['id_pais'] : ($data['pais'] ?? null),
                 'id_departamento' => isset($data['id_departamento']) ? $data['id_departamento'] : ($data['departamento'] ?? null),
-                // prefer id fields when provided; otherwise fall back to the string names
                 'municipio' => $municipioId ?? ($data['municipio'] ?? null),
                 'barrio' => $barrioId ?? ($data['barrio'] ?? null),
                 'zona' => $data['zona'] ?? null,
@@ -203,7 +198,7 @@ class PedidosController {
                 "message" => "Pedido creado correctamente.",
                 "data" => $nuevoId
             ];
-    
+
         } catch (Exception $e) {
             return [
                 "success" => false,
