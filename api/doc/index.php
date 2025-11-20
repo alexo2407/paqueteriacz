@@ -422,13 +422,15 @@
             <p>Send a JSON object with a <code>pedidos</code> array. Each order must include <code>numero_orden</code>, recipient details and at least one product in the <code>productos</code> array. Coordinates may be provided as a string <code>"lat,long"</code> or as numeric fields <code>latitud</code> and <code>longitud</code>.</p>
 
             <h4>Example request (batch of 5 orders)</h4>
-            <div class="code-block">{
+            <pre class="code-block"><code class="language-json">{
     "pedidos": [
         {
             "numero_orden": 1001,
             "destinatario": "Customer One",
             "telefono": "12345678",
-            "productos": [{ "producto_id": 1, "cantidad": 2 }],
+            "productos": [
+                { "producto_id": 1, "cantidad": 2 }
+            ],
             "coordenadas": "-34.500000,-58.400000",
             "direccion": "Street 1 #123",
             "id_pais": 1,
@@ -452,7 +454,9 @@
             "numero_orden": 1003,
             "destinatario": "Customer Three",
             "telefono": "55512345",
-            "productos": [{ "producto_id": 1, "cantidad": 1 }],
+            "productos": [
+                { "producto_id": 1, "cantidad": 1 }
+            ],
             "coordenadas": "-34.510000,-58.410000",
             "direccion": "Street 3 #45",
             "id_pais": 1,
@@ -484,7 +488,7 @@
             "id_departamento": 2
         }
     ]
-}</div>
+}</code></pre>
 
             <h4>Response format</h4>
             <p>The endpoint returns a JSON object with a <code>results</code> array. Each item corresponds to one submitted order and contains <code>numero_orden</code>, <code>success</code> (boolean) and either <code>id_pedido</code> when the insertion succeeded or <code>error</code> with a message describing why that particular order failed. Processing continues for remaining orders even if some fail.</p>
