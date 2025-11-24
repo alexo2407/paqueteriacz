@@ -794,7 +794,9 @@ class PedidosController {
         // Soporte para peticiones AJAX: si el header X-Requested-With == XMLHttpRequest
         // o el cliente solicita JSON por Accept, devolvemos JSON en lugar de hacer
         // redirect + set_flash. Esto facilita que el frontend maneje la respuesta
-        // y muestre SweetAlert sin recargar la página.
+        // y muestre SweetAlert
+        // DEBUG: Log controller entry
+
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                  || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 

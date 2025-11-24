@@ -1,4 +1,4 @@
-(function(window, document){
+(function (window, document) {
     'use strict';
     /**
      * pedidos-validation.js
@@ -28,7 +28,7 @@
             box.setAttribute('aria-hidden', 'true');
             return;
         }
-        errors.forEach(function(msg){
+        errors.forEach(function (msg) {
             const li = document.createElement('li');
             li.textContent = msg;
             list.appendChild(li);
@@ -91,7 +91,7 @@
     // Devuelve un array con los mensajes de error.
     function validateFields(fieldDefs) {
         const errors = [];
-        fieldDefs.forEach(function(field){
+        fieldDefs.forEach(function (field) {
             const el = document.getElementById(field.id);
             const val = el ? el.value : '';
             const ok = field.fn(val);
@@ -111,14 +111,14 @@
     function attachRealtime(fieldDefs) {
         if (!Array.isArray(fieldDefs)) return;
         const defsMap = {};
-        fieldDefs.forEach(function(def){
+        fieldDefs.forEach(function (def) {
             defsMap[def.id] = def;
         });
 
-        Object.keys(defsMap).forEach(function(id){
+        Object.keys(defsMap).forEach(function (id) {
             const el = document.getElementById(id);
             if (!el) return;
-            const handler = function(){
+            const handler = function () {
                 const def = defsMap[id];
                 let ok;
                 if (def && typeof def.fn === 'function') {
@@ -159,7 +159,7 @@
         const precioLocalInput = document.getElementById('precio_local');
         const precioUsdInput = document.getElementById('precio_usd');
 
-        const getSelectedOption = function(select) {
+        const getSelectedOption = function (select) {
             // Defensive: ensure select is a HTMLSelectElement and has options
             if (!select) return null;
             try {
@@ -174,7 +174,7 @@
             }
         };
 
-        const getStockDisponible = function() {
+        const getStockDisponible = function () {
             const option = getSelectedOption(getPrimaryProductSelect());
             if (!option) return NaN;
             const raw = option.getAttribute('data-stock');
@@ -183,7 +183,7 @@
             return Number.isNaN(num) ? NaN : num;
         };
 
-        const getProductoUsd = function() {
+        const getProductoUsd = function () {
             const option = getSelectedOption(getPrimaryProductSelect());
             if (!option) return NaN;
             const raw = option.getAttribute('data-precio-usd');
@@ -192,7 +192,7 @@
             return Number.isNaN(num) ? NaN : num;
         };
 
-        const getTasaMoneda = function() {
+        const getTasaMoneda = function () {
             const option = getSelectedOption(monedaSelect);
             if (!option) return NaN;
             const raw = option.getAttribute('data-tasa');
@@ -201,7 +201,7 @@
             return Number.isNaN(num) ? NaN : num;
         };
 
-        const validarCantidadProducto = function(value) {
+        const validarCantidadProducto = function (value) {
             if (value === null || value === '') return false;
             const numero = Number(value);
             if (!Number.isInteger(numero) || numero < 1) return false;
@@ -213,21 +213,21 @@
         };
 
         const summaryFields = [
-            {id:'numero_orden', fn: v => v.trim().length > 0, msg: 'Por favor ingresa un número de orden.'},
-            {id:'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.'},
-            {id:'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).'},
-            {id:'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.'},
-            {id:'cantidad_producto', fn: validarCantidadProducto, msg: 'La cantidad debe ser al menos 1 y no superar el stock disponible.'},
-            {id:'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.'},
-            {id:'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.'},
-            {id:'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.'}
+            { id: 'numero_orden', fn: v => v.trim().length > 0, msg: 'Por favor ingresa un número de orden.' },
+            { id: 'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.' },
+            { id: 'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).' },
+            { id: 'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.' },
+            { id: 'cantidad_producto', fn: validarCantidadProducto, msg: 'La cantidad debe ser al menos 1 y no superar el stock disponible.' },
+            { id: 'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.' },
+            { id: 'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.' },
+            { id: 'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.' }
         ];
 
         summaryFields.push(
-            {id:'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.'},
-            {id:'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.'},
-            {id:'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.'},
-            {id:'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.'}
+            { id: 'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.' },
+            { id: 'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.' },
+            { id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' },
+            { id: 'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.' }
         );
 
         // If the form uses multiple product rows (productos[]), validate them instead
@@ -235,10 +235,10 @@
         if (productosContainer) {
             summaryFields.push({
                 id: 'productos',
-                fn: function() {
+                fn: function () {
                     const rows = productosContainer.querySelectorAll('.producto-row');
                     if (!rows || rows.length === 0) return false;
-                    for (let i=0;i<rows.length;i++) {
+                    for (let i = 0; i < rows.length; i++) {
                         const sel = rows[i].querySelector('.producto-select');
                         const qty = rows[i].querySelector('.producto-cantidad');
                         if (!sel || !qty) return false;
@@ -265,7 +265,7 @@
 
         attachRealtime(summaryFields);
 
-        const actualizarAyudaProducto = function() {
+        const actualizarAyudaProducto = function () {
             const primary = getPrimaryProductSelect();
             if (!primary) return;
             const option = getSelectedOption(primary);
@@ -303,7 +303,7 @@
             }
         };
 
-        const calcularLocalDesdeUsd = function(force) {
+        const calcularLocalDesdeUsd = function (force) {
             if (!precioUsdInput || !precioLocalInput) return;
             const usdRaw = precioUsdInput.value.trim();
             if (usdRaw === '' || !validarDecimal(usdRaw)) {
@@ -321,12 +321,12 @@
             }
             if (force || precioLocalInput.value.trim() === '') {
                 const usdValue = parseFloat(usdRaw);
-                const local = usdValue / tasa;
+                const local = usdValue * tasa;  // USD × tasa = Local
                 precioLocalInput.value = local.toFixed(2);
             }
         };
 
-        const calcularUsdDesdeLocal = function() {
+        const calcularUsdDesdeLocal = function () {
             if (!precioUsdInput || !precioLocalInput) return;
             const localRaw = precioLocalInput.value.trim();
             if (localRaw === '' || !validarDecimal(localRaw)) {
@@ -339,10 +339,10 @@
                 return;
             }
             const localVal = parseFloat(localRaw);
-            precioUsdInput.value = (localVal * tasa).toFixed(2);
+            precioUsdInput.value = (localVal / tasa).toFixed(2);  // Local / tasa = USD
         };
 
-        const rellenarPrecioDesdeProducto = function(force) {
+        const rellenarPrecioDesdeProducto = function (force) {
             const primary = getPrimaryProductSelect();
             if (!primary || !precioUsdInput) return;
             const usd = getProductoUsd();
@@ -363,7 +363,7 @@
 
         // Use event delegation: when any dynamic product select changes, update stock/help and price
         if (productosContainer) {
-            productosContainer.addEventListener('change', function(e){
+            productosContainer.addEventListener('change', function (e) {
                 if (e.target && e.target.classList && e.target.classList.contains('producto-select')) {
                     actualizarAyudaProducto();
                     rellenarPrecioDesdeProducto(true);
@@ -375,7 +375,7 @@
         rellenarPrecioDesdeProducto(false);
 
         if (cantidadInput) {
-            cantidadInput.addEventListener('input', function(){
+            cantidadInput.addEventListener('input', function () {
                 const valor = parseInt(cantidadInput.value, 10);
                 if (!Number.isNaN(valor) && valor < 1) {
                     cantidadInput.value = '';
@@ -394,7 +394,7 @@
         }
 
         if (monedaSelect) {
-            monedaSelect.addEventListener('change', function(){
+            monedaSelect.addEventListener('change', function () {
                 const localRaw = precioLocalInput ? precioLocalInput.value.trim() : '';
                 if (localRaw !== '' && validarDecimal(localRaw)) {
                     calcularUsdDesdeLocal();
@@ -407,12 +407,12 @@
 
         // Interceptamos el submit para enviar por AJAX (fetch). Si el navegador
         // no soporta fetch o la llamada falla, hacemos fallback al envío tradicional.
-        form.addEventListener('submit', function(e){
+        form.addEventListener('submit', function (e) {
             e.preventDefault();
 
             // Estado de carga: deshabilitar el botón submit y cambiar texto
             const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
-            const setLoading = function(on) {
+            const setLoading = function (on) {
                 if (!submitBtn) return;
                 if (on) {
                     submitBtn.dataset._orig = submitBtn.innerHTML || submitBtn.value || '';
@@ -469,11 +469,11 @@
                     'Accept': 'application/json'
                 },
                 credentials: 'same-origin'
-            }).then(function(resp){
-                return resp.json().catch(function(){
+            }).then(function (resp) {
+                return resp.json().catch(function () {
                     throw new Error('Respuesta no es JSON');
                 });
-            }).then(function(data){
+            }).then(function (data) {
                 // quitar loading
                 setLoading(false);
                 if (data && data.success) {
@@ -485,7 +485,7 @@
                         if (data && data.redirect) {
                             // Usar un pequeño retardo para que el usuario vea la notificación
                             window.Swal.fire({ icon: 'success', title: 'Pedido creado', text: data.message || 'Redirigiendo a edición...', showConfirmButton: false, timer: 800 });
-                            setTimeout(function(){ window.location.href = data.redirect; }, 900);
+                            setTimeout(function () { window.location.href = data.redirect; }, 900);
                             return;
                         }
                         // Si no hay redirect, pero se devolvió el id, lo guardamos en el formulario
@@ -508,12 +508,12 @@
                     }
                     if (data && data.errors) showSummaryErrors(data.errors);
                 }
-            }).catch(function(err){
+            }).catch(function (err) {
                 setLoading(false);
                 console.error('Error al enviar por AJAX:', err);
                 // Fallback conservador: enviar el formulario tradicionalmente
                 if (window.Swal && typeof window.Swal.fire === 'function') {
-                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function(){ form.submit(); });
+                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function () { form.submit(); });
                 } else {
                     form.submit();
                 }
@@ -533,11 +533,11 @@
         const precioLocalInput = document.getElementById('precio_local');
         const precioUsdInput = document.getElementById('precio_usd');
 
-        const getSelectedOption = function(select) {
-            if (!select || select.selectedIndex < 0) return null;
+        const getSelectedOption = function (select) {
+            if (!select || select.tagName !== 'SELECT' || select.selectedIndex < 0) return null;
             return select.options[select.selectedIndex] || null;
         };
-        const getProductoUsd = function() {
+        const getProductoUsd = function () {
             const option = getSelectedOption(productoSelect);
             if (!option) return NaN;
             const raw = option.getAttribute('data-precio-usd');
@@ -545,7 +545,7 @@
             const num = Number(raw);
             return Number.isNaN(num) ? NaN : num;
         };
-        const getTasaMoneda = function() {
+        const getTasaMoneda = function () {
             const option = getSelectedOption(monedaSelect);
             if (!option) return NaN;
             const raw = option.getAttribute('data-tasa');
@@ -555,18 +555,18 @@
         };
 
         const summaryFields = [
-            {id:'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.'},
-            {id:'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).'},
-            {id:'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.'},
-            {id:'cantidad_producto', fn: v => v !== '' && Number.isInteger(Number(v)) && Number(v) >= 1, msg: 'La cantidad debe ser al menos 1.'},
-            {id:'precio_local', fn: v => v === '' || validarDecimal(v), msg: 'Precio local inválido.'},
-            {id:'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.'},
-            {id:'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.'},
-            {id:'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.'},
-            {id:'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.'},
-            {id:'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.'},
-            {id:'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.'},
-            {id:'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.'}
+            { id: 'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.' },
+            { id: 'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).' },
+            { id: 'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.' },
+            { id: 'cantidad_producto', fn: v => v !== '' && Number.isInteger(Number(v)) && Number(v) >= 1, msg: 'La cantidad debe ser al menos 1.' },
+            { id: 'precio_local', fn: v => v === '' || validarDecimal(v), msg: 'Precio local inválido.' },
+            { id: 'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.' },
+            { id: 'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.' },
+            { id: 'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.' },
+            { id: 'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.' },
+            { id: 'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.' },
+            { id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' },
+            { id: 'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.' }
         ];
 
         // If the form uses multiple product rows (productos[]), validate them instead
@@ -574,10 +574,10 @@
         if (productosContainerEd) {
             summaryFields.push({
                 id: 'productos',
-                fn: function() {
+                fn: function () {
                     const rows = productosContainerEd.querySelectorAll('.producto-row');
                     if (!rows || rows.length === 0) return false;
-                    for (let i=0;i<rows.length;i++) {
+                    for (let i = 0; i < rows.length; i++) {
                         const sel = rows[i].querySelector('.producto-select');
                         const qty = rows[i].querySelector('.producto-cantidad');
                         if (!sel || !qty) return false;
@@ -597,41 +597,41 @@
 
         // Rellenar precio desde producto si está vacío
         if (productoSelect) {
-            const fillFromProduct = function(force) {
+            const fillFromProduct = function (force) {
                 const usd = getProductoUsd();
                 if (!Number.isNaN(usd) && (force || (precioUsdInput && precioUsdInput.value.trim() === ''))) {
                     if (precioUsdInput) precioUsdInput.value = usd.toFixed(2);
                     // si tenemos tasa, calcular local
                     const tasa = getTasaMoneda();
                     if (!Number.isNaN(tasa) && tasa > 0 && precioLocalInput) {
-                        precioLocalInput.value = (usd / tasa).toFixed(2);
+                        precioLocalInput.value = (usd * tasa).toFixed(2);  // USD × tasa = Local
                     }
                 }
             };
-            productoSelect.addEventListener('change', function(){ fillFromProduct(true); });
+            productoSelect.addEventListener('change', function () { fillFromProduct(true); });
             fillFromProduct(false);
         }
 
         // Recalcular precio cuando cambia moneda
         if (monedaSelect) {
-            monedaSelect.addEventListener('change', function(){
+            monedaSelect.addEventListener('change', function () {
                 if (!precioUsdInput || !precioLocalInput) return;
                 const usd = precioUsdInput.value.trim();
                 const tasa = getTasaMoneda();
                 if (usd !== '' && validarDecimal(usd) && !Number.isNaN(tasa) && tasa > 0) {
-                    precioLocalInput.value = (parseFloat(usd) / tasa).toFixed(2);
+                    precioLocalInput.value = (parseFloat(usd) * tasa).toFixed(2);  // USD × tasa = Local
                 }
             });
         }
 
-        form.addEventListener('submit', function(e){
+        form.addEventListener('submit', function (e) {
             e.preventDefault();
 
             // Asegurar consistencia de precios antes de validar
             if (precioLocalInput && precioLocalInput.value.trim() === '' && precioUsdInput && precioUsdInput.value.trim() !== '') {
                 const tasa = getTasaMoneda();
                 if (!Number.isNaN(tasa) && tasa > 0) {
-                    precioLocalInput.value = (parseFloat(precioUsdInput.value) / tasa).toFixed(2);
+                    precioLocalInput.value = (parseFloat(precioUsdInput.value) * tasa).toFixed(2);  // USD × tasa = Local
                 }
             }
 
@@ -643,7 +643,7 @@
 
             // Estado de carga para edición
             const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
-            const setLoading = function(on) {
+            const setLoading = function (on) {
                 if (!submitBtn) return;
                 if (on) {
                     submitBtn.dataset._orig = submitBtn.innerHTML || submitBtn.value || '';
@@ -674,9 +674,9 @@
                     'Accept': 'application/json'
                 },
                 credentials: 'same-origin'
-            }).then(function(resp){
-                return resp.json().catch(function(){ throw new Error('Respuesta no es JSON'); });
-            }).then(function(data){
+            }).then(function (resp) {
+                return resp.json().catch(function () { throw new Error('Respuesta no es JSON'); });
+            }).then(function (data) {
                 setLoading(false);
                 if (data && data.success) {
                     if (window.Swal && typeof window.Swal.fire === 'function') {
@@ -690,11 +690,11 @@
                     }
                     if (data && data.errors) showSummaryErrors(data.errors);
                 }
-            }).catch(function(err){
+            }).catch(function (err) {
                 setLoading(false);
                 console.error('Error AJAX editar:', err);
                 if (window.Swal && typeof window.Swal.fire === 'function') {
-                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function(){ form.submit(); });
+                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function () { form.submit(); });
                 } else {
                     form.submit();
                 }
@@ -704,7 +704,7 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
+    document.addEventListener('DOMContentLoaded', function () {
         if (document.getElementById('formCrearPedido')) initCrear();
         if (document.getElementById('formEditarPedido')) initEditar();
     });

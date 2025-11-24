@@ -623,10 +623,10 @@ class PedidosModel
             // Crear el formato POINT para ST_GeomFromText
             $coordenadas = "POINT(" . $data['longitud'] . " " . $data['latitud'] . ")";
             // Aceptar valores faltantes usando null coalescing
-            $pais = $data['pais'] ?? null;
-            $departamento = $data['departamento'] ?? null;
-            $municipio = $data['municipio'] ?? null;
-            $barrio = $data['barrio'] ?? null;
+            $pais = $data['pais'] ?? ($data['id_pais'] ?? null);
+            $departamento = $data['departamento'] ?? ($data['id_departamento'] ?? null);
+            $municipio = $data['municipio'] ?? ($data['id_municipio'] ?? null);
+            $barrio = $data['barrio'] ?? ($data['id_barrio'] ?? null);
             $zona = $data['zona'] ?? null;
 
             // Consulta SQL con ST_GeomFromText y campos de dirección adicionales
@@ -637,8 +637,8 @@ class PedidosModel
                 telefono = :telefono,
                 id_pais = :id_pais,
                 id_departamento = :id_departamento,
-                municipio = :municipio,
-                barrio = :barrio,
+                id_municipio = :id_municipio,
+                id_barrio = :id_barrio,
                 zona = :zona,
                 direccion = :direccion,
                 comentario = :comentario,
@@ -672,8 +672,29 @@ class PedidosModel
             } else {
                 $stmt->bindValue(':id_departamento', null, PDO::PARAM_NULL);
             }
-            $stmt->bindValue(':municipio', $municipio, PDO::PARAM_STR);
-            $stmt->bindValue(':barrio', $barrio, PDO::PARAM_STR);
+            
+            // Sanitizar municipio y barrio: convertir cadenas vacías en NULL
+            $municipioId = null;
+            if ($municipio !== null && $municipio !== '' && is_numeric($municipio)) {
+                $municipioId = (int)$municipio;
+            }
+            $barrioId = null;
+            if ($barrio !== null && $barrio !== '' && is_numeric($barrio)) {
+                $barrioId = (int)$barrio;
+            }
+            
+            if ($municipioId !== null) {
+                $stmt->bindValue(':id_municipio', $municipioId, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(':id_municipio', null, PDO::PARAM_NULL);
+            }
+            
+            if ($barrioId !== null) {
+                $stmt->bindValue(':id_barrio', $barrioId, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(':id_barrio', null, PDO::PARAM_NULL);
+            }
+            
             $stmt->bindValue(':zona', $zona, PDO::PARAM_STR);
             $stmt->bindValue(':direccion', $data['direccion'] ?? null, PDO::PARAM_STR);
             $stmt->bindValue(':comentario', $data['comentario'] ?? null, PDO::PARAM_STR);
@@ -697,14 +718,34 @@ class PedidosModel
             // Ejecutar la consulta
             $stmt->execute();
 
-            // Actualizar productos (asumiendo un solo producto por pedido)
-            if (isset($data['producto_id']) && isset($data['cantidad_producto'])) {
-                // Primero, eliminar productos existentes
-                $deleteStmt = $db->prepare('DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido');
-                $deleteStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
-                $deleteStmt->execute();
+            // Actualizar productos: soportar múltiples productos
+            // Primero, eliminar todos los productos existentes del pedido
+            $deleteStmt = $db->prepare('DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido');
+            $deleteStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
+            $deleteStmt->execute();
 
-                // Insertar el nuevo producto
+            // Procesar múltiples productos desde el array productos[][]
+            if (isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0) {
+                $insertStmt = $db->prepare('
+                    INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
+                    VALUES (:id_pedido, :id_producto, :cantidad, 0)
+                ');
+                
+                foreach ($data['productos'] as $item) {
+                    $productoId = isset($item['producto_id']) ? (int)$item['producto_id'] : null;
+                    $cantidad = isset($item['cantidad']) ? (int)$item['cantidad'] : null;
+                    
+                    // Solo insertar si ambos valores son válidos
+                    if ($productoId && $cantidad && $cantidad > 0) {
+                        $insertStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
+                        $insertStmt->bindValue(':id_producto', $productoId, PDO::PARAM_INT);
+                        $insertStmt->bindValue(':cantidad', $cantidad, PDO::PARAM_INT);
+                        $insertStmt->execute();
+                    }
+                }
+            } 
+            // Fallback: si no hay productos[][] pero hay producto_id singular (compatibilidad con formularios antiguos)
+            elseif (isset($data['producto_id']) && isset($data['cantidad_producto'])) {
                 $insertStmt = $db->prepare('
                     INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
                     VALUES (:id_pedido, :id_producto, :cantidad, 0)
@@ -714,6 +755,7 @@ class PedidosModel
                 $insertStmt->bindValue(':cantidad', (int)$data['cantidad_producto'], PDO::PARAM_INT);
                 $insertStmt->execute();
             }
+
 
             // Retornar true si hubo cambios en la base de datos
             return $stmt->rowCount() > 0;
