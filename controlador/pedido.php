@@ -811,11 +811,27 @@ class PedidosController {
             }
         };
 
+        // Start output buffering to catch any spurious output (warnings, notices)
+        ob_start();
+
+        // Helper to send JSON response cleanly
+        $sendJson = function($data, $code = 200) {
+            // Discard any previous output
+            $buffered = ob_get_clean();
+            if (!empty($buffered)) {
+                // Log the spurious output for debugging
+                error_log("Spurious output in guardarEdicion: " . $buffered);
+            }
+            header('Content-Type: application/json', true, $code);
+            echo json_encode($data);
+            exit;
+        };
+
         try {
             // Validaciones mínimas
             if (!isset($data['id_pedido']) || !is_numeric($data['id_pedido'])) {
                 $resp = ['success' => false, 'message' => 'ID de pedido inválido.'];
-                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                if ($isAjax) { $sendJson($resp); }
                 // persist submitted data for repopulation when redirecting back
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/listar'); exit;
@@ -823,7 +839,7 @@ class PedidosController {
 
             if (!is_numeric($data['latitud']) || !is_numeric($data['longitud'])) {
                 $resp = ['success' => false, 'message' => 'Las coordenadas no tienen un formato válido.'];
-                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                if ($isAjax) { $sendJson($resp); }
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong'); exit;
             }
@@ -831,13 +847,13 @@ class PedidosController {
             // Validación básica para cantidad y precio (si vienen)
             if (isset($data['cantidad_producto']) && $data['cantidad_producto'] !== '' && !is_numeric($data['cantidad_producto'])) {
                 $resp = ['success' => false, 'message' => 'La cantidad debe ser un número.'];
-                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                if ($isAjax) { $sendJson($resp); }
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad'); exit;
             }
             if (isset($data['precio_local']) && $data['precio_local'] !== '' && !is_numeric($data['precio_local'])) {
                 $resp = ['success' => false, 'message' => 'El precio local debe ser un valor numérico.'];
-                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                if ($isAjax) { $sendJson($resp); }
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio'); exit;
             }
@@ -847,18 +863,18 @@ class PedidosController {
 
             if ($resultado) {
                 $resp = ['success' => true, 'message' => 'Pedido actualizado correctamente.'];
-                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                if ($isAjax) { $sendJson($resp); }
                 require_once __DIR__ . '/../utils/session.php'; set_flash('success', $resp['message']); header('Location: '. RUTA_URL . 'pedidos/listar'); exit;
             } else {
                 $resp = ['success' => false, 'message' => 'No se realizaron cambios en el pedido.'];
-                if ($isAjax) { header('Content-Type: application/json'); echo json_encode($resp); exit; }
+                if ($isAjax) { $sendJson($resp); }
                 // persist submitted edit payload so the edit page can repopulate fields
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error'); exit;
             }
         } catch (Exception $e) {
             $msg = 'Error interno: ' . $e->getMessage();
-            if ($isAjax) { header('Content-Type: application/json', true, 500); echo json_encode(['success' => false, 'message' => $msg]); exit; }
+            if ($isAjax) { $sendJson(['success' => false, 'message' => $msg], 500); }
             // persist submitted edit payload before redirecting back
             $persistOldEdit($data);
             header('Location: ' . RUTA_URL . 'pedidos/editar/' . ($data['id_pedido'] ?? '') . '/error' . urlencode($e->getMessage()));

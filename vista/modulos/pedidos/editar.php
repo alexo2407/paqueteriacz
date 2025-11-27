@@ -176,6 +176,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <label class="form-label fw-bold">Productos</label>
                     <div id="productosContainer">
                         <!-- product rows will be injected here -->
+                         
                     </div>
                     <button type="button" id="btnAddProducto" class="btn btn-sm btn-outline-success mt-2">
                         <i class="bi bi-plus-circle"></i> Agregar producto
@@ -452,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </script>
 
-<script src="<?= RUTA_URL ?>js/pedidos-validation.js"></script>
+<script src="<?= RUTA_URL ?>js/pedidos-validation.js?v=<?= time() ?>"></script>
 
 <script>
 // Dynamic products rows for editar.php
@@ -535,6 +536,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Función para actualizar la disponibilidad de opciones en los selects
+    function updateProductOptionsAvailability() {
+        const allSelects = Array.from(productosContainer.querySelectorAll('.producto-select'));
+        const selectedValues = allSelects.map(s => s.value).filter(v => v !== "");
+
+        allSelects.forEach(select => {
+            const currentVal = select.value;
+            Array.from(select.options).forEach(option => {
+                if (option.value === "") return; // Skip placeholder
+                
+                // Si la opción está seleccionada en OTRO select, ocultarla
+                // Pero si es la opción actualmente seleccionada en ESTE select, mostrarla
+                if (selectedValues.includes(option.value) && option.value !== currentVal) {
+                    option.style.display = 'none';
+                    // También deshabilitarla para navegadores que no soportan display: none en options
+                    option.disabled = true; 
+                } else {
+                    option.style.display = '';
+                    option.disabled = false;
+                }
+            });
+        });
+    }
+
     function addProductRow(selectedId, qty) {
         const row = document.createElement('div');
         row.className = 'input-group mb-2 producto-row';
@@ -554,13 +579,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const select = row.querySelector('.producto-select');
         const cantidad = row.querySelector('.producto-cantidad');
         
-        select.addEventListener('change', actualizarPrecios);
+        select.addEventListener('change', () => {
+            actualizarPrecios();
+            updateProductOptionsAvailability();
+        });
         cantidad.addEventListener('input', actualizarPrecios);
         
         row.querySelector('.btnRemove').addEventListener('click', () => {
             row.remove();
             actualizarPrecios();
+            updateProductOptionsAvailability();
         });
+        
+        // Actualizar opciones al agregar nueva fila
+        updateProductOptionsAvailability();
     }
 
     // initialize rows from existingItems, or create one if empty
@@ -584,22 +616,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Calcular precios iniciales
         actualizarPrecios();
-    });
-                
-                // Verificar después de agregar
-                setTimeout(() => {
-                    const lastRow = productosContainer.lastElementChild;
-                    const select = lastRow.querySelector('.producto-select');
-                    console.log('DEBUG: Valor seleccionado en el select:', select.value);
-                }, 100);
-            });
-        } else {
-            console.log('DEBUG: No hay productos, agregando fila vacía');
-            addProductRow('', 1);
-        }
-        
-        // Calcular precios iniciales
-        actualizarPrecios();
+        updateProductOptionsAvailability();
     });
     
     btnAdd.addEventListener('click', function(){ 

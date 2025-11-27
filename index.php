@@ -95,6 +95,7 @@ require_once "controlador/barrio.php";
 require_once "controlador/departamento.php";
 require_once "controlador/municipio.php";
 require_once "controlador/pais.php";
+require_once "controlador/dashboard.php";
 
 
 

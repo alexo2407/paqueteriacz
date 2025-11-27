@@ -629,90 +629,115 @@ class PedidosModel
             $barrio = $data['barrio'] ?? ($data['id_barrio'] ?? null);
             $zona = $data['zona'] ?? null;
 
-            // Consulta SQL con ST_GeomFromText y campos de dirección adicionales
-            $query = "
-            UPDATE pedidos SET
-                numero_orden = :numero_orden,
-                destinatario = :destinatario,
-                telefono = :telefono,
-                id_pais = :id_pais,
-                id_departamento = :id_departamento,
-                id_municipio = :id_municipio,
-                id_barrio = :id_barrio,
-                zona = :zona,
-                direccion = :direccion,
-                comentario = :comentario,
-                precio_local = :precio_local,
-                precio_usd = :precio_usd,
-                id_estado = :estado,
-                id_vendedor = :vendedor,
-                id_proveedor = :proveedor,
-                id_moneda = :moneda,
-                coordenadas = ST_GeomFromText(:coordenadas)
-            WHERE id = :id_pedido
-        ";
+            // Construir la consulta UPDATE dinámicamente según las columnas existentes
+            $fieldsToUpdate = [];
+            $params = [];
 
-            // Preparar la consulta
+            // Campos siempre presentes (o que asumimos presentes en base mínima)
+            $fieldsToUpdate[] = "numero_orden = :numero_orden";
+            $params[':numero_orden'] = $data['numero_orden'] ?? null;
+
+            $fieldsToUpdate[] = "destinatario = :destinatario";
+            $params[':destinatario'] = $data['destinatario'] ?? null;
+
+            $fieldsToUpdate[] = "telefono = :telefono";
+            $params[':telefono'] = $data['telefono'] ?? null;
+
+            // Coordenadas
+            if (self::tableHasColumn($db, 'pedidos', 'coordenadas')) {
+                $fieldsToUpdate[] = "coordenadas = ST_GeomFromText(:coordenadas)";
+                $params[':coordenadas'] = $coordenadas;
+            }
+
+            // Campos opcionales que verificamos
+            // id_pais
+            if (self::tableHasColumn($db, 'pedidos', 'id_pais')) {
+                $fieldsToUpdate[] = "id_pais = :id_pais";
+                $resolvedPaisId = self::resolvePaisId($pais);
+                $params[':id_pais'] = ($resolvedPaisId !== null) ? (int)$resolvedPaisId : null;
+            }
+
+            // id_departamento
+            if (self::tableHasColumn($db, 'pedidos', 'id_departamento')) {
+                $fieldsToUpdate[] = "id_departamento = :id_departamento";
+                $resolvedDepartamentoId = self::resolveDepartamentoId($departamento, $pais);
+                $params[':id_departamento'] = ($resolvedDepartamentoId !== null) ? (int)$resolvedDepartamentoId : null;
+            }
+
+            // id_municipio vs municipio
+            if (self::tableHasColumn($db, 'pedidos', 'id_municipio')) {
+                $fieldsToUpdate[] = "id_municipio = :id_municipio";
+                $municipioId = ($municipio !== null && $municipio !== '' && is_numeric($municipio)) ? (int)$municipio : null;
+                $params[':id_municipio'] = $municipioId;
+            } elseif (self::tableHasColumn($db, 'pedidos', 'municipio')) {
+                $fieldsToUpdate[] = "municipio = :municipio";
+                $params[':municipio'] = $municipio; // String value
+            }
+
+            // id_barrio vs barrio
+            if (self::tableHasColumn($db, 'pedidos', 'id_barrio')) {
+                $fieldsToUpdate[] = "id_barrio = :id_barrio";
+                $barrioId = ($barrio !== null && $barrio !== '' && is_numeric($barrio)) ? (int)$barrio : null;
+                $params[':id_barrio'] = $barrioId;
+            } elseif (self::tableHasColumn($db, 'pedidos', 'barrio')) {
+                $fieldsToUpdate[] = "barrio = :barrio";
+                $params[':barrio'] = $barrio; // String value
+            }
+
+            // zona
+            if (self::tableHasColumn($db, 'pedidos', 'zona')) {
+                $fieldsToUpdate[] = "zona = :zona";
+                $params[':zona'] = $zona;
+            }
+
+            // direccion
+            if (self::tableHasColumn($db, 'pedidos', 'direccion')) {
+                $fieldsToUpdate[] = "direccion = :direccion";
+                $params[':direccion'] = $data['direccion'] ?? null;
+            }
+
+            // comentario
+            if (self::tableHasColumn($db, 'pedidos', 'comentario')) {
+                $fieldsToUpdate[] = "comentario = :comentario";
+                $params[':comentario'] = $data['comentario'] ?? null;
+            }
+
+            // precios
+            if (self::tableHasColumn($db, 'pedidos', 'precio_local')) {
+                $fieldsToUpdate[] = "precio_local = :precio_local";
+                $val = $data['precio_local'] ?? null;
+                $params[':precio_local'] = ($val === '' ? null : $val);
+            }
+            if (self::tableHasColumn($db, 'pedidos', 'precio_usd')) {
+                $fieldsToUpdate[] = "precio_usd = :precio_usd";
+                $val = $data['precio_usd'] ?? null;
+                $params[':precio_usd'] = ($val === '' ? null : $val);
+            }
+
+            // Foreign keys
+            if (self::tableHasColumn($db, 'pedidos', 'id_estado')) {
+                $fieldsToUpdate[] = "id_estado = :estado";
+                $params[':estado'] = isset($data['estado']) ? (int)$data['estado'] : null;
+            }
+            if (self::tableHasColumn($db, 'pedidos', 'id_vendedor')) {
+                $fieldsToUpdate[] = "id_vendedor = :vendedor";
+                $params[':vendedor'] = isset($data['vendedor']) ? (int)$data['vendedor'] : null;
+            }
+            if (self::tableHasColumn($db, 'pedidos', 'id_proveedor')) {
+                $fieldsToUpdate[] = "id_proveedor = :proveedor";
+                $params[':proveedor'] = isset($data['proveedor']) ? (int)$data['proveedor'] : null;
+            }
+            if (self::tableHasColumn($db, 'pedidos', 'id_moneda')) {
+                $fieldsToUpdate[] = "id_moneda = :moneda";
+                $params[':moneda'] = isset($data['moneda']) ? (int)$data['moneda'] : null;
+            }
+
+            $query = "UPDATE pedidos SET " . implode(', ', $fieldsToUpdate) . " WHERE id = :id_pedido";
+            
             $stmt = $db->prepare($query);
-
-            // Asociar los valores con bindValue para manejar nulls correctamente
-            $stmt->bindValue(':numero_orden', $data['numero_orden'] ?? null, PDO::PARAM_STR);
-            $stmt->bindValue(':destinatario', $data['destinatario'] ?? null, PDO::PARAM_STR);
-            $stmt->bindValue(':telefono', $data['telefono'] ?? null, PDO::PARAM_STR);
-            // Resolve and bind id_pais / id_departamento (accept names or ids)
-            $resolvedPaisId = self::resolvePaisId($pais);
-            if ($resolvedPaisId !== null) {
-                $stmt->bindValue(':id_pais', (int)$resolvedPaisId, PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue(':id_pais', null, PDO::PARAM_NULL);
+            foreach ($params as $key => $val) {
+                $stmt->bindValue($key, $val);
             }
-            $resolvedDepartamentoId = self::resolveDepartamentoId($departamento, $pais);
-            if ($resolvedDepartamentoId !== null) {
-                $stmt->bindValue(':id_departamento', (int)$resolvedDepartamentoId, PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue(':id_departamento', null, PDO::PARAM_NULL);
-            }
-            
-            // Sanitizar municipio y barrio: convertir cadenas vacías en NULL
-            $municipioId = null;
-            if ($municipio !== null && $municipio !== '' && is_numeric($municipio)) {
-                $municipioId = (int)$municipio;
-            }
-            $barrioId = null;
-            if ($barrio !== null && $barrio !== '' && is_numeric($barrio)) {
-                $barrioId = (int)$barrio;
-            }
-            
-            if ($municipioId !== null) {
-                $stmt->bindValue(':id_municipio', $municipioId, PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue(':id_municipio', null, PDO::PARAM_NULL);
-            }
-            
-            if ($barrioId !== null) {
-                $stmt->bindValue(':id_barrio', $barrioId, PDO::PARAM_INT);
-            } else {
-                $stmt->bindValue(':id_barrio', null, PDO::PARAM_NULL);
-            }
-            
-            $stmt->bindValue(':zona', $zona, PDO::PARAM_STR);
-            $stmt->bindValue(':direccion', $data['direccion'] ?? null, PDO::PARAM_STR);
-            $stmt->bindValue(':comentario', $data['comentario'] ?? null, PDO::PARAM_STR);
-            if (!isset($data['precio_local']) || $data['precio_local'] === '' || $data['precio_local'] === null) {
-                $stmt->bindValue(':precio_local', null, PDO::PARAM_NULL);
-            } else {
-                $stmt->bindValue(':precio_local', $data['precio_local']);
-            }
-            if (!isset($data['precio_usd']) || $data['precio_usd'] === '' || $data['precio_usd'] === null) {
-                $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
-            } else {
-                $stmt->bindValue(':precio_usd', $data['precio_usd']);
-            }
-            $stmt->bindValue(':estado', isset($data['estado']) ? (int)$data['estado'] : null, PDO::PARAM_INT);
-            $stmt->bindValue(':vendedor', isset($data['vendedor']) ? (int)$data['vendedor'] : null, PDO::PARAM_INT);
-            $stmt->bindValue(':proveedor', isset($data['proveedor']) ? (int)$data['proveedor'] : null, PDO::PARAM_INT);
-            $stmt->bindValue(':moneda', isset($data['moneda']) ? (int)$data['moneda'] : null, PDO::PARAM_INT);
-            $stmt->bindValue(':coordenadas', $coordenadas, PDO::PARAM_STR); // Pasamos el POINT como cadena
             $stmt->bindValue(':id_pedido', isset($data['id_pedido']) ? (int)$data['id_pedido'] : null, PDO::PARAM_INT);
 
             // Ejecutar la consulta
@@ -1149,5 +1174,188 @@ class PedidosModel
         }
         
     }
-    
+
+    /**
+     * Obtener ventas diarias del mes actual.
+     *
+     * @return array Array de objetos con fecha y total.
+     */
+    public static function obtenerVentasMesActual()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            // Verificar si existe la columna precio_local, si no usar 0
+            if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) {
+                return [];
+            }
+            
+            $query = "
+                SELECT 
+                    DATE(fecha_ingreso) as fecha, 
+                    SUM(precio_local) as total 
+                FROM pedidos 
+                WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE()) 
+                  AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE()) 
+                GROUP BY DATE(fecha_ingreso) 
+                ORDER BY fecha ASC
+            ";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Obtener ID de estado por nombre.
+     * @param string $nombre
+     * @return int|null
+     */
+    public static function obtenerIdEstadoPorNombre($nombre) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT id FROM estados_pedidos WHERE nombre_estado = :nombre");
+            $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
+            $stmt->execute();
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $res ? (int)$res['id'] : null;
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Obtener ventas comparativas (Mes Actual vs Mes Anterior).
+     * Filtra por estado 'Entregado' si existe, sino cuenta todo.
+     */
+    public static function obtenerVentasComparativa() {
+        try {
+            $db = (new Conexion())->conectar();
+            if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return [];
+
+            $idEntregado = self::obtenerIdEstadoPorNombre('Entregado');
+            $condicionEstado = "";
+            if ($idEntregado) {
+                $condicionEstado = " AND id_estado = $idEntregado ";
+            }
+
+            // Mes Actual
+            $queryActual = "
+                SELECT DATE(fecha_ingreso) as fecha, SUM(precio_local) as total 
+                FROM pedidos 
+                WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE()) 
+                  AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE()) 
+                  $condicionEstado
+                GROUP BY DATE(fecha_ingreso) ORDER BY fecha ASC";
+            
+            // Mes Anterior
+            $queryAnterior = "
+                SELECT DATE(fecha_ingreso) as fecha, SUM(precio_local) as total 
+                FROM pedidos 
+                WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH) 
+                  AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH) 
+                  $condicionEstado
+                GROUP BY DATE(fecha_ingreso) ORDER BY fecha ASC";
+
+            $stmtActual = $db->prepare($queryActual); $stmtActual->execute();
+            $stmtAnterior = $db->prepare($queryAnterior); $stmtAnterior->execute();
+
+            return [
+                'actual' => $stmtActual->fetchAll(PDO::FETCH_ASSOC),
+                'anterior' => $stmtAnterior->fetchAll(PDO::FETCH_ASSOC)
+            ];
+        } catch (Exception $e) {
+            return ['actual' => [], 'anterior' => []];
+        }
+    }
+
+    /**
+     * Obtener KPIs del mes actual (Total Vendido, Ticket Promedio, Total Pedidos).
+     */
+    public static function obtenerKPIsMesActual() {
+        try {
+            $db = (new Conexion())->conectar();
+            if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return null;
+
+            $idEntregado = self::obtenerIdEstadoPorNombre('Entregado');
+            $condicionEstado = "";
+            if ($idEntregado) {
+                $condicionEstado = " AND id_estado = $idEntregado ";
+            }
+
+            $query = "
+                SELECT 
+                    COUNT(*) as total_pedidos,
+                    COALESCE(SUM(precio_local), 0) as total_vendido,
+                    COALESCE(AVG(precio_local), 0) as ticket_promedio
+                FROM pedidos
+                WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE()) 
+                  AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE()) 
+                  $condicionEstado
+            ";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Obtener ventas acumuladas del mes actual.
+     */
+    public static function obtenerVentasAcumuladasMesActual() {
+        // Reutilizamos la lógica de comparativa para obtener los datos diarios y los acumulamos en PHP
+        $datos = self::obtenerVentasComparativa();
+        $diario = $datos['actual'];
+        
+        $acumulado = [];
+        $suma = 0;
+        foreach ($diario as $dia) {
+            $suma += (float)$dia['total'];
+            $acumulado[] = [
+                'fecha' => $dia['fecha'],
+                'total_acumulado' => $suma
+            ];
+        }
+        return $acumulado;
+    }
+
+    /**
+     * Obtener top 5 productos más vendidos del mes actual (Filtrado por Entregado).
+     */
+    public static function obtenerTopProductosMesActual()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $idEntregado = self::obtenerIdEstadoPorNombre('Entregado');
+            $condicionEstado = "";
+            if ($idEntregado) {
+                $condicionEstado = " AND ped.id_estado = $idEntregado ";
+            }
+
+            $query = "
+                SELECT 
+                    p.nombre, 
+                    SUM(pp.cantidad) as total 
+                FROM pedidos_productos pp
+                JOIN pedidos ped ON pp.id_pedido = ped.id
+                JOIN productos p ON pp.id_producto = p.id
+                WHERE MONTH(ped.fecha_ingreso) = MONTH(CURRENT_DATE()) 
+                  AND YEAR(ped.fecha_ingreso) = YEAR(CURRENT_DATE()) 
+                  $condicionEstado
+                GROUP BY pp.id_producto 
+                ORDER BY total DESC 
+                LIMIT 5
+            ";
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
 }
+

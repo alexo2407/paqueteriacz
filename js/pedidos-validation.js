@@ -513,8 +513,13 @@
                 console.error('Error al enviar por AJAX:', err);
                 // Fallback conservador: enviar el formulario tradicionalmente
                 if (window.Swal && typeof window.Swal.fire === 'function') {
-                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function () { form.submit(); });
+                    window.Swal.fire({
+                        icon: 'error',
+                        title: 'Error de red',
+                        text: 'No se pudo conectar con el servidor o la respuesta no es válida. Detalles: ' + err.message + '. Se realizará el envío tradicional.'
+                    }).then(function () { form.submit(); });
                 } else {
+                    alert('Error: ' + err.message);
                     form.submit();
                 }
             });
@@ -693,9 +698,15 @@
             }).catch(function (err) {
                 setLoading(false);
                 console.error('Error AJAX editar:', err);
+                // Fallback conservador: enviar el formulario tradicionalmente
                 if (window.Swal && typeof window.Swal.fire === 'function') {
-                    window.Swal.fire({ icon: 'error', title: 'Error de red', text: 'No se pudo conectar con el servidor. Se realizará el envío tradicional.' }).then(function () { form.submit(); });
+                    window.Swal.fire({
+                        icon: 'error',
+                        title: 'Error de red',
+                        text: 'No se pudo conectar con el servidor o la respuesta no es válida. Detalles: ' + err.message + '. Se realizará el envío tradicional.'
+                    }).then(function () { form.submit(); });
                 } else {
+                    alert('Error: ' + err.message);
                     form.submit();
                 }
             });
