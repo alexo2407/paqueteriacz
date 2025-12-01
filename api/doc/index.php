@@ -431,7 +431,7 @@
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Order created successfully.",
-    "data": 15
+    "data": 1700385600
 }</code></pre>
 
             <h4>Examples of error responses</h4>

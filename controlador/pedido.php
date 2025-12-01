@@ -25,7 +25,7 @@ class PedidosController {
      *
      * Salida: arreglo con la forma estándar: ['success' => bool, 'message' => string, 'data' => mixed]
      * - success: true si se creó el pedido.
-     * - data: id del nuevo pedido en caso de éxito.
+     * - data: numero_orden del pedido en caso de éxito.
      *
      * Errores: devuelve ['success'=>false,'message'=>...] con detalles de validación
      * o errores de creación. El método atrapa excepciones y las convierte en mensaje
@@ -196,7 +196,7 @@ class PedidosController {
             return [
                 "success" => true,
                 "message" => "Pedido creado correctamente.",
-                "data" => $nuevoId
+                "data" => $pedidoPayload['numero_orden']
             ];
 
         } catch (Exception $e) {
