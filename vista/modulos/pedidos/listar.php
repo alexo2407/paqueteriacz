@@ -85,60 +85,61 @@ endif;
     <div class="col-sm-12">
         
 
-            
-        <table id="tblPedidos" class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Número de Orden</th>
-                    <th>Cliente</th>
-                    <th>Comentario</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                $listarPedidos = new PedidosController();
-                $estados = $listarPedidos->obtenerEstados(); // Obtener lista de estados
-                $pedidos = $listarPedidos->listarPedidosExtendidos();
-
-                foreach ($pedidos as $pedido): ?>
-                    <tr data-id="<?= $pedido['ID_Pedido'] ?>">
-                        <td><?= htmlspecialchars($pedido['Numero_Orden']) ?></td>
-                        <td><?= htmlspecialchars($pedido['Cliente']) ?></td>
-                        <td><?= htmlspecialchars($pedido['Comentario']) ?></td>
-
-                        <!-- Celda Editable para Estado -->
-                        <td class="editable" data-campo="estado">
-                            <select class="form-select actualizarEstado" data-id="<?= $pedido['ID_Pedido']; ?>">
-                                <?php foreach ($estados as $estado): ?>
-                                    <option value="<?= $estado['id']; ?>" <?= $pedido['Estado'] == $estado['nombre_estado'] ? 'selected' : ''; ?>>
-                                        <?= htmlspecialchars($estado['nombre_estado']); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-
-                        <td>
-                            <!-- <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a> -->
-                            <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
-                            <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
-                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>&travelmode=driving"
-                                    target="_blank" class="btn btn-success btn-sm">
-                                    <i class="bi bi-geo-alt"></i> Ir a Ruta
-                                </a>
-                            <?php else: ?>
-                                <button class="btn btn-secondary btn-sm" disabled>
-                                    <i class="bi bi-geo-alt"></i> Sin Coordenadas
-                                </button>
-                            <?php endif; ?>
-
-
-                        </td>
+        <div class="table-responsive">
+            <table id="tblPedidos" class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Número de Orden</th>
+                        <th>Cliente</th>
+                        <th>Comentario</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php
+                    $listarPedidos = new PedidosController();
+                    $estados = $listarPedidos->obtenerEstados(); // Obtener lista de estados
+                    $pedidos = $listarPedidos->listarPedidosExtendidos();
+
+                    foreach ($pedidos as $pedido): ?>
+                        <tr data-id="<?= $pedido['ID_Pedido'] ?>">
+                            <td><?= htmlspecialchars($pedido['Numero_Orden']) ?></td>
+                            <td><?= htmlspecialchars($pedido['Cliente']) ?></td>
+                            <td><?= htmlspecialchars($pedido['Comentario']) ?></td>
+
+                            <!-- Celda Editable para Estado -->
+                            <td class="editable" data-campo="estado">
+                                <select class="form-select actualizarEstado" data-id="<?= $pedido['ID_Pedido']; ?>">
+                                    <?php foreach ($estados as $estado): ?>
+                                        <option value="<?= $estado['id']; ?>" <?= $pedido['Estado'] == $estado['nombre_estado'] ? 'selected' : ''; ?>>
+                                            <?= htmlspecialchars($estado['nombre_estado']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </td>
+
+                            <td>
+                                <!-- <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a> -->
+                                <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
+                                <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
+                                    <a href="https://www.google.com/maps/dir/?api=1&destination=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>&travelmode=driving"
+                                        target="_blank" class="btn btn-success btn-sm">
+                                        <i class="bi bi-geo-alt"></i> Ir a Ruta
+                                    </a>
+                                <?php else: ?>
+                                    <button class="btn btn-secondary btn-sm" disabled>
+                                        <i class="bi bi-geo-alt"></i> Sin Coordenadas
+                                    </button>
+                                <?php endif; ?>
+
+
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 

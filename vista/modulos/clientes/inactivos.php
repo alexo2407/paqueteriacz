@@ -16,31 +16,33 @@
             No se encontraron clientes inactivos.
         </div>
     <?php else: ?>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($clientesInactivos as $cliente): ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($cliente['ID_Cliente']); ?></td>
-                    <td><?php echo htmlspecialchars($cliente['Nombre']); ?></td>
-                    <td><?php echo ($cliente['activo'] == 1) ? 'Activo' : 'Inactivo'; ?></td>
-                    <td>
-                        <!-- Activar cliente -->
-                        <a href="<?=RUTA_URL?>clientes/activar/<?php echo $cliente['ID_Cliente']; ?>" class="btn btn-success btn-sm">
-                            Activar
-                        </a>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($clientesInactivos as $cliente): ?>
+                    <tr>
+                        <td><?php echo htmlspecialchars($cliente['ID_Cliente']); ?></td>
+                        <td><?php echo htmlspecialchars($cliente['Nombre']); ?></td>
+                        <td><?php echo ($cliente['activo'] == 1) ? 'Activo' : 'Inactivo'; ?></td>
+                        <td>
+                            <!-- Activar cliente -->
+                            <a href="<?=RUTA_URL?>clientes/activar/<?php echo $cliente['ID_Cliente']; ?>" class="btn btn-success btn-sm">
+                                Activar
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     <?php endif; ?>
 
     <a href="<?=RUTA_URL?>clientes/listar" class="btn btn-primary">Ver Clientes Activos</a>

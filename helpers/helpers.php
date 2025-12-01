@@ -72,7 +72,15 @@ function cargarRecursos($pagina) {
     "listar",
     "pedidos",
     "usuarios",
-    "stock"
+    "stock",
+    "clientes",
+    "monedas",
+    "paises",
+    "departamentos",
+    "municipios",
+    "barrios",
+    "productos",
+    "seguimiento"
   ];
 
   if (in_array($pagina, $modulosConDatatables, true)) {

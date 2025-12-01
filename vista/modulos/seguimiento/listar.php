@@ -57,3 +57,13 @@ if ($userId) {
     <?php endif; ?>
 </div>
 <?php include("vista/includes/footer.php"); ?>
+<script>
+    $(document).ready(function() {
+        $('.table').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            }
+        });
+    });
+</script>

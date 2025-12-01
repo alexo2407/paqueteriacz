@@ -95,6 +95,89 @@ class UsuariosController
     }
 
     /**
+     * Procesar la creación de un nuevo usuario desde el formulario.
+     */
+    public function crearUsuarioController()
+    {
+        if (isset($_POST['nombre']) && isset($_POST['email']) && isset($_POST['password'])) {
+            
+            // Validaciones básicas
+            if (empty($_POST['nombre']) || empty($_POST['email']) || empty($_POST['password'])) {
+                echo '<script>
+                    if (window.history.replaceState) {
+                        window.history.replaceState(null, null, window.location.href);
+                    }
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Todos los campos obligatorios deben ser completados.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    });
+                </script>';
+                return;
+            }
+
+            $data = [
+                'nombre' => $_POST['nombre'],
+                'email' => $_POST['email'],
+                'password' => $_POST['password'],
+                'telefono' => $_POST['telefono'] ?? null,
+                'id_pais' => $_POST['id_pais'] ?? null,
+                'activo' => isset($_POST['activo']) ? 1 : 0,
+                'id_estado' => $_POST['id_estado'] ?? null
+            ];
+
+            require_once __DIR__ . '/../modelo/usuario.php';
+            $model = new UsuarioModel();
+            
+            $newId = $model->crearUsuario($data);
+
+            if ($newId) {
+                // Asignar roles si se seleccionaron
+                if (!empty($_POST['roles']) && is_array($_POST['roles'])) {
+                    // Convertir a enteros
+                    $rolesIds = array_map('intval', $_POST['roles']);
+                    $model->setRolesForUser($newId, $rolesIds);
+                } elseif (!empty($_POST['rol'])) {
+                    // Fallback para compatibilidad si viniera como 'rol' simple
+                    $model->setRolesForUser($newId, [(int)$_POST['rol']]);
+                }
+
+                echo '<script>
+                    if (window.history.replaceState) {
+                        window.history.replaceState(null, null, window.location.href);
+                    }
+                    Swal.fire({
+                        icon: "success",
+                        title: "¡Usuario creado!",
+                        text: "El usuario ha sido registrado correctamente.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    }).then(function(result){
+                        if(result.value){
+                            window.location = "'.RUTA_URL.'usuarios/listar";
+                        }
+                    });
+                </script>';
+            } else {
+                echo '<script>
+                    if (window.history.replaceState) {
+                        window.history.replaceState(null, null, window.location.href);
+                    }
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "No se pudo crear el usuario. Verifique si el email ya existe.",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    });
+                </script>';
+            }
+        }
+    }
+
+    /**
      * Procesa el login desde un formulario POST
      */
     /**

@@ -57,7 +57,7 @@ $scripts = [
 
 echo implode("\n", $scripts["global"]);
 
-if (in_array($paginaActual, ['listar', 'pedidos', 'usuarios', 'stock'], true)) {
+if (in_array($paginaActual, ['listar', 'pedidos', 'usuarios', 'stock', 'clientes', 'monedas', 'paises', 'departamentos', 'municipios', 'barrios', 'productos', 'seguimiento'], true)) {
     echo implode("\n", $scripts["datatables"]);
 }
 

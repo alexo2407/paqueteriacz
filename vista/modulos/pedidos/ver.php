@@ -55,24 +55,32 @@ if (isset($_GET['idPedido'])) {
         <p><strong>Email:</strong> <?php echo htmlspecialchars($pedido['UsuarioEmail']); ?></p>
         <hr>
         <h5>Productos del Pedido</h5>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Precio</th>
-                    <th>Cantidad</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($detallesPedido as $producto): ?>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped dt-responsive tablas" width="100%">
+                <thead>
                     <tr>
-                        <td><?php echo htmlspecialchars($producto['Producto']); ?></td>
-                        <td><?php echo htmlspecialchars(number_format($producto['Precio'], 2)); ?></td>
-                        <td><?php echo htmlspecialchars($producto['Cantidad']); ?></td>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Total</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php
+                    // Assuming $detallesPedido contains product details in a similar structure to the instruction's $productosPedido
+                    // Adjusting to match the existing $detallesPedido structure for products
+                    foreach ($detallesPedido as $producto) {
+                        echo '<tr>
+                                <td>' . htmlspecialchars($producto["Producto"]) . '</td>
+                                <td>' . htmlspecialchars($producto["Cantidad"]) . '</td>
+                                <td>' . htmlspecialchars(number_format($producto["Precio"], 2)) . '</td>
+                                <td>' . htmlspecialchars(number_format($producto["Precio"] * $producto["Cantidad"], 2)) . '</td>
+                            </tr>';
+                    }
+                    ?>
+                </tbody>
+            </table>
+        </div>
     <?php else: ?>
         <div class="alert alert-danger">No se encontraron detalles para este pedido.</div>
     <?php endif; ?>

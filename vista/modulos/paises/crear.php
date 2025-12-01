@@ -1,19 +1,27 @@
 <?php
 include("vista/includes/header.php");
 ?>
-<div class="container">
-    <h2>Crear País</h2>
-    <form method="post" action="<?= RUTA_URL ?>paises/guardar">
-        <div class="mb-3">
-            <label class="form-label">Nombre</label>
-            <input class="form-control" name="nombre" required />
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title mb-0">Crear País</h3>
         </div>
-        <div class="mb-3">
-            <label class="form-label">Código ISO</label>
-            <input class="form-control" name="codigo_iso" />
+        <div class="card-body">
+            <form method="post" action="<?= RUTA_URL ?>paises/guardar">
+                <div class="mb-3">
+                    <label class="form-label">Nombre</label>
+                    <input class="form-control" name="nombre" placeholder="Ej: Nicaragua" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Código ISO</label>
+                    <input class="form-control" name="codigo_iso" placeholder="Ej: NI" />
+                </div>
+                <div class="d-flex justify-content-end">
+                    <a class="btn btn-secondary me-2" href="<?= RUTA_URL ?>paises/listar">Cancelar</a>
+                    <button class="btn btn-primary" type="submit">Guardar</button>
+                </div>
+            </form>
         </div>
-        <button class="btn btn-primary" type="submit">Guardar</button>
-        <a class="btn btn-secondary" href="<?= RUTA_URL ?>paises/listar">Cancelar</a>
-    </form>
+    </div>
 </div>
 <?php include("vista/includes/footer.php"); ?>

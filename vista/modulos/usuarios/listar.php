@@ -11,44 +11,42 @@
 </div>
 <div class="row mt-2 caja">
     <div class="col-sm-12">
-            <table id="tblUsuarios" class="display" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Rol</th>
-                        <th>Fecha de Creación</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="table-responsive">
+                <table id="tblUsuarios" class="display" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
 
-                    <?php 
-                    
-                     $listarUsuarios = new UsuariosController();
-                    $resultadoUsuarios = $listarUsuarios->mostrarUsuariosController();
+                        <?php 
+                        
+                        $listarUsuarios = new UsuariosController();
+                        $resultadoUsuarios = $listarUsuarios->mostrarUsuariosController();
 
-                    foreach($resultadoUsuarios as $usuarios) :
-                        $timestampCreacion = !empty($usuarios['fecha_creacion']) ? strtotime($usuarios['fecha_creacion']) : null;
-                        $fechaCreacion = $timestampCreacion ? date('d/m/Y H:i', $timestampCreacion) : '—';
-                    ?>
-              
-                    <tr>
-                        <td><?php echo $usuarios['id']; ?></td>
-                        <td><?php echo $usuarios['nombre']; ?></td>
-                        <td><?php echo $usuarios['email']; ?></td>
-                        <td><?php echo $usuarios['rol_nombre']; ?></td>
-                        <td><?php echo $fechaCreacion; ?></td>
-                        <td>
-                            <a href="<?= RUTA_URL ?>usuarios/editar/<?php echo $usuarios['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
-                        </td>
-                    </tr>
+                        foreach($resultadoUsuarios as $usuarios) :
+                            $timestampCreacion = !empty($usuarios['fecha_creacion']) ? strtotime($usuarios['fecha_creacion']) : null;
+                            $fechaCreacion = $timestampCreacion ? date('d/m/Y H:i', $timestampCreacion) : '—';
+                        ?>
+                
+                        <tr>
+                            <td><?php echo $usuarios['id']; ?></td>
+                            <td><?php echo $usuarios['nombre']; ?></td>
+                            <td><?php echo $usuarios['email']; ?></td>
+                            <td>
+                                <a href="<?= RUTA_URL ?>usuarios/editar/<?php echo $usuarios['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
+                            </td>
+                        </tr>
 
-                    <?php endforeach; ?>
-                                           
-                </tbody>       
-            </table>
+                        <?php endforeach; ?>
+                                            
+                    </tbody>       
+                </table>
+            </div>
     </div>
 </div>
 
@@ -56,6 +54,11 @@
 
 <script>
     $(document).ready( function () {
-        $('#tblUsuarios').DataTable();
+        $('#tblUsuarios').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            }
+        });
     });
 </script>

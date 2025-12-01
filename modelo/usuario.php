@@ -256,6 +256,48 @@ class UsuarioModel {
     }
 
     /**
+     * Crear un nuevo usuario.
+     *
+     * @param array $data Datos del usuario (nombre, email, password, telefono, id_pais, activo, id_estado)
+     * @return int|null ID del nuevo usuario o null en caso de error.
+     */
+    public function crearUsuario(array $data)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $sql = "INSERT INTO usuarios (nombre, email, contrasena, telefono, id_pais, activo, id_estado, created_at) 
+                    VALUES (:nombre, :email, :contrasena, :telefono, :id_pais, :activo, :id_estado, NOW())";
+            
+            $stmt = $db->prepare($sql);
+
+            $stmt->bindValue(':nombre', $data['nombre'], PDO::PARAM_STR);
+            $stmt->bindValue(':email', $data['email'], PDO::PARAM_STR);
+            $stmt->bindValue(':contrasena', password_hash($data['password'], PASSWORD_DEFAULT), PDO::PARAM_STR);
+            
+            $telefono = !empty($data['telefono']) ? $data['telefono'] : null;
+            $stmt->bindValue(':telefono', $telefono, $telefono ? PDO::PARAM_STR : PDO::PARAM_NULL);
+
+            $idPais = !empty($data['id_pais']) ? (int)$data['id_pais'] : null;
+            $stmt->bindValue(':id_pais', $idPais, $idPais ? PDO::PARAM_INT : PDO::PARAM_NULL);
+
+            $activo = isset($data['activo']) ? (int)$data['activo'] : 1; // Default activo
+            $stmt->bindValue(':activo', $activo, PDO::PARAM_INT);
+
+            $idEstado = !empty($data['id_estado']) ? (int)$data['id_estado'] : null;
+            $stmt->bindValue(':id_estado', $idEstado, $idEstado ? PDO::PARAM_INT : PDO::PARAM_NULL);
+
+            if ($stmt->execute()) {
+                return (int)$db->lastInsertId();
+            }
+            return null;
+        } catch (PDOException $e) {
+            error_log('Error al crear usuario: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return null;
+        }
+    }
+
+    /**
      * Establecer los roles de un usuario (reemplaza todos por los proporcionados).
      * Opcionalmente también actualiza el rol principal (usuarios.id_rol) si $primaryRoleId > 0.
      */

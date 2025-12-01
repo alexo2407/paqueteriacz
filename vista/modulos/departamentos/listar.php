@@ -10,28 +10,56 @@ $departamentos = $ctrl->listar();
 <div class="container">
     <h2>Departamentos</h2>
     <p><a href="<?= RUTA_URL ?>departamentos/crear" class="btn btn-primary">Crear departamento</a></p>
-    <table class="table table-striped">
-        <thead><tr><th>ID</th><th>Nombre</th><th>País</th><th>Acciones</th></tr></thead>
-        <tbody>
-            <?php if (!empty($departamentos)): foreach ($departamentos as $d):
-                $pais = null; foreach ($paises as $pt) { if ($pt['id'] == $d['id_pais']) { $pais = $pt['nombre']; break; } }
-            ?>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped dt-responsive tablas" width="100%">
+            <thead>
                 <tr>
-                    <td><?= htmlspecialchars($d['id']) ?></td>
-                    <td><?= htmlspecialchars($d['nombre']) ?></td>
-                    <td><?= htmlspecialchars($pais ?? '') ?></td>
-                    <td>
-                        <a class="btn btn-sm btn-info" href="<?= RUTA_URL ?>departamentos/ver/<?= urlencode($d['id']) ?>">Ver</a>
-                        <a class="btn btn-sm btn-warning" href="<?= RUTA_URL ?>departamentos/editar/<?= urlencode($d['id']) ?>">Editar</a>
-                        <form method="post" action="<?= RUTA_URL ?>departamentos/eliminar/<?= urlencode($d['id']) ?>" style="display:inline" onsubmit="return confirm('Eliminar departamento?');">
-                            <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
-                        </form>
-                    </td>
+                    <th style="width:10px">#</th>
+                    <th>Departamento</th>
+                    <th>País</th>
+                    <th>Acciones</th>
                 </tr>
-            <?php endforeach; else: ?>
-                <tr><td colspan="4">No hay departamentos registrados.</td></tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                <?php
+                foreach ($departamentos as $key => $value) {
+                    // Find the country name for the current department
+                    $pais_nombre = '';
+                    foreach ($paises as $p) {
+                        if ($p['id'] == $value['id_pais']) {
+                            $pais_nombre = $p['nombre'];
+                            break;
+                        }
+                    }
+
+                    echo '<tr>
+                            <td>' . ($key + 1) . '</td>
+                            <td>' . htmlspecialchars($value["nombre"]) . '</td>
+                            <td>' . htmlspecialchars($pais_nombre) . '</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a class="btn btn-sm btn-info" href="' . RUTA_URL . 'departamentos/ver/' . urlencode($value['id']) . '">Ver</a>
+                                    <a class="btn btn-sm btn-warning" href="' . RUTA_URL . 'departamentos/editar/' . urlencode($value['id']) . '">Editar</a>
+                                    <form method="post" action="' . RUTA_URL . 'departamentos/eliminar/' . urlencode($value['id']) . '" style="display:inline" onsubmit="return confirm(\'Eliminar departamento?\');">
+                                        <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>';
+                }
+                ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 <?php include("vista/includes/footer.php"); ?>
+<script>
+    $(document).ready(function() {
+        $('.tablas').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            }
+        });
+    });
+</script>

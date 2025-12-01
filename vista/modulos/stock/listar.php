@@ -16,33 +16,35 @@ $registros = $stockController->listar();
 
 <div class="row mt-3 caja">
     <div class="col-sm-12">
-        <table id="tablaStock" class="display" style="width:100%">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>ID Usuario</th>
-                    <th>Producto</th>
-                    <th>Cantidad</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($registros as $item): ?>
+        <div class="table-responsive">
+            <table id="tablaStock" class="display" style="width:100%">
+                <thead>
                     <tr>
-                        <td><?= htmlspecialchars($item['id']); ?></td>
-                        <td><?= htmlspecialchars($item['id_usuario'] ?? ''); ?></td>
-                        <td><?= htmlspecialchars($item['producto'] ?? ($item['producto_nombre'] ?? '')); ?></td>
-                        <td><?= (int) $item['cantidad']; ?></td>
-                        <td>
-                            <a href="<?= RUTA_URL ?>stock/editar/<?= $item['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
-                            <form method="POST" action="<?= RUTA_URL ?>stock/eliminar/<?= $item['id']; ?>" class="d-inline" onsubmit="return confirm('¿Eliminar este registro?');">
-                                <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill"></i></button>
-                            </form>
-                        </td>
+                        <th>ID</th>
+                        <th>ID Usuario</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Acciones</th>
                     </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    <?php foreach ($registros as $item): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($item['id']); ?></td>
+                            <td><?= htmlspecialchars($item['id_usuario'] ?? ''); ?></td>
+                            <td><?= htmlspecialchars($item['producto'] ?? ($item['producto_nombre'] ?? '')); ?></td>
+                            <td><?= (int) $item['cantidad']; ?></td>
+                            <td>
+                                <a href="<?= RUTA_URL ?>stock/editar/<?= $item['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
+                                <form method="POST" action="<?= RUTA_URL ?>stock/eliminar/<?= $item['id']; ?>" class="d-inline" onsubmit="return confirm('¿Eliminar este registro?');">
+                                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash-fill"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -50,6 +52,11 @@ $registros = $stockController->listar();
 
 <script>
     $(document).ready(function () {
-        $('#tablaStock').DataTable();
+        $('#tablaStock').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            }
+        });
     });
 </script>

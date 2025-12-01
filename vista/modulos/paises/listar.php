@@ -6,26 +6,47 @@ $paises = $ctrl->listar();
 <div class="container">
     <h2>Paises</h2>
     <p><a href="<?= RUTA_URL ?>paises/crear" class="btn btn-primary">Crear país</a></p>
-    <table class="table table-striped">
-        <thead><tr><th>ID</th><th>Nombre</th><th>Código ISO</th><th>Acciones</th></tr></thead>
-        <tbody>
-            <?php if (!empty($paises)): foreach ($paises as $p): ?>
-                <tr>
-                    <td><?= htmlspecialchars($p['id']) ?></td>
-                    <td><?= htmlspecialchars($p['nombre']) ?></td>
-                    <td><?= htmlspecialchars($p['codigo_iso'] ?? '') ?></td>
-                    <td>
-                        <a class="btn btn-sm btn-info" href="<?= RUTA_URL ?>paises/ver/<?= urlencode($p['id']) ?>">Ver</a>
-                        <a class="btn btn-sm btn-warning" href="<?= RUTA_URL ?>paises/editar/<?= urlencode($p['id']) ?>">Editar</a>
-                        <form method="post" action="<?= RUTA_URL ?>paises/eliminar/<?= urlencode($p['id']) ?>" style="display:inline" onsubmit="return confirm('Eliminar país?');">
-                            <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
-                        </form>
-                    </td>
-                </tr>
-            <?php endforeach; else: ?>
-                <tr><td colspan="4">No hay países registrados.</td></tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped dt-responsive tablas" width="100%">
+                    <thead>
+                        <tr>
+                            <th style="width:10px">#</th>
+                            <th>País</th>
+                            <th>Código</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        foreach ($paises as $key => $value) {
+                            echo '<tr>
+                                    <td>' . ($key + 1) . '</td>
+                                    <td>' . htmlspecialchars($value["nombre"]) . '</td>
+                                    <td>' . htmlspecialchars($value["codigo_iso"] ?? '') . '</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a class="btn btn-sm btn-info" href="' . RUTA_URL . 'paises/ver/' . urlencode($value['id']) . '">Ver</a>
+                                            <a class="btn btn-sm btn-warning" href="' . RUTA_URL . 'paises/editar/' . urlencode($value['id']) . '">Editar</a>
+                                            <form method="post" action="' . RUTA_URL . 'paises/eliminar/' . urlencode($value['id']) . '" style="display:inline" onsubmit="return confirm(\'¿Eliminar país?\');">
+                                                <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
 </div>
 <?php include("vista/includes/footer.php"); ?>
+<script>
+    $(document).ready(function() {
+        $('.tablas').DataTable({
+            responsive: true,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+            }
+        });
+    });
+</script>
