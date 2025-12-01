@@ -130,6 +130,13 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
         header('Location: ' . $redirect);
         exit;
     }
+
+    if ($accion === 'eliminar') {
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        $ctrl->eliminar($id);
+        // El controlador hace exit, pero por si acaso:
+        exit;
+    }
 }
 
 // -----------------------

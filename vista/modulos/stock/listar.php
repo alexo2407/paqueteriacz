@@ -21,19 +21,28 @@ $registros = $stockController->listar();
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>ID Usuario</th>
+                        <th>Usuario</th>
                         <th>Producto</th>
                         <th>Cantidad</th>
+                        <th>Fecha</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($registros as $item): ?>
+                        <?php 
+                            $cantidad = (int) $item['cantidad'];
+                            $colorClass = $cantidad >= 0 ? 'text-success' : 'text-danger';
+                            $signo = $cantidad > 0 ? '+' : '';
+                            $fecha = !empty($item['updated_at']) ? date('d/m/Y H:i', strtotime($item['updated_at'])) : '—';
+                            $usuario = !empty($item['usuario']) ? $item['usuario'] : ($item['id_usuario'] ? 'ID: '.$item['id_usuario'] : 'Sistema');
+                        ?>
                         <tr>
                             <td><?= htmlspecialchars($item['id']); ?></td>
-                            <td><?= htmlspecialchars($item['id_usuario'] ?? ''); ?></td>
+                            <td><?= htmlspecialchars($usuario); ?></td>
                             <td><?= htmlspecialchars($item['producto'] ?? ($item['producto_nombre'] ?? '')); ?></td>
-                            <td><?= (int) $item['cantidad']; ?></td>
+                            <td class="<?= $colorClass; ?> fw-bold"><?= $signo . $cantidad; ?></td>
+                            <td><?= $fecha; ?></td>
                             <td>
                                 <a href="<?= RUTA_URL ?>stock/editar/<?= $item['id']; ?>" class="btn btn-warning"><i class="bi bi-pencil-fill"></i></a>
                                 <form method="POST" action="<?= RUTA_URL ?>stock/eliminar/<?= $item['id']; ?>" class="d-inline" onsubmit="return confirm('¿Eliminar este registro?');">

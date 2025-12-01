@@ -31,8 +31,21 @@ class StockModel
     {
         try {
             $db = (new Conexion())->conectar();
-            // Devolver información útil para la UI: id, id_usuario, id_producto, producto (nombre) y cantidad
-            $stmt = $db->prepare('SELECT s.id, s.id_usuario, s.id_producto, s.cantidad, p.nombre AS producto FROM stock s LEFT JOIN productos p ON p.id = s.id_producto ORDER BY s.id DESC');
+            // Devolver información útil para la UI: id, id_usuario, id_producto, producto (nombre), cantidad, fecha y usuario (nombre)
+            $stmt = $db->prepare('
+                SELECT 
+                    s.id, 
+                    s.id_usuario, 
+                    s.id_producto, 
+                    s.cantidad, 
+                    s.updated_at,
+                    p.nombre AS producto,
+                    u.nombre AS usuario
+                FROM stock s 
+                LEFT JOIN productos p ON p.id = s.id_producto 
+                LEFT JOIN usuarios u ON u.id = s.id_usuario
+                ORDER BY s.id DESC
+            ');
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -163,6 +176,17 @@ class StockModel
     {
         try {
             $db = $pdo ? $pdo : (new Conexion())->conectar();
+            
+            // Validar que el usuario exista, si no, usar 1 (Admin/Sistema)
+            $idUsuarioFinal = 1;
+            if ($idVendedor && $idVendedor != 1) {
+                $stmtCheck = $db->prepare("SELECT id FROM usuarios WHERE id = :id");
+                $stmtCheck->execute([':id' => $idVendedor]);
+                if ($stmtCheck->fetchColumn()) {
+                    $idUsuarioFinal = $idVendedor;
+                }
+            }
+
             // Insertar movimiento negativo
             // Asumimos que la cantidad recibida es positiva (cantidad a descontar),
             // por lo que la guardamos como negativa en la tabla.
@@ -170,8 +194,7 @@ class StockModel
             
             $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, NOW())');
             $stmt->bindValue(':id_producto', $idProducto, PDO::PARAM_INT);
-            // Si no hay vendedor, usamos 1 (Admin/Sistema) como fallback para evitar error de FK
-            $stmt->bindValue(':id_usuario', $idVendedor ?: 1, PDO::PARAM_INT);
+            $stmt->bindValue(':id_usuario', $idUsuarioFinal, PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $cantidadNegativa, PDO::PARAM_INT);
             
             return $stmt->execute();
@@ -198,11 +221,21 @@ class StockModel
         try {
             $db = $pdo ? $pdo : (new Conexion())->conectar();
             
+            // Validar que el usuario exista, si no, usar 1 (Admin/Sistema)
+            $idUsuarioFinal = 1;
+            if ($idVendedor && $idVendedor != 1) {
+                $stmtCheck = $db->prepare("SELECT id FROM usuarios WHERE id = :id");
+                $stmtCheck->execute([':id' => $idVendedor]);
+                if ($stmtCheck->fetchColumn()) {
+                    $idUsuarioFinal = $idVendedor;
+                }
+            }
+
             $cantidadPositiva = abs($cantidad);
             
             $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, NOW())');
             $stmt->bindValue(':id_producto', $idProducto, PDO::PARAM_INT);
-            $stmt->bindValue(':id_usuario', $idVendedor ?: 1, PDO::PARAM_INT);
+            $stmt->bindValue(':id_usuario', $idUsuarioFinal, PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $cantidadPositiva, PDO::PARAM_INT);
             
             return $stmt->execute();
