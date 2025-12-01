@@ -1,9 +1,6 @@
 <?php
-include("vista/includes/header.php");
+ob_start(); // Start buffering immediately to catch any spurious output/whitespace
 
-/*ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);*/
 // El ID del pedido se pasa desde el controlador
 $id_pedido = $parametros[0] ?? null;
 
@@ -14,6 +11,24 @@ if (!$id_pedido) {
 
 // Instanciar el controlador
 $pedidoController = new PedidosController();
+
+// Si el formulario fue enviado, procesa la actualización
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Clean any output generated so far (whitespace, includes, etc.)
+    ob_clean();
+    // guardarEdicion maneja la respuesta (JSON para AJAX, Redirect para normal) y termina la ejecución
+    $pedidoController->guardarEdicion($_POST);
+    exit;
+}
+
+// Flush buffer and continue with normal page rendering
+ob_end_flush();
+
+include("vista/includes/header.php");
+
+/*ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);*/
 
 // Obtener listas para selects
 try {
@@ -57,21 +72,6 @@ try { $departamentosAll = DepartamentoModel::listarPorPais(null); } catch (Excep
 try { $municipiosAll = MunicipioModel::listarPorDepartamento(null); } catch (Exception $e) { $municipiosAll = []; }
 try { $barriosAll = BarrioModel::listarPorMunicipio(null); } catch (Exception $e) { $barriosAll = []; }
 
-
-
-// Si el formulario fue enviado, procesa la actualización
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-
-    $resultado = $pedidoController->guardarEdicion($_POST);
-
-    // Mensajes de éxito o error
-    if ($resultado['success']) {
-        $mensaje = "<div class='alert alert-success'>Order updated successfully.</div>";
-    } else {
-        $mensaje = "<div class='alert alert-danger'>Error: " . htmlspecialchars($resultado['message']) . "</div>";
-    }
-}
 
 // Obtener los datos del pedido
 $pedido = $pedidoController->obtenerPedido($id_pedido);

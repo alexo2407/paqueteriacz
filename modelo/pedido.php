@@ -782,8 +782,9 @@ class PedidosModel
             }
 
 
-            // Retornar true si hubo cambios en la base de datos
-            return $stmt->rowCount() > 0;
+            // Retornar true para indicar que la operación se ejecutó correctamente,
+            // independientemente de si hubo cambios reales en los datos (idempotencia).
+            return true;
         } catch (PDOException $e) {
             throw new Exception("Error updating order: " . $e->getMessage());
         }

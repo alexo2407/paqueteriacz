@@ -818,7 +818,7 @@ class PedidosController {
         $sendJson = function($data, $code = 200) {
             // Discard any previous output
             $buffered = ob_get_clean();
-            if (!empty($buffered)) {
+            if (!empty($buffered) && defined('DEBUG') && DEBUG) {
                 // Log the spurious output for debugging
                 error_log("Spurious output in guardarEdicion: " . $buffered);
             }

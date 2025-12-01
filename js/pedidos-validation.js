@@ -684,11 +684,13 @@
             }).then(function (data) {
                 setLoading(false);
                 if (data && data.success) {
-                    if (window.Swal && typeof window.Swal.fire === 'function') {
-                        window.Swal.fire({ icon: 'success', title: 'Guardado', text: data.message || 'Pedido actualizado correctamente.' });
-                    } else {
-                        alert(data.message || 'Pedido actualizado correctamente.');
-                    }
+                    // Usuario solicitó eliminar el alert de éxito.
+                    // if (window.Swal && typeof window.Swal.fire === 'function') {
+                    //     window.Swal.fire({ icon: 'success', title: 'Guardado', text: data.message || 'Pedido actualizado correctamente.' });
+                    // } else {
+                    //     alert(data.message || 'Pedido actualizado correctamente.');
+                    // }
+                    console.log('Pedido actualizado correctamente');
                 } else {
                     if (window.Swal && typeof window.Swal.fire === 'function') {
                         window.Swal.fire({ icon: 'error', title: 'Error', text: (data && data.message) ? data.message : 'No fue posible actualizar el pedido.' });
@@ -698,17 +700,8 @@
             }).catch(function (err) {
                 setLoading(false);
                 console.error('Error AJAX editar:', err);
-                // Fallback conservador: enviar el formulario tradicionalmente
-                if (window.Swal && typeof window.Swal.fire === 'function') {
-                    window.Swal.fire({
-                        icon: 'error',
-                        title: 'Error de red',
-                        text: 'No se pudo conectar con el servidor o la respuesta no es válida. Detalles: ' + err.message + '. Se realizará el envío tradicional.'
-                    }).then(function () { form.submit(); });
-                } else {
-                    alert('Error: ' + err.message);
-                    form.submit();
-                }
+                // Fallback silencioso: enviar el formulario tradicionalmente sin molestar al usuario
+                form.submit();
             });
 
             return false;

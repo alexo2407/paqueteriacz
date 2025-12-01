@@ -30,6 +30,9 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
     }
 
     if ($accion === 'guardarPedido') {
+        // Start buffering to prevent spurious output (warnings, notices) from breaking JSON response
+        ob_start();
+
         // Construir payload desde $_POST y delegar al controlador
         // NOTE: usamos los mismos nombres de campos que el formulario en
         // `vista/modulos/pedidos/crearPedido.php` y que espera
@@ -71,6 +74,12 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
         // en la misma página sin reload. Para peticiones tradicionales mantenemos el
         // flujo histórico (set_flash + redirect).
         if ($isAjax) {
+            // Clean buffer to ensure valid JSON
+            $output = ob_get_clean();
+            if (!empty($output) && defined('DEBUG') && DEBUG) {
+                error_log("Spurious output in guardarPedido: " . $output);
+            }
+
             header('Content-Type: application/json');
             $id = $resultado['id'] ?? $resultado['data'] ?? null;
             $resp = [
@@ -90,6 +99,9 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             echo json_encode($resp);
             exit;
         }
+
+        // Flush buffer for normal requests
+        ob_end_flush();
 
         // Mensaje flash y redirección para comportamiento no-AJAX (fallback)
         set_flash(!empty($resultado['success']) ? 'success' : 'error', $resultado['message'] ?? 'No fue posible guardar el pedido.');
