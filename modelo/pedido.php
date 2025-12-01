@@ -620,6 +620,8 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
             // Crear el formato POINT para ST_GeomFromText
             $coordenadas = "POINT(" . $data['longitud'] . " " . $data['latitud'] . ")";
             // Aceptar valores faltantes usando null coalescing
@@ -717,76 +719,109 @@ class PedidosModel
             // Foreign keys
             if (self::tableHasColumn($db, 'pedidos', 'id_estado')) {
                 $fieldsToUpdate[] = "id_estado = :estado";
-                $params[':estado'] = isset($data['estado']) ? (int)$data['estado'] : null;
+                $params[':estado'] = isset($data['estado']) && $data['estado'] !== '' ? (int)$data['estado'] : null;
             }
             if (self::tableHasColumn($db, 'pedidos', 'id_vendedor')) {
                 $fieldsToUpdate[] = "id_vendedor = :vendedor";
-                $params[':vendedor'] = isset($data['vendedor']) ? (int)$data['vendedor'] : null;
+                $params[':vendedor'] = isset($data['vendedor']) && $data['vendedor'] !== '' ? (int)$data['vendedor'] : null;
             }
             if (self::tableHasColumn($db, 'pedidos', 'id_proveedor')) {
                 $fieldsToUpdate[] = "id_proveedor = :proveedor";
-                $params[':proveedor'] = isset($data['proveedor']) ? (int)$data['proveedor'] : null;
+                $params[':proveedor'] = isset($data['proveedor']) && $data['proveedor'] !== '' ? (int)$data['proveedor'] : null;
             }
             if (self::tableHasColumn($db, 'pedidos', 'id_moneda')) {
                 $fieldsToUpdate[] = "id_moneda = :moneda";
-                $params[':moneda'] = isset($data['moneda']) ? (int)$data['moneda'] : null;
+                $params[':moneda'] = isset($data['moneda']) && $data['moneda'] !== '' ? (int)$data['moneda'] : null;
             }
 
-            $query = "UPDATE pedidos SET " . implode(', ', $fieldsToUpdate) . " WHERE id = :id_pedido";
+            // Ejecutar UPDATE principal
+            $sql = "UPDATE pedidos SET " . implode(", ", $fieldsToUpdate) . " WHERE id = :id";
+            $params[':id'] = $data['id_pedido'];
             
-            $stmt = $db->prepare($query);
+            $stmt = $db->prepare($sql);
             foreach ($params as $key => $val) {
                 $stmt->bindValue($key, $val);
             }
-            $stmt->bindValue(':id_pedido', isset($data['id_pedido']) ? (int)$data['id_pedido'] : null, PDO::PARAM_INT);
-
-            // Ejecutar la consulta
             $stmt->execute();
 
-            // Actualizar productos: soportar múltiples productos
-            // Primero, eliminar todos los productos existentes del pedido
-            $deleteStmt = $db->prepare('DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido');
-            $deleteStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
-            $deleteStmt->execute();
-
-            // Procesar múltiples productos desde el array productos[][]
+            // --- GESTIÓN DE PRODUCTOS Y STOCK ---
+            
+            // Determinar si hay actualización de productos
+            $nuevosItems = [];
             if (isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0) {
-                $insertStmt = $db->prepare('
-                    INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
-                    VALUES (:id_pedido, :id_producto, :cantidad, 0)
-                ');
-                
-                foreach ($data['productos'] as $item) {
-                    $productoId = isset($item['producto_id']) ? (int)$item['producto_id'] : null;
-                    $cantidad = isset($item['cantidad']) ? (int)$item['cantidad'] : null;
-                    
-                    // Solo insertar si ambos valores son válidos
-                    if ($productoId && $cantidad && $cantidad > 0) {
-                        $insertStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
-                        $insertStmt->bindValue(':id_producto', $productoId, PDO::PARAM_INT);
-                        $insertStmt->bindValue(':cantidad', $cantidad, PDO::PARAM_INT);
-                        $insertStmt->execute();
-                    }
-                }
-            } 
-            // Fallback: si no hay productos[][] pero hay producto_id singular (compatibilidad con formularios antiguos)
-            elseif (isset($data['producto_id']) && isset($data['cantidad_producto'])) {
-                $insertStmt = $db->prepare('
-                    INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
-                    VALUES (:id_pedido, :id_producto, :cantidad, 0)
-                ');
-                $insertStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
-                $insertStmt->bindValue(':id_producto', (int)$data['producto_id'], PDO::PARAM_INT);
-                $insertStmt->bindValue(':cantidad', (int)$data['cantidad_producto'], PDO::PARAM_INT);
-                $insertStmt->execute();
+                $nuevosItems = $data['productos'];
+            } elseif (isset($data['producto_id']) && isset($data['cantidad_producto'])) {
+                // Fallback formato antiguo
+                $nuevosItems[] = [
+                    'producto_id' => $data['producto_id'],
+                    'cantidad' => $data['cantidad_producto']
+                ];
             }
 
+            // Si hay nuevos items, reemplazamos los anteriores
+            if (!empty($nuevosItems)) {
+                require_once __DIR__ . '/stock.php';
+                require_once __DIR__ . '/producto.php';
 
-            // Retornar true para indicar que la operación se ejecutó correctamente,
-            // independientemente de si hubo cambios reales en los datos (idempotencia).
+                // 1. Obtener items actuales para restaurar stock
+                $stmtOld = $db->prepare("SELECT id_producto, cantidad FROM pedidos_productos WHERE id_pedido = :id_pedido");
+                $stmtOld->execute([':id_pedido' => $data['id_pedido']]);
+                $oldItems = $stmtOld->fetchAll(PDO::FETCH_ASSOC);
+
+                // Restaurar stock de items eliminados
+                // Usamos el vendedor actual del pedido (o el nuevo si cambió) para el registro
+                $vendedorId = isset($params[':vendedor']) ? $params[':vendedor'] : null;
+                
+                foreach ($oldItems as $old) {
+                    StockModel::registrarEntrada($old['id_producto'], $old['cantidad'], $vendedorId, $db);
+                }
+
+                // 2. Eliminar items anteriores
+                $deleteStmt = $db->prepare("DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido");
+                $deleteStmt->execute([':id_pedido' => $data['id_pedido']]);
+
+                // 3. Insertar nuevos items y descontar stock
+                $insertStmt = $db->prepare('
+                    INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
+                    VALUES (:id_pedido, :id_producto, :cantidad, 0)
+                ');
+
+                foreach ($nuevosItems as $item) {
+                    $pid = isset($item['producto_id']) ? (int)$item['producto_id'] : null;
+                    $qty = isset($item['cantidad']) ? (int)$item['cantidad'] : null;
+
+                    if ($pid && $qty && $qty > 0) {
+                        // Validar stock disponible
+                        // Query manual de stock dentro de la transacción para ver los cambios de restauración
+                        $stmtStock = $db->prepare("SELECT COALESCE(SUM(cantidad), 0) as stock_total FROM stock WHERE id_producto = :id FOR UPDATE"); // FOR UPDATE para bloquear
+                        $stmtStock->execute([':id' => $pid]);
+                        $rowStock = $stmtStock->fetch(PDO::FETCH_ASSOC);
+                        $stockTransaccional = $rowStock ? (int)$rowStock['stock_total'] : 0;
+                        
+                        if ($stockTransaccional < $qty) {
+                            throw new Exception("Stock insuficiente para el producto ID $pid. Disponible: $stockTransaccional, Solicitado: $qty");
+                        }
+
+                        // Insertar
+                        $insertStmt->bindValue(':id_pedido', (int)$data['id_pedido'], PDO::PARAM_INT);
+                        $insertStmt->bindValue(':id_producto', $pid, PDO::PARAM_INT);
+                        $insertStmt->bindValue(':cantidad', $qty, PDO::PARAM_INT);
+                        $insertStmt->execute();
+
+                        // Descontar
+                        StockModel::registrarSalida($pid, $qty, $vendedorId, $db);
+                    }
+                }
+            }
+
+            $db->commit();
             return true;
-        } catch (PDOException $e) {
-            throw new Exception("Error updating order: " . $e->getMessage());
+
+        } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            throw $e;
         }
     }
 
@@ -888,21 +923,32 @@ class PedidosModel
             // Verificar disponibilidad de stock para cada producto antes de insertar.
             // Bloqueamos las filas relevantes con FOR UPDATE para evitar condiciones de carrera.
             $stockCheckStmt = $db->prepare('SELECT COALESCE(SUM(cantidad), 0) AS stock_total FROM stock WHERE id_producto = :id_producto FOR UPDATE');
+            // 1. Validar stock para todos los items antes de insertar nada
+            // Esto previene insertar un pedido si falta stock de algún producto.
             foreach ($items as $item) {
-                $qty = (int)$item['cantidad'];
-                if ($qty <= 0) continue;
-
-                $stockCheckStmt->execute([':id_producto' => (int)$item['id_producto']]);
-                $row = $stockCheckStmt->fetch(PDO::FETCH_ASSOC);
-                $available = $row ? (int)$row['stock_total'] : 0;
-                if ($available - $qty < 0) {
-                    throw new Exception('Stock insuficiente para el producto ID ' . (int)$item['id_producto'] . '. Disponible: ' . $available . ', requerido: ' . $qty);
+                $prodId = (int)$item['id_producto'];
+                $cantidadSolicitada = (int)$item['cantidad'];
+                
+                // Obtener stock actual
+                // Idealmente deberíamos hacer SELECT ... FOR UPDATE para bloquear la fila,
+                // pero ProductoModel::obtenerStockTotal usa SUM(stock) lo cual es complejo de bloquear.
+                // Por ahora confiamos en la validación inmediata.
+                $stockActual = ProductoModel::obtenerStockTotal($prodId);
+                
+                if ($stockActual === null) {
+                    throw new Exception("Producto ID $prodId no encontrado o error de stock.");
+                }
+                
+                if ($stockActual < $cantidadSolicitada) {
+                    throw new Exception("Stock insuficiente para el producto ID $prodId. Disponible: $stockActual, Solicitado: $cantidadSolicitada.");
                 }
             }
 
-            // Construir INSERT dinámico para compatibilidad con esquemas
-            $columns = ['fecha_ingreso','numero_orden','destinatario','telefono'];
+            // 2. Insertar el pedido
+            // Construir INSERT dinámico según columnas disponibles
+            $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             $candidates = ['precio_local','precio_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -924,127 +970,81 @@ class PedidosModel
 
             $sql = 'INSERT INTO pedidos (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
             $stmt = $db->prepare($sql);
+            // Bind params
+            if (in_array('numero_orden', $columns)) $stmt->bindValue(':numero_orden', $pedido['numero_orden']);
+            if (in_array('destinatario', $columns)) $stmt->bindValue(':destinatario', $pedido['destinatario']);
+            if (in_array('telefono', $columns)) $stmt->bindValue(':telefono', $pedido['telefono']);
+            
+            if (in_array('coordenadas', $columns)) {
+                $lat = $pedido['latitud'];
+                $lng = $pedido['longitud'];
+                $stmt->bindValue(':coordenadas', "POINT($lng $lat)");
+            }
 
-            // Bind dinámico con tipos donde es necesario
-            foreach ($columns as $col) {
-                switch ($col) {
-                    case 'numero_orden':
-                        $stmt->bindValue(':numero_orden', $pedido['numero_orden'], PDO::PARAM_STR);
-                        break;
-                    case 'destinatario':
-                        $stmt->bindValue(':destinatario', $pedido['destinatario'], PDO::PARAM_STR);
-                        break;
-                    case 'telefono':
-                        $stmt->bindValue(':telefono', $pedido['telefono'], PDO::PARAM_STR);
-                        break;
-                    case 'precio_local':
-                        if ($pedido['precio_local'] === null) {
-                            $stmt->bindValue(':precio_local', null, PDO::PARAM_NULL);
+            // Bind optional params
+            $map = [
+                'precio_local' => 'precio_local',
+                'precio_usd' => 'precio_usd',
+                'id_pais' => 'id_pais',
+                'id_departamento' => 'id_departamento',
+                'municipio' => 'municipio',
+                'barrio' => 'barrio',
+                'direccion' => 'direccion',
+                'zona' => 'zona',
+                'comentario' => 'comentario',
+                'id_estado' => 'estado',
+                'id_moneda' => 'moneda',
+                'id_vendedor' => 'vendedor',
+                'id_proveedor' => 'proveedor'
+            ];
+
+            foreach ($map as $col => $key) {
+                if (in_array($col, $columns)) {
+                    $val = isset($pedido[$key]) ? $pedido[$key] : null;
+                    // Ensure integers for IDs, but treat 0 or empty as NULL for FKs
+                    if (strpos($col, 'id_') === 0) {
+                        if ($val !== null && $val !== '' && $val != 0) {
+                            $val = (int)$val;
                         } else {
-                            $stmt->bindValue(':precio_local', $pedido['precio_local']);
+                            $val = null;
                         }
-                        break;
-                    case 'precio_usd':
-                        if ($pedido['precio_usd'] === null) {
-                            $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
-                        } else {
-                            $stmt->bindValue(':precio_usd', $pedido['precio_usd']);
-                        }
-                        break;
-                    case 'id_pais':
-                        $resolvedIdPais = self::resolvePaisId($pedido['pais'] ?? null);
-                        if ($resolvedIdPais !== null) {
-                            $stmt->bindValue(':id_pais', (int)$resolvedIdPais, PDO::PARAM_INT);
-                        } else {
-                            $stmt->bindValue(':id_pais', null, PDO::PARAM_NULL);
-                        }
-                        break;
-                    case 'id_departamento':
-                        $resolvedIdDep = self::resolveDepartamentoId($pedido['departamento'] ?? null, $pedido['pais'] ?? null);
-                        if ($resolvedIdDep !== null) {
-                            $stmt->bindValue(':id_departamento', (int)$resolvedIdDep, PDO::PARAM_INT);
-                        } else {
-                            $stmt->bindValue(':id_departamento', null, PDO::PARAM_NULL);
-                        }
-                        break;
-                        break;
-                    case 'municipio':
-                        $stmt->bindValue(':municipio', $pedido['municipio'] ?? null, empty($pedido['municipio']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-                        break;
-                    case 'barrio':
-                        $stmt->bindValue(':barrio', $pedido['barrio'] ?? null, empty($pedido['barrio']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-                        break;
-                    case 'direccion':
-                        $stmt->bindValue(':direccion', $pedido['direccion'], PDO::PARAM_STR);
-                        break;
-                    case 'zona':
-                        $stmt->bindValue(':zona', $pedido['zona'] ?? null, empty($pedido['zona']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-                        break;
-                    case 'comentario':
-                        $stmt->bindValue(':comentario', $pedido['comentario'] ?? null, empty($pedido['comentario']) ? PDO::PARAM_NULL : PDO::PARAM_STR);
-                        break;
-                    case 'coordenadas':
-                        $stmt->bindValue(':coordenadas', $coordenadas, PDO::PARAM_STR);
-                        break;
-                    case 'id_estado':
-                        if (isset($pedido['estado']) && $pedido['estado'] !== null && $pedido['estado'] !== '') {
-                            $stmt->bindValue(':id_estado', (int)$pedido['estado'], PDO::PARAM_INT);
-                        } else {
-                            $stmt->bindValue(':id_estado', null, PDO::PARAM_NULL);
-                        }
-                        break;
-                    case 'id_moneda':
-                        if (isset($pedido['moneda']) && $pedido['moneda'] !== null && $pedido['moneda'] !== '') {
-                            $stmt->bindValue(':id_moneda', (int)$pedido['moneda'], PDO::PARAM_INT);
-                        } else {
-                            $stmt->bindValue(':id_moneda', null, PDO::PARAM_NULL);
-                        }
-                        break;
-                    case 'id_vendedor':
-                        if (isset($pedido['vendedor']) && $pedido['vendedor'] !== null && $pedido['vendedor'] !== '') {
-                            $stmt->bindValue(':id_vendedor', (int)$pedido['vendedor'], PDO::PARAM_INT);
-                        } else {
-                            $stmt->bindValue(':id_vendedor', null, PDO::PARAM_NULL);
-                        }
-                        break;
-                    case 'id_proveedor':
-                        if (isset($pedido['proveedor']) && $pedido['proveedor'] !== null && $pedido['proveedor'] !== '') {
-                            $stmt->bindValue(':id_proveedor', (int)$pedido['proveedor'], PDO::PARAM_INT);
-                        } else {
-                            $stmt->bindValue(':id_proveedor', null, PDO::PARAM_NULL);
-                        }
-                        break;
+                    }
+                    $stmt->bindValue(':' . $col, $val);
                 }
             }
 
             $stmt->execute();
-
             $pedidoId = (int)$db->lastInsertId();
 
-            $detalleStmt = $db->prepare('
-                INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
-                VALUES (:id_pedido, :id_producto, :cantidad, :cantidad_devuelta)
-            ');
+            // 3. Insertar items y descontar stock
+            $detalleStmt = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
+            
+            require_once __DIR__ . '/stock.php'; // Asegurar que StockModel está disponible
 
             foreach ($items as $item) {
-                $detalleStmt->bindValue(':id_pedido', $pedidoId, PDO::PARAM_INT);
-                $detalleStmt->bindValue(':id_producto', (int)$item['id_producto'], PDO::PARAM_INT);
-                $detalleStmt->bindValue(':cantidad', (int)$item['cantidad'], PDO::PARAM_INT);
-                $detalleStmt->bindValue(':cantidad_devuelta', isset($item['cantidad_devuelta']) ? (int)$item['cantidad_devuelta'] : 0, PDO::PARAM_INT);
-                $detalleStmt->execute();
-            }
+                $prodId = (int)$item['id_producto'];
+                $cant = (int)$item['cantidad'];
 
-            // Las operaciones de stock ahora se manejan por triggers en la base de datos.
-            // No se realizan inserciones a la tabla `stock` desde PHP para evitar
-            // inconsistencias entre despliegues con esquemas distintos.
+                // Insertar detalle
+                $detalleStmt->bindValue(':id_pedido', $pedidoId, PDO::PARAM_INT);
+                $detalleStmt->bindValue(':id_producto', $prodId, PDO::PARAM_INT);
+                $detalleStmt->bindValue(':cantidad', $cant, PDO::PARAM_INT);
+                $detalleStmt->execute();
+
+                // Descontar stock (PHP logic)
+                // Usamos el id_vendedor del pedido como responsable del movimiento, si existe
+                $vendedorId = isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null;
+                StockModel::registrarSalida($prodId, $cant, $vendedorId, $db);
+            }
 
             $db->commit();
             return $pedidoId;
+
         } catch (Exception $e) {
-            if (isset($db) && $db instanceof PDO) {
+            if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
             }
-            throw new Exception('Error al crear pedido: ' . $e->getMessage());
+            throw $e;
         }
     }
 

@@ -159,11 +159,56 @@ class StockModel
      * @return bool
      * @throws Exception si ninguna estrategia funciona
      */
-    public static function registrarSalida($idProducto, $cantidad, $idVendedor = null)
+    public static function registrarSalida($idProducto, $cantidad, $idVendedor = null, $pdo = null)
     {
-        // En esta rama hemos decidido delegar la gestión de stock a triggers en
-        // la base de datos. El método PHP queda deshabilitado para evitar
-        // inserciones que puedan fallar por diferencias de esquema.
-        throw new Exception('Registro de salida de stock deshabilitado en PHP: use triggers en la base de datos.');
+        try {
+            $db = $pdo ? $pdo : (new Conexion())->conectar();
+            // Insertar movimiento negativo
+            // Asumimos que la cantidad recibida es positiva (cantidad a descontar),
+            // por lo que la guardamos como negativa en la tabla.
+            $cantidadNegativa = -abs($cantidad);
+            
+            $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, NOW())');
+            $stmt->bindValue(':id_producto', $idProducto, PDO::PARAM_INT);
+            // Si no hay vendedor, usamos 1 (Admin/Sistema) como fallback para evitar error de FK
+            $stmt->bindValue(':id_usuario', $idVendedor ?: 1, PDO::PARAM_INT);
+            $stmt->bindValue(':cantidad', $cantidadNegativa, PDO::PARAM_INT);
+            
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log('Error al registrar salida de stock: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            // Lanzar excepción para que la transacción superior pueda hacer rollback
+            throw new Exception("No se pudo registrar la salida de stock: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Registrar un movimiento de entrada (cantidad positiva).
+     * Útil para devoluciones o correcciones de inventario.
+     *
+     * @param int $idProducto
+     * @param int $cantidad (debe ser positiva)
+     * @param int|null $idVendedor
+     * @param PDO|null $pdo
+     * @return bool
+     * @throws Exception
+     */
+    public static function registrarEntrada($idProducto, $cantidad, $idVendedor = null, $pdo = null)
+    {
+        try {
+            $db = $pdo ? $pdo : (new Conexion())->conectar();
+            
+            $cantidadPositiva = abs($cantidad);
+            
+            $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, NOW())');
+            $stmt->bindValue(':id_producto', $idProducto, PDO::PARAM_INT);
+            $stmt->bindValue(':id_usuario', $idVendedor ?: 1, PDO::PARAM_INT);
+            $stmt->bindValue(':cantidad', $cantidadPositiva, PDO::PARAM_INT);
+            
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log('Error al registrar entrada de stock: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            throw new Exception("No se pudo registrar la entrada de stock: " . $e->getMessage());
+        }
     }
 }
