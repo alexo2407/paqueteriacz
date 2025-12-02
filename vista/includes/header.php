@@ -37,15 +37,42 @@
                 </li>
                 <?php endif; ?>
 
-
-
-                <?php if (in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>pedidos/listar">pedidos</a>
+                <!-- Menú de Catálogos para Proveedores -->
+                <?php if (in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) && !in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarCatalogos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Catálogos
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarCatalogos">
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>monedas/listar">Monedas</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>paises/listar">Países</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>departamentos/listar">Departamentos</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>municipios/listar">Municipios</a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>barrios/listar">Barrios</a>
+                        </li>
+                    </ul>
                 </li>
                 <?php endif; ?>
 
-                <?php if (in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)): ?>
+
+                <!-- Pedidos: Admin y Proveedor -->
+                <?php if (in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true) || in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true)): ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= RUTA_URL ?>pedidos/listar">Pedidos</a>
+                </li>
+                <?php endif; ?>
+
+                <!-- Stock y Productos: Admin y Proveedor -->
+                <?php if (in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true) || in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true)): ?>
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>stock/listar">Stock</a>
                 </li>

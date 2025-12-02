@@ -99,18 +99,32 @@ try {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="proveedor" class="form-label">Proveedor</label>
-                            <select class="form-select" id="proveedor" name="proveedor" required>
-                                <option value="" disabled selected>Selecciona un proveedor</option>
-                                <?php foreach ($proveedores as $proveedor): ?>
-                                    <option value="<?= $proveedor['id']; ?>" <?= (isset($old_posted['proveedor']) && (int)$old_posted['proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
-                                        <?= htmlspecialchars($proveedor['nombre']); ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if (empty($proveedores)): ?>
-                                <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
+                            <?php
+                            require_once __DIR__ . '/../../../utils/permissions.php';
+                            // Debug: ver valores de sesión
+                            // echo "<!-- DEBUG: rol=" . ($_SESSION['rol'] ?? 'NO SET') . ", user_id=" . ($_SESSION['user_id'] ?? 'NO SET') . " -->";
+                            $canSelect = canSelectAnyProveedor();
+                            // echo "<!-- DEBUG: canSelectAnyProveedor=" . ($canSelect ? 'true' : 'false') . " -->";
+                            
+                            if ($canSelect): ?>
+                                <select class="form-select" id="proveedor" name="proveedor" required>
+                                    <option value="" disabled selected>Selecciona un proveedor</option>
+                                    <?php foreach ($proveedores as $proveedor): ?>
+                                        <option value="<?= $proveedor['id']; ?>" <?= (isset($old_posted['proveedor']) && (int)$old_posted['proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
+                                            <?= htmlspecialchars($proveedor['nombre']); ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if (empty($proveedores)): ?>
+                                    <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
+                                <?php endif; ?>
+                                <div class="invalid-feedback">Por favor, selecciona un proveedor.</div>
+                            <?php else: ?>
+                                <!-- Usuario Proveedor: auto-asignado -->
+                                <input type="hidden" id="proveedor" name="proveedor" value="<?= $_SESSION['user_id'] ?>">
+                                <input type="text" class="form-control" value="<?= htmlspecialchars($_SESSION['nombre'] ?? 'Mi usuario') ?>" disabled>
+                                <div class="form-text text-success">✓ Este pedido será asignado automáticamente a tu usuario.</div>
                             <?php endif; ?>
-                            <div class="invalid-feedback">Por favor, selecciona un proveedor.</div>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -193,7 +207,7 @@ try {
                 </div>
                 <div class="mb-3">
                     <label for="direccion" class="form-label">Dirección de Entrega</label>
-                    <textarea class="form-control" id="direccion" name="direccion" rows="2" required><?= htmlspecialchars($old_posted['direccion'] ?? '') ?></textarea>
+                    <textarea class="form-control" id="direccion" name="direccion" rows="2"><?= htmlspecialchars($old_posted['direccion'] ?? '') ?></textarea>
                     <div class="invalid-feedback">Por favor, proporciona una dirección válida.</div>
                 </div>
                 <div class="row">
@@ -220,12 +234,12 @@ try {
                 <div class="row mt-3">
                     <div class="col-md-6">
                         <label for="latitud" class="form-label">Latitud</label>
-                        <input type="text" class="form-control" id="latitud" name="latitud" pattern="-?\d+(\.\d+)?" required value="<?= htmlspecialchars($old_posted['latitud'] ?? '') ?>">
+                        <input type="text" class="form-control" id="latitud" name="latitud" pattern="-?\d+(\.\d+)?" value="<?= htmlspecialchars($old_posted['latitud'] ?? '') ?>">
                         <div class="invalid-feedback">Por favor, ingresa una latitud válida (número decimal).</div>
                     </div>
                     <div class="col-md-6">
                         <label for="longitud" class="form-label">Longitud</label>
-                        <input type="text" class="form-control" id="longitud" name="longitud" pattern="-?\d+(\.\d+)?" required value="<?= htmlspecialchars($old_posted['longitud'] ?? '') ?>">
+                        <input type="text" class="form-control" id="longitud" name="longitud" pattern="-?\d+(\.\d+)?" value="<?= htmlspecialchars($old_posted['longitud'] ?? '') ?>">
                         <div class="invalid-feedback">Por favor, ingresa una longitud válida (número decimal).</div>
                     </div>
                 </div>

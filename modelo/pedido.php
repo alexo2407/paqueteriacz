@@ -523,7 +523,8 @@ class PedidosModel
                     ep.nombre_estado AS Estado,
                     p.precio_local AS PrecioLocal,
                     p.precio_usd AS PrecioUSD,
-                    m.codigo AS Moneda
+                    m.codigo AS Moneda,
+                    p.id_proveedor
                 FROM pedidos p
                 LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
                 LEFT JOIN monedas m ON p.id_moneda = m.id

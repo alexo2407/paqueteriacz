@@ -43,15 +43,11 @@
     // en las definiciones de validación.
     const defaultMessages = {
         'numero_orden': 'Número de orden inválido.',
-        'destinatario': 'Nombre inválido.',
-        'telefono': 'Teléfono inválido (8-15 dígitos).',
         'producto_id': 'Producto requerido.',
         'cantidad_producto': 'Cantidad inválida.',
         'direccion': 'Dirección inválida.',
         'latitud': 'Latitud inválida.',
         'longitud': 'Longitud inválida.',
-        'estado': 'Selecciona un estado válido.',
-        'vendedor': 'Selecciona un usuario asignado.',
         'moneda': 'Selecciona una moneda válida.',
         'proveedor': 'Selecciona un proveedor válido.',
         'precio_local': 'Precio inválido.',
@@ -215,14 +211,16 @@
         const summaryFields = [
             { id: 'numero_orden', fn: v => v.trim().length > 0, msg: 'Por favor ingresa un número de orden.' },
             { id: 'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.' },
-            { id: 'cantidad_producto', fn: validarCantidadProducto, msg: 'La cantidad debe ser al menos 1 y no superar el stock disponible.' },
-            { id: 'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.' },
-            { id: 'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.' },
-            { id: 'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.' }
+            { id: 'cantidad_producto', fn: validarCantidadProducto, msg: 'La cantidad debe ser al menos 1 y no superar el stock disponible.' }
         ];
 
+        // Solo validar proveedor si el campo es un select visible (no hidden input)
+        const proveedorField = document.getElementById('proveedor');
+        if (proveedorField && proveedorField.tagName === 'SELECT') {
+            summaryFields.push({ id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' });
+        }
+
         summaryFields.push(
-            { id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' },
             { id: 'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.' }
         );
 
@@ -559,12 +557,14 @@
             { id: 'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.' },
             { id: 'cantidad_producto', fn: v => v !== '' && Number.isInteger(Number(v)) && Number(v) >= 1, msg: 'La cantidad debe ser al menos 1.' },
             { id: 'precio_local', fn: v => v === '' || validarDecimal(v), msg: 'Precio local inválido.' },
-            { id: 'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.' },
-            { id: 'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.' },
-            { id: 'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.' },
-            { id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' },
             { id: 'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.' }
         ];
+
+        // Solo validar proveedor si el campo es un select visible (no hidden input)
+        const proveedorFieldEdit = document.getElementById('proveedor');
+        if (proveedorFieldEdit && proveedorFieldEdit.tagName === 'SELECT') {
+            summaryFields.push({ id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' });
+        }
 
         // If the form uses multiple product rows (productos[]), validate them instead
         const productosContainerEd = document.getElementById('productosContainer');

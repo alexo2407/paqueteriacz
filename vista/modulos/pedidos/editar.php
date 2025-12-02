@@ -133,16 +133,25 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="proveedor" class="form-label">Proveedor</label>
-                            <select class="form-control" id="proveedor" name="proveedor" required>
-                                <option value="">Selecciona un proveedor</option>
-                                <?php foreach ($proveedores as $proveedor): ?>
-                                    <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
-                                        <?= htmlspecialchars($proveedor['nombre']) ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if (empty($proveedores)): ?>
-                                <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
+                            <?php
+                            require_once __DIR__ . '/../../../utils/permissions.php';
+                            if (canSelectAnyProveedor()): ?>
+                                <select class="form-control" id="proveedor" name="proveedor" required>
+                                    <option value="">Selecciona un proveedor</option>
+                                    <?php foreach ($proveedores as $proveedor): ?>
+                                        <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
+                                            <?= htmlspecialchars($proveedor['nombre']) ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if (empty($proveedores)): ?>
+                                    <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <!-- Usuario Proveedor: auto-asignado, no editable -->
+                                <input type="hidden" name="proveedor" value="<?= $pedido['id_proveedor'] ?>">
+                                <input type="text" class="form-control" value="<?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'Mi usuario') ?>" disabled>
+                                <div class="form-text">Los proveedores no pueden cambiar el proveedor asignado.</div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -285,6 +294,31 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                                     </option>
                                 <?php endforeach; ?>
                             </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="proveedor" class="form-label">Proveedor</label>
+                            <?php
+                            require_once __DIR__ . '/../../../utils/permissions.php';
+                            if (canSelectAnyProveedor()): ?>
+                                <select class="form-control" id="proveedor" name="proveedor" required>
+                                    <option value="">Selecciona un proveedor</option>
+                                    <?php foreach ($proveedores as $prov): ?>
+                                        <option value="<?= $prov['id'] ?>" <?= $pedido['id_proveedor'] == $prov['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($prov['nombre']) ?><?= isset($prov['email']) && $prov['email'] ? ' — ' . htmlspecialchars($prov['email']) : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if (empty($proveedores)): ?>
+                                    <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <!-- Usuario Proveedor: auto-asignado, no editable -->
+                                <input type="hidden" name="proveedor" value="<?= $pedido['id_proveedor'] ?>">
+                                <input type="text" class="form-control" value="<?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'Mi usuario') ?>" disabled>
+                                <div class="form-text">Los proveedores no pueden cambiar el proveedor asignado.</div>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <div class="col-md-4">

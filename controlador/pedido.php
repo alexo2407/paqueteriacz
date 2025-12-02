@@ -40,6 +40,13 @@ class PedidosController {
     public function crearPedidoAPI($jsonData) {
         $data = $jsonData;
 
+        // Si el usuario es Proveedor, forzar su ID como proveedor del pedido
+        require_once __DIR__ . '/../utils/permissions.php';
+        if (isProveedor()) {
+            $data['id_proveedor'] = $_SESSION['user_id'];
+            $data['proveedor'] = $_SESSION['user_id'];
+        }
+
         // Validar la estructura del pedido
         $validacion = $this->validarDatosPedido($data);
         if (!$validacion["success"]) {
@@ -411,12 +418,37 @@ class PedidosController {
      * Obtener listado de pedidos con información extendida para la vista.
      *
      * Retorna un array listo para renderizar en el frontend.
+     * Si el usuario es Proveedor, solo retorna sus propios pedidos.
      * @return array
      */
     public function listarPedidosExtendidos() {
+        require_once __DIR__ . '/../utils/permissions.php';
+        
         // Llamar al modelo para obtener los pedidos
         $pedidos = PedidosModel::obtenerPedidosExtendidos();
-        return $pedidos;
+        
+        // Si es admin, mostrar todos los pedidos (tiene prioridad sobre proveedor)
+        if (isSuperAdmin()) {
+            return $pedidos;
+        }
+        
+        // Si es proveedor (y NO es admin), filtrar solo sus pedidos
+        if (isProveedor()) {
+            $userId = (int)$_SESSION['user_id'];
+            $pedidosFiltrados = [];
+            
+            foreach ($pedidos as $pedido) {
+                $pedidoProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null;
+                if ($pedidoProveedor === $userId) {
+                    $pedidosFiltrados[] = $pedido;
+                }
+            }
+            
+            return $pedidosFiltrados;
+        }
+        
+        // Otros roles (vendedor, repartidor) no tienen acceso a lista de pedidos
+        return [];
     }
 
 
@@ -582,40 +614,40 @@ class PedidosController {
         $estado = $parse_positive_int($data, 'estado');
         $vendedor = $parse_positive_int($data, 'vendedor');
         $proveedor = $parse_positive_int($data, 'proveedor');
+        
+        // Si el usuario es Proveedor, forzar su ID como proveedor del pedido
+        require_once __DIR__ . '/../utils/permissions.php';
+        if (isProveedor()) {
+            $proveedor = $_SESSION['user_id'];
+        }
+        
         $moneda = $parse_positive_int($data, 'moneda');
 
         $comentario = trim($data['comentario'] ?? '');
         $direccion = trim($data['direccion'] ?? '');
-        $latitud = isset($data['latitud']) ? filter_var($data['latitud'], FILTER_VALIDATE_FLOAT) : false;
-        $longitud = isset($data['longitud']) ? filter_var($data['longitud'], FILTER_VALIDATE_FLOAT) : false;
+
+        // Coordenadas (opcionales ahora)
+        $latitud = isset($data['latitud']) && $data['latitud'] !== '' ? (float)$data['latitud'] : null;
+        $longitud = isset($data['longitud']) && $data['longitud'] !== '' ? (float)$data['longitud'] : null;
+
+        // Geo IDs (opcionales)
+        $idPais = $parse_positive_int($data, 'id_pais');
+        $idDepartamento = $parse_positive_int($data, 'id_departamento');
+        $idMunicipio = $parse_positive_int($data, 'id_municipio');
+        $idBarrio = $parse_positive_int($data, 'id_barrio');
 
         $precioLocal = null;
         $precioUsdEntrada = null;
 
+        // Precios (opcionales)
         if (isset($data['precio_local']) && $data['precio_local'] !== '') {
-            $precioLocalSanitized = str_replace(',', '.', (string)$data['precio_local']);
-            if (!is_numeric($precioLocalSanitized)) {
-                $errores[] = 'El precio local debe ser un número válido.';
-            } else {
-                $precioLocal = round((float)$precioLocalSanitized, 2);
-                if ($precioLocal < 0) {
-                    $errores[] = 'El precio local no puede ser negativo.';
-                }
-            }
+            $precioLocal = (float)str_replace(',', '.', (string)$data['precio_local']);
         }
-
         if (isset($data['precio_usd']) && $data['precio_usd'] !== '') {
-            $precioUsdSanitized = str_replace(',', '.', (string)$data['precio_usd']);
-            if (!is_numeric($precioUsdSanitized)) {
-                $errores[] = 'El precio en USD debe ser un número válido.';
-            } else {
-                $precioUsdEntrada = round((float)$precioUsdSanitized, 2);
-                if ($precioUsdEntrada < 0) {
-                    $errores[] = 'El precio en USD no puede ser negativo.';
-                }
-            }
+            $precioUsdEntrada = (float)str_replace(',', '.', (string)$data['precio_usd']);
         }
 
+        // Validaciones de campos REQUERIDOS
         if ($numeroOrden === '') {
             $errores[] = 'El número de orden es obligatorio.';
         } else {
@@ -624,36 +656,39 @@ class PedidosController {
                 $errores[] = 'El número de orden debe ser un entero positivo.';
             }
         }
-        if ($destinatario === '') {
-            $errores[] = 'El destinatario es obligatorio.';
-        }
-        if ($telefono === '' || !preg_match('/^[0-9]{8,15}$/', $telefono)) {
-            $errores[] = 'El teléfono debe contener entre 8 y 15 dígitos.';
-        }
+        // Destinatario y teléfono ahora son opcionales
+        // if ($destinatario === '') {
+        //     $errores[] = 'El destinatario es obligatorio.';
+        // }
+        // if ($telefono === '' || !preg_match('/^[0-9]{8,15}$/', $telefono)) {
+        //     $errores[] = 'El teléfono debe contener entre 8 y 15 dígitos.';
+        // }
         if ($productoId === null || $productoId === false) {
             $errores[] = 'Selecciona un producto válido.';
         }
         if ($cantidadProducto === null || $cantidadProducto === false) {
             $errores[] = 'La cantidad debe ser un número entero mayor a cero.';
         }
-        if ($estado === null || $estado === false) {
-            $errores[] = 'Selecciona un estado válido.';
-        }
-        if ($vendedor === null || $vendedor === false) {
-            $errores[] = 'Selecciona un usuario asignado válido.';
-        }
+        // Estado y vendedor ahora son opcionales
+        // if ($estado === null || $estado === false) {
+        //     $errores[] = 'Selecciona un estado válido.';
+        // }
+        // if ($vendedor === null || $vendedor === false) {
+        //     $errores[] = 'Selecciona un usuario asignado válido.';
+        // }
         if ($proveedor === null || $proveedor === false) {
             $errores[] = 'Selecciona un proveedor válido.';
         }
         if ($moneda === null || $moneda === false) {
             $errores[] = 'Selecciona una moneda válida.';
         }
-        if ($direccion === '') {
-            $errores[] = 'La dirección es obligatoria.';
-        }
-        if ($latitud === false || $longitud === false) {
-            $errores[] = 'Las coordenadas no tienen un formato válido.';
-        }
+        // Dirección y coordenadas ahora son opcionales
+        // if ($direccion === '') {
+        //     $errores[] = 'La dirección es obligatoria.';
+        // }
+        // if ($latitud === false || $longitud === false) {
+        //     $errores[] = 'Las coordenadas no tienen un formato válido.';
+        // }
 
         if (empty($errores) && PedidosModel::existeNumeroOrden((int)$numeroOrden)) {
             $errores[] = 'El número de orden ya existe en la base de datos.';

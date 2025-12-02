@@ -92,10 +92,16 @@ class EnlacesController
 
             // Políticas de acceso por módulo basadas en nombre de rol
             $allowedByModule = [
-                'pedidos' => [ROL_NOMBRE_ADMIN],
+                'pedidos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'usuarios' => [ROL_NOMBRE_ADMIN],
-                'stock' => [ROL_NOMBRE_ADMIN],
-                'seguimiento' => [ROL_NOMBRE_REPARTIDOR],
+                'stock' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'productos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'monedas' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'paises' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'departamentos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'municipios' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'barrios' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'seguimiento' => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN],
             ];
 
             $userRoleNames = $_SESSION['roles_nombres'] ?? [];
