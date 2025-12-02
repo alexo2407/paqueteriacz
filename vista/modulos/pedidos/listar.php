@@ -123,9 +123,6 @@ endif;
                                 <!-- <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a> -->
                                 <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
                                 
-                                <form action="<?= RUTA_URL ?>pedidos/eliminar/<?= $pedido['ID_Pedido']; ?>" method="POST" class="d-inline form-eliminar">
-                                    <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
-                                </form>
 
                                 <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
                                     <a href="https://www.google.com/maps/dir/?api=1&destination=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>&travelmode=driving"
@@ -182,26 +179,6 @@ endif;
         }
     });
 
-    // SweetAlert para eliminar
-    $('.form-eliminar').submit(function(e){
-        e.preventDefault();
-        var form = this;
-        
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: "Esta acción eliminará el pedido y restaurará el stock. ¡No se puede deshacer!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        });
-    });
 });
 
 </script>
