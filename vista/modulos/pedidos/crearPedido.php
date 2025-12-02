@@ -179,14 +179,14 @@ try {
                         <div class="mb-3">
                             <label for="destinatario" class="form-label">Nombre del Destinatario</label>
                             <!-- Se eliminó el patrón estricto para permitir acentos y caracteres internacionales -->
-                            <input type="text" class="form-control" id="destinatario" name="destinatario" required value="<?= htmlspecialchars($old_posted['destinatario'] ?? '') ?>">
+                            <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($old_posted['destinatario'] ?? '') ?>">
                             <div class="invalid-feedback">Por favor, ingresa un nombre válido.</div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="telefono" class="form-label">Teléfono</label>
-                            <input type="tel" class="form-control" id="telefono" name="telefono" pattern="[0-9]{8,15}" required value="<?= htmlspecialchars($old_posted['telefono'] ?? '') ?>">
+                            <input type="tel" class="form-control" id="telefono" name="telefono" pattern="[0-9]{8,15}" value="<?= htmlspecialchars($old_posted['telefono'] ?? '') ?>">
                             <div class="invalid-feedback">Por favor, ingresa un número de teléfono válido (solo números, de 8 a 15 dígitos).</div>
                         </div>
                     </div>
@@ -248,7 +248,7 @@ try {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="estado" class="form-label">Estado</label>
-                            <select class="form-select" id="estado" name="estado" required>
+                            <select class="form-select" id="estado" name="estado">
                                 <option value="" disabled selected>Selecciona un estado</option>
                                 <?php foreach ($estados as $estado): ?>
                                     <option value="<?= $estado['id']; ?>" <?= (isset($old_posted['estado']) && (int)$old_posted['estado'] === (int)$estado['id']) ? 'selected' : '' ?>><?= htmlspecialchars($estado['nombre_estado']); ?></option>
@@ -260,7 +260,7 @@ try {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="vendedor" class="form-label">Usuario Asignado</label>
-                            <select class="form-select" id="vendedor" name="vendedor" required>
+                            <select class="form-select" id="vendedor" name="vendedor">
                                 <option value="" disabled selected>Selecciona un usuario (Repartidor)</option>
                                 <?php foreach ($vendedores as $vendedor): ?>
                                     <option value="<?= $vendedor['id']; ?>" <?= (isset($old_posted['vendedor']) && (int)$old_posted['vendedor'] === (int)$vendedor['id']) ? 'selected' : '' ?> >

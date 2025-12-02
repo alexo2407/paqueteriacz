@@ -43,17 +43,14 @@ class PedidosController {
         // Validar la estructura del pedido
         $validacion = $this->validarDatosPedido($data);
         if (!$validacion["success"]) {
-            return $validacion;
+            // ...
+            throw new Exception($msg, 400);
         }
 
-        try {
-            // Verificar si el número de orden ya existe
-            if (PedidosModel::existeNumeroOrden($data["numero_orden"])) {
-                return [
-                    "success" => false,
-                    "message" => "El número de orden ya existe en la base de datos."
-                ];
-            }
+        // Verificar si el número de orden ya existe
+        if (PedidosModel::existeNumeroOrden($data["numero_orden"])) {
+             throw new Exception("El número de orden ya existe en la base de datos.", 400);
+        }
 
             // Support multiple products: either provide single 'producto' + 'cantidad'
             // or an array 'productos' with items { producto_id, cantidad }.
@@ -101,15 +98,14 @@ class PedidosController {
             $longitud = $data['longitud'] ?? null;
             if ($latitud === null || $longitud === null) {
                 if (!empty($data["coordenadas"]) && strpos($data["coordenadas"], ',') !== false) {
-                    [$latitud, $longitud] = array_map('trim', explode(',', $data['coordenadas']));
+                    $parts = array_map('trim', explode(',', $data['coordenadas']));
+                    $latitud = $parts[0];
+                    $longitud = $parts[1];
                 }
             }
 
             if (!is_numeric($latitud) || !is_numeric($longitud)) {
-                return [
-                    "success" => false,
-                    "message" => "Coordenadas inválidas para el pedido."
-                ];
+                throw new Exception("Coordenadas inválidas para el pedido.", 400);
             }
 
             $precioLocal = null;
@@ -120,37 +116,45 @@ class PedidosController {
             }
 
             $monedaId = isset($data['id_moneda']) ? (int)$data['id_moneda'] : null;
-            if ($monedaId === 0) {
-                $monedaId = null;
-            }
+            if ($monedaId === 0) $monedaId = null;
 
             if ($monedaId !== null) {
                 $m = MonedaModel::obtenerPorId($monedaId);
-                if (!$m) $monedaId = null;
+                if (!$m) {
+                    throw new Exception("La moneda especificada no existe.", 400);
+                }
             }
 
             $vendedorId = isset($data['id_vendedor']) && is_numeric($data['id_vendedor']) ? (int)$data['id_vendedor'] : null;
             if ($vendedorId !== null) {
                 $uv = (new UsuarioModel())->obtenerPorId($vendedorId);
-                if (!$uv) $vendedorId = null;
+                if (!$uv) {
+                    throw new Exception("El vendedor especificado no existe.", 400);
+                }
             }
 
             $proveedorId = isset($data['id_proveedor']) && is_numeric($data['id_proveedor']) ? (int)$data['id_proveedor'] : null;
             if ($proveedorId !== null) {
                 $up = (new UsuarioModel())->obtenerPorId($proveedorId);
-                if (!$up) $proveedorId = null;
+                if (!$up) {
+                    throw new Exception("El proveedor especificado no existe.", 400);
+                }
             }
 
             $municipioId = isset($data['id_municipio']) && is_numeric($data['id_municipio']) ? (int)$data['id_municipio'] : null;
             if ($municipioId !== null) {
                 $mm = MunicipioModel::obtenerPorId($municipioId);
-                if (!$mm) $municipioId = null;
+                if (!$mm) {
+                    throw new Exception("El municipio especificado no existe.", 400);
+                }
             }
 
             $barrioId = isset($data['id_barrio']) && is_numeric($data['id_barrio']) ? (int)$data['id_barrio'] : null;
             if ($barrioId !== null) {
                 $bb = BarrioModel::obtenerPorId($barrioId);
-                if (!$bb) $barrioId = null;
+                if (!$bb) {
+                    throw new Exception("El barrio especificado no existe.", 400);
+                }
             }
 
             $precioUsd = null;
@@ -199,12 +203,6 @@ class PedidosController {
                 "data" => $pedidoPayload['numero_orden']
             ];
 
-        } catch (Exception $e) {
-            return [
-                "success" => false,
-                "message" => "Error al crear el pedido: " . $e->getMessage()
-            ];
-        }
     }
 
     /**
@@ -864,7 +862,7 @@ class PedidosController {
             if ($resultado) {
                 $resp = ['success' => true, 'message' => 'Pedido actualizado correctamente.'];
                 if ($isAjax) { $sendJson($resp); }
-                require_once __DIR__ . '/../utils/session.php'; set_flash('success', $resp['message']); header('Location: '. RUTA_URL . 'pedidos/listar'); exit;
+                require_once __DIR__ . '/../utils/session.php'; set_flash('success', $resp['message']); header('Location: '. RUTA_URL . 'pedidos/editar/' . $data['id_pedido']); exit;
             } else {
                 $resp = ['success' => false, 'message' => 'No se realizaron cambios en el pedido.'];
                 if ($isAjax) { $sendJson($resp); }

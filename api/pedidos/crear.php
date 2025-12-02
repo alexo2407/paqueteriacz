@@ -26,6 +26,7 @@
  */
 
 // Encabezados para CORS y tipo de respuesta
+// Encabezados para CORS y tipo de respuesta
 header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
@@ -38,56 +39,53 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 }
 
 // Dependencias: middleware de autenticación y controlador de pedidos
-require_once __DIR__ . '/../utils/autenticacion.php';
-require_once __DIR__ . '/../../controlador/pedido.php';
-require_once __DIR__ . '/../../modelo/pedido.php';
+try {
+    require_once __DIR__ . '/../utils/autenticacion.php';
+    require_once __DIR__ . '/../../controlador/pedido.php';
+    require_once __DIR__ . '/../../modelo/pedido.php';
 
-// Obtener encabezados y extraer token
-$headers = getallheaders();
-
-if (!isset($headers['Authorization'])) {
-    // Token ausente
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Token requerido']);
-    exit;
-}
-
-// El header suele venir como "Bearer <token>"; limpiamos el prefijo
-$token = str_replace('Bearer ', '', $headers['Authorization']);
-
-// Validar token JWT
-$auth = new AuthMiddleware();
-$validacion = $auth->validarToken($token);
-
-if (!$validacion['success']) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => $validacion['message']]);
-    exit;
-}
-
-// Leer y validar el body JSON
-$data = json_decode(file_get_contents("php://input"), true);
-
-if (!$data || !is_array($data)) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Datos inválidos o vacíos']);
-    exit;
-}
-
-// Delegar la creación del pedido al controlador centralizado
-$pedidoController = new PedidosController();
-// Si tenemos datos del usuario autenticado, prefijar id_proveedor para el pedido
-if ($validacion['success'] && isset($validacion['data']['id'])) {
-    // No sobreescribir si el cliente explícitamente envió un proveedor
-    if (!isset($data['id_proveedor']) || $data['id_proveedor'] === null || $data['id_proveedor'] === '') {
-        $data['id_proveedor'] = (int)$validacion['data']['id'];
+    // Verificar autenticación
+    $headers = getallheaders();
+    if (!isset($headers['Authorization'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Token requerido']);
+        exit;
     }
+
+    $token = str_replace('Bearer ', '', $headers['Authorization']);
+    $auth = new AuthMiddleware();
+    $validacion = $auth->validarToken($token);
+    
+    if (!$validacion['success']) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => $validacion['message']]);
+        exit;
+    }
+
+    // Leer y validar el body JSON
+    $data = json_decode(file_get_contents("php://input"), true);
+
+    if (!$data || !is_array($data)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Datos inválidos o vacíos']);
+        exit;
+    }
+
+    // Delegar la creación del pedido al controlador centralizado
+    $pedidoController = new PedidosController();
+    $response = $pedidoController->crearPedidoAPI($data);
+
+    // El controlador ya devuelve el sobre { success, message, data }
+    http_response_code(200);
+    echo json_encode($response);
+} catch (Throwable $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error interno: ' . $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
+    ]);
 }
-
-$response = $pedidoController->crearPedidoAPI($data);
-
-// El controlador ya devuelve el sobre { success, message, data }
-http_response_code(200);
-echo json_encode($response);
 
 ?>

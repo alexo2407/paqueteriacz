@@ -220,6 +220,66 @@
 
         </div>
 
+        <!-- Geographic Data Management (CRUD) -->
+        <div class="section-container">
+            <h2 class="section-title">Geographic Data Management (CRUD)</h2>
+            <p>Endpoints to manage Paises, Departamentos, Municipios, and Barrios. All endpoints support GET, POST, PUT, DELETE.</p>
+
+            <h4>Paises</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/paises?id={id} (optional)</div>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/geoinfo/paises</div>
+            <div class="code-block"><span class="badge-endpoint">PUT</span> /api/geoinfo/paises?id={id}</div>
+            <div class="code-block"><span class="badge-endpoint">DELETE</span> /api/geoinfo/paises?id={id}</div>
+            
+            <h5>Payload (POST/PUT)</h5>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "nombre": "Nombre del Pais",
+    "codigo_iso": "NP"
+}</code></pre>
+
+            <hr>
+
+            <h4>Departamentos</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/departamentos?id={id} (optional)</div>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/geoinfo/departamentos</div>
+            <div class="code-block"><span class="badge-endpoint">PUT</span> /api/geoinfo/departamentos?id={id}</div>
+            <div class="code-block"><span class="badge-endpoint">DELETE</span> /api/geoinfo/departamentos?id={id}</div>
+
+            <h5>Payload (POST/PUT)</h5>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "nombre": "Nombre del Departamento",
+    "id_pais": 1
+}</code></pre>
+
+            <hr>
+
+            <h4>Municipios</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/municipios?id={id} (optional)</div>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/geoinfo/municipios</div>
+            <div class="code-block"><span class="badge-endpoint">PUT</span> /api/geoinfo/municipios?id={id}</div>
+            <div class="code-block"><span class="badge-endpoint">DELETE</span> /api/geoinfo/municipios?id={id}</div>
+
+            <h5>Payload (POST/PUT)</h5>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "nombre": "Nombre del Municipio",
+    "id_departamento": 1
+}</code></pre>
+
+            <hr>
+
+            <h4>Barrios</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/barrios?id={id} (optional)</div>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/geoinfo/barrios</div>
+            <div class="code-block"><span class="badge-endpoint">PUT</span> /api/geoinfo/barrios?id={id}</div>
+            <div class="code-block"><span class="badge-endpoint">DELETE</span> /api/geoinfo/barrios?id={id}</div>
+
+            <h5>Payload (POST/PUT)</h5>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "nombre": "Nombre del Barrio",
+    "id_municipio": 1
+}</code></pre>
+        </div>
+
         <!-- Products: detailed -->
         <div class="section-container">
             <h2 class="section-title">Products (CRUD)</h2>

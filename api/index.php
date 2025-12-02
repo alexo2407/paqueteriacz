@@ -17,15 +17,49 @@
  *    or framework. Routes are matched using regex against the normalized path.
  */
 
-/*ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL); */
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
 
 
 require_once __DIR__ . '/../config/config.php'; // Configuraciones globales
 require_once __DIR__ . '/../vendor/autoload.php'; // Autoload para dependencias
 
 header('Content-Type: application/json');
+
+// Global Exception Handler for API
+set_exception_handler(function ($e) {
+    $code = $e->getCode();
+    $message = $e->getMessage();
+    $httpCode = 500;
+    $errorCode = 'SERVER_ERROR';
+
+    // Check for integrity constraint violation (SQLSTATE 23000)
+    if ($e instanceof PDOException && $e->getCode() == '23000') {
+        $httpCode = 400;
+        $message = "Datos inválidos: revisa las relaciones enviadas.";
+        $errorCode = 'INTEGRITY_CONSTRAINT';
+    } elseif ($e->getCode() >= 400 && $e->getCode() < 600) {
+        // Allow custom exceptions to set HTTP code
+        $httpCode = $e->getCode();
+        // If it's a custom exception, we might want to use its message directly
+        // assuming it's safe. For now, we trust the message if it's not a generic Error.
+    }
+
+    // Hide internal details in production (optional, but requested by user)
+    // For now, we follow the rule: "NEVER EXPONER ERRORES SQL NI STACK TRACE"
+    if ($e instanceof PDOException && $errorCode === 'SERVER_ERROR') {
+         $message = "Error interno del servidor.";
+    }
+
+    // ...
+    http_response_code($httpCode);
+    echo json_encode([
+        'error' => $message,
+        'code' => $errorCode
+    ]);
+    exit;
+});
 
 // Normalizar la ruta solicitada (sin query string) y quitar slash final
 $rawPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -49,6 +83,24 @@ if (preg_match('/\/api\/pedidos\/crear$/', $path) && $method === 'POST') {
 }
 if (preg_match('/\/api\/pedidos\/multiple$/', $path) && $method === 'POST') {
     require_once __DIR__ . '/pedidos/multiple.php';
+    exit;
+}
+
+// Rutas de Geoinfo
+if (preg_match('/\/api\/geoinfo\/paises$/', $path)) {
+    include __DIR__ . '/geoinfo/paises.php';
+    exit;
+}
+if (preg_match('/\/api\/geoinfo\/departamentos$/', $path)) {
+    include __DIR__ . '/geoinfo/departamentos.php';
+    exit;
+}
+if (preg_match('/\/api\/geoinfo\/municipios$/', $path)) {
+    include __DIR__ . '/geoinfo/municipios.php';
+    exit;
+}
+if (preg_match('/\/api\/geoinfo\/barrios$/', $path)) {
+    include __DIR__ . '/geoinfo/barrios.php';
     exit;
 }
 

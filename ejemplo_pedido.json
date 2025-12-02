@@ -1,0 +1,19 @@
+{
+  "numero_orden": 99010,
+  "destinatario": "Juan Pérez",
+  "telefono": "88887777",
+  "producto_id": 21,
+  "cantidad": 1,
+  "coordenadas": "-0.180653,-78.467838",
+  "direccion": "Av. Principal #123, Edificio Central",
+  "zona": "Centro",
+  "precio_local": 250.50,
+  "id_moneda": 1,
+  "id_vendedor": 1,
+  "id_proveedor": 1,
+  "id_pais": 1,
+  "id_departamento": 1,
+  "id_municipio": 1,
+  "id_barrio": 1,
+  "comentario": "Entregar en horario de oficina"
+}

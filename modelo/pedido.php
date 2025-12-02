@@ -618,23 +618,127 @@ class PedidosModel
      */
     public static function actualizarPedido($data)
     {
-        // ... (existing code for actualizarPedido) ...
-        // Note: I will just append the new method after actualizarPedido or at the end of the class.
-        // To be safe, I'll insert it before the closing brace of the class or after a known method.
-        // Let's insert it after actualizarPedido.
         try {
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
-            // ... (existing implementation of actualizarPedido) ...
-            // Since I cannot see the full content here easily to replace just the end, 
-            // I will use a different strategy: insert it at the end of the class if possible, 
-            // or replace a known block.
-            // Actually, I should use the previous view of the file to locate where to insert.
-            // I'll insert it after actualizarPedido.
-            
-            // ... (rest of actualizarPedido implementation) ...
-            
+            // Build UPDATE query dynamically based on provided fields
+            $fields = [];
+            $params = [':id' => (int)$data['id_pedido']];
+
+            // Basic fields
+            if (isset($data['numero_orden'])) {
+                $fields[] = 'numero_orden = :numero_orden';
+                $params[':numero_orden'] = (int)$data['numero_orden'];
+            }
+            if (isset($data['destinatario'])) {
+                $fields[] = 'destinatario = :destinatario';
+                $params[':destinatario'] = $data['destinatario'];
+            }
+            if (isset($data['telefono'])) {
+                $fields[] = 'telefono = :telefono';
+                $params[':telefono'] = $data['telefono'];
+            }
+            if (isset($data['direccion'])) {
+                $fields[] = 'direccion = :direccion';
+                $params[':direccion'] = $data['direccion'];
+            }
+            if (isset($data['comentario'])) {
+                $fields[] = 'comentario = :comentario';
+                $params[':comentario'] = $data['comentario'] !== '' ? $data['comentario'] : null;
+            }
+
+            // Coordinates
+            if (isset($data['latitud']) && isset($data['longitud'])) {
+                $fields[] = 'coordenadas = ST_GeomFromText(:coordenadas)';
+                $params[':coordenadas'] = sprintf('POINT(%s %s)', 
+                    number_format((float)$data['longitud'], 8, '.', ''),
+                    number_format((float)$data['latitud'], 8, '.', '')
+                );
+            }
+
+            // Prices
+            if (isset($data['precio_local'])) {
+                $fields[] = 'precio_local = :precio_local';
+                $params[':precio_local'] = $data['precio_local'] !== '' ? (float)$data['precio_local'] : null;
+            }
+            if (isset($data['precio_usd'])) {
+                $fields[] = 'precio_usd = :precio_usd';
+                $params[':precio_usd'] = $data['precio_usd'] !== '' ? (float)$data['precio_usd'] : null;
+            }
+
+            // Foreign keys - only update if value is provided and not empty
+            if (isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0') {
+                $fields[] = 'id_estado = :id_estado';
+                $params[':id_estado'] = (int)$data['estado'];
+            }
+            if (isset($data['moneda']) && $data['moneda'] !== '' && $data['moneda'] !== '0') {
+                $fields[] = 'id_moneda = :id_moneda';
+                $params[':id_moneda'] = (int)$data['moneda'];
+            }
+            if (isset($data['vendedor']) && $data['vendedor'] !== '' && $data['vendedor'] !== '0') {
+                $fields[] = 'id_vendedor = :id_vendedor';
+                $params[':id_vendedor'] = (int)$data['vendedor'];
+            }
+            if (isset($data['proveedor']) && $data['proveedor'] !== '' && $data['proveedor'] !== '0') {
+                $fields[] = 'id_proveedor = :id_proveedor';
+                $params[':id_proveedor'] = (int)$data['proveedor'];
+            }
+            if (isset($data['id_pais'])) {
+                $fields[] = 'id_pais = :id_pais';
+                $params[':id_pais'] = $data['id_pais'] !== '' ? (int)$data['id_pais'] : null;
+            }
+            if (isset($data['id_departamento'])) {
+                $fields[] = 'id_departamento = :id_departamento';
+                $params[':id_departamento'] = $data['id_departamento'] !== '' ? (int)$data['id_departamento'] : null;
+            }
+            if (isset($data['id_municipio'])) {
+                $fields[] = 'id_municipio = :id_municipio';
+                $params[':id_municipio'] = $data['id_municipio'] !== '' ? (int)$data['id_municipio'] : null;
+            }
+            if (isset($data['id_barrio'])) {
+                $fields[] = 'id_barrio = :id_barrio';
+                $params[':id_barrio'] = $data['id_barrio'] !== '' ? (int)$data['id_barrio'] : null;
+            }
+
+            // Execute UPDATE if there are fields to update
+            if (!empty($fields)) {
+                $sql = 'UPDATE pedidos SET ' . implode(', ', $fields) . ' WHERE id = :id';
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+            }
+
+            // Update products if provided
+            if (isset($data['productos']) && is_array($data['productos'])) {
+                // Delete existing products
+                $stmtDel = $db->prepare('DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido');
+                $stmtDel->execute([':id_pedido' => (int)$data['id_pedido']]);
+
+                // Insert new products
+                $stmtIns = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, :cantidad_devuelta)');
+                foreach ($data['productos'] as $prod) {
+                    if (isset($prod['producto_id']) && isset($prod['cantidad'])) {
+                        $stmtIns->execute([
+                            ':id_pedido' => (int)$data['id_pedido'],
+                            ':id_producto' => (int)$prod['producto_id'],
+                            ':cantidad' => (int)$prod['cantidad'],
+                            ':cantidad_devuelta' => isset($prod['cantidad_devuelta']) ? (int)$prod['cantidad_devuelta'] : 0
+                        ]);
+                    }
+                }
+            } elseif (isset($data['producto_id']) && isset($data['cantidad_producto'])) {
+                // Legacy single product update
+                $stmtDel = $db->prepare('DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido');
+                $stmtDel->execute([':id_pedido' => (int)$data['id_pedido']]);
+
+                $stmtIns = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
+                $stmtIns->execute([
+                    ':id_pedido' => (int)$data['id_pedido'],
+                    ':id_producto' => (int)$data['producto_id'],
+                    ':cantidad' => (int)$data['cantidad_producto']
+                ]);
+            }
+
             $db->commit();
             return true;
 
@@ -784,9 +888,19 @@ class PedidosModel
             // Apply resolved fallback where missing so DB triggers get a valid id
             if (empty($pedido['vendedor']) || $pedido['vendedor'] === null) {
                 $pedido['vendedor'] = $resolvedFallbackUser;
+                $pedido['id_vendedor'] = $resolvedFallbackUser;
             }
             if (empty($pedido['proveedor']) || $pedido['proveedor'] === null) {
                 $pedido['proveedor'] = $resolvedFallbackUser;
+                $pedido['id_proveedor'] = $resolvedFallbackUser;
+            }
+
+            // Ensure id_vendedor/id_proveedor are set if they were passed as vendedor/proveedor
+            if (isset($pedido['vendedor']) && !isset($pedido['id_vendedor'])) {
+                $pedido['id_vendedor'] = $pedido['vendedor'];
+            }
+            if (isset($pedido['proveedor']) && !isset($pedido['id_proveedor'])) {
+                $pedido['id_proveedor'] = $pedido['proveedor'];
             }
 
             $coordenadas = sprintf(

@@ -214,8 +214,6 @@
 
         const summaryFields = [
             { id: 'numero_orden', fn: v => v.trim().length > 0, msg: 'Por favor ingresa un número de orden.' },
-            { id: 'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.' },
-            { id: 'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).' },
             { id: 'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.' },
             { id: 'cantidad_producto', fn: validarCantidadProducto, msg: 'La cantidad debe ser al menos 1 y no superar el stock disponible.' },
             { id: 'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.' },
@@ -224,8 +222,6 @@
         ];
 
         summaryFields.push(
-            { id: 'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.' },
-            { id: 'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.' },
             { id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' },
             { id: 'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.' }
         );
@@ -560,16 +556,12 @@
         };
 
         const summaryFields = [
-            { id: 'destinatario', fn: v => v.trim().length >= 2, msg: 'Por favor, ingresa un nombre válido.' },
-            { id: 'telefono', fn: v => validarTelefono(v), msg: 'Teléfono inválido (8-15 dígitos).' },
             { id: 'producto_id', fn: v => v !== null && v !== '', msg: 'Por favor, selecciona un producto.' },
             { id: 'cantidad_producto', fn: v => v !== '' && Number.isInteger(Number(v)) && Number(v) >= 1, msg: 'La cantidad debe ser al menos 1.' },
             { id: 'precio_local', fn: v => v === '' || validarDecimal(v), msg: 'Precio local inválido.' },
             { id: 'direccion', fn: v => v.trim().length > 5, msg: 'Dirección demasiado corta.' },
             { id: 'latitud', fn: v => validarDecimal(v), msg: 'Latitud inválida.' },
             { id: 'longitud', fn: v => validarDecimal(v), msg: 'Longitud inválida.' },
-            { id: 'estado', fn: v => v !== null && v !== '', msg: 'Selecciona un estado.' },
-            { id: 'vendedor', fn: v => v !== null && v !== '', msg: 'Selecciona un usuario asignado.' },
             { id: 'proveedor', fn: v => v !== null && v !== '', msg: 'Selecciona un proveedor.' },
             { id: 'moneda', fn: v => v !== null && v !== '', msg: 'Selecciona una moneda.' }
         ];

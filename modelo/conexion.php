@@ -42,7 +42,6 @@ class Conexion
     {
         $this->conexion = null;
 
-        try {
             // Crear la conexión usando PDO
             $dsn = "mysql:host={$this->host};dbname={$this->dataBase};charset=utf8mb4";
             $options = [
@@ -57,12 +56,6 @@ class Conexion
                 $this->password,
                 $options
             );
-
-        } catch (PDOException $e) {
-            // Manejo de errores
-            error_log("Error en la conexión a la Base de Datos: " . $e->getMessage(), 3, "logs/errors.log");
-            die("Ocurrió un problema al conectar con la base de datos. Inténtalo más tarde.");
-        }
 
         return $this->conexion;
     }

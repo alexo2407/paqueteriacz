@@ -212,13 +212,13 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="destinatario" class="form-label">Nombre del Destinatario</label>
-                            <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required>
+                            <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="mb-3">
                             <label for="telefono" class="form-label">Teléfono</label>
-                            <input type="tel" class="form-control" id="telefono" name="telefono" pattern="\d{8,15}" value="<?= htmlspecialchars($pedido['telefono']) ?>" required>
+                            <input type="tel" class="form-control" id="telefono" name="telefono" pattern="\d{8,15}" value="<?= htmlspecialchars($pedido['telefono']) ?>">
                             <div class="invalid-feedback">Teléfono inválido (8-15 dígitos).</div>
                         </div>
                     </div>
@@ -277,7 +277,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="estado" class="form-label">Estado del Pedido</label>
-                            <select class="form-control" id="estado" name="estado" required>
+                            <select class="form-control" id="estado" name="estado">
                                 <option value="">Selecciona un estado</option>
                                 <?php foreach ($estados as $estado): ?>
                                     <option value="<?= $estado['id'] ?>" <?= $pedido['id_estado'] == $estado['id'] ? 'selected' : '' ?>>
@@ -290,7 +290,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="vendedor" class="form-label">Repartidor Asignado</label>
-                            <select class="form-control" id="vendedor" name="vendedor" required>
+                            <select class="form-control" id="vendedor" name="vendedor">
                                 <option value="">Selecciona un repartidor</option>
                                 <?php foreach ($vendedores as $vendedor): ?>
                                     <option value="<?= $vendedor['id'] ?>" <?= $pedido['id_vendedor'] == $vendedor['id'] ? 'selected' : '' ?>>
