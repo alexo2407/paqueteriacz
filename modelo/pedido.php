@@ -566,7 +566,10 @@ class PedidosModel
                     m.codigo AS moneda_codigo,
                     m.nombre AS moneda_nombre,
                     uV.nombre AS vendedor_nombre,
-                    uP.nombre AS proveedor_nombre
+                    uP.nombre AS proveedor_nombre,
+                    (SELECT fecha_asignacion FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_asignacion,
+                    (SELECT fecha_entrega FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_entrega,
+                    (SELECT observaciones FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as entrega_observaciones
                 FROM pedidos p
                 LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
                 LEFT JOIN monedas m ON m.id = p.id_moneda

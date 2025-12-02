@@ -10,6 +10,7 @@ require_once __DIR__ . '/../modelo/usuario.php';
 require_once __DIR__ . '/../modelo/moneda.php';
 require_once __DIR__ . '/../modelo/municipio.php';
 require_once __DIR__ . '/../modelo/barrio.php';
+require_once __DIR__ . '/../modelo/pedido.php';
 
 class PedidosController {
 

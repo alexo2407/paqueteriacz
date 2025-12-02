@@ -52,16 +52,18 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
 
                         <dt class="col-sm-4">Estado</dt>
                         <dd class="col-sm-8">
-                            <select id="estado" class="form-select form-select-sm" aria-label="Cambiar estado">
-                                <option value="">Selecciona un estado</option>
-                                <?php foreach ($estados as $e): ?>
-                                    <option value="<?= (int)$e['id'] ?>" <?= ((int)$pedido['id_estado'] === (int)$e['id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($e['nombre_estado']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <input type="hidden" id="id_pedido" value="<?= (int)$pedido['id'] ?>" />
-                            <div id="estadoMsg" class="form-text"></div>
+                            <form action="<?= RUTA_URL ?>cambiarEstados" method="POST" class="d-flex gap-2">
+                                <input type="hidden" name="id_pedido" value="<?= (int)$pedido['id'] ?>" />
+                                <select name="estado" class="form-select form-select-sm" aria-label="Cambiar estado">
+                                    <option value="">Selecciona un estado</option>
+                                    <?php foreach ($estados as $e): ?>
+                                        <option value="<?= (int)$e['id'] ?>" <?= ((int)$pedido['id_estado'] === (int)$e['id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($e['nombre_estado']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">Actualizar</button>
+                            </form>
                         </dd>
 
                         <?php if (!empty($pedido['comentario'])): ?>
@@ -79,6 +81,21 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
                                 <span class="badge bg-success">USD: <?= htmlspecialchars($pedido['precio_usd']) ?></span>
                             <?php endif; ?>
                         </dd>
+                        <?php endif; ?>
+
+                        <?php if (!empty($pedido['fecha_asignacion'])): ?>
+                        <dt class="col-sm-4">Asignado</dt>
+                        <dd class="col-sm-8"><?= date('d/m/Y H:i', strtotime($pedido['fecha_asignacion'])) ?></dd>
+                        <?php endif; ?>
+
+                        <?php if (!empty($pedido['fecha_entrega'])): ?>
+                        <dt class="col-sm-4">Entregado</dt>
+                        <dd class="col-sm-8"><?= date('d/m/Y H:i', strtotime($pedido['fecha_entrega'])) ?></dd>
+                        <?php endif; ?>
+
+                        <?php if (!empty($pedido['entrega_observaciones'])): ?>
+                        <dt class="col-sm-4">Obs. Entrega</dt>
+                        <dd class="col-sm-8"><?= nl2br(htmlspecialchars($pedido['entrega_observaciones'])) ?></dd>
                         <?php endif; ?>
 
                         <?php if (!empty($pedido['productos'])): $pp = $pedido['productos'][0]; ?>
@@ -126,59 +143,6 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        const selectEstado = document.getElementById('estado');
-        const idPedido = document.getElementById('id_pedido').value;
-        const estadoMsg = document.getElementById('estadoMsg');
-
-        selectEstado.addEventListener('change', async function() {
-            const nuevoEstado = this.value;
-            if (!nuevoEstado) return;
-            estadoMsg.textContent = '';
-            estadoMsg.className = 'form-text';
-            try {
-                const resp = await fetch('<?= RUTA_URL ?>cambiarEstados', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'same-origin',
-                    body: new URLSearchParams({ id_pedido: idPedido, estado: nuevoEstado })
-                });
-
-                // Intentar parsear JSON de forma segura
-                let data = null;
-                try {
-                    data = await resp.json();
-                } catch (parseErr) {
-                    // Si no es JSON, tratar como error
-                    estadoMsg.textContent = 'Respuesta inesperada del servidor.';
-                    estadoMsg.className = 'form-text text-danger';
-                    return;
-                }
-
-                if (!resp.ok) {
-                    // Manejar errores HTTP explícitos (401, 500, ...)
-                    const msg = data && data.message ? data.message : ('Error HTTP ' + resp.status);
-                    estadoMsg.textContent = msg;
-                    estadoMsg.className = 'form-text text-danger';
-                    return;
-                }
-
-                if (data && data.success) {
-                    estadoMsg.textContent = 'Estado actualizado.';
-                    estadoMsg.className = 'form-text text-success';
-                } else {
-                    estadoMsg.textContent = (data && data.message) ? data.message : 'No fue posible actualizar el estado.';
-                    estadoMsg.className = 'form-text text-danger';
-                }
-            } catch (e) {
-                // Error de red (no reach, conexión, DNS, etc.)
-                estadoMsg.textContent = 'Error de red al actualizar estado.';
-                estadoMsg.className = 'form-text text-danger';
-            }
-        });
-
         document.getElementById('btnRuta').addEventListener('click', function(e) {
             e.preventDefault();
             if (!navigator.geolocation) {

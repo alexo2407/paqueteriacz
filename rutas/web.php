@@ -517,3 +517,57 @@ if (isset($ruta[0]) && $ruta[0] === 'stock' && $_SERVER['REQUEST_METHOD'] === 'P
         exit;
     }
 }
+
+// -----------------------
+// Manejo de cambio de estado (AJAX)
+// -----------------------
+// -----------------------
+// Manejo de cambio de estado (POST standard)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'cambiarEstados') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        require_once __DIR__ . '/../controlador/pedido.php';
+        require_once __DIR__ . '/../utils/session.php';
+        start_secure_session();
+
+        if (empty($_SESSION['registrado'])) {
+            header('Location: ' . RUTA_URL . 'login');
+            exit;
+        }
+
+        $idPedido = isset($_POST['id_pedido']) ? (int)$_POST['id_pedido'] : 0;
+        $nuevoEstado = isset($_POST['estado']) ? (int)$_POST['estado'] : 0;
+
+        // URL de retorno por defecto
+        $redirectUrl = RUTA_URL . 'seguimiento/listar';
+        if ($idPedido > 0) {
+            $redirectUrl = RUTA_URL . 'seguimiento/ver/' . $idPedido;
+        }
+
+        if ($idPedido <= 0 || $nuevoEstado <= 0) {
+            set_flash('error', 'Datos inválidos para actualizar el estado.');
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+
+        try {
+            $ctrl = new PedidosController();
+            $data = [
+                'id_pedido' => $idPedido,
+                'estado' => $nuevoEstado
+            ];
+            $resultado = $ctrl->actualizarPedido($data);
+
+            if ($resultado['success']) {
+                set_flash('success', 'Estado actualizado correctamente.');
+            } else {
+                set_flash('error', $resultado['message'] ?? 'No se pudo actualizar el estado.');
+            }
+        } catch (Exception $e) {
+            set_flash('error', 'Error interno al actualizar estado: ' . $e->getMessage());
+        }
+        
+        header('Location: ' . $redirectUrl);
+        exit;
+    }
+}
