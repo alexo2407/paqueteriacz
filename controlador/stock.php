@@ -29,6 +29,17 @@ class StockController
     }
 
     /**
+     * Obtener el inventario actual (stock total) de todos los productos.
+     *
+     * @return array Lista de productos con su stock actual.
+     */
+    public function inventarioActual()
+    {
+        require_once __DIR__ . '/../modelo/producto.php';
+        return ProductoModel::listarConInventario();
+    }
+
+    /**
      * Obtener un registro de stock por su identificador.
      *
      * @param int|string $id Identificador del registro.
