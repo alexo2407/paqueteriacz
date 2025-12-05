@@ -29,6 +29,9 @@ class EnlacesModel
         if ($ruta[0] === 'login') {
             $ruta[0] = 'inicio';
         }
+        
+        // Convertir a minúsculas para evitar problemas de case-sensitivity
+        $ruta[0] = strtolower($ruta[0]);
 
         // Lista blanca de módulos permitidos para vistas
         $modulosPermitidos = [

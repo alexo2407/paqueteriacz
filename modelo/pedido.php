@@ -78,17 +78,37 @@ class PedidosModel
         }
         return null;
     }
+    
+    /**
+     * Obtener todos los números de orden existentes (para validación de duplicados)
+     * @return array Lista de números de orden
+     */
+    public static function obtenerNumerosOrdenExistentes()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->query('SELECT numero_orden FROM pedidos');
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Exception $e) {
+            error_log('Error al obtener números de orden: ' . $e->getMessage());
+            return [];
+        }
+    }
+    
     /**
      * Inserta múltiples pedidos reutilizando una sola conexión y statement preparado.
      *
      * @param array<int,array<string,mixed>> $rows
-     * @return array{inserted:int,errors:array<int,string>}
+     * @param bool $autoCreateProducts Si crear productos automáticamente si no existen
+     * @param array $defaultValues Valores por defecto (estado, proveedor, moneda, vendedor)
+     * @return array{inserted:int,errors:array<int,string>,productos_creados:array<string>}
      */
-    public static function insertarPedidosLote(array $rows)
+    public static function insertarPedidosLote(array $rows, $autoCreateProducts = true, $defaultValues = [])
     {
         $resultado = [
             'inserted' => 0,
-            'errors' => []
+            'errors' => [],
+            'productos_creados' => []
         ];
 
         if (empty($rows)) {
@@ -162,7 +182,10 @@ class PedidosModel
                     }
 
                     $precio_local = $row['precio'] ?? $row['precio_local'] ?? null;
+                    if ($precio_local === '') $precio_local = null;
+
                     $precio_usd = $row['precio_usd'] ?? null;
+                    if ($precio_usd === '') $precio_usd = null;
 
                     // Ejecutar inserción del pedido: preparar array de parámetros acorde a las columnas construidas
                     $params = [];
@@ -209,16 +232,20 @@ class PedidosModel
                                 $params[':comentario'] = $comentario;
                                 break;
                             case 'id_estado':
-                                $params[':id_estado'] = $row['id_estado'] ?? 1;
+                                $val = $row['id_estado'] ?? ($defaultValues['estado'] ?? 1);
+                                $params[':id_estado'] = ($val === '') ? 1 : $val;
                                 break;
                             case 'id_moneda':
-                                $params[':id_moneda'] = $row['id_moneda'] ?? null;
+                                $val = $row['id_moneda'] ?? ($defaultValues['moneda'] ?? null);
+                                $params[':id_moneda'] = ($val === '') ? null : $val;
                                 break;
                             case 'id_vendedor':
-                                $params[':id_vendedor'] = $row['id_vendedor'] ?? null;
+                                $val = $row['id_vendedor'] ?? ($defaultValues['vendedor'] ?? null);
+                                $params[':id_vendedor'] = ($val === '') ? null : $val;
                                 break;
                             case 'id_proveedor':
-                                $params[':id_proveedor'] = $row['id_proveedor'] ?? null;
+                                $val = $row['id_proveedor'] ?? ($defaultValues['proveedor'] ?? null);
+                                $params[':id_proveedor'] = ($val === '') ? null : $val;
                                 break;
                         }
                     }
@@ -229,15 +256,25 @@ class PedidosModel
 
                     // Resolver producto a id
                     $productoId = null;
-                    if (isset($row['producto_id']) && is_numeric($row['producto_id'])) {
+                    $productoNombre = $row['producto_nombre'] ?? $row['producto'] ?? null;
+                    
+                    if (isset($row['id_producto']) && is_numeric($row['id_producto']) && (int)$row['id_producto'] > 0) {
+                        $productoId = (int)$row['id_producto'];
+                    } elseif (isset($row['producto_id']) && is_numeric($row['producto_id']) && (int)$row['producto_id'] > 0) {
                         $productoId = (int)$row['producto_id'];
-                    } elseif (!empty($row['producto'])) {
-                        $p = ProductoModel::buscarPorNombre($row['producto']);
+                    } elseif (!empty($productoNombre)) {
+                        $p = ProductoModel::buscarPorNombre($productoNombre);
                         if ($p && isset($p['id'])) {
                             $productoId = (int)$p['id'];
+                        } elseif ($autoCreateProducts) {
+                            // Crear producto rápido solo si autoCreateProducts está activado
+                            $productoId = ProductoModel::crearRapido($productoNombre);
+                            // Registrar producto creado
+                            if (!in_array($productoNombre, $resultado['productos_creados'])) {
+                                $resultado['productos_creados'][] = $productoNombre;
+                            }
                         } else {
-                            // Crear producto rápido si no existe
-                            $productoId = ProductoModel::crearRapido($row['producto']);
+                            throw new Exception("Producto '{$productoNombre}' no existe y autoCreateProducts está desactivado");
                         }
                     }
 
@@ -537,6 +574,104 @@ class PedidosModel
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             throw new Exception("Error al obtener los pedidos: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Listar pedidos para exportación CSV con todos los campos
+     * 
+     * @param array $filtros Filtros opcionales
+     * @param int $limite Límite de resultados
+     * @return array Pedidos con productos incluidos
+     */
+    public static function listarParaExportar($filtros = [], $limite = 1000)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $where = [];
+            $params = [];
+            
+            // Construir WHERE clause según filtros
+            if (!empty($filtros['id_estado'])) {
+                $where[] = 'p.id_estado = :id_estado';
+                $params[':id_estado'] = (int)$filtros['id_estado'];
+            }
+            
+            if (!empty($filtros['id_proveedor'])) {
+                $where[] = 'p.id_proveedor = :id_proveedor';
+                $params[':id_proveedor'] = (int)$filtros['id_proveedor'];
+            }
+            
+            if (!empty($filtros['fecha_desde'])) {
+                $where[] = 'p.fecha_ingreso >= :fecha_desde';
+                $params[':fecha_desde'] = $filtros['fecha_desde'];
+            }
+            
+            if (!empty($filtros['fecha_hasta'])) {
+                $where[] = 'p.fecha_ingreso <= :fecha_hasta';
+                $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $query = "
+                SELECT 
+                    p.id,
+                    p.numero_orden,
+                    p.destinatario,
+                    p.telefono,
+                    p.direccion,
+                    ST_Y(p.coordenadas) AS latitud,
+                    ST_X(p.coordenadas) AS longitud,
+                    p.id_estado,
+                    p.id_moneda,
+                    p.id_proveedor,
+                    p.id_vendedor,
+                    p.precio_local,
+                    p.precio_usd,
+                    p.id_pais,
+                    p.id_departamento,
+                    p.municipio,
+                    p.barrio,
+                    p.zona,
+                    p.comentario
+                FROM pedidos p
+                {$whereClause}
+                ORDER BY p.fecha_ingreso DESC
+                LIMIT :limite
+            ";
+            
+            $stmt = $db->prepare($query);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Para cada pedido, obtener sus productos
+            $stmtProductos = $db->prepare('
+                SELECT 
+                    pp.id_producto,
+                    pp.cantidad,
+                    pp.cantidad_devuelta,
+                    pr.nombre
+                FROM pedidos_productos pp
+                INNER JOIN productos pr ON pr.id = pp.id_producto
+                WHERE pp.id_pedido = :id_pedido
+            ');
+            
+            foreach ($pedidos as &$pedido) {
+                $stmtProductos->execute([':id_pedido' => $pedido['id']]);
+                $pedido['productos'] = $stmtProductos->fetchAll(PDO::FETCH_ASSOC);
+            }
+            
+            return $pedidos;
+            
+        } catch (Exception $e) {
+            throw new Exception("Error al listar pedidos para exportar: " . $e->getMessage());
         }
     }
 

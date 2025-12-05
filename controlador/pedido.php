@@ -1006,304 +1006,380 @@ class PedidosController {
         exit();
     }
 
-        /**
-         * Importar pedidos desde archivo CSV subido por formulario
-         */
     /**
      * Importar pedidos desde un CSV subido por formulario.
      *
-     * Soporta delimitadores comunes, normaliza cabeceras y valida filas antes de
-     * insertar en lote. Registra errores en session/logs para revisión.
-     *
-     * Responde con redirect y flash o JSON en caso de AJAX.
+     * MEJORAS v2.0:
+     * - Modo vista previa (preview=1)
+     * - Procesamiento por chunks (CHUNK_SIZE = 100)
+     * - Validación robusta con CSVPedidoValidator
+     * - Valores por defecto configurables
+     * - Exportación de errores como CSV
+     * - Auditoría completa en tabla importaciones_csv
      *
      * @return void
      */
     public function importarPedidosCSV()
     {
         require_once __DIR__ . '/../utils/session.php';
-
-        // Envolver en try/catch global para capturar errores inesperados y retornar JSON/logs
-        try {
-
-        // Manejo de errores de subida más descriptivo
-        $uploadErrorMsg = function($code) {
-            $messages = [
-                UPLOAD_ERR_OK => 'Sin error',
-                UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize.',
-                UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido por el formulario.',
-                UPLOAD_ERR_PARTIAL => 'El archivo fue subido parcialmente.',
-                UPLOAD_ERR_NO_FILE => 'No se envió ningún archivo.',
-                UPLOAD_ERR_NO_TMP_DIR => 'Falta carpeta temporal en el servidor.',
-                UPLOAD_ERR_CANT_WRITE => 'Fallo al escribir el archivo en disco.',
-                UPLOAD_ERR_EXTENSION => 'Subida detenida por extensión PHP.'
-            ];
-            return $messages[$code] ?? 'Error desconocido al subir el archivo.';
-        };
-
-        if (!isset($_FILES['csv_file'])) {
-            $resp = ['success' => false, 'message' => 'No se recibió el archivo CSV.'];
-            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-                header('Content-Type: application/json');
-                echo json_encode($resp);
-                exit;
-            }
-            set_flash('error', $resp['message']);
-            header('Location: ' . RUTA_URL . 'pedidos/listar');
-            exit;
-        }
-        if ($_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
-            $msg = $uploadErrorMsg($_FILES['csv_file']['error']);
-            $resp = ['success' => false, 'message' => 'Error al subir el archivo: ' . $msg];
-            if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-                header('Content-Type: application/json');
-                echo json_encode($resp);
-                exit;
-            }
-            set_flash('error', $resp['message']);
-            header('Location: ' . RUTA_URL . 'pedidos/listar');
-            exit;
-        }
-
-    $tmp = $_FILES['csv_file']['tmp_name'];
-        $handle = fopen($tmp, 'r');
-        if ($handle === false) {
-            set_flash('error', 'No se pudo abrir el archivo CSV.');
-            header('Location: ' . RUTA_URL . 'pedidos/listar');
-            exit;
-        }
-
-        // Detectar delimiter leyendo la primera línea cruda (y quitar BOM si existe)
-        $firstLine = fgets($handle);
-        if ($firstLine === false) {
-            set_flash('error', 'El CSV parece estar vacío.');
-            fclose($handle);
-            header('Location: ' . RUTA_URL . 'pedidos/listar');
-            exit;
-        }
-
-        // Eliminar BOM UTF-8 si existe
-        $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine);
-
-        $countComma = substr_count($firstLine, ',');
-        $countSemi = substr_count($firstLine, ';');
-        // Si hay más ; que , asumimos punto y coma como separador (locales que usan ;)
-        $delimiter = ($countSemi > $countComma) ? ';' : ',';
-
-        // Volver al inicio para usar fgetcsv correctamente
-        rewind($handle);
-
-        // Leer header con el delimitador detectado
-        $header = fgetcsv($handle, 0, $delimiter);
-        if ($header === false) {
-            set_flash('error', 'No se pudo leer la cabecera del CSV.');
-            fclose($handle);
-            header('Location: ' . RUTA_URL . 'pedidos/listar');
-            exit;
-        }
-
-        // Normalizar cabeceras (trim y lowercase)
-        $cols = array_map(function($c){ return strtolower(trim(preg_replace('/^\xEF\xBB\xBF/', '', $c))); }, $header);
-
-        // Campos mínimos requeridos
-        $required = ['numero_orden','destinatario','telefono','producto','cantidad','direccion','latitud','longitud'];
-        $missing = [];
-        foreach ($required as $r) {
-            if (!in_array($r, $cols)) $missing[] = $r;
-        }
-        if (!empty($missing)) {
-            // Si faltan columnas requeridas, informar indicando el delimitador detectado
-            $detected = $delimiter === ',' ? 'coma (,)' : 'punto y coma (;)';
-            set_flash('error', 'Faltan columnas requeridas en el CSV: ' . implode(', ', $missing) . ". Detectado separador: $detected. Asegúrate de que el archivo esté correctamente tabulado. Recomendado: usar comas.");
-            fclose($handle);
-            header('Location: ' . RUTA_URL . 'pedidos/listar');
-            exit;
-        }
-
-    $line = 1;
-    $success = 0;
-    $errors = [];
-    $lotePendiente = [];
-
-        // Leer filas usando coma como delimitador explícito
-        // Si el delimitador detectado no es coma, avisar al usuario pero procesar igual
-        $warnSemicolon = ($delimiter !== ',');
-
-        // Leer línea por línea y usar str_getcsv para permitir intentar distintos delimitadores
-        while (!feof($handle)) {
-            $raw = fgets($handle);
-            if ($raw === false) break;
-            $line++;
-
-            // Quitar BOM en primera columna si aparece aquí
-            if ($line === 2) {
-                $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-            }
-
-            // Intentar parsear con el delimitador detectado
-            $row = str_getcsv(rtrim($raw, "\r\n"), $delimiter, '"');
-
-            // Si el número de columnas no coincide con la cabecera, intentar con el otro delimitador
-            $expectedCols = count($cols);
-            if (count($row) !== $expectedCols) {
-                $alt = $delimiter === ',' ? ';' : ',';
-                $altRow = str_getcsv(rtrim($raw, "\r\n"), $alt, '"');
-                if (count($altRow) === $expectedCols) {
-                    $row = $altRow;
-                    // marcar advertencia sobre delimitador
-                    $errors[] = "Línea $line: se detectó un delimitador alternativo ('$alt') en la fila — se procesó, pero revisa consistencia del archivo.";
-                }
-            }
-
-            // Mapear fila a asociativo según cabeceras
-            $dataRow = [];
-            foreach ($cols as $i => $colName) {
-                $val = isset($row[$i]) ? $row[$i] : null;
-                // Normalizar: trim y convertir comas decimales a punto en números
-                if (is_string($val)) {
-                    $val = trim($val);
-                }
-                $dataRow[$colName] = $val;
-            }
-
-            // Omitir filas vacías (todas las columnas vacías)
-            $allEmpty = true;
-            foreach ($dataRow as $v) { if ($v !== null && $v !== '') { $allEmpty = false; break; } }
-            if ($allEmpty) continue;
-
-            // Preparar datos para crearPedido
-            $lat = $dataRow['latitud'] ?? null;
-            $lng = $dataRow['longitud'] ?? null;
-            // Normalizar decimales con coma -> punto
-            if (is_string($lat)) $lat = str_replace(',', '.', $lat);
-            if (is_string($lng)) $lng = str_replace(',', '.', $lng);
-
-            if ($lat === null || $lng === null || !is_numeric($lat) || !is_numeric($lng)) {
-                $rowPreview = implode($delimiter === ',' ? ',' : ';', array_slice($row, 0, 6));
-                $errors[] = "Línea $line: coordenadas inválidas. Fila: $rowPreview";
-                continue;
-            }
-
-            // Coerce to float and detect possible swapped lat/long (user provided long,lat)
-            $latF = (float)$lat;
-            $lngF = (float)$lng;
-            // Latitude valid range is -90..90, longitude -180..180. If first value outside lat range
-            // but second is inside lat range, it's likely the CSV used long,lat order — swap.
-            if (abs($latF) > 90 && abs($lngF) <= 90) {
-                // swap
-                $tmp = $latF; $latF = $lngF; $lngF = $tmp;
-                $errors[] = "Línea $line: se detectó posible inversión de lat/long y se corrigió.";
-            }
-
-            $pedidoData = [
-                'numero_orden' => $dataRow['numero_orden'] ?? null,
-                'destinatario' => $dataRow['destinatario'] ?? null,
-                'telefono' => $dataRow['telefono'] ?? null,
-                'precio' => $dataRow['precio'] ?? null,
-                'producto' => $dataRow['producto'] ?? null,
-                'cantidad' => isset($dataRow['cantidad']) && $dataRow['cantidad'] !== '' ? (int)$dataRow['cantidad'] : 1,
-                'pais' => $dataRow['pais'] ?? null,
-                'departamento' => $dataRow['departamento'] ?? null,
-                'municipio' => $dataRow['municipio'] ?? null,
-                'barrio' => $dataRow['barrio'] ?? null,
-                'direccion' => $dataRow['direccion'] ?? null,
-                'zona' => $dataRow['zona'] ?? null,
-                'comentario' => $dataRow['comentario'] ?? null,
-                'latitud' => $latF,
-                'longitud' => $lngF,
-                'line' => $line
-            ];
-
-            // Evitar duplicados por numero_orden
-            if (empty($pedidoData['numero_orden'])) {
-                $errors[] = "Línea $line: numero_orden vacío.";
-                continue;
-            }
-
-            if (PedidosModel::existeNumeroOrden($pedidoData['numero_orden'])) {
-                $errors[] = "Línea $line: el número de orden {$pedidoData['numero_orden']} ya existe.";
-                continue;
-            }
-
-            $lotePendiente[] = $pedidoData;
-        }
-
-        fclose($handle);
-
-        if (!empty($lotePendiente)) {
-            $resultadoLote = PedidosModel::insertarPedidosLote($lotePendiente);
-            $success += $resultadoLote['inserted'];
-            if (!empty($resultadoLote['errors'])) {
-                $errors = array_merge($errors, $resultadoLote['errors']);
-            }
-        }
-
-        $msg = "$success pedidos importados correctamente.";
+        require_once __DIR__ . '/../utils/CSVPedidoValidator.php';
+        require_once __DIR__ . '/../utils/CSVHelper.php';
+        require_once __DIR__ . '/../modelo/importacion.php';
+        
+        $tiempoInicio = microtime(true);
+        $isPreview = isset($_POST['preview']) && $_POST['preview'] === '1';
         $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-
-        if (!empty($errors)) {
-            $msg .= " Problemas: " . count($errors) . ". Revisa errores detallados.";
-            // Guardar errores extendidos en sesión para revisar
-            $_SESSION['import_errors'] = $errors;
+        
+        // Constante para tamaño de chunk
+        if (!defined('CHUNK_SIZE')) define('CHUNK_SIZE', 100);
+        
+        try {
+            // Validar archivo subido
+            if (!isset($_FILES['csv_file'])) {
+                $resp = ['success' => false, 'message' => 'No se recibió el archivo CSV.'];
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode($resp);
+                    exit;
+                }
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/listar');
+                exit;
+            }
+            
+            $validacion = CSVHelper::validateUploadedFile($_FILES['csv_file']);
+            if (!$validacion['valido']) {
+                $resp = ['success' => false, 'message' => $validacion['error']];
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode($resp);
+                    exit;
+                }
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/listar');
+                exit;
+            }
+            
+            $tmp = $_FILES['csv_file']['tmp_name'];
+            $filename = $_FILES['csv_file']['name'];
+            $filesize = $_FILES['csv_file']['size'];
+            
+            $handle = fopen($tmp, 'r');
+            if ($handle === false) {
+                throw new Exception('No se pudo abrir el archivo CSV');
+            }
+            
+            // Detectar delimitador
+            $firstLine = fgets($handle);
+            if ($firstLine === false) {
+                fclose($handle);
+                throw new Exception('El CSV parece estar vacío');
+            }
+            
+            $delimiter = CSVHelper::detectDelimiter($firstLine);
+            rewind($handle);
+            
+            // Leer y normalizar header
+            $header = fgetcsv($handle, 0, $delimiter);
+            if ($header === false) {
+                fclose($handle);
+                throw new Exception('No se pudo leer la cabecera del CSV');
+            }
+            
+            $cols = CSVHelper::normalizeHeaders($header);
+            
+            // Validar columnas mínimas requeridas
+            $required = ['numero_orden', 'latitud', 'longitud'];
+            $missing = [];
+            foreach ($required as $r) {
+                if (!in_array($r, $cols)) $missing[] = $r;
+            }
+            
+            if (!empty($missing)) {
+                fclose($handle);
+                $msg = 'Faltan columnas requeridas en el CSV: ' . implode(', ', $missing);
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => $msg]);
+                    exit;
+                }
+                set_flash('error', $msg);
+                header('Location: ' . RUTA_URL . 'pedidos/listar');
+                exit;
+            }
+            
+            // Obtener valores por defecto desde POST
+            $defaultValues = [];
+            if (!empty($_POST['default_estado'])) {
+                $defaultValues['estado'] = (int)$_POST['default_estado'];
+            }
+            if (!empty($_POST['default_proveedor'])) {
+                $defaultValues['proveedor'] = (int)$_POST['default_proveedor'];
+            }
+            if (!empty($_POST['default_moneda'])) {
+                $defaultValues['moneda'] = (int)$_POST['default_moneda'];
+            }
+            if (!empty($_POST['default_vendedor'])) {
+                $defaultValues['vendedor'] = (int)$_POST['default_vendedor'];
+            }
+            
+            $autoCreateProducts = !isset($_POST['auto_create_products']) || $_POST['auto_create_products'] !== '0';
+            
+            // Leer todas las filas
+            $allRows = [];
+            $line = 1; // Header es línea 1
+            
+            while (!feof($handle)) {
+                $raw = fgets($handle);
+                if ($raw === false) break;
+                $line++;
+                
+                // Quitar BOM si aparece
+                if ($line === 2) {
+                    $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+                }
+                
+                $row = str_getcsv(rtrim($raw, "\r\n"), $delimiter, '"');
+                
+                // Si no coincide el número de columnas, intentar delimitador alternativo
+                if (count($row) !== count($cols)) {
+                    $alt = $delimiter === ',' ? ';' : ',';
+                    $altRow = str_getcsv(rtrim($raw, "\r\n"), $alt, '"');
+                    if (count($altRow) === count($cols)) {
+                        $row = $altRow;
+                    }
+                }
+                
+                // Mapear a asociativo
+                $dataRow = [];
+                foreach ($cols as $i => $colName) {
+                    $val = isset($row[$i]) ? trim($row[$i]) : '';
+                    $dataRow[$colName] = $val;
+                }
+                
+                // Omitir filas completamente vacías
+                $allEmpty = true;
+                foreach ($dataRow as $v) {
+                    if ($v !== null && $v !== '') {
+                        $allEmpty = false;
+                        break;
+                    }
+                }
+                if ($allEmpty) continue;
+                
+                $allRows[] = $dataRow;
+            }
+            
+            fclose($handle);
+            
+            // VALIDACIÓN COMPLETA
+            $validator = new CSVPedidoValidator();
+            $resumenValidacion = $validator->validarLote($allRows);
+            
+            // MODO PREVIEW: Retornar resumen sin insertar
+            if ($isPreview) {
+                $previewData = [
+                    'success' => true,
+                    'preview' => true,
+                    'resumen' => $resumenValidacion,
+                    'primeras_filas' => array_slice($allRows, 0, 20),
+                    'puede_importar' => $resumenValidacion['puede_importar'],
+                    'default_values' => $defaultValues,
+                    'auto_create_products' => $autoCreateProducts
+                ];
+                
+                header('Content-Type: application/json');
+                echo json_encode($previewData, JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            
+            // Si NO puede importar (todos con errores), detener
+            if (!$resumenValidacion['puede_importar']) {
+                $msg = 'No hay filas válidas para importar. Total de errores: ' . count($resumenValidacion['errores']);
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode([
+                        'success' => false,
+                        'message' => $msg,
+                        'errores' => $resumenValidacion['errores']
+                    ]);
+                    exit;
+                }
+                $_SESSION['import_errors'] = $resumenValidacion['errores'];
+                set_flash('error', $msg);
+                header('Location: ' . RUTA_URL . 'pedidos/listar');
+                exit;
+            }
+            
+            // PROCESAMIENTO POR CHUNKS
+            $totalFilas = count($allRows);
+            $totalExitosas = 0;
+            $todosErrores = [];
+            $filasErrorneas = [];
+            $erroresFilasErrorneas = [];
+            $todosProductosCreados = [];
+            
+            for ($i = 0; $i < $totalFilas; $i += CHUNK_SIZE) {
+                $chunk = array_slice($allRows, $i, CHUNK_SIZE);
+                
+                // Filtrar solo filas válidas del chunk
+                $chunkValido = [];
+                foreach ($chunk as $index => $fila) {
+                    $lineNumber = $i + $index + 2; // +2 porque header es 1 y arrays empiezan en 0
+                    $validacion = $validator->validarFila($fila, $lineNumber);
+                    
+                    if ($validacion['valido']) {
+                        // Completar IDs si se usaron nombres
+                        $validator->completarIDs($fila);
+                        
+                        // Aplicar valores por defecto a la fila
+                        if (!empty($defaultValues['estado']) && empty($fila['id_estado'])) {
+                            $fila['id_estado'] = $defaultValues['estado'];
+                        }
+                        if (!empty($defaultValues['proveedor']) && empty($fila['id_proveedor'])) {
+                            $fila['id_proveedor'] = $defaultValues['proveedor'];
+                        }
+                        if (!empty($defaultValues['moneda']) && empty($fila['id_moneda'])) {
+                            $fila['id_moneda'] = $defaultValues['moneda'];
+                        }
+                        if (!empty($defaultValues['vendedor']) && empty($fila['id_vendedor'])) {
+                            $fila['id_vendedor'] = $defaultValues['vendedor'];
+                        }
+                        
+                        $chunkValido[] = $fila;
+                    } else {
+                        // Guardar fila errónea para exportar
+                        $filasErrorneas[] = $fila;
+                        $errorMsg = "Línea {$lineNumber}: " . implode('; ', $validacion['errores']);
+                        $erroresFilasErrorneas[] = $errorMsg;
+                        $todosErrores[] = $errorMsg;
+                    }
+                }
+                
+                // Insertar chunk válido
+                if (!empty($chunkValido)) {
+                    $resultado = PedidosModel::insertarPedidosLote($chunkValido, $autoCreateProducts, $defaultValues);
+                    $totalExitosas += $resultado['inserted'];
+                    
+                    if (!empty($resultado['errors'])) {
+                        $todosErrores = array_merge($todosErrores, $resultado['errors']);
+                    }
+                    
+                    if (!empty($resultado['productos_creados'])) {
+                        $todosProductosCreados = array_merge($todosProductosCreados, $resultado['productos_creados']);
+                    }
+                }
+            }
+            
+            $tiempoFin = microtime(true);
+            $tiempoProcesamiento = round($tiempoFin - $tiempoInicio, 3);
+            
+            // Exportar filas erróneas como CSV si existen
+            $archivoErrores = null;
+            if (!empty($filasErrorneas)) {
+                try {
+                    $archivoErrores = CSVHelper::exportErrorsToCSV($filasErrorneas, $cols, $erroresFilasErrorneas, $delimiter);
+                } catch (Exception $e) {
+                    error_log('Error al exportar CSV de errores: ' . $e->getMessage());
+                }
+            }
+            
+            // REGISTRAR AUDITORÍA
+            try {
+                $auditData = [
+                    'id_usuario' => $_SESSION['user_id'] ?? 1,
+                    'archivo_nombre' => $filename,
+                    'archivo_size_bytes' => $filesize,
+                    'tipo_plantilla' => 'custom', // Determinar según header si coincide con templates
+                    'filas_totales' => $totalFilas,
+                    'filas_exitosas' => $totalExitosas,
+                    'filas_error' => count($todosErrores),
+                    'filas_advertencias' => count($resumenValidacion['advertencias'] ?? []),
+                    'tiempo_procesamiento_segundos' => $tiempoProcesamiento,
+                    'valores_defecto' => $defaultValues,
+                    'productos_creados' => array_unique($todosProductosCreados),
+                    'errores_detallados' => array_slice($todosErrores, 0, 50), // Solo primeros 50 errores
+                    'archivo_errores' => $archivoErrores
+                ];
+                
+                ImportacionModel::registrar($auditData);
+            } catch (Exception $e) {
+                error_log('Error al registrar auditoría de importación: ' . $e->getMessage());
+            }
+            
+            // RESPUESTA
+            $msg = "{$totalExitosas} pedidos importados correctamente de {$totalFilas} filas.";
+            $estadoFinal = 'completado';
+            
+            if (count($todosErrores) > 0) {
+                $msg .= " " . count($todosErrores) . " filas con error.";
+                $estadoFinal = $totalExitosas > 0 ? 'parcial' : 'fallido';
+            }
+            
+            $responseData = [
+                'success' => $totalExitosas > 0,
+                'message' => $msg,
+                'stats' => [
+                    'total' => $totalFilas,
+                    'inserted' => $totalExitosas,
+                    'errors' => count($todosErrores),
+                    'warnings' => count($resumenValidacion['advertencias'] ?? []),
+                    'tiempo_segundos' => $tiempoProcesamiento
+                ],
+                'productos_creados' => array_unique($todosProductosCreados),
+                'estado' => $estadoFinal,
+                'errors_list' => array_slice($todosErrores, 0, 10) // Enviar primeros 10 errores para debug
+            ];
+            
+            if ($archivoErrores) {
+                $responseData['error_file_url'] = 'logs/' . $archivoErrores;
+            }
+            
             if ($isAjax) {
                 header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => $msg, 'errors' => $errors]);
+                echo json_encode($responseData, JSON_UNESCAPED_UNICODE);
                 exit;
             }
-            set_flash('error', $msg);
-        } else {
-            // Si se detectó punto y coma como separador, avisar que la importación se realizó pero se recomienda usar comas
-            if ($warnSemicolon) {
-                if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => true, 'message' => $msg . ' (Se detectó punto y coma como separador; se procesó, pero se recomienda usar comas para compatibilidad.)']);
-                    exit;
-                }
-                set_flash('success', $msg . ' (Se detectó punto y coma como separador; se procesó, pero se recomienda usar comas para compatibilidad.)');
+            
+            // Para peticiones normales
+            if (!empty($todosErrores)) {
+                $_SESSION['import_errors'] = array_slice($todosErrores, 0, 100); // Máximo 100 errores en sesión
+                set_flash('warning', $msg);
             } else {
-                if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => true, 'message' => $msg]);
-                    exit;
-                }
                 set_flash('success', $msg);
             }
-        }
-
-        header('Location: ' . RUTA_URL . 'pedidos/listar');
-        exit;
+            
+            header('Location: ' . RUTA_URL . 'pedidos/listar');
+            exit;
+            
         } catch (Exception $e) {
-            // Registrar error detallado en un archivo de log para depuración
+            // Logging detallado del error
             $logDir = __DIR__ . '/../logs';
             if (!is_dir($logDir)) {
                 @mkdir($logDir, 0755, true);
             }
-            $logFile = $logDir . '/import_errors.log';
             $errorId = date('YmdHis') . '-' . bin2hex(random_bytes(4));
             $dump = "[{$errorId}] " . date('c') . "\n";
             $dump .= "Message: " . $e->getMessage() . "\n";
             $dump .= "Trace: \n" . $e->getTraceAsString() . "\n";
-            $dump .= "\
-";
-            $dump .= "\
-";
-            $dump .= "\
-";
-            $dump .= "\$_FILES: " . var_export($_FILES, true) . "\n";
-            @file_put_contents($logFile, $dump, FILE_APPEND | LOCK_EX);
-
-            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+            @file_put_contents($logDir . '/import_errors.log', $dump . "\n\n", FILE_APPEND | LOCK_EX);
+            
             if ($isAjax) {
                 header('Content-Type: application/json', true, 500);
-                echo json_encode(['success' => false, 'message' => 'Error interno durante la importación. ID: ' . $errorId]);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Error interno durante la importación. ID: ' . $errorId,
+                    'error_id' => $errorId
+                ]);
                 exit;
             }
-            // Para peticiones normales, mostrar un mensaje amigable y redirigir
+            
             set_flash('error', 'Ocurrió un error interno durante la importación. Contacta al administrador con el ID: ' . $errorId);
             header('Location: ' . RUTA_URL . 'pedidos/listar');
             exit;
         }
     }
+    
     
     
 }
