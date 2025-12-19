@@ -4,6 +4,11 @@ include("vista/includes/header.php");
 // Obtener productos usando el controlador (consistencia con otros módulos)
 $ctrl = new ProductosController();
 $productos = $ctrl->listar();
+
+// Check if user is admin
+$rolesNombres = $_SESSION['roles_nombres'] ?? [];
+$isAdmin = in_array('Administrador', $rolesNombres, true);
+$deleteDisabled = !$isAdmin ? 'disabled' : '';
 ?>
 <div class="container">
     <h2>Productos</h2>
@@ -33,7 +38,7 @@ $productos = $ctrl->listar();
                                 <a class="btn btn-sm btn-info" href="<?= RUTA_URL ?>productos/ver/<?= urlencode($p['id']) ?>">Ver</a>
                                 <a class="btn btn-sm btn-warning" href="<?= RUTA_URL ?>productos/editar/<?= urlencode($p['id']) ?>">Editar</a>
                                 <form method="post" action="<?= RUTA_URL ?>productos/eliminar/<?= urlencode($p['id']) ?>" style="display:inline" onsubmit="return confirm('Eliminar producto?');">
-                                    <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
+                                    <button class="btn btn-sm btn-danger" type="submit" <?= $deleteDisabled ?>>Eliminar</button>
                                 </form>
                             </td>
                         </tr>

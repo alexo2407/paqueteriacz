@@ -2,6 +2,11 @@
 include("vista/includes/header.php");
 $ctrl = new PaisesController();
 $paises = $ctrl->listar();
+
+// Check if user is admin
+$rolesNombres = $_SESSION['roles_nombres'] ?? [];
+$isAdmin = in_array('Administrador', $rolesNombres, true);
+$deleteDisabled = !$isAdmin ? 'disabled' : '';
 ?>
 <div class="container">
     <h2>Paises</h2>
@@ -28,7 +33,7 @@ $paises = $ctrl->listar();
                                             <a class="btn btn-sm btn-info" href="' . RUTA_URL . 'paises/ver/' . urlencode($value['id']) . '">Ver</a>
                                             <a class="btn btn-sm btn-warning" href="' . RUTA_URL . 'paises/editar/' . urlencode($value['id']) . '">Editar</a>
                                             <form method="post" action="' . RUTA_URL . 'paises/eliminar/' . urlencode($value['id']) . '" style="display:inline" onsubmit="return confirm(\'¿Eliminar país?\');">
-                                                <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
+                                                <button class="btn btn-sm btn-danger" type="submit" ' . $deleteDisabled . '>Eliminar</button>
                                             </form>
                                         </div>
                                     </td>

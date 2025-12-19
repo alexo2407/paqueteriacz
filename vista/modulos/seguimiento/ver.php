@@ -52,9 +52,19 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
 
                         <dt class="col-sm-4">Estado</dt>
                         <dd class="col-sm-8">
+                            <?php
+                            // Lógica para restringir actualización única por repartidor
+                            $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+                            $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true) && !in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+                            $yaActualizado = !empty($pedido['repartidor_updated_at']);
+                            
+                            // Si es repartidor y ya actualizó una vez, deshabilitar
+                            $disabledForm = ($isRepartidor && $yaActualizado) ? 'disabled' : '';
+                            ?>
+
                             <form action="<?= RUTA_URL ?>cambiarEstados" method="POST" class="d-flex gap-2">
                                 <input type="hidden" name="id_pedido" value="<?= (int)$pedido['id'] ?>" />
-                                <select name="estado" class="form-select form-select-sm" aria-label="Cambiar estado">
+                                <select name="estado" class="form-select form-select-sm" aria-label="Cambiar estado" <?= $disabledForm ?>>
                                     <option value="">Selecciona un estado</option>
                                     <?php foreach ($estados as $e): ?>
                                         <option value="<?= (int)$e['id'] ?>" <?= ((int)$pedido['id_estado'] === (int)$e['id']) ? 'selected' : '' ?>>
@@ -62,8 +72,13 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <button type="submit" class="btn btn-sm btn-primary">Actualizar</button>
+                                <button type="submit" class="btn btn-sm btn-primary" <?= $disabledForm ?>>Actualizar</button>
                             </form>
+                            <?php if ($disabledForm): ?>
+                                <div class="text-danger small mt-1">
+                                    <i class="bi bi-lock-fill"></i> El pedido ya fue procesado y no se puede modificar.
+                                </div>
+                            <?php endif; ?>
                         </dd>
 
                         <?php if (!empty($pedido['comentario'])): ?>

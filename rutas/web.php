@@ -551,10 +551,14 @@ if (isset($ruta[0]) && $ruta[0] === 'cambiarEstados') {
         }
 
         try {
+            $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+            $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true) && !in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+
             $ctrl = new PedidosController();
             $data = [
                 'id_pedido' => $idPedido,
-                'estado' => $nuevoEstado
+                'estado' => $nuevoEstado,
+                'is_repartidor' => $isRepartidor
             ];
             $resultado = $ctrl->actualizarPedido($data);
 

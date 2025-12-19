@@ -3,6 +3,11 @@ include("vista/includes/header.php");
 
 $ctrl = new MonedasController();
 $monedas = $ctrl->listar();
+
+// Check if user is admin
+$rolesNombres = $_SESSION['roles_nombres'] ?? [];
+$isAdmin = in_array('Administrador', $rolesNombres, true);
+$deleteDisabled = !$isAdmin ? 'disabled' : '';
 ?>
 <div class="container">
     <h2>Monedas</h2>
@@ -30,7 +35,7 @@ $monedas = $ctrl->listar();
                                 <div class="btn-group">
                                     <a class="btn btn-sm btn-warning" href="' . RUTA_URL . 'monedas/editar/' . $value["id"] . '">Editar</a>
                                     <form method="post" action="' . RUTA_URL . 'monedas/eliminar/' . $value["id"] . '" style="display:inline" onsubmit="return confirm(\'¿Estás seguro de eliminar esta moneda?\');">
-                                        <button class="btn btn-sm btn-danger" type="submit">Eliminar</button>
+                                        <button class="btn btn-sm btn-danger" type="submit" ' . $deleteDisabled . '>Eliminar</button>
                                     </form>
                                 </div>
                             </td>

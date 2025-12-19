@@ -845,6 +845,12 @@ class PedidosModel
                 $sql = 'UPDATE pedidos SET ' . implode(', ', $fields) . ' WHERE id = :id';
                 $stmt = $db->prepare($sql);
                 $stmt->execute($params);
+
+                // Si es repartidor actualizando estado, marcar timestamp para bloquear futuras actualizaciones
+                if (isset($data['estado']) && !empty($data['is_repartidor'])) {
+                    $stmtTimestamp = $db->prepare('UPDATE pedidos SET repartidor_updated_at = NOW() WHERE id = :id');
+                    $stmtTimestamp->execute([':id' => (int)$data['id_pedido']]);
+                }
             }
 
             // Update products if provided

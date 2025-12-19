@@ -4,6 +4,11 @@
 $stockController = new StockController();
 $movimientos = $stockController->listar();
 $inventario = $stockController->inventarioActual();
+
+// Check if user is admin
+$rolesNombres = $_SESSION['roles_nombres'] ?? [];
+$isAdmin = in_array('Administrador', $rolesNombres, true);
+$deleteDisabled = !$isAdmin ? 'disabled' : '';
 ?>
 
 <div class="container-fluid px-4">
@@ -149,7 +154,7 @@ $inventario = $stockController->inventarioActual();
                                                     <i class="fas fa-pencil-alt"></i> Editar
                                                 </a>
                                                 <form method="POST" action="<?= RUTA_URL ?>stock/eliminar/<?= $item['id']; ?>" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este movimiento? Esto afectará el stock actual.');">
-                                                    <button type="submit" class="btn btn-sm btn-danger ms-1" title="Eliminar">
+                                                    <button type="submit" class="btn btn-sm btn-danger ms-1" title="Eliminar" <?= $deleteDisabled ?>>
                                                         <i class="fas fa-trash-alt"></i> Eliminar
                                                     </button>
                                                 </form>
