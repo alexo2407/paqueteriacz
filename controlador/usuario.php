@@ -195,6 +195,10 @@ class UsuariosController
         require_once __DIR__ . '/../utils/session.php';
         start_secure_session();
 
+        // CSRF Protection
+        require_once __DIR__ . '/../utils/csrf.php';
+        require_csrf_token($_POST['csrf_token'] ?? null);
+
         $email = isset($_POST['email']) ? trim($_POST['email']) : null;
         $password = isset($_POST['password']) ? $_POST['password'] : null;
 

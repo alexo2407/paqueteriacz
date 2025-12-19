@@ -19,6 +19,10 @@ if (!$m) { echo '<div class="container"><div class="alert alert-danger">Moneda n
         </div>
         <div class="card-body">
             <form method="post" action="<?= RUTA_URL ?>monedas/actualizar/<?= urlencode($m['id']) ?>">
+                <?php 
+                require_once __DIR__ . '/../../../utils/csrf.php';
+                echo csrf_field(); 
+                ?>
                 <div class="mb-3">
                     <label class="form-label">Código (ISO)</label>
                     <input class="form-control" name="codigo" value="<?= htmlspecialchars($m['codigo']) ?>" required />

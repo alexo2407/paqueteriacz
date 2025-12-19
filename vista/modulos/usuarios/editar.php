@@ -21,6 +21,10 @@ $rolesUsuarioIds = $rolesUsuario['ids'] ?? [];
 			<div class="alert alert-danger">Usuario no encontrado.</div>
 		<?php else : ?>
 			<form method="POST" action="<?= RUTA_URL ?>usuarios/actualizar/<?= $idUsuario; ?>">
+				<?php 
+				require_once __DIR__ . '/../../../utils/csrf.php';
+				echo csrf_field(); 
+				?>
 				<div class="mb-3">
 					<label class="form-label" for="nombre">Nombre completo</label>
 					<input id="nombre" name="nombre" class="form-control" required value="<?= htmlspecialchars($usuario['nombre'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">

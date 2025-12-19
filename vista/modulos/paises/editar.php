@@ -19,6 +19,10 @@ if (!$p) { echo '<div class="container"><div class="alert alert-danger">País no
         </div>
         <div class="card-body">
             <form method="post" action="<?= RUTA_URL ?>paises/actualizar/<?= urlencode($p['id']) ?>">
+                <?php 
+                require_once __DIR__ . '/../../../utils/csrf.php';
+                echo csrf_field(); 
+                ?>
                 <div class="mb-3">
                     <label class="form-label">Nombre</label>
                     <input class="form-control" name="nombre" value="<?= htmlspecialchars($p['nombre']) ?>" required />

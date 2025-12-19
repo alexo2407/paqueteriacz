@@ -20,10 +20,43 @@ function start_secure_session()
         ]);
 
         session_start();
+        
         // Regenerar id de sesión para evitar fixation
         if (!isset($_SESSION['initiated'])) {
             session_regenerate_id(true);
             $_SESSION['initiated'] = true;
+            $_SESSION['created_at'] = time();
+            $_SESSION['last_activity'] = time();
+        }
+        
+        // Check for session timeout (30 minutes of inactivity)
+        $timeout = 1800; // 30 minutes
+        if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > $timeout)) {
+            // Session expired due to inactivity
+            if (file_exists(__DIR__ . '/Logger.php')) {
+                require_once __DIR__ . '/Logger.php';
+                Logger::security('Session timeout', [
+                    'user_id' => $_SESSION['id'] ?? null,
+                    'last_activity' => $_SESSION['last_activity']
+                ]);
+            }
+            session_unset();
+            session_destroy();
+            session_start();
+            session_regenerate_id(true);
+            $_SESSION['initiated'] = true;
+            $_SESSION['created_at'] = time();
+        }
+        
+        // Update last activity time
+        $_SESSION['last_activity'] = time();
+        
+        // Regenerate session ID periodically (every 30 minutes)
+        if (!isset($_SESSION['last_regenerate'])) {
+            $_SESSION['last_regenerate'] = time();
+        } elseif (time() - $_SESSION['last_regenerate'] > 1800) {
+            session_regenerate_id(true);
+            $_SESSION['last_regenerate'] = time();
         }
     }
 }

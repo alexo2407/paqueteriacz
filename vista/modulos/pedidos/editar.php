@@ -115,6 +115,10 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
     </div>
 
     <form id="formEditarPedido" method="POST" action="">
+        <?php 
+        require_once __DIR__ . '/../../../utils/csrf.php';
+        echo csrf_field(); 
+        ?>
         <input type="hidden" name="id_pedido" value="<?= htmlspecialchars($pedido['id']) ?>">
 
         <!-- Sección 1: Información Básica de la Orden -->

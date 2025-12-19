@@ -22,6 +22,10 @@ if (!$d) { echo '<div class="container"><div class="alert alert-danger">Departam
         </div>
         <div class="card-body">
             <form method="post" action="<?= RUTA_URL ?>departamentos/actualizar/<?= urlencode($d['id']) ?>">
+                <?php 
+                require_once __DIR__ . '/../../../utils/csrf.php';
+                echo csrf_field(); 
+                ?>
                 <div class="mb-3">
                     <label class="form-label">Nombre</label>
                     <input class="form-control" name="nombre" value="<?= htmlspecialchars($d['nombre']) ?>" required />

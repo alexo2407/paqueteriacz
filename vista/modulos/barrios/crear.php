@@ -11,6 +11,10 @@ $municipios = $munCtrl->listar();
         </div>
         <div class="card-body">
             <form method="post" action="<?= RUTA_URL ?>barrios/guardar">
+                <?php 
+                require_once __DIR__ . '/../../../utils/csrf.php';
+                echo csrf_field(); 
+                ?>
                 <div class="mb-3">
                     <label class="form-label">Nombre</label>
                     <input class="form-control" name="nombre" required />

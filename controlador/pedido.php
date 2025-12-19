@@ -564,6 +564,10 @@ class PedidosController {
      * @return array|void
      */
     public function guardarPedidoFormulario(array $data) {
+        // CSRF Protection
+        require_once __DIR__ . '/../utils/csrf.php';
+        require_csrf_token($data['csrf_token'] ?? null);
+        
         $errores = [];
 
         // Logging condicional (solo en modo DEBUG). Guardamos información
@@ -825,6 +829,10 @@ class PedidosController {
      * @return void
      */
     public function guardarEdicion($data) {
+        // CSRF Protection
+        require_once __DIR__ . '/../utils/csrf.php';
+        require_csrf_token($data['csrf_token'] ?? null);
+        
         // Soporte para peticiones AJAX: si el header X-Requested-With == XMLHttpRequest
         // o el cliente solicita JSON por Accept, devolvemos JSON en lugar de hacer
         // redirect + set_flash. Esto facilita que el frontend maneje la respuesta

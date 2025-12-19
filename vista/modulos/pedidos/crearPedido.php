@@ -81,6 +81,10 @@ try {
     </div>
 
     <form id="formCrearPedido" action="<?= RUTA_URL ?>pedidos/guardarPedido" method="POST">
+        <?php 
+        require_once __DIR__ . '/../../../utils/csrf.php';
+        echo csrf_field(); 
+        ?>
         
         <!-- Sección 1: Información Básica de la Orden -->
         <div class="card mb-4">

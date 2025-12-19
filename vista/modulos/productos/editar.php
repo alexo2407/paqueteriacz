@@ -13,6 +13,10 @@ $producto = $ctrl->ver($id);
         <div class="alert alert-danger">Producto no encontrado.</div>
     <?php else: ?>
     <form method="post" action="<?= RUTA_URL ?>productos/actualizar/<?= urlencode($producto['id']) ?>">
+        <?php 
+        require_once __DIR__ . '/../../../utils/csrf.php';
+        echo csrf_field(); 
+        ?>
         <div class="form-group">
             <label for="nombre">Nombre</label>
             <input id="nombre" name="nombre" class="form-control" required value="<?= htmlspecialchars($producto['nombre']) ?>" />

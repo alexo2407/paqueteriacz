@@ -16,6 +16,10 @@ $roles = UsuariosController::obtenerRolesDisponibles();
         </div>
         <div class="card-body">
             <form method="post">
+                <?php 
+                require_once __DIR__ . '/../../../utils/csrf.php';
+                echo csrf_field(); 
+                ?>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Nombre Completo <span class="text-danger">*</span></label>

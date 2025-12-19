@@ -4,6 +4,10 @@ include("vista/includes/header.php");
 <div class="container">
     <h2>Crear Producto</h2>
     <form method="post" action="<?= RUTA_URL ?>productos/guardar">
+        <?php 
+        require_once __DIR__ . '/../../../utils/csrf.php';
+        echo csrf_field(); 
+        ?>
         <div class="form-group">
             <label for="nombre">Nombre</label>
             <input id="nombre" name="nombre" class="form-control" required />

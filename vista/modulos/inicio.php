@@ -6,6 +6,10 @@
     <i class="fas fa-user-circle mb-3"></i>
     <h3 class="mb-4">Inicio de Sesión</h3>
     <form id="loginForm" method="POST" action="<?= RUTA_URL ?>?enlace=login">
+        <?php 
+        require_once __DIR__ . '/../../utils/csrf.php';
+        echo csrf_field(); 
+        ?>
         <div class="mb-3">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0">
