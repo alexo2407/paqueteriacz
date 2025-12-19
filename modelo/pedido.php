@@ -1363,8 +1363,9 @@ class PedidosModel
     /**
      * Obtener ventas comparativas (Mes Actual vs Mes Anterior).
      * Filtra por estado 'Entregado' si existe, sino cuenta todo.
+     * @param int|null $proveedorId Si se proporciona, filtra por proveedor
      */
-    public static function obtenerVentasComparativa() {
+    public static function obtenerVentasComparativa($proveedorId = null) {
         try {
             $db = (new Conexion())->conectar();
             if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return [];
@@ -1375,6 +1376,12 @@ class PedidosModel
                 $condicionEstado = " AND id_estado = $idEntregado ";
             }
 
+            // Filtro por proveedor si se proporciona
+            $condicionProveedor = "";
+            if ($proveedorId !== null) {
+                $condicionProveedor = " AND id_proveedor = " . (int)$proveedorId;
+            }
+
             // Mes Actual
             $queryActual = "
                 SELECT DATE(fecha_ingreso) as fecha, SUM(precio_local) as total 
@@ -1382,6 +1389,7 @@ class PedidosModel
                 WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE()) 
                   AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE()) 
                   $condicionEstado
+                  $condicionProveedor
                 GROUP BY DATE(fecha_ingreso) ORDER BY fecha ASC";
             
             // Mes Anterior
@@ -1391,6 +1399,7 @@ class PedidosModel
                 WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH) 
                   AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH) 
                   $condicionEstado
+                  $condicionProveedor
                 GROUP BY DATE(fecha_ingreso) ORDER BY fecha ASC";
 
             $stmtActual = $db->prepare($queryActual); $stmtActual->execute();
@@ -1407,8 +1416,9 @@ class PedidosModel
 
     /**
      * Obtener KPIs del mes actual (Total Vendido, Ticket Promedio, Total Pedidos).
+     * @param int|null $proveedorId Si se proporciona, filtra por proveedor
      */
-    public static function obtenerKPIsMesActual() {
+    public static function obtenerKPIsMesActual($proveedorId = null) {
         try {
             $db = (new Conexion())->conectar();
             if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return null;
@@ -1417,6 +1427,12 @@ class PedidosModel
             $condicionEstado = "";
             if ($idEntregado) {
                 $condicionEstado = " AND id_estado = $idEntregado ";
+            }
+
+            // Filtro por proveedor si se proporciona
+            $condicionProveedor = "";
+            if ($proveedorId !== null) {
+                $condicionProveedor = " AND id_proveedor = " . (int)$proveedorId;
             }
 
             $query = "
@@ -1428,6 +1444,7 @@ class PedidosModel
                 WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE()) 
                   AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE()) 
                   $condicionEstado
+                  $condicionProveedor
             ";
             $stmt = $db->prepare($query);
             $stmt->execute();
@@ -1459,8 +1476,9 @@ class PedidosModel
 
     /**
      * Obtener top 5 productos más vendidos del mes actual (Filtrado por Entregado).
+     * @param int|null $proveedorId Si se proporciona, filtra por proveedor
      */
-    public static function obtenerTopProductosMesActual()
+    public static function obtenerTopProductosMesActual($proveedorId = null)
     {
         try {
             $db = (new Conexion())->conectar();
@@ -1469,6 +1487,12 @@ class PedidosModel
             $condicionEstado = "";
             if ($idEntregado) {
                 $condicionEstado = " AND ped.id_estado = $idEntregado ";
+            }
+
+            // Filtro por proveedor si se proporciona
+            $condicionProveedor = "";
+            if ($proveedorId !== null) {
+                $condicionProveedor = " AND ped.id_proveedor = " . (int)$proveedorId;
             }
 
             $query = "
@@ -1481,6 +1505,7 @@ class PedidosModel
                 WHERE MONTH(ped.fecha_ingreso) = MONTH(CURRENT_DATE()) 
                   AND YEAR(ped.fecha_ingreso) = YEAR(CURRENT_DATE()) 
                   $condicionEstado
+                  $condicionProveedor
                 GROUP BY pp.id_producto 
                 ORDER BY total DESC 
                 LIMIT 5

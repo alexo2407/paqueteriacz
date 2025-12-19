@@ -5,20 +5,28 @@ class DashboardController {
     /**
      * Obtener todos los datos necesarios para el dashboard.
      * Encapsula la lógica de negocio y preparación de datos para la vista.
+     * Si el usuario es proveedor, filtra solo sus pedidos.
      * 
      * @return array
      */
     public function obtenerDatosDashboard() {
         require_once "modelo/pedido.php";
+        require_once __DIR__ . '/../utils/permissions.php';
 
-        // 1. KPIs
-        $kpis = PedidosModel::obtenerKPIsMesActual();
+        // Determinar si el usuario es proveedor y obtener su ID
+        $proveedorId = null;
+        if (isProveedor() && !isSuperAdmin()) {
+            $proveedorId = (int)$_SESSION['user_id'];
+        }
+
+        // 1. KPIs (filtrados por proveedor si aplica)
+        $kpis = PedidosModel::obtenerKPIsMesActual($proveedorId);
         $totalVendido = $kpis['total_vendido'] ?? 0;
         $ticketPromedio = $kpis['ticket_promedio'] ?? 0;
         $totalPedidos = $kpis['total_pedidos'] ?? 0;
 
-        // 2. Ventas Comparativas
-        $comparativa = PedidosModel::obtenerVentasComparativa();
+        // 2. Ventas Comparativas (filtradas por proveedor si aplica)
+        $comparativa = PedidosModel::obtenerVentasComparativa($proveedorId);
         $ventasActual = $comparativa['actual'];
         $ventasAnterior = $comparativa['anterior'];
 
@@ -36,8 +44,8 @@ class DashboardController {
             $dataAnterior[$dia] = (float)$v['total'];
         }
 
-        // 3. Ventas Acumuladas
-        $acumuladas = PedidosModel::obtenerVentasAcumuladasMesActual();
+        // 3. Ventas Acumuladas (filtradas por proveedor si aplica)
+        $acumuladas = PedidosModel::obtenerVentasAcumuladasMesActual($proveedorId);
         $dataAcumulada = [];
         $labelsAcumulada = [];
         foreach ($acumuladas as $ac) {
@@ -45,8 +53,8 @@ class DashboardController {
             $dataAcumulada[] = $ac['total_acumulado'];
         }
 
-        // 4. Top Productos
-        $topProductos = PedidosModel::obtenerTopProductosMesActual();
+        // 4. Top Productos (filtrados por proveedor si aplica)
+        $topProductos = PedidosModel::obtenerTopProductosMesActual($proveedorId);
         $nombresProd = [];
         $cantidadesProd = [];
         foreach ($topProductos as $prod) {
@@ -72,7 +80,8 @@ class DashboardController {
             'topProductos' => [
                 'nombres' => $nombresProd,
                 'cantidades' => $cantidadesProd
-            ]
+            ],
+            'esProveedor' => $proveedorId !== null // Para mostrar mensaje en la vista
         ];
     }
 }
