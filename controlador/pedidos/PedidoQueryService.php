@@ -6,6 +6,8 @@
  * Responsabilidad: Obtener datos de pedidos sin modificarlos.
  */
 
+require_once __DIR__ . '/../../utils/Cache.php';
+
 class PedidoQueryService
 {
     /**
@@ -68,63 +70,75 @@ class PedidoQueryService
     }
 
     /**
-     * Obtener estados disponibles
+     * Obtener estados disponibles (con caché de 24 horas)
      * 
      * @return array
      */
     public function obtenerEstados(): array
     {
-        return PedidosModel::obtenerEstados();
+        return Cache::remember('estados_pedidos', 86400, function() {
+            return PedidosModel::obtenerEstados();
+        });
     }
 
     /**
-     * Obtener vendedores/repartidores disponibles
+     * Obtener vendedores/repartidores disponibles (con caché de 1 hora)
      * 
      * @return array
      */
     public function obtenerVendedores(): array
     {
-        return PedidosModel::obtenerVendedores();
+        return Cache::remember('vendedores', 3600, function() {
+            return PedidosModel::obtenerVendedores();
+        });
     }
 
     /**
-     * Obtener repartidores (alias de obtenerVendedores)
+     * Obtener repartidores (alias con caché de 1 hora)
      * 
      * @return array
      */
     public function obtenerRepartidores(): array
     {
-        return PedidosModel::obtenerRepartidores();
+        return Cache::remember('repartidores', 3600, function() {
+            return PedidosModel::obtenerRepartidores();
+        });
     }
 
     /**
-     * Obtener productos disponibles
+     * Obtener productos disponibles (con caché de 10 minutos)
      * 
      * @return array
      */
     public function obtenerProductos(): array
     {
-        return PedidosModel::obtenerProductos();
+        return Cache::remember('productos', 600, function() {
+            return PedidosModel::obtenerProductos();
+        });
     }
 
     /**
-     * Obtener proveedores registrados
+     * Obtener proveedores registrados (con caché de 1 hora)
      * 
      * @return array
      */
     public function obtenerProveedores(): array
     {
-        return PedidosModel::obtenerProveedores();
+        return Cache::remember('proveedores', 3600, function() {
+            return PedidosModel::obtenerProveedores();
+        });
     }
 
     /**
-     * Obtener monedas disponibles
+     * Obtener monedas disponibles (con caché de 2 horas)
      * 
      * @return array
      */
     public function obtenerMonedas(): array
     {
-        return PedidosModel::obtenerMonedas();
+        return Cache::remember('monedas', 7200, function() {
+            return PedidosModel::obtenerMonedas();
+        });
     }
 
     /**
