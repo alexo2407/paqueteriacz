@@ -2,6 +2,7 @@
 
 
 $ruta = isset($_GET['enlace']) ? explode("/", $_GET['enlace']) : ['inicio'];
+$ruta = array_values(array_filter($ruta, fn($v) => $v !== ''));
 
 if ($ruta[0] === "api") {
     // Incluir el archivo API correspondiente sin cargar el template

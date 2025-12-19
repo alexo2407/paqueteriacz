@@ -278,6 +278,22 @@
     "nombre": "Nombre del Barrio",
     "id_municipio": 1
 }</code></pre>
+
+            <hr>
+
+            <h4>Monedas</h4>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/monedas/listar</div>
+            <div class="code-block"><span class="badge-endpoint">GET</span> /api/monedas/ver?id={id}</div>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/monedas/crear</div>
+            <div class="code-block"><span class="badge-endpoint">POST</span> /api/monedas/actualizar?id={id}</div>
+            <div class="code-block"><span class="badge-endpoint">DELETE</span> /api/monedas/eliminar?id={id}</div>
+
+            <h5>Payload (POST/PUT)</h5>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "codigo": "USD",
+    "nombre": "Dólar Estadounidense",
+    "tasa_usd": 1.0
+}</code></pre>
         </div>
 
         <!-- Products: detailed -->

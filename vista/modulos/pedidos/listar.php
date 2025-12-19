@@ -287,6 +287,11 @@ endif;
                     $estados = $listarPedidos->obtenerEstados(); // Obtener lista de estados
                     $pedidos = $listarPedidos->listarPedidosExtendidos();
 
+                    // Determinar si el usuario es proveedor (y no admin) para deshabilitar cambios
+                    $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+                    $isProveedorOnly = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) && !in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+                    $disabledAttr = $isProveedorOnly ? 'disabled' : '';
+
                     foreach ($pedidos as $pedido): ?>
                         <tr data-id="<?= $pedido['ID_Pedido'] ?>">
                             <td><?= htmlspecialchars($pedido['Numero_Orden']) ?></td>
@@ -295,7 +300,7 @@ endif;
 
                             <!-- Celda Editable para Estado -->
                             <td class="editable" data-campo="estado">
-                                <select class="form-select actualizarEstado" data-id="<?= $pedido['ID_Pedido']; ?>">
+                                <select class="form-select actualizarEstado" data-id="<?= $pedido['ID_Pedido']; ?>" <?= $disabledAttr ?>>
                                     <?php foreach ($estados as $estado): ?>
                                         <option value="<?= $estado['id']; ?>" <?= $pedido['Estado'] == $estado['nombre_estado'] ? 'selected' : ''; ?>>
                                             <?= htmlspecialchars($estado['nombre_estado']); ?>

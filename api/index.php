@@ -104,6 +104,28 @@ if (preg_match('/\/api\/geoinfo\/barrios$/', $path)) {
     exit;
 }
 
+// Rutas de Monedas
+if (preg_match('/\/api\/monedas\/listar$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/monedas/listar.php';
+    exit;
+}
+if (preg_match('/\/api\/monedas\/ver$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/monedas/ver.php';
+    exit;
+}
+if (preg_match('/\/api\/monedas\/crear$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/monedas/crear.php';
+    exit;
+}
+if (preg_match('/\/api\/monedas\/actualizar$/', $path) && ($method === 'POST' || $method === 'PUT')) {
+    require_once __DIR__ . '/monedas/actualizar.php';
+    exit;
+}
+if (preg_match('/\/api\/monedas\/eliminar$/', $path) && $method === 'DELETE') {
+    require_once __DIR__ . '/monedas/eliminar.php';
+    exit;
+}
+
 // Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
 if (strpos($path, '/api/') === 0) {
     http_response_code(404);
