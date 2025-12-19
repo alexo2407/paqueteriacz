@@ -14,6 +14,20 @@ require_once __DIR__ . '/../modelo/pedido.php';
 
 class PedidosController {
 
+    // Specialized controllers for separation of concerns
+    private $queryService;
+    private $apiController;
+
+    public function __construct() {
+        // Load specialized classes
+        require_once __DIR__ . '/pedidos/PedidoQueryService.php';
+        require_once __DIR__ . '/pedidos/PedidoApiController.php';
+        
+        // Initialize services
+        $this->queryService = new PedidoQueryService();
+        $this->apiController = new PedidoApiController();
+    }
+
 
     /* ZONA API */
 
@@ -39,178 +53,8 @@ class PedidosController {
      * @return array
      */
     public function crearPedidoAPI($jsonData) {
-        $data = $jsonData;
-
-        // Si el usuario es Proveedor, forzar su ID como proveedor del pedido
-        require_once __DIR__ . '/../utils/permissions.php';
-        if (isProveedor()) {
-            $data['id_proveedor'] = $_SESSION['user_id'];
-            $data['proveedor'] = $_SESSION['user_id'];
-        }
-
-        // Validar la estructura del pedido
-        $validacion = $this->validarDatosPedido($data);
-        if (!$validacion["success"]) {
-            // ...
-            throw new Exception($msg, 400);
-        }
-
-        // Verificar si el número de orden ya existe
-        if (PedidosModel::existeNumeroOrden($data["numero_orden"])) {
-             throw new Exception("El número de orden ya existe en la base de datos.", 400);
-        }
-
-            // Support multiple products: either provide single 'producto' + 'cantidad'
-            // or an array 'productos' with items { producto_id, cantidad }.
-            $items = [];
-            if (!empty($data['productos']) && is_array($data['productos'])) {
-                foreach ($data['productos'] as $pi) {
-                    if (empty($pi['producto_id']) || !is_numeric($pi['producto_id'])) {
-                        return [
-                            "success" => false,
-                            "message" => "Cada item en 'productos' debe incluir 'producto_id' numérico."
-                        ];
-                    }
-                    $prodId = (int)$pi['producto_id'];
-                    $cantidadItem = isset($pi['cantidad']) ? (int)$pi['cantidad'] : 0;
-                    if ($cantidadItem <= 0) {
-                        return [
-                            "success" => false,
-                            "message" => "Cada item en 'productos' debe incluir 'cantidad' mayor a cero."
-                        ];
-                    }
-
-                    $items[] = [
-                        'id_producto' => $prodId,
-                        'cantidad' => $cantidadItem,
-                        'cantidad_devuelta' => isset($pi['cantidad_devuelta']) ? (int)$pi['cantidad_devuelta'] : 0,
-                    ];
-                }
-            } else {
-                // Single-product payload must provide producto_id
-                if (empty($data['producto_id']) || !is_numeric($data['producto_id'])) {
-                    return [
-                        "success" => false,
-                        "message" => "El campo 'producto_id' es obligatorio y debe ser numérico cuando no se usa 'productos'."
-                    ];
-                }
-                $productoId = (int)$data['producto_id'];
-                $items = [[
-                    'id_producto' => $productoId,
-                    'cantidad' => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
-                    'cantidad_devuelta' => isset($data['cantidad_devuelta']) ? (int)$data['cantidad_devuelta'] : 0,
-                ]];
-            }
-
-            $latitud = $data['latitud'] ?? null;
-            $longitud = $data['longitud'] ?? null;
-            if ($latitud === null || $longitud === null) {
-                if (!empty($data["coordenadas"]) && strpos($data["coordenadas"], ',') !== false) {
-                    $parts = array_map('trim', explode(',', $data['coordenadas']));
-                    $latitud = $parts[0];
-                    $longitud = $parts[1];
-                }
-            }
-
-            if (!is_numeric($latitud) || !is_numeric($longitud)) {
-                throw new Exception("Coordenadas inválidas para el pedido.", 400);
-            }
-
-            $precioLocal = null;
-            if (isset($data['precio_local']) && $data['precio_local'] !== '') {
-                $precioLocal = (float)$data['precio_local'];
-            } elseif (isset($data['precio']) && $data['precio'] !== '') {
-                $precioLocal = (float)$data['precio'];
-            }
-
-            $monedaId = isset($data['id_moneda']) ? (int)$data['id_moneda'] : null;
-            if ($monedaId === 0) $monedaId = null;
-
-            if ($monedaId !== null) {
-                $m = MonedaModel::obtenerPorId($monedaId);
-                if (!$m) {
-                    throw new Exception("La moneda especificada no existe.", 400);
-                }
-            }
-
-            $vendedorId = isset($data['id_vendedor']) && is_numeric($data['id_vendedor']) ? (int)$data['id_vendedor'] : null;
-            if ($vendedorId !== null) {
-                $uv = (new UsuarioModel())->obtenerPorId($vendedorId);
-                if (!$uv) {
-                    throw new Exception("El vendedor especificado no existe.", 400);
-                }
-            }
-
-            $proveedorId = isset($data['id_proveedor']) && is_numeric($data['id_proveedor']) ? (int)$data['id_proveedor'] : null;
-            if ($proveedorId !== null) {
-                $up = (new UsuarioModel())->obtenerPorId($proveedorId);
-                if (!$up) {
-                    throw new Exception("El proveedor especificado no existe.", 400);
-                }
-            }
-
-            $municipioId = isset($data['id_municipio']) && is_numeric($data['id_municipio']) ? (int)$data['id_municipio'] : null;
-            if ($municipioId !== null) {
-                $mm = MunicipioModel::obtenerPorId($municipioId);
-                if (!$mm) {
-                    throw new Exception("El municipio especificado no existe.", 400);
-                }
-            }
-
-            $barrioId = isset($data['id_barrio']) && is_numeric($data['id_barrio']) ? (int)$data['id_barrio'] : null;
-            if ($barrioId !== null) {
-                $bb = BarrioModel::obtenerPorId($barrioId);
-                if (!$bb) {
-                    throw new Exception("El barrio especificado no existe.", 400);
-                }
-            }
-
-            $precioUsd = null;
-            if ($precioLocal !== null && $monedaId !== null) {
-                $moneda = PedidosModel::obtenerMonedaPorId($monedaId);
-                if ($moneda && isset($moneda['tasa_usd'])) {
-                    $precioUsd = round($precioLocal * (float)$moneda['tasa_usd'], 2);
-                }
-            }
-
-            $pedidoPayload = [
-                'numero_orden' => $data['numero_orden'],
-                'destinatario' => $data['destinatario'],
-                'telefono' => $data['telefono'],
-                'direccion' => $data['direccion'] ?? '',
-                'comentario' => $data['comentario'] ?? null,
-                'estado' => isset($data['id_estado']) ? (int)$data['id_estado'] : 1,
-                'vendedor' => $vendedorId ?? null,
-                'proveedor' => $proveedorId ?? null,
-                'moneda' => $monedaId ?? 0,
-                'latitud' => (float)$latitud,
-                'longitud' => (float)$longitud,
-                'id_pais' => isset($data['id_pais']) ? $data['id_pais'] : ($data['pais'] ?? null),
-                'id_departamento' => isset($data['id_departamento']) ? $data['id_departamento'] : ($data['departamento'] ?? null),
-                'municipio' => $municipioId ?? ($data['municipio'] ?? null),
-                'barrio' => $barrioId ?? ($data['barrio'] ?? null),
-                'zona' => $data['zona'] ?? null,
-                'precio_local' => $precioLocal,
-                'precio_usd' => $precioUsd,
-            ];
-
-            if ($pedidoPayload['vendedor'] === 0) {
-                $pedidoPayload['vendedor'] = null;
-            }
-            if ($pedidoPayload['proveedor'] === 0) {
-                $pedidoPayload['proveedor'] = null;
-            }
-            if ($pedidoPayload['moneda'] === 0) {
-                $pedidoPayload['moneda'] = null;
-            }
-
-            $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
-            return [
-                "success" => true,
-                "message" => "Pedido creado correctamente.",
-                "data" => $pedidoPayload['numero_orden']
-            ];
-
+        // Delegate to specialized API controller
+        return $this->apiController->crear($jsonData);
     }
 
     /**
@@ -422,36 +266,11 @@ class PedidosController {
      * Si el usuario es Proveedor, solo retorna sus propios pedidos.
      * @return array
      */
-    public function listarPedidosExtendidos() {
-        require_once __DIR__ . '/../utils/permissions.php';
-        
-        // Llamar al modelo para obtener los pedidos
-        $pedidos = PedidosModel::obtenerPedidosExtendidos();
-        
-        // Si es admin, mostrar todos los pedidos (tiene prioridad sobre proveedor)
-        if (isSuperAdmin()) {
-            return $pedidos;
-        }
-        
-        // Si es proveedor (y NO es admin), filtrar solo sus pedidos
-        if (isProveedor()) {
-            $userId = (int)$_SESSION['user_id'];
-            $pedidosFiltrados = [];
-            
-            foreach ($pedidos as $pedido) {
-                $pedidoProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null;
-                if ($pedidoProveedor === $userId) {
-                    $pedidosFiltrados[] = $pedido;
-                }
-            }
-            
-            return $pedidosFiltrados;
-        }
-        
-        // Otros roles (vendedor, repartidor) no tienen acceso a lista de pedidos
-        return [];
+    public function listarPedidosExtendidos()
+    {
+        // Delegate to query service
+        return $this->queryService->listarExtendidos();
     }
-
 
     /**
      * Obtener un pedido por su id (uso en vistas y controladores internos).
@@ -459,13 +278,10 @@ class PedidosController {
      * @param int $id_pedido
      * @return array|null
      */
-    public function obtenerPedido($id_pedido) {
-        if (!$id_pedido) {
-            echo "<div class='alert alert-danger'>No order ID provided.</div>";
-            exit;
-        }
-
-        return PedidosModel::obtenerPedidoPorId($id_pedido);
+    public function obtenerPedido($id_pedido)
+    {
+        // Delegate to query service
+        return $this->queryService->obtenerPorId($id_pedido);
     }
 
 
