@@ -48,6 +48,8 @@ class EnlacesModel
             "seguimiento",
             "barrios",
             "cambiarEstados",
+            "recuperar-password",
+            "reset-password",
             "salir"
         ];
 

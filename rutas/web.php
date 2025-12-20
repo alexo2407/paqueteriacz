@@ -353,6 +353,28 @@ if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'P
     exit;
 }
 
+// ------------------------------------------
+// Manejo de recuperación de contraseña
+// ------------------------------------------
+
+// POST: Solicitar recuperación de contraseña
+if (isset($ruta[0]) && $ruta[0] === 'recuperar-password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../controlador/password_reset.php';
+    
+    $ctrl = new PasswordResetController();
+    $ctrl->solicitarRecuperacion();
+    exit;
+}
+
+// POST: Procesar nueva contraseña
+if (isset($ruta[0]) && $ruta[0] === 'reset-password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../controlador/password_reset.php';
+    
+    $ctrl = new PasswordResetController();
+    $ctrl->procesarReset();
+    exit;
+}
+
 // Manejo de acciones sobre usuarios (ej. actualizar)
 if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = isset($ruta[1]) ? $ruta[1] : '';

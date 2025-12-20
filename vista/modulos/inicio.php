@@ -38,7 +38,7 @@
         ?>
     </div>
     <div class="mt-3">
-        <small><a href="#" class="text-decoration-none">¿Olvidaste tu contraseña?</a></small>
+        <small><a href="<?= RUTA_URL ?>recuperar-password" class="text-decoration-none">¿Olvidaste tu contraseña?</a></small>
     </div>
 </div>
 </div>
