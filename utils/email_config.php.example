@@ -1,0 +1,44 @@
+<?php
+/**
+ * Configuración SMTP para envío de emails - ARCHIVO DE EJEMPLO
+ * 
+ * INSTRUCCIONES:
+ * 1. Copiar este archivo a: utils/email_config.php
+ * 2. Reemplazar los valores de ejemplo con credenciales reales
+ * 3. NO subir email_config.php a Git (está en .gitignore)
+ */
+
+// Configuración del servidor SMTP
+define('SMTP_HOST', 'smtp.ejemplo.com');           // Host del servidor SMTP
+define('SMTP_PORT', 587);                          // Puerto: 587 (TLS) o 465 (SSL)
+define('SMTP_USERNAME', 'tu-email@ejemplo.com');   // Usuario SMTP / Email
+define('SMTP_PASSWORD', 'tu-contraseña-aqui');     // Contraseña o App Password
+define('SMTP_ENCRYPTION', 'tls');                  // 'tls' o 'ssl'
+
+// Información del remitente
+define('SMTP_FROM_EMAIL', 'noreply@ejemplo.com');  // Email "From"
+define('SMTP_FROM_NAME', 'Tu Aplicación');         // Nombre "From"
+
+// Configuración adicional
+define('SMTP_DEBUG', 0);  // 0=off, 1=client, 2=client+server, 3=verbose (usar 2 para debug)
+define('SMTP_CHARSET', 'UTF-8');
+
+/**
+ * EJEMPLOS DE CONFIGURACIÓN SEGÚN PROVEEDOR:
+ * 
+ * GMAIL:
+ * - SMTP_HOST: smtp.gmail.com
+ * - SMTP_PORT: 587
+ * - SMTP_ENCRYPTION: tls
+ * - SMTP_USERNAME: tu-email@gmail.com
+ * - SMTP_PASSWORD: App Password (16 caracteres, generar en cuenta Google)
+ * 
+ * OUTLOOK/HOTMAIL:
+ * - SMTP_HOST: smtp.office365.com
+ * - SMTP_PORT: 587
+ * - SMTP_ENCRYPTION: tls
+ * 
+ * SMTP PERSONALIZADO:
+ * - Consultar documentación del proveedor
+ * - Puertos comunes: 587 (TLS), 465 (SSL), 25 (sin encriptación)
+ */
