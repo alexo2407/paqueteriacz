@@ -249,7 +249,20 @@ class UsuariosController
             // Limpiar posibles errores de login previos
             unset($_SESSION['login_error']);
 
-            // Redirigir a dashboard
+            // Determinar la URL de redirección según el rol del usuario
+            $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+            $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
+            $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+            
+            // Si es repartidor (y no es admin), redirigir a su página de seguimiento
+            if ($isRepartidor && !$isAdmin) {
+                set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
+                $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'seguimiento/listar' : 'index.php?enlace=seguimiento/listar';
+                header('Location: ' . $redirectUrl);
+                exit;
+            }
+            
+            // Para otros roles, redirigir a dashboard
             set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
             $dashboardUrl = defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard';
             header('Location: ' . $dashboardUrl);

@@ -111,6 +111,32 @@ function isProveedor() {
 }
 
 /**
+ * Verifica si el usuario actual es Repartidor (sin ser Admin).
+ * 
+ * @return bool
+ */
+function isRepartidor() {
+    // Verificar en el rol principal
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] == ROL_REPARTIDOR) {
+        // Asegurar que no sea también admin
+        if (isSuperAdmin()) {
+            return false;
+        }
+        return true;
+    }
+    
+    // Verificar en el array de roles (multi-rol)
+    if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
+        $hasRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $_SESSION['roles_nombres'], true);
+        $hasAdmin = in_array(ROL_NOMBRE_ADMIN, $_SESSION['roles_nombres'], true);
+        
+        return $hasRepartidor && !$hasAdmin;
+    }
+    
+    return false;
+}
+
+/**
  * Obtiene el ID del proveedor para el usuario actual.
  * Si es proveedor, retorna su user_id. Si es admin, retorna null (puede elegir).
  * 

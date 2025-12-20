@@ -1361,14 +1361,32 @@ class PedidosModel
     }
 
     /**
-     * Obtener ventas comparativas (Mes Actual vs Mes Anterior).
+     * Obtener ventas comparativas (Período Actual vs Período Anterior de igual duración).
      * Filtra por estado 'Entregado' si existe, sino cuenta todo.
      * @param int|null $proveedorId Si se proporciona, filtra por proveedor
+     * @param string|null $fechaDesde Fecha inicio (YYYY-MM-DD). Si es null, usa primer día del mes actual
+     * @param string|null $fechaHasta Fecha fin (YYYY-MM-DD). Si es null, usa último día del mes actual
      */
-    public static function obtenerVentasComparativa($proveedorId = null) {
+    public static function obtenerVentasComparativa($proveedorId = null, $fechaDesde = null, $fechaHasta = null) {
         try {
             $db = (new Conexion())->conectar();
             if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return [];
+
+            // Establecer fechas por defecto si no se proporcionan
+            if ($fechaDesde === null) {
+                $fechaDesde = date('Y-m-01');
+            }
+            if ($fechaHasta === null) {
+                $fechaHasta = date('Y-m-t');
+            }
+
+            // Calcular período anterior de igual duración
+            $desde = new DateTime($fechaDesde);
+            $hasta = new DateTime($fechaHasta);
+            $dias = $desde->diff($hasta)->days + 1; // +1 para incluir ambos días
+            
+            $fechaDesdeAnterior = (clone $desde)->modify("-{$dias} days")->format('Y-m-d');
+            $fechaHastaAnterior = (clone $desde)->modify('-1 day')->format('Y-m-d');
 
             $idEntregado = self::obtenerIdEstadoPorNombre('Entregado');
             $condicionEstado = "";
@@ -1382,28 +1400,35 @@ class PedidosModel
                 $condicionProveedor = " AND id_proveedor = " . (int)$proveedorId;
             }
 
-            // Mes Actual
+            // Período Actual
             $queryActual = "
                 SELECT DATE(fecha_ingreso) as fecha, SUM(precio_local) as total 
                 FROM pedidos 
-                WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE()) 
-                  AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE()) 
+                WHERE DATE(fecha_ingreso) >= :fecha_desde
+                  AND DATE(fecha_ingreso) <= :fecha_hasta
                   $condicionEstado
                   $condicionProveedor
                 GROUP BY DATE(fecha_ingreso) ORDER BY fecha ASC";
             
-            // Mes Anterior
+            // Período Anterior
             $queryAnterior = "
                 SELECT DATE(fecha_ingreso) as fecha, SUM(precio_local) as total 
                 FROM pedidos 
-                WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE() - INTERVAL 1 MONTH) 
-                  AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE() - INTERVAL 1 MONTH) 
+                WHERE DATE(fecha_ingreso) >= :fecha_desde_anterior
+                  AND DATE(fecha_ingreso) <= :fecha_hasta_anterior
                   $condicionEstado
                   $condicionProveedor
                 GROUP BY DATE(fecha_ingreso) ORDER BY fecha ASC";
 
-            $stmtActual = $db->prepare($queryActual); $stmtActual->execute();
-            $stmtAnterior = $db->prepare($queryAnterior); $stmtAnterior->execute();
+            $stmtActual = $db->prepare($queryActual);
+            $stmtActual->bindParam(':fecha_desde', $fechaDesde);
+            $stmtActual->bindParam(':fecha_hasta', $fechaHasta);
+            $stmtActual->execute();
+            
+            $stmtAnterior = $db->prepare($queryAnterior);
+            $stmtAnterior->bindParam(':fecha_desde_anterior', $fechaDesdeAnterior);
+            $stmtAnterior->bindParam(':fecha_hasta_anterior', $fechaHastaAnterior);
+            $stmtAnterior->execute();
 
             return [
                 'actual' => $stmtActual->fetchAll(PDO::FETCH_ASSOC),
@@ -1415,13 +1440,23 @@ class PedidosModel
     }
 
     /**
-     * Obtener KPIs del mes actual (Total Vendido, Ticket Promedio, Total Pedidos).
+     * Obtener KPIs del período especificado (Total Vendido, Ticket Promedio, Total Pedidos).
      * @param int|null $proveedorId Si se proporciona, filtra por proveedor
+     * @param string|null $fechaDesde Fecha inicio (YYYY-MM-DD). Si es null, usa primer día del mes actual
+     * @param string|null $fechaHasta Fecha fin (YYYY-MM-DD). Si es null, usa último día del mes actual
      */
-    public static function obtenerKPIsMesActual($proveedorId = null) {
+    public static function obtenerKPIsMesActual($proveedorId = null, $fechaDesde = null, $fechaHasta = null) {
         try {
             $db = (new Conexion())->conectar();
             if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return null;
+
+            // Establecer fechas por defecto si no se proporcionan
+            if ($fechaDesde === null) {
+                $fechaDesde = date('Y-m-01'); // Primer día del mes actual
+            }
+            if ($fechaHasta === null) {
+                $fechaHasta = date('Y-m-t'); // Último día del mes actual
+            }
 
             $idEntregado = self::obtenerIdEstadoPorNombre('Entregado');
             $condicionEstado = "";
@@ -1441,12 +1476,14 @@ class PedidosModel
                     COALESCE(SUM(precio_local), 0) as total_vendido,
                     COALESCE(AVG(precio_local), 0) as ticket_promedio
                 FROM pedidos
-                WHERE MONTH(fecha_ingreso) = MONTH(CURRENT_DATE()) 
-                  AND YEAR(fecha_ingreso) = YEAR(CURRENT_DATE()) 
+                WHERE DATE(fecha_ingreso) >= :fecha_desde
+                  AND DATE(fecha_ingreso) <= :fecha_hasta
                   $condicionEstado
                   $condicionProveedor
             ";
             $stmt = $db->prepare($query);
+            $stmt->bindParam(':fecha_desde', $fechaDesde);
+            $stmt->bindParam(':fecha_hasta', $fechaHasta);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -1455,11 +1492,14 @@ class PedidosModel
     }
 
     /**
-     * Obtener ventas acumuladas del mes actual.
+     * Obtener ventas acumuladas del período especificado.
+     * @param int|null $proveedorId Si se proporciona, filtra por proveedor
+     * @param string|null $fechaDesde Fecha inicio (YYYY-MM-DD)
+     * @param string|null $fechaHasta Fecha fin (YYYY-MM-DD)
      */
-    public static function obtenerVentasAcumuladasMesActual() {
+    public static function obtenerVentasAcumuladasMesActual($proveedorId = null, $fechaDesde = null, $fechaHasta = null) {
         // Reutilizamos la lógica de comparativa para obtener los datos diarios y los acumulamos en PHP
-        $datos = self::obtenerVentasComparativa();
+        $datos = self::obtenerVentasComparativa($proveedorId, $fechaDesde, $fechaHasta);
         $diario = $datos['actual'];
         
         $acumulado = [];
@@ -1475,13 +1515,23 @@ class PedidosModel
     }
 
     /**
-     * Obtener top 5 productos más vendidos del mes actual (Filtrado por Entregado).
+     * Obtener top 5 productos más vendidos del período especificado (Filtrado por Entregado).
      * @param int|null $proveedorId Si se proporciona, filtra por proveedor
+     * @param string|null $fechaDesde Fecha inicio (YYYY-MM-DD). Si es null, usa primer día del mes actual
+     * @param string|null $fechaHasta Fecha fin (YYYY-MM-DD). Si es null, usa último día del mes actual
      */
-    public static function obtenerTopProductosMesActual($proveedorId = null)
+    public static function obtenerTopProductosMesActual($proveedorId = null, $fechaDesde = null, $fechaHasta = null)
     {
         try {
             $db = (new Conexion())->conectar();
+            
+            // Establecer fechas por defecto si no se proporcionan
+            if ($fechaDesde === null) {
+                $fechaDesde = date('Y-m-01');
+            }
+            if ($fechaHasta === null) {
+                $fechaHasta = date('Y-m-t');
+            }
             
             $idEntregado = self::obtenerIdEstadoPorNombre('Entregado');
             $condicionEstado = "";
@@ -1502,8 +1552,8 @@ class PedidosModel
                 FROM pedidos_productos pp
                 JOIN pedidos ped ON pp.id_pedido = ped.id
                 JOIN productos p ON pp.id_producto = p.id
-                WHERE MONTH(ped.fecha_ingreso) = MONTH(CURRENT_DATE()) 
-                  AND YEAR(ped.fecha_ingreso) = YEAR(CURRENT_DATE()) 
+                WHERE DATE(ped.fecha_ingreso) >= :fecha_desde
+                  AND DATE(ped.fecha_ingreso) <= :fecha_hasta
                   $condicionEstado
                   $condicionProveedor
                 GROUP BY pp.id_producto 
@@ -1511,6 +1561,8 @@ class PedidosModel
                 LIMIT 5
             ";
             $stmt = $db->prepare($query);
+            $stmt->bindParam(':fecha_desde', $fechaDesde);
+            $stmt->bindParam(':fecha_hasta', $fechaHasta);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {

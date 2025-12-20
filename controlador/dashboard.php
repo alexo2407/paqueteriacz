@@ -19,14 +19,34 @@ class DashboardController {
             $proveedorId = (int)$_SESSION['user_id'];
         }
 
-        // 1. KPIs (filtrados por proveedor si aplica)
-        $kpis = PedidosModel::obtenerKPIsMesActual($proveedorId);
+        // Obtener fechas del filtro (GET) o usar mes actual por defecto
+        $fechaDesde = $_GET['fecha_desde'] ?? null;
+        $fechaHasta = $_GET['fecha_hasta'] ?? null;
+        
+        // Validar formato de fechas si se proporcionan
+        if ($fechaDesde && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaDesde)) {
+            $fechaDesde = null;
+        }
+        if ($fechaHasta && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaHasta)) {
+            $fechaHasta = null;
+        }
+        
+        // Si no se proporcionan fechas, usar mes actual
+        if (!$fechaDesde) {
+            $fechaDesde = date('Y-m-01');
+        }
+        if (!$fechaHasta) {
+            $fechaHasta = date('Y-m-t');
+        }
+
+        // 1. KPIs (filtrados por proveedor y fechas si aplica)
+        $kpis = PedidosModel::obtenerKPIsMesActual($proveedorId, $fechaDesde, $fechaHasta);
         $totalVendido = $kpis['total_vendido'] ?? 0;
         $ticketPromedio = $kpis['ticket_promedio'] ?? 0;
         $totalPedidos = $kpis['total_pedidos'] ?? 0;
 
-        // 2. Ventas Comparativas (filtradas por proveedor si aplica)
-        $comparativa = PedidosModel::obtenerVentasComparativa($proveedorId);
+        // 2. Ventas Comparativas (filtradas por proveedor y fechas si aplica)
+        $comparativa = PedidosModel::obtenerVentasComparativa($proveedorId, $fechaDesde, $fechaHasta);
         $ventasActual = $comparativa['actual'];
         $ventasAnterior = $comparativa['anterior'];
 
@@ -44,8 +64,8 @@ class DashboardController {
             $dataAnterior[$dia] = (float)$v['total'];
         }
 
-        // 3. Ventas Acumuladas (filtradas por proveedor si aplica)
-        $acumuladas = PedidosModel::obtenerVentasAcumuladasMesActual($proveedorId);
+        // 3. Ventas Acumuladas (filtradas por proveedor y fechas si aplica)
+        $acumuladas = PedidosModel::obtenerVentasAcumuladasMesActual($proveedorId, $fechaDesde, $fechaHasta);
         $dataAcumulada = [];
         $labelsAcumulada = [];
         foreach ($acumuladas as $ac) {
@@ -53,8 +73,8 @@ class DashboardController {
             $dataAcumulada[] = $ac['total_acumulado'];
         }
 
-        // 4. Top Productos (filtrados por proveedor si aplica)
-        $topProductos = PedidosModel::obtenerTopProductosMesActual($proveedorId);
+        // 4. Top Productos (filtrados por proveedor y fechas si aplica)
+        $topProductos = PedidosModel::obtenerTopProductosMesActual($proveedorId, $fechaDesde, $fechaHasta);
         $nombresProd = [];
         $cantidadesProd = [];
         foreach ($topProductos as $prod) {
@@ -81,7 +101,9 @@ class DashboardController {
                 'nombres' => $nombresProd,
                 'cantidades' => $cantidadesProd
             ],
-            'esProveedor' => $proveedorId !== null // Para mostrar mensaje en la vista
+            'esProveedor' => $proveedorId !== null, // Para mostrar mensaje en la vista
+            'fechaDesde' => $fechaDesde,
+            'fechaHasta' => $fechaHasta
         ];
     }
 }

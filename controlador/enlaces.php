@@ -107,7 +107,11 @@ class EnlacesController
             $userRoleNames = $_SESSION['roles_nombres'] ?? [];
             $isAdmin = is_array($userRoleNames) && in_array(ROL_NOMBRE_ADMIN, $userRoleNames, true);
 
-            if (!$isAdmin && isset($allowedByModule[$modulo])) {
+            // Excepción especial: usuarios/perfil es accesible para todos los usuarios autenticados
+            $accion = $segmentos[1] ?? null;
+            $isPerfilRoute = ($modulo === 'usuarios' && $accion === 'perfil');
+
+            if (!$isAdmin && !$isPerfilRoute && isset($allowedByModule[$modulo])) {
                 $permitidos = $allowedByModule[$modulo];
                 if (!is_array($userRoleNames) || count(array_intersect($permitidos, $userRoleNames)) === 0) {
                     // Denegar acceso y redirigir con mensaje

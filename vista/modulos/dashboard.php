@@ -13,6 +13,39 @@ if(!isset($_SESSION['registrado']))
 else
 {
 
+// Redirigir repartidores a su interfaz de seguimiento
+// Redirigir repartidores a su interfaz de seguimiento
+$rolesNombres = $_SESSION['roles_nombres'] ?? [];
+$isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
+$isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+
+if ($isRepartidor && !$isAdmin) {
+    header('Location: ' . RUTA_URL . 'seguimiento/listar');
+    exit;
+}
+
+require_once __DIR__ . '/../../controlador/dashboard.php';
+// The original `isRepartidor()` check was likely from `permissions.php`.
+// If `permissions.php` is still needed for other parts, it should be included.
+// Assuming the new logic replaces the old one for repartidor redirection.
+// If `isRepartidor()` is still used elsewhere, `permissions.php` might need to be included.
+// For now, I'm replacing the block as instructed.
+// If the `isRepartidor()` function is defined in `permissions.php` and is still needed,
+// that `require_once` should be kept or moved.
+// Given the instruction, I'm replacing the entire block.
+// If the `isRepartidor()` function is defined in `permissions.php` and is still needed,
+// that `require_once` should be kept or moved.
+// For now, I'm replacing the block as instructed.
+// The new code snippet provided by the user includes `if (isRepartidor())` again,
+// which suggests that `isRepartidor()` might be defined in `dashboard.php` or
+// another globally included file, or the user intends to keep that check.
+// I will include `permissions.php` to ensure `isRepartidor()` is available if needed by the second check.
+require_once __DIR__ . '/../../utils/permissions.php'; // Ensure isRepartidor() is available
+if (isRepartidor()) {
+    header('Location: ' . RUTA_URL . 'seguimiento');
+    exit;
+}
+
 include("vista/includes/header.php");
 
 ?>
@@ -37,16 +70,50 @@ $kpis = $datos['kpis'];
 $comparativa = $datos['comparativa'];
 $acumulada = $datos['acumulada'];
 $topProductos = $datos['topProductos'];
+$fechaDesde = $datos['fechaDesde'];
+$fechaHasta = $datos['fechaHasta'];
+
+// Formatear fechas para mostrar
+$fechaDesdeFormateada = date('d/m/Y', strtotime($fechaDesde));
+$fechaHastaFormateada = date('d/m/Y', strtotime($fechaHasta));
+$periodoTexto = "del $fechaDesdeFormateada al $fechaHastaFormateada";
 ?>
+
+<!-- Filtro de Rango de Fechas -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" action="<?= RUTA_URL ?>dashboard" class="form-inline">
+                    <div class="form-group mr-3">
+                        <label for="fecha_desde" class="mr-2">Desde:</label>
+                        <input type="date" id="fecha_desde" name="fecha_desde" class="form-control" value="<?= $fechaDesde ?>" required>
+                    </div>
+                    <div class="form-group mr-3">
+                        <label for="fecha_hasta" class="mr-2">Hasta:</label>
+                        <input type="date" id="fecha_hasta" name="fecha_hasta" class="form-control" value="<?= $fechaHasta ?>" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary mr-2">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                    <a href="<?= RUTA_URL ?>dashboard" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- KPIs Section -->
 <div class="row mt-4">
     <div class="col-md-4">
         <div class="card text-white bg-success mb-3">
-            <div class="card-header">💰 Total Vendido (Mes)</div>
+            <div class="card-header">💰 Total Vendido (Período)</div>
             <div class="card-body">
                 <h3 class="card-title"><?= number_format($kpis['totalVendido'], 2) ?></h3>
-                <p class="card-text">Ingresos confirmados</p>
+                <p class="card-text">Ingresos confirmados <?= $periodoTexto ?></p>
             </div>
         </div>
     </div>
@@ -76,7 +143,8 @@ $topProductos = $datos['topProductos'];
     <div class="col-md-8">
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">� Comparativa de Ventas (Mes Actual vs Anterior)</h5>
+                <h5 class="mb-0">📊 Comparativa de Ventas (Período Actual vs Anterior)</h5>
+                <small>Comparando <?= $periodoTexto ?></small>
             </div>
             <div class="card-body">
                 <canvas id="comparativaChart" height="150"></canvas>
@@ -102,6 +170,7 @@ $topProductos = $datos['topProductos'];
         <div class="card mb-4">
             <div class="card-header bg-secondary text-white">
                 <h5 class="mb-0">📊 Progreso de Ventas Acumuladas</h5>
+                <small>Período: <?= $periodoTexto ?></small>
             </div>
             <div class="card-body">
                 <canvas id="acumuladoChart" height="100"></canvas>

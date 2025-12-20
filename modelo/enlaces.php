@@ -62,7 +62,13 @@ class EnlacesModel
                 $accion = preg_replace('/[^a-zA-Z0-9_-]/', '', $ruta[1]);
                 $archivo .= "/" . $accion . ".php";
             } else {
-                $archivo .= ".php";
+                // Casos especiales: módulos sin acción que necesitan redirección
+                if ($modulo === 'seguimiento') {
+                    // Redirigir seguimiento sin acción a seguimiento/listar
+                    $archivo .= "/listar.php";
+                } else {
+                    $archivo .= ".php";
+                }
             }
 
             // Devuelve la ruta si el archivo existe

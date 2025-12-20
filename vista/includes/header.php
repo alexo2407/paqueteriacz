@@ -1,6 +1,15 @@
+<?php
+    // Determinar la URL del logo según el rol del usuario
+    $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+    $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
+    $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+    
+    // Si es repartidor (y no es admin), ir a seguimiento; caso contrario, ir a dashboard
+    $homeUrl = ($isRepartidor && !$isAdmin) ? RUTA_URL . 'seguimiento/listar' : RUTA_URL . 'dashboard';
+?>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
-        <a class="navbar-brand" href="<?=RUTA_URL?>">Paqueteria CruzValle</a>
+        <a class="navbar-brand" href="<?= $homeUrl ?>">Paqueteria CruzValle</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -101,20 +110,28 @@
                                 <a class="nav-link" href="../acceder.php">Acceder</a>
                             </li> -->
 
+
                 <?php
-                // Mostrar nombre de usuario si la sesión está iniciada
+                // Mostrar dropdown de usuario si la sesión está iniciada
                 $userName = $_SESSION['nombre'] ?? null;
                 if ($userName) {
-                    echo "<li class=\"nav-item\"><p class=\"text-white mt-2\">Bienvenido <i class=\"bi bi-person-circle\"> " . htmlspecialchars($userName) . "</i></p></li>";
+                    echo '
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarUserDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle"></i> ' . htmlspecialchars($userName) . '
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarUserDropdown">
+                            <li><a class="dropdown-item" href="' . RUTA_URL . 'usuarios/perfil"><i class="bi bi-person-gear"></i> Editar Perfil</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="' . RUTA_URL . 'salir"><i class="bi bi-box-arrow-right"></i> Salir</a></li>
+                        </ul>
+                    </li>';
                 }
                 ?>
                  <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>/api/doc/">Documentación API´S</a>
                 </li>
                
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>salir">Salir</a>
-                </li>
 
             </ul>
 

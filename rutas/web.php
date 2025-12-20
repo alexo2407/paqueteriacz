@@ -442,6 +442,92 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
         header('Location: ' . $redirectUrl);
         exit;
     }
+
+    if ($accion === 'actualizarPerfil') {
+        // Actualizar perfil del usuario actual (logged in)
+        require_once __DIR__ . '/../utils/session.php';
+        start_secure_session();
+        
+        if (empty($_SESSION['registrado']) || empty($_SESSION['user_id'])) {
+            set_flash('error', 'Debes estar autenticado para actualizar tu perfil.');
+            header('Location: ' . RUTA_URL . 'login');
+            exit;
+        }
+
+        $id = (int)$_SESSION['user_id'];
+        $rolesNombresSession = $_SESSION['roles_nombres'] ?? [];
+        $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombresSession, true);
+        $redirectUrl = RUTA_URL . 'usuarios/perfil';
+
+        $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
+        $email = isset($_POST['email']) ? trim($_POST['email']) : '';
+        $telefono = isset($_POST['telefono']) ? trim($_POST['telefono']) : '';
+        $contrasena = $_POST['contrasena'] ?? '';
+
+        if ($nombre === '' || $email === '') {
+            set_flash('error', 'Nombre y correo electrónico son obligatorios.');
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            set_flash('error', 'Correo electrónico inválido.');
+            header('Location: ' . $redirectUrl);
+            exit;
+        }
+
+        $payload = [
+            'nombre' => $nombre,
+            'email' => $email,
+            'telefono' => $telefono === '' ? null : $telefono
+        ];
+
+        // Solo permitir cambio de roles si es administrador
+        if ($isAdmin && isset($_POST['roles']) && is_array($_POST['roles'])) {
+            $rolesSeleccionados = [];
+            foreach ($_POST['roles'] as $rid) {
+                if (is_numeric($rid)) $rolesSeleccionados[] = (int)$rid;
+            }
+            $rolesSeleccionados = array_values(array_unique(array_filter($rolesSeleccionados)));
+            
+            if (!empty($rolesSeleccionados)) {
+                $rolesDisponibles = UsuariosController::obtenerRolesDisponibles();
+                $validRoles = true;
+                foreach ($rolesSeleccionados as $rid) {
+                    if (!array_key_exists($rid, $rolesDisponibles)) {
+                        $validRoles = false;
+                        break;
+                    }
+                }
+                if ($validRoles) {
+                    $payload['roles'] = $rolesSeleccionados;
+                }
+            }
+        }
+
+        if (!empty($contrasena)) {
+            $payload['contrasena'] = $contrasena;
+        }
+
+        $resultado = $ctrl->actualizarUsuario($id, $payload);
+
+        if (!empty($resultado['success'])) {
+            // Actualizar datos de sesión
+            $_SESSION['nombre'] = $nombre;
+            
+            if (!empty($resultado['changed'])) {
+                set_flash('success', 'Perfil actualizado correctamente.');
+            } else {
+                set_flash('success', 'No se detectaron cambios en el perfil.');
+            }
+        } else {
+            $mensajeError = $resultado['message'] ?? 'No fue posible actualizar el perfil.';
+            set_flash('error', $mensajeError);
+        }
+
+        header('Location: ' . $redirectUrl);
+        exit;
+    }
 }
 
 // Nota: el manejo de proveedores como entidad independiente fue removido.
