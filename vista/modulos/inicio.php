@@ -3,7 +3,7 @@
 <div class="container login">
 
 <div class="login-card text-center">
-    <i class="fas fa-user-circle mb-3"></i>
+    <i class="bi bi-person-circle mb-3" style="font-size: 4rem; color: var(--bs-primary);"></i>
     <h3 class="mb-4">Inicio de Sesión</h3>
     <form id="loginForm" method="POST" action="<?= RUTA_URL ?>?enlace=login">
         <?php 
@@ -13,7 +13,7 @@
         <div class="mb-3">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0">
-                    <i class="fas fa-envelope"></i>
+                    <i class="bi bi-envelope-fill text-primary"></i>
                 </span>
                 <input id="email" name="email" type="email" class="form-control border-start-0" placeholder="Correo Electrónico" required>
             </div>
@@ -21,7 +21,7 @@
         <div class="mb-3">
             <div class="input-group">
                 <span class="input-group-text bg-white border-end-0">
-                    <i class="fas fa-lock"></i>
+                    <i class="bi bi-lock-fill text-primary"></i>
                 </span>
                 <input id="password" name="password" type="password" class="form-control border-start-0" placeholder="Contraseña" required>
             </div>
