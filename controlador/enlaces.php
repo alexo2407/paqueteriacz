@@ -35,7 +35,7 @@ class EnlacesController
         // Enforce active session for private modules
         $segmentos = explode('/', trim($url));
         $modulo = $segmentos[0] ?? 'inicio';
-        $modulosPublicos = ['inicio', 'login', '', 'api'];
+        $modulosPublicos = ['inicio', 'login', '', 'api', 'recuperar-password', 'reset-password'];
 
         if (!in_array($modulo, $modulosPublicos, true)) {
             require_once __DIR__ . '/../utils/session.php';
