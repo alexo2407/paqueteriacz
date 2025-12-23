@@ -298,7 +298,16 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
     $accion = isset($ruta[1]) ? $ruta[1] : '';
     require_once __DIR__ . '/../controlador/producto.php';
     require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/csrf.php';
     start_secure_session();
+
+    // Validar token CSRF
+    $csrfToken = $_POST['csrf_token'] ?? null;
+    if (!verify_csrf_token($csrfToken)) {
+        set_flash('error', 'Token de seguridad inválido. Por favor, recarga la página e intenta de nuevo.');
+        header('Location: ' . RUTA_URL . 'productos/listar');
+        exit;
+    }
 
     $ctrl = new ProductosController();
 
@@ -564,27 +573,86 @@ if (isset($ruta[0]) && $ruta[0] === 'stock' && $_SERVER['REQUEST_METHOD'] === 'P
     $accion = isset($ruta[1]) ? $ruta[1] : '';
     require_once __DIR__ . '/../controlador/stock.php';
     require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/csrf.php';
     start_secure_session();
+
+    // Validar token CSRF
+    $csrfToken = $_POST['csrf_token'] ?? null;
+    if (!verify_csrf_token($csrfToken)) {
+        set_flash('error', 'Token de seguridad inválido. Por favor, recarga la página e intenta de nuevo.');
+        header('Location: ' . RUTA_URL . 'stock/listar');
+        exit;
+    }
 
     $ctrl = new StockController();
 
     if ($accion === 'guardar') {
-        // Aceptamos nombres legacy (id_vendedor, producto) y nuevos (id_usuario, id_producto)
-        $idUsuario = null;
-        if (isset($_POST['id_vendedor'])) $idUsuario = (int) $_POST['id_vendedor'];
-        if (isset($_POST['id_usuario'])) $idUsuario = (int) $_POST['id_usuario'];
+        require_once __DIR__ . '/../modelo/stock.php';
+        
+        // Obtener id_usuario de sesión si no viene en POST
+        $idUsuario = $_SESSION['user_id'] ?? 1;
+        if (isset($_POST['id_usuario']) && (int)$_POST['id_usuario'] > 0) {
+            $idUsuario = (int) $_POST['id_usuario'];
+        }
 
-        $productoField = null;
-        if (isset($_POST['producto'])) $productoField = $_POST['producto'];
-        if (isset($_POST['id_producto']) && $productoField === null) $productoField = $_POST['id_producto'];
+        // Obtener id_producto
+        $idProducto = null;
+        if (isset($_POST['id_producto']) && (int)$_POST['id_producto'] > 0) {
+            $idProducto = (int) $_POST['id_producto'];
+        } elseif (isset($_POST['producto']) && is_numeric($_POST['producto'])) {
+            $idProducto = (int) $_POST['producto'];
+        }
 
+        // Obtener tipo de movimiento y ajustar cantidad según tipo
+        $tipoMovimiento = $_POST['tipo_movimiento'] ?? 'entrada';
+        $cantidad = isset($_POST['cantidad']) ? (int) $_POST['cantidad'] : 0;
+        
+        // Para salidas, la cantidad debe ser negativa
+        if (in_array($tipoMovimiento, ['salida'])) {
+            $cantidad = -abs($cantidad);
+        } else {
+            $cantidad = abs($cantidad);
+        }
+
+        // Construir datos completos para el movimiento
         $data = [
-            'id_vendedor' => $idUsuario ?? 0,
-            'producto' => $productoField ?? '',
-            'cantidad' => isset($_POST['cantidad']) ? (int) $_POST['cantidad'] : null,
+            'id_producto' => $idProducto,
+            'id_usuario' => $idUsuario,
+            'cantidad' => $cantidad,
+            'tipo_movimiento' => $tipoMovimiento,
+            'motivo' => $_POST['motivo'] ?? null,
+            'ubicacion_origen' => $_POST['ubicacion_origen'] ?? null,
+            'ubicacion_destino' => $_POST['ubicacion_destino'] ?? null,
+            'referencia_tipo' => !empty($_POST['referencia_tipo']) ? $_POST['referencia_tipo'] : null,
+            'referencia_id' => isset($_POST['referencia_id']) && $_POST['referencia_id'] !== '' ? (int)$_POST['referencia_id'] : null,
+            'costo_unitario' => isset($_POST['costo_unitario']) && $_POST['costo_unitario'] !== '' ? (float)$_POST['costo_unitario'] : null,
         ];
-        $response = $ctrl->crear($data);
-        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+
+        // Validaciones básicas
+        if (empty($idProducto)) {
+            set_flash('error', 'Debe seleccionar un producto.');
+            header('Location: ' . RUTA_URL . 'stock/crear');
+            exit;
+        }
+
+        if ($cantidad == 0) {
+            set_flash('error', 'La cantidad debe ser mayor a cero.');
+            header('Location: ' . RUTA_URL . 'stock/crear');
+            exit;
+        }
+
+        // Usar registrarMovimiento para guardar todos los campos
+        try {
+            $nuevoId = StockModel::registrarMovimiento($data);
+            if ($nuevoId) {
+                set_flash('success', 'Movimiento de stock registrado correctamente.');
+            } else {
+                set_flash('error', 'No fue posible registrar el movimiento.');
+            }
+        } catch (Exception $e) {
+            set_flash('error', 'Error al registrar movimiento: ' . $e->getMessage());
+        }
+        
         header('Location: ' . RUTA_URL . 'stock/listar');
         exit;
     }

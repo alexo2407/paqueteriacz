@@ -1569,5 +1569,291 @@ class PedidosModel
             return [];
         }
     }
+
+    /**
+     * Obtener pedidos con filtros avanzados
+     * 
+     * @param array $filtros Array con: id_estado, id_proveedor, id_vendedor, fecha_desde, fecha_hasta, prioridad, numero_orden
+     * @return array Lista de pedidos filtrados
+     */
+    public static function obtenerConFiltros($filtros = [])
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $where = [];
+            $params = [];
+            
+            if (!empty($filtros['id_estado'])) {
+                $where[] = 'p.id_estado = :id_estado';
+                $params[':id_estado'] = $filtros['id_estado'];
+            }
+            
+            if (!empty($filtros['id_proveedor'])) {
+                $where[] = 'p.id_proveedor = :id_proveedor';
+                $params[':id_proveedor'] = $filtros['id_proveedor'];
+            }
+            
+            if (!empty($filtros['id_vendedor'])) {
+                $where[] = 'p.id_vendedor = :id_vendedor';
+                $params[':id_vendedor'] = $filtros['id_vendedor'];
+            }
+            
+            if (!empty($filtros['prioridad'])) {
+                $where[] = 'p.prioridad = :prioridad';
+                $params[':prioridad'] = $filtros['prioridad'];
+            }
+            
+            if (!empty($filtros['fecha_desde'])) {
+                $where[] = 'p.fecha_ingreso >= :fecha_desde';
+                $params[':fecha_desde'] = $filtros['fecha_desde'];
+            }
+            
+            if (!empty($filtros['fecha_hasta'])) {
+                $where[] = 'p.fecha_ingreso <= :fecha_hasta';
+                $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
+            }
+            
+            if (!empty($filtros['numero_orden'])) {
+                $where[] = 'p.numero_orden LIKE :numero_orden';
+                $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $sql = "SELECT 
+                        p.id,
+                        p.numero_orden,
+                        p.destinatario,
+                        p.telefono,
+                        p.subtotal_usd,
+                        p.total_usd,
+                        p.prioridad,
+                        p.fecha_ingreso,
+                        p.fecha_estimada_entrega,
+                        ep.nombre_estado as estado,
+                        uP.nombre as proveedor,
+                        uV.nombre as vendedor
+                    FROM pedidos p
+                    LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                    LEFT JOIN usuarios uP ON uP.id = p.id_proveedor
+                    LEFT JOIN usuarios uV ON uV.id = p.id_vendedor
+                    {$whereClause}
+                    ORDER BY p.prioridad DESC, p.fecha_ingreso DESC";
+            
+            $stmt = $db->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error al obtener pedidos con filtros: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
+
+    /**
+     * Calcular totales de un pedido basado en sus productos
+     * 
+     * @param int $idPedido ID del pedido
+     * @return array Array con subtotal_usd, descuento_usd, impuestos_usd, total_usd
+     */
+    public static function calcularTotales($idPedido)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Obtener subtotal de productos
+            $stmt = $db->prepare('
+                SELECT COALESCE(SUM(subtotal_usd), 0) as subtotal
+                FROM pedidos_productos
+                WHERE id_pedido = :id_pedido
+            ');
+            $stmt->execute([':id_pedido' => $idPedido]);
+            $subtotal = (float)$stmt->fetchColumn();
+            
+            // Obtener descuento e impuestos actuales del pedido
+            $stmt = $db->prepare('
+                SELECT descuento_usd, impuestos_usd
+                FROM pedidos
+                WHERE id = :id_pedido
+            ');
+            $stmt->execute([':id_pedido' => $idPedido]);
+            $datos = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $descuento = (float)($datos['descuento_usd'] ?? 0);
+            $impuestos = (float)($datos['impuestos_usd'] ?? 0);
+            $total = $subtotal - $descuento + $impuestos;
+            
+            return [
+                'subtotal_usd' => $subtotal,
+                'descuento_usd' => $descuento,
+                'impuestos_usd' => $impuestos,
+                'total_usd' => $total
+            ];
+        } catch (Exception $e) {
+            error_log('Error al calcular totales: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return ['subtotal_usd' => 0, 'descuento_usd' => 0, 'impuestos_usd' => 0, 'total_usd' => 0];
+        }
+    }
+
+    /**
+     * Obtener historial de cambios de estado de un pedido
+     * 
+     * @param int $idPedido ID del pedido
+     * @return array Historial de estados
+     */
+    public static function obtenerHistorialEstados($idPedido)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('
+                SELECT 
+                    h.id,
+                    h.created_at as fecha,
+                    eAnt.nombre_estado as estado_anterior,
+                    eNue.nombre_estado as estado_nuevo,
+                    u.nombre as usuario,
+                    h.observaciones
+                FROM pedidos_historial_estados h
+                LEFT JOIN estados_pedidos eAnt ON eAnt.id = h.id_estado_anterior
+                INNER JOIN estados_pedidos eNue ON eNue.id = h.id_estado_nuevo
+                INNER JOIN usuarios u ON u.id = h.id_usuario
+                WHERE h.id_pedido = :id_pedido
+                ORDER BY h.created_at ASC
+            ');
+            $stmt->execute([':id_pedido' => $idPedido]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error al obtener historial de estados: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
+
+    /**
+     * Cambiar estado de un pedido con registro en historial
+     * 
+     * @param int $idPedido ID del pedido
+     * @param int $nuevoEstado ID del nuevo estado
+     * @param string|null $observaciones Observaciones del cambio
+     * @param int $idUsuario ID del usuario que realiza el cambio
+     * @return bool True si se cambió correctamente
+     */
+    public static function cambiarEstado($idPedido, $nuevoEstado, $observaciones, $idUsuario)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+            
+            // Obtener estado actual
+            $stmt = $db->prepare('SELECT id_estado FROM pedidos WHERE id = :id');
+            $stmt->execute([':id' => $idPedido]);
+            $estadoActual = $stmt->fetchColumn();
+            
+            // Actualizar estado del pedido
+            $stmt = $db->prepare('UPDATE pedidos SET id_estado = :estado WHERE id = :id');
+            $stmt->execute([':estado' => $nuevoEstado, ':id' => $idPedido]);
+            
+            // Registrar en historial (el trigger lo hace automáticamente, pero podemos agregar observaciones)
+            if ($observaciones) {
+                $stmt = $db->prepare('
+                    UPDATE pedidos_historial_estados
+                    SET observaciones = :observaciones
+                    WHERE id_pedido = :id_pedido
+                    AND id_estado_nuevo = :estado_nuevo
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ');
+                $stmt->execute([
+                    ':observaciones' => $observaciones,
+                    ':id_pedido' => $idPedido,
+                    ':estado_nuevo' => $nuevoEstado
+                ]);
+            }
+            
+            $db->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('Error al cambiar estado de pedido: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return false;
+        }
+    }
+
+    /**
+     * Obtener métricas de pedidos por período
+     * 
+     * @param string $fechaInicio Fecha inicio (YYYY-MM-DD)
+     * @param string $fechaFin Fecha fin (YYYY-MM-DD)
+     * @return array Métricas del período
+     */
+    public static function obtenerMetricas($fechaInicio, $fechaFin)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('
+                SELECT 
+                    COUNT(*) as total_pedidos,
+                    SUM(CASE WHEN id_estado = 1 THEN 1 ELSE 0 END) as pendientes,
+                    SUM(CASE WHEN id_estado IN (2,3) THEN 1 ELSE 0 END) as en_proceso,
+                    SUM(CASE WHEN id_estado = 4 THEN 1 ELSE 0 END) as entregados,
+                    SUM(CASE WHEN id_estado = 5 THEN 1 ELSE 0 END) as cancelados,
+                    SUM(CASE WHEN prioridad = "urgente" THEN 1 ELSE 0 END) as urgentes,
+                    SUM(CASE WHEN prioridad = "alta" THEN 1 ELSE 0 END) as prioridad_alta,
+                    COALESCE(SUM(total_usd), 0) as ventas_totales,
+                    COALESCE(AVG(total_usd), 0) as ticket_promedio
+                FROM pedidos
+                WHERE fecha_ingreso >= :fecha_inicio
+                AND fecha_ingreso <= :fecha_fin
+            ');
+            $stmt->execute([
+                ':fecha_inicio' => $fechaInicio . ' 00:00:00',
+                ':fecha_fin' => $fechaFin . ' 23:59:59'
+            ]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            error_log('Error al obtener métricas de pedidos: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
+
+    /**
+     * Obtener pedidos con prioridad alta o urgente
+     * 
+     * @param int $limite Límite de resultados
+     * @return array Lista de pedidos prioritarios
+     */
+    public static function obtenerPrioritarios($limite = 20)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('
+                SELECT 
+                    p.id,
+                    p.numero_orden,
+                    p.destinatario,
+                    p.prioridad,
+                    p.total_usd,
+                    p.fecha_ingreso,
+                    ep.nombre_estado as estado
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                WHERE p.prioridad IN ("alta", "urgente")
+                AND p.id_estado NOT IN (4, 5)
+                ORDER BY 
+                    FIELD(p.prioridad, "urgente", "alta"),
+                    p.fecha_ingreso ASC
+                LIMIT :limite
+            ');
+            $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('Error al obtener pedidos prioritarios: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
 }
 

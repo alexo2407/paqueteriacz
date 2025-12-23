@@ -1,197 +1,259 @@
-<?php include("vista/includes/header.php"); ?>
-
 <?php
-$stockController = new StockController();
-$movimientos = $stockController->listar();
-$inventario = $stockController->inventarioActual();
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../utils/session.php';
+require_once __DIR__ . '/../../../modelo/stock.php';
+require_once __DIR__ . '/../../../modelo/producto.php';
 
-// Check if user is admin
-$rolesNombres = $_SESSION['roles_nombres'] ?? [];
-$isAdmin = in_array('Administrador', $rolesNombres, true);
-$deleteDisabled = !$isAdmin ? 'disabled' : '';
+start_secure_session();
+require_login();
+
+// Obtener filtros
+$tipoFiltro = $_GET['tipo'] ?? '';
+
+// Por defecto: mes en curso
+$primerDiaMes = date('Y-m-01');
+$hoy = date('Y-m-d');
+
+$fechaInicio = $_GET['fecha_inicio'] ?? $primerDiaMes;
+$fechaFin = $_GET['fecha_fin'] ?? $hoy;
+
+// Obtener movimientos filtrados por fecha (siempre aplicar filtro de mes en curso)
+if ($tipoFiltro) {
+    // Si hay filtro de tipo, obtener por tipo y luego filtrar por fecha
+    $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, ['tipo_movimiento' => $tipoFiltro]);
+} else {
+    $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin);
+}
 ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movimientos de Stock - Paquetería CruzValle</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+</head>
+<body>
 
-<div class="container-fluid px-4">
-    <h1 class="mt-4">Gestión de Inventario</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="<?= RUTA_URL ?>dashboard">Dashboard</a></li>
-        <li class="breadcrumb-item active">Inventario</li>
-    </ol>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
-    <div class="card mb-4">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="fas fa-boxes me-1"></i>
-                    Control de Stock
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="bi bi-arrow-down-up"></i> Movimientos de Stock</h2>
+            <p class="text-muted mb-0">Historial de entradas, salidas y ajustes de inventario</p>
+        </div>
+        <div>
+            <a href="<?php echo RUTA_URL; ?>stock/kardex" class="btn btn-outline-info me-2">
+                <i class="bi bi-file-earmark-text"></i> Reporte Kardex
+            </a>
+            <a href="<?php echo RUTA_URL; ?>stock/crear" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Registrar Movimiento
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <form method="GET">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label small">Tipo de Movimiento</label>
+                        <select name="tipo" class="form-select">
+                            <option value="">Todos los tipos</option>
+                            <option value="entrada" <?php echo $tipoFiltro === 'entrada' ? 'selected' : ''; ?>>
+                                Entradas
+                            </option>
+                            <option value="salida" <?php echo $tipoFiltro === 'salida' ? 'selected' : ''; ?>>
+                                Salidas
+                            </option>
+                            <option value="ajuste" <?php echo $tipoFiltro === 'ajuste' ? 'selected' : ''; ?>>
+                                Ajustes
+                            </option>
+                            <option value="devolucion" <?php echo $tipoFiltro === 'devolucion' ? 'selected' : ''; ?>>
+                                Devoluciones
+                            </option>
+                            <option value="transferencia" <?php echo $tipoFiltro === 'transferencia' ? 'selected' : ''; ?>>
+                                Transferencias
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" value="<?php echo htmlspecialchars($fechaInicio); ?>">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small">Fecha Fin</label>
+                        <input type="date" name="fecha_fin" class="form-control" value="<?php echo htmlspecialchars($fechaFin); ?>">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label small">&nbsp;</label>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary flex-fill">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <a href="<?php echo RUTA_URL; ?>stock/listar" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <a href="<?= RUTA_URL ?>stock/crear" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus-circle me-1"></i> Nuevo Movimiento
-                    </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- Leyenda de Tipos -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <h6 class="mb-3"><i class="bi bi-info-circle"></i> Leyenda de Tipos de Movimiento</h6>
+            <div class="row">
+                <div class="col-md-2">
+                    <span class="badge bg-success"><i class="bi bi-arrow-down-circle"></i> Entrada</span> Compra/Recepción
+                </div>
+                <div class="col-md-2">
+                    <span class="badge bg-danger"><i class="bi bi-arrow-up-circle"></i> Salida</span> Venta/Despacho
+                </div>
+                <div class="col-md-2">
+                    <span class="badge bg-warning text-dark"><i class="bi bi-wrench"></i> Ajuste</span> Corrección
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-info"><i class="bi bi-arrow-counterclockwise"></i> Devolución</span> Retorno
+                </div>
+                <div class="col-md-3">
+                    <span class="badge bg-primary"><i class="bi bi-arrow-left-right"></i> Transferencia</span> Entre ubicaciones
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Tabla de Movimientos -->
+    <div class="card">
         <div class="card-body">
-            
-            <!-- Tabs de Navegación -->
-            <ul class="nav nav-tabs mb-4" id="inventoryTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="actual-tab" data-bs-toggle="tab" data-bs-target="#actual" type="button" role="tab" aria-controls="actual" aria-selected="true">
-                        <i class="fas fa-clipboard-list me-1"></i> Inventario Actual
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="movimientos-tab" data-bs-toggle="tab" data-bs-target="#movimientos" type="button" role="tab" aria-controls="movimientos" aria-selected="false">
-                        <i class="fas fa-history me-1"></i> Historial de Movimientos
-                    </button>
-                </li>
-            </ul>
-
-            <div class="tab-content" id="inventoryTabsContent">
-                
-                <!-- Tab: Inventario Actual -->
-                <div class="tab-pane fade show active" id="actual" role="tabpanel" aria-labelledby="actual-tab">
-                    <div class="table-responsive">
-                        <table id="tablaInventario" class="table table-striped table-hover table-bordered" style="width:100%">
-                            <thead class="table-dark">
+            <div class="table-responsive">
+                <table id="tablaStock" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Fecha/Hora</th>
+                            <th>Tipo</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Ubicación</th>
+                            <th>Motivo</th>
+                            <th>Usuario</th>
+                            <th>Referencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($movimientos)): ?>
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.5;"></i>
+                                    <p>No se encontraron movimientos</p>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($movimientos as $mov): 
+                                // Obtener producto - usar nombre del join si está disponible
+                                $nombreProducto = !empty($mov['producto']) 
+                                    ? htmlspecialchars($mov['producto']) 
+                                    : 'Producto N/A';
+                                
+                                // Determinar tipo basado en tipo_movimiento o signo de cantidad
+                                $tipoMov = $mov['tipo_movimiento'] ?? null;
+                                if (!$tipoMov) {
+                                    // Para registros antiguos sin tipo_movimiento, inferir del signo
+                                    $tipoMov = ($mov['cantidad'] >= 0) ? 'entrada' : 'salida';
+                                }
+                                
+                                // Badge de tipo
+                                $badges = [
+                                    'entrada' => '<span class="badge bg-success"><i class="bi bi-arrow-down-circle"></i> Entrada</span>',
+                                    'salida' => '<span class="badge bg-danger"><i class="bi bi-arrow-up-circle"></i> Salida</span>',
+                                    'ajuste' => '<span class="badge bg-warning text-dark"><i class="bi bi-wrench"></i> Ajuste</span>',
+                                    'devolucion' => '<span class="badge bg-info"><i class="bi bi-arrow-counterclockwise"></i> Devolución</span>',
+                                    'transferencia' => '<span class="badge bg-primary"><i class="bi bi-arrow-left-right"></i> Transferencia</span>'
+                                ];
+                                $tipoBadge = $badges[$tipoMov] ?? '<span class="badge bg-secondary">Otro</span>';
+                                
+                                // Ubicación
+                                $ubicacion = '';
+                                if ($tipoMov === 'transferencia') {
+                                    $ubicacion = htmlspecialchars($mov['ubicacion_origen'] ?? '') . ' → ' . htmlspecialchars($mov['ubicacion_destino'] ?? '');
+                                } else {
+                                    $ubicacion = htmlspecialchars($mov['ubicacion_origen'] ?? $mov['ubicacion_destino'] ?? 'N/A');
+                                }
+                                
+                                // Cantidad - mostrar valor absoluto con color según signo real
+                                $cantidadReal = (int)$mov['cantidad'];
+                                $cantidadAbs = abs($cantidadReal);
+                                $cantidadClass = $cantidadReal >= 0 ? 'text-success' : 'text-danger';
+                                $cantidadSigno = $cantidadReal >= 0 ? '+' : '';
+                                
+                                // Fecha - manejar fechas nulas o epoch
+                                $fechaRaw = $mov['created_at'] ?? $mov['updated_at'] ?? null;
+                                if ($fechaRaw && strtotime($fechaRaw) > 86400) {
+                                    $fechaFormateada = date('d/m/Y H:i', strtotime($fechaRaw));
+                                } else {
+                                    $fechaFormateada = '<span class="text-muted">Sin fecha</span>';
+                                }
+                            ?>
                                 <tr>
-                                    <th>ID Producto</th>
-                                    <th>Producto</th>
-                                    <th>Descripción</th>
-                                    <th class="text-center">Stock Disponible</th>
-                                    <th class="text-center">Estado</th>
-                                    <th class="text-center">Acciones</th>
+                                    <td>
+                                        <?php echo $fechaFormateada; ?>
+                                    </td>
+                                    <td><?php echo $tipoBadge; ?></td>
+                                    <td><strong><?php echo $nombreProducto; ?></strong></td>
+                                    <td class="<?php echo $cantidadClass; ?> fw-bold">
+                                        <?php echo $cantidadSigno . $cantidadReal; ?>
+                                    </td>
+                                    <td><small><?php echo $ubicacion; ?></small></td>
+                                    <td>
+                                        <small><?php echo htmlspecialchars(substr($mov['motivo'] ?? 'N/A', 0, 50)); ?>
+                                        <?php if (strlen($mov['motivo'] ?? '') > 50): ?>...<?php endif; ?>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small><?php echo htmlspecialchars($mov['usuario_nombre'] ?? 'N/A'); ?></small>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($mov['referencia_tipo']) && !empty($mov['referencia_id'])): ?>
+                                            <small class="badge bg-secondary">
+                                                <?php echo htmlspecialchars($mov['referencia_tipo']); ?> #<?php echo $mov['referencia_id']; ?>
+                                            </small>
+                                        <?php else: ?>
+                                            <small class="text-muted">-</small>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($inventario as $prod): ?>
-                                    <?php 
-                                        $stock = (int) $prod['stock_total'];
-                                        // Lógica de semáforo (sin stock_minimo en BD, usamos 10 por defecto)
-                                        if ($stock <= 0) {
-                                            $badgeClass = 'bg-danger';
-                                            $estadoTexto = 'Agotado';
-                                        } elseif ($stock < 10) {
-                                            $badgeClass = 'bg-warning text-dark';
-                                            $estadoTexto = 'Bajo Stock';
-                                        } else {
-                                            $badgeClass = 'bg-success';
-                                            $estadoTexto = 'En Stock';
-                                        }
-                                    ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($prod['id']); ?></td>
-                                        <td class="fw-bold"><?= htmlspecialchars($prod['nombre']); ?></td>
-                                        <td><?= htmlspecialchars($prod['descripcion'] ?? '—'); ?></td>
-                                        <td class="text-center fw-bold fs-5"><?= $stock; ?></td>
-                                        <td class="text-center">
-                                            <span class="badge rounded-pill <?= $badgeClass; ?>"><?= $estadoTexto; ?></span>
-                                        </td>
-                                        <td class="text-center">
-                                            <!-- Podríamos filtrar movimientos por este producto en el futuro -->
-                                            <button class="btn btn-sm btn-info text-white" title="Ver detalle (Próximamente)">
-                                                <i class="fas fa-eye"></i> Ver Detalle
-                                            </button>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Tab: Movimientos -->
-                <div class="tab-pane fade" id="movimientos" role="tabpanel" aria-labelledby="movimientos-tab">
-                    <div class="table-responsive">
-                        <table id="tablaMovimientos" class="table table-hover table-bordered" style="width:100%">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>Fecha</th>
-                                    <th>Usuario</th>
-                                    <th>Producto</th>
-                                    <th class="text-center">Cantidad</th>
-                                    <th class="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($movimientos as $item): ?>
-                                    <?php 
-                                        $cantidad = (int) $item['cantidad'];
-                                        $isPositive = $cantidad > 0;
-                                        // Usamos colores sólidos para mejor legibilidad
-                                        $badgeClass = $isPositive ? 'bg-success' : 'bg-danger';
-                                        $icon = $isPositive ? '<i class="fas fa-arrow-up me-1"></i>' : '<i class="fas fa-arrow-down me-1"></i>';
-                                        $signo = $isPositive ? '+' : '';
-                                        
-                                        $fecha = !empty($item['updated_at']) ? date('d/m/Y H:i', strtotime($item['updated_at'])) : '—';
-                                        $usuario = !empty($item['usuario']) ? $item['usuario'] : ($item['id_usuario'] ? 'ID: '.$item['id_usuario'] : 'Sistema');
-                                    ?>
-                                    <tr>
-                                        <td><?= htmlspecialchars($item['id']); ?></td>
-                                        <td>
-                                            <i class="far fa-calendar-alt text-muted me-1"></i>
-                                            <?= $fecha; ?>
-                                        </td>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-initials bg-light text-primary rounded-circle me-2" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">
-                                                    <?= strtoupper(substr($usuario, 0, 1)); ?>
-                                                </div>
-                                                <?= htmlspecialchars($usuario); ?>
-                                            </div>
-                                        </td>
-                                        <td><?= htmlspecialchars($item['producto'] ?? ($item['producto_nombre'] ?? 'Producto Eliminado')); ?></td>
-                                        <td class="text-center">
-                                            <span class="badge <?= $badgeClass; ?> p-2 fs-6">
-                                                <?= $icon . $signo . $cantidad; ?>
-                                            </span>
-                                        </td>
-                                        <td class="text-center">
-                                            <div class="btn-group" role="group">
-                                                <a href="<?= RUTA_URL ?>stock/editar/<?= $item['id']; ?>" class="btn btn-sm btn-warning" title="Editar">
-                                                    <i class="fas fa-pencil-alt"></i> Editar
-                                                </a>
-                                                <form method="POST" action="<?= RUTA_URL ?>stock/eliminar/<?= $item['id']; ?>" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este movimiento? Esto afectará el stock actual.');">
-                                                    <button type="submit" class="btn btn-sm btn-danger ms-1" title="Eliminar" <?= $deleteDisabled ?>>
-                                                        <i class="fas fa-trash-alt"></i> Eliminar
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
-    $(document).ready(function () {
-        // Configuración común para DataTables
-        const dtConfig = {
-            responsive: true,
+    $(document).ready(function() {
+        $('#tablaStock').DataTable({
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
             },
-            order: [[0, 'desc']] // Ordenar por ID descendente por defecto
-        };
-
-        // Inicializar tabla de Inventario
-        $('#tablaInventario').DataTable({
-            ...dtConfig,
-            order: [[1, 'asc']] // Ordenar por nombre de producto
+            order: [[0, 'desc']], // Ordenar por fecha descendente
+            pageLength: 25,
+            responsive: true
         });
-
-        // Inicializar tabla de Movimientos
-        $('#tablaMovimientos').DataTable(dtConfig);
     });
 </script>
+</body>
+</html>

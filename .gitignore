@@ -80,4 +80,9 @@ package-lock.json
 .DS_Store
 .AppleDouble
 .LSOverride
-._*utils/email_config.php
+._*
+
+# =====================================================
+# Archivos Sensibles Adicionales
+# =====================================================
+utils/email_config.php
