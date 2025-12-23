@@ -151,14 +151,7 @@ if ($tipoFiltro) {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($movimientos)): ?>
-                            <tr>
-                                <td colspan="8" class="text-center py-5">
-                                    <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.5;"></i>
-                                    <p>No se encontraron movimientos</p>
-                                </td>
-                            </tr>
-                        <?php else: ?>
+                        <?php if (!empty($movimientos)): ?>
                             <?php foreach ($movimientos as $mov): 
                                 // Obtener producto - usar nombre del join si está disponible
                                 $nombreProducto = !empty($mov['producto']) 
