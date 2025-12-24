@@ -1,13 +1,17 @@
 <?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
+require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/stock.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
 
 start_secure_session();
 require_login();
 
-// Obtener filtros
+// Obtener filtro de usuario (proveedores solo ven sus movimientos)
+$filtroUsuario = getIdUsuarioCreadorFilter();
+
+// Obtener filtros de la URL
 $tipoFiltro = $_GET['tipo'] ?? '';
 
 // Por defecto: mes en curso
@@ -17,13 +21,18 @@ $hoy = date('Y-m-d');
 $fechaInicio = $_GET['fecha_inicio'] ?? $primerDiaMes;
 $fechaFin = $_GET['fecha_fin'] ?? $hoy;
 
-// Obtener movimientos filtrados por fecha (siempre aplicar filtro de mes en curso)
+// Construir filtros
+$filtros = [];
 if ($tipoFiltro) {
-    // Si hay filtro de tipo, obtener por tipo y luego filtrar por fecha
-    $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, ['tipo_movimiento' => $tipoFiltro]);
-} else {
-    $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin);
+    $filtros['tipo_movimiento'] = $tipoFiltro;
 }
+// Aplicar filtro de usuario si no es admin
+if ($filtroUsuario !== null) {
+    $filtros['id_usuario'] = $filtroUsuario;
+}
+
+// Obtener movimientos filtrados
+$movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $filtros);
 ?>
 <!DOCTYPE html>
 <html lang="es">

@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 /**
  * UsuarioModel
@@ -163,6 +164,9 @@ class UsuarioModel {
     public function actualizarUsuario($id, array $data)
     {
         try {
+            // Obtener datos anteriores
+            $datosAnteriores = self::obtenerPorId($id);
+            
             $db = (new Conexion())->conectar();
 
             $fields = [];
@@ -242,6 +246,21 @@ class UsuarioModel {
                 ];
             }
 
+            // Registrar auditoría (sin incluir contraseña en datos nuevos)
+            $datosNuevos = $data;
+            unset($datosNuevos['contrasena']);
+            if (!empty($data['contrasena'])) {
+                $datosNuevos['contrasena_cambiada'] = true;
+            }
+            AuditoriaModel::registrar(
+                'usuarios',
+                $id,
+                'actualizar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                $datosNuevos
+            );
+
             return [
                 'success' => true,
                 'changed' => $stmt->rowCount() > 0
@@ -288,7 +307,21 @@ class UsuarioModel {
             $stmt->bindValue(':id_estado', $idEstado, $idEstado ? PDO::PARAM_INT : PDO::PARAM_NULL);
 
             if ($stmt->execute()) {
-                return (int)$db->lastInsertId();
+                $nuevoId = (int)$db->lastInsertId();
+                
+                // Registrar auditoría (sin incluir contraseña)
+                $datosNuevos = $data;
+                unset($datosNuevos['password']);
+                AuditoriaModel::registrar(
+                    'usuarios',
+                    $nuevoId,
+                    'crear',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    null,
+                    $datosNuevos
+                );
+                
+                return $nuevoId;
             }
             return null;
         } catch (PDOException $e) {

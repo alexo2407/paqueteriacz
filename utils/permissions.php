@@ -158,3 +158,105 @@ function getProveedorIdForCurrentUser() {
 function canSelectAnyProveedor() {
     return isSuperAdmin();
 }
+
+/**
+ * Verifica si el usuario actual puede ver un producto específico.
+ * Admin ve todos, Proveedor solo los suyos.
+ * 
+ * @param array $producto Datos del producto con 'id_usuario_creador'
+ * @return bool
+ */
+function canViewProduct($producto) {
+    // Admin puede ver todos
+    if (isSuperAdmin()) {
+        return true;
+    }
+    
+    // Si no hay creador asignado (producto legacy), todos pueden verlo
+    if (!isset($producto['id_usuario_creador']) || $producto['id_usuario_creador'] === null) {
+        return true;
+    }
+    
+    // Proveedor solo puede ver sus propios productos
+    $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
+    if ($userId === null) {
+        return false;
+    }
+    
+    return (int)$producto['id_usuario_creador'] === (int)$userId;
+}
+
+/**
+ * Verifica si el usuario actual puede editar un producto específico.
+ * Admin puede editar todos, Proveedor solo los suyos.
+ * 
+ * @param array $producto Datos del producto con 'id_usuario_creador'
+ * @return bool
+ */
+function canEditProduct($producto) {
+    // Misma lógica que canViewProduct para proveedores
+    // Solo admin y el creador pueden editar
+    if (isSuperAdmin()) {
+        return true;
+    }
+    
+    // Si no hay creador asignado, solo admin puede editar (productos legacy)
+    if (!isset($producto['id_usuario_creador']) || $producto['id_usuario_creador'] === null) {
+        return isSuperAdmin();
+    }
+    
+    // Proveedor solo puede editar sus propios productos
+    $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
+    if ($userId === null) {
+        return false;
+    }
+    
+    return (int)$producto['id_usuario_creador'] === (int)$userId;
+}
+
+/**
+ * Obtiene el ID de usuario para usar como filtro de productos.
+ * Admin: null (sin filtro, ve todos)
+ * Proveedor: su user_id (solo ve los suyos)
+ * 
+ * @return int|null ID de usuario para filtrar, o null para ver todos
+ */
+function getIdUsuarioCreadorFilter() {
+    // Admin ve todos los productos
+    if (isSuperAdmin()) {
+        return null;
+    }
+    
+    // Proveedor solo ve sus productos
+    if (isProveedor()) {
+        return $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
+    }
+    
+    // Otros roles (Vendedor) ven todos los productos por defecto
+    // Puedes cambiar esto si quieres restringir más
+    return null;
+}
+
+/**
+ * Obtiene el ID del usuario actual para auditoría y creación de registros.
+ * Busca en sesión web y en variable global de API.
+ * 
+ * @return int|null
+ */
+function getCurrentUserId() {
+    // Primero verificar variable global de API (desde JWT)
+    if (isset($GLOBALS['API_USER_ID']) && is_numeric($GLOBALS['API_USER_ID'])) {
+        return (int)$GLOBALS['API_USER_ID'];
+    }
+    
+    // Luego verificar sesión web
+    if (isset($_SESSION['ID_Usuario'])) {
+        return (int)$_SESSION['ID_Usuario'];
+    }
+    if (isset($_SESSION['user_id'])) {
+        return (int)$_SESSION['user_id'];
+    }
+    
+    return null;
+}
+

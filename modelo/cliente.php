@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 class ClientesModel
 {
@@ -105,6 +106,9 @@ class ClientesModel
     public static function actualizarEstadoCliente($idCliente, $estado)
 {
     try {
+        // Obtener datos anteriores
+        $datosAnteriores = self::obtenerClientePorId($idCliente);
+        
         $dataBase = new Conexion();
         $db = $dataBase->conectar();
 
@@ -113,7 +117,21 @@ class ClientesModel
         $consulta->bindParam(":id", $idCliente, PDO::PARAM_INT);
         $consulta->bindParam(":estado", $estado, PDO::PARAM_INT);
 
-        return $consulta->execute();
+        $resultado = $consulta->execute();
+        
+        if ($resultado) {
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'clientes',
+                $idCliente,
+                'actualizar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores ? (array)$datosAnteriores : null,
+                ['activo' => $estado]
+            );
+        }
+        
+        return $resultado;
     } catch (PDOException $e) {
         error_log("Error al activar cliente: " . $e->getMessage());
         return false;
@@ -176,6 +194,9 @@ class ClientesModel
     public static function actualizarCliente($idCliente, $nombre, $activo)
     {
         try {
+            // Obtener datos anteriores
+            $datosAnteriores = self::obtenerClientePorId($idCliente);
+            
             $dataBase = new Conexion();
             $db = $dataBase->conectar();
 
@@ -186,7 +207,21 @@ class ClientesModel
             $consulta->bindParam(":activo", $activo, PDO::PARAM_INT);
             $consulta->bindParam(":id", $idCliente, PDO::PARAM_INT);
 
-            return $consulta->execute(); // Devuelve True si la actualización fue exitosa
+            $resultado = $consulta->execute();
+            
+            if ($resultado) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'clientes',
+                    $idCliente,
+                    'actualizar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores ? (array)$datosAnteriores : null,
+                    ['nombre' => $nombre, 'activo' => $activo]
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log("Error al actualizar cliente: " . $e->getMessage(), 3, "logs/errors.log");
             return false;

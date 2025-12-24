@@ -50,6 +50,7 @@ class EnlacesModel
             "cambiarEstados",
             "recuperar-password",
             "reset-password",
+            "auditoria",
             "salir"
         ];
 

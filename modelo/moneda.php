@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 /**
  * MonedaModel
  *
@@ -69,7 +70,19 @@ class MonedaModel
                 $stmt->bindValue(':tasa_usd', $tasa_usd);
             }
             $stmt->execute();
-            return (int)$db->lastInsertId();
+            $nuevoId = (int)$db->lastInsertId();
+            
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'monedas',
+                $nuevoId,
+                'crear',
+                AuditoriaModel::getIdUsuarioActual(),
+                null,
+                ['codigo' => $codigo, 'nombre' => $nombre, 'tasa_usd' => $tasa_usd]
+            );
+            
+            return $nuevoId;
         } catch (PDOException $e) {
             error_log('Error crear moneda: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return null;
@@ -88,6 +101,9 @@ class MonedaModel
     public static function actualizar($id, $codigo, $nombre, $tasa_usd = null)
     {
         try {
+            // Obtener datos anteriores para auditoría
+            $datosAnteriores = self::obtenerPorId($id);
+            
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare('UPDATE monedas SET codigo = :codigo, nombre = :nombre, tasa_usd = :tasa_usd WHERE id = :id');
             $stmt->bindValue(':codigo', $codigo, PDO::PARAM_STR);
@@ -98,7 +114,21 @@ class MonedaModel
                 $stmt->bindValue(':tasa_usd', $tasa_usd);
             }
             $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-            return $stmt->execute();
+            $resultado = $stmt->execute();
+            
+            if ($resultado) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'monedas',
+                    $id,
+                    'actualizar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores,
+                    ['codigo' => $codigo, 'nombre' => $nombre, 'tasa_usd' => $tasa_usd]
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log('Error actualizar moneda: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;
@@ -114,10 +144,27 @@ class MonedaModel
     public static function eliminar($id)
     {
         try {
+            // Obtener datos antes de eliminar para auditoría
+            $datosAnteriores = self::obtenerPorId($id);
+            
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare('DELETE FROM monedas WHERE id = :id');
             $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-            return $stmt->execute();
+            $resultado = $stmt->execute();
+            
+            if ($resultado && $datosAnteriores) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'monedas',
+                    $id,
+                    'eliminar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores,
+                    null
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log('Error eliminar moneda: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;

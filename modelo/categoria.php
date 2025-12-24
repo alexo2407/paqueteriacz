@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 /**
  * CategoriaModel
@@ -116,7 +117,19 @@ class CategoriaModel
             $stmt->bindValue(':descripcion', $descripcion, PDO::PARAM_STR);
             $stmt->bindValue(':padre_id', $padreId, PDO::PARAM_INT);
             $stmt->execute();
-            return (int)$db->lastInsertId();
+            $nuevoId = (int)$db->lastInsertId();
+            
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'categorias_productos',
+                $nuevoId,
+                'crear',
+                AuditoriaModel::getIdUsuarioActual(),
+                null,
+                ['nombre' => $nombre, 'descripcion' => $descripcion, 'padre_id' => $padreId]
+            );
+            
+            return $nuevoId;
         } catch (PDOException $e) {
             error_log('Error al crear categoría: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return null;
@@ -135,6 +148,9 @@ class CategoriaModel
     public static function actualizar($id, $nombre, $descripcion = null, $padreId = null)
     {
         try {
+            // Obtener datos anteriores
+            $datosAnteriores = self::obtenerPorId($id);
+            
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare('
                 UPDATE categorias_productos 
@@ -148,7 +164,21 @@ class CategoriaModel
             $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
             $stmt->bindValue(':descripcion', $descripcion, PDO::PARAM_STR);
             $stmt->bindValue(':padre_id', $padreId, PDO::PARAM_INT);
-            return $stmt->execute();
+            $resultado = $stmt->execute();
+            
+            if ($resultado) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'categorias_productos',
+                    $id,
+                    'actualizar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores,
+                    ['nombre' => $nombre, 'descripcion' => $descripcion, 'padre_id' => $padreId]
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log('Error al actualizar categoría: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;
@@ -165,6 +195,9 @@ class CategoriaModel
     public static function cambiarEstado($id, $activo)
     {
         try {
+            // Obtener datos anteriores
+            $datosAnteriores = self::obtenerPorId($id);
+            
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare('
                 UPDATE categorias_productos 
@@ -174,7 +207,21 @@ class CategoriaModel
             ');
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             $stmt->bindValue(':activo', $activo, PDO::PARAM_BOOL);
-            return $stmt->execute();
+            $resultado = $stmt->execute();
+            
+            if ($resultado) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'categorias_productos',
+                    $id,
+                    'actualizar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores,
+                    ['activo' => $activo]
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log('Error al cambiar estado de categoría: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;
@@ -192,6 +239,9 @@ class CategoriaModel
     {
         try {
             $db = (new Conexion())->conectar();
+            
+            // Obtener datos antes de eliminar
+            $datosAnteriores = self::obtenerPorId($id);
             
             // Verificar que no tenga productos
             $stmt = $db->prepare('SELECT COUNT(*) FROM productos WHERE categoria_id = :id');
@@ -214,7 +264,21 @@ class CategoriaModel
             // Eliminar
             $stmt = $db->prepare('DELETE FROM categorias_productos WHERE id = :id');
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-            return $stmt->execute();
+            $resultado = $stmt->execute();
+            
+            if ($resultado) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'categorias_productos',
+                    $id,
+                    'eliminar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores,
+                    null
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log('Error al eliminar categoría: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;

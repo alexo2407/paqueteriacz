@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
+require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
 require_once __DIR__ . '/../../../modelo/categoria.php';
 
@@ -19,6 +20,13 @@ if ($id <= 0) {
 $producto = ProductoModel::obtenerPorId($id);
 if (!$producto) {
     header('Location: ' . RUTA_URL . 'productos/listar');
+    exit;
+}
+
+// Verificar permisos: solo admin o el creador pueden editar
+if (!canEditProduct($producto)) {
+    // Redirigir con mensaje de error
+    header('Location: ' . RUTA_URL . 'productos/listar?error=no_autorizado');
     exit;
 }
 

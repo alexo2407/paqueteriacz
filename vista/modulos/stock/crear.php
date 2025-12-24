@@ -1,13 +1,17 @@
 <?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
+require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
 
 start_secure_session();
 require_login();
 
-// Obtener productos
-$productos = ProductoModel::listarConInventario();
+// Obtener filtro de usuario (proveedores solo ven sus productos)
+$filtroUsuario = getIdUsuarioCreadorFilter();
+
+// Obtener productos con filtro
+$productos = ProductoModel::listarConInventario($filtroUsuario);
 
 // Obtener producto preseleccionado si viene de URL
 $productoPreseleccionado = $_GET['producto'] ?? '';

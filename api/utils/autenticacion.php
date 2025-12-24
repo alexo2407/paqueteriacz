@@ -30,9 +30,17 @@ class AuthMiddleware {
         try {
             // JWT::decode lanza una excepción si el token no es válido o expiró
             $decoded = JWT::decode($token, new Key($this->secret_key, 'HS256'));
+            $userData = (array) $decoded->data;
+            
+            // Establecer el ID del usuario para auditoría
+            // Esto permite que AuditoriaModel capture quién hace cambios via API
+            if (isset($userData['id'])) {
+                $GLOBALS['API_USER_ID'] = (int)$userData['id'];
+            }
+            
             return [
                 'success' => true,
-                'data' => (array) $decoded->data
+                'data' => $userData
             ];
         } catch (Exception $e) {
             return [
@@ -42,4 +50,3 @@ class AuthMiddleware {
         }
     }
 }
-?>

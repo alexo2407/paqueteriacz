@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 /**
  * PaisModel
@@ -47,7 +48,19 @@ class PaisModel
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':codigo_iso', $codigo_iso ?: null, $codigo_iso ? PDO::PARAM_STR : PDO::PARAM_NULL);
         $stmt->execute();
-        return (int)$db->lastInsertId();
+        $nuevoId = (int)$db->lastInsertId();
+        
+        // Registrar auditoría
+        AuditoriaModel::registrar(
+            'paises',
+            $nuevoId,
+            'crear',
+            AuditoriaModel::getIdUsuarioActual(),
+            null,
+            ['nombre' => $nombre, 'codigo_iso' => $codigo_iso]
+        );
+        
+        return $nuevoId;
     }
 
     /**
@@ -59,12 +72,29 @@ class PaisModel
      */
     public static function actualizar($id, $nombre, $codigo_iso = null)
     {
+        // Obtener datos anteriores para auditoría
+        $datosAnteriores = self::obtenerPorId($id);
+        
         $db = (new Conexion())->conectar();
         $stmt = $db->prepare('UPDATE paises SET nombre = :nombre, codigo_iso = :codigo_iso WHERE id = :id');
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':codigo_iso', $codigo_iso ?: null, $codigo_iso ? PDO::PARAM_STR : PDO::PARAM_NULL);
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $resultado = $stmt->execute();
+        
+        if ($resultado) {
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'paises',
+                $id,
+                'actualizar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                ['nombre' => $nombre, 'codigo_iso' => $codigo_iso]
+            );
+        }
+        
+        return $resultado;
     }
 
     /**
@@ -74,9 +104,26 @@ class PaisModel
      */
     public static function eliminar($id)
     {
+        // Obtener datos antes de eliminar para auditoría
+        $datosAnteriores = self::obtenerPorId($id);
+        
         $db = (new Conexion())->conectar();
         $stmt = $db->prepare('DELETE FROM paises WHERE id = :id');
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $resultado = $stmt->execute();
+        
+        if ($resultado && $datosAnteriores) {
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'paises',
+                $id,
+                'eliminar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                null
+            );
+        }
+        
+        return $resultado;
     }
 }

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
+require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
 require_once __DIR__ . '/../../../modelo/categoria.php';
 
@@ -12,7 +13,10 @@ if (file_exists(__DIR__ . '/../../../utils/ui_helpers.php')) {
 start_secure_session();
 require_login();
 
-// Obtener filtros
+// Obtener filtro de usuario (proveedores solo ven sus productos)
+$filtroUsuarioCreador = getIdUsuarioCreadorFilter();
+
+// Obtener filtros de búsqueda
 $categoriaFiltro = $_GET['categoria'] ?? '';
 $marcaFiltro = $_GET['marca'] ?? '';
 $estadoFiltro = $_GET['estado'] ?? '';
@@ -23,13 +27,27 @@ if ($categoriaFiltro) $filtros['categoria_id'] = $categoriaFiltro;
 if ($marcaFiltro) $filtros['marca'] = $marcaFiltro;
 if ($estadoFiltro !== '') $filtros['activo'] = $estadoFiltro === '1';
 
-// Obtener datos
-$productos = empty($filtros) ? ProductoModel::listarConInventario() : ProductoModel::listarConFiltros($filtros);
+// Obtener datos con filtro de usuario
+if (empty($filtros)) {
+    $productos = ProductoModel::listarConInventario($filtroUsuarioCreador);
+} else {
+    // Si hay filtros adicionales, usar listarConFiltros y luego filtrar por usuario
+    $productos = ProductoModel::listarConFiltros($filtros);
+    // Aplicar filtro de usuario manualmente si es proveedor
+    if ($filtroUsuarioCreador !== null) {
+        $productos = array_filter($productos, function($p) use ($filtroUsuarioCreador) {
+            return (isset($p['id_usuario_creador']) && (int)$p['id_usuario_creador'] === $filtroUsuarioCreador)
+                   || !isset($p['id_usuario_creador']) || $p['id_usuario_creador'] === null;
+        });
+        $productos = array_values($productos); // Re-indexar
+    }
+}
+
 $categorias = CategoriaModel::listarJerarquico();
 
-// Obtener marcas únicas
+// Obtener marcas únicas (solo de productos visibles para el usuario)
 $marcasUnicas = [];
-foreach (ProductoModel::listarConInventario() as $p) {
+foreach ($productos as $p) {
     if (!empty($p['marca']) && !in_array($p['marca'], $marcasUnicas)) {
         $marcasUnicas[] = $p['marca'];
     }
@@ -148,54 +166,45 @@ sort($marcasUnicas);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php if (empty($productos)): ?>
+                            <?php foreach ($productos as $prod): 
+                                $stock = (int)($prod['stock_total'] ?? 0);
+                                $minimo = (int)($prod['stock_minimo'] ?? 10);
+                                $badgeClass = $stock <= 0 ? 'danger' : ($stock < $minimo ? 'warning' : 'success');
+                                $badgeText = $stock <= 0 ? 'Agotado' : ($stock < $minimo ? 'Bajo' : 'Normal');
+                            ?>
                                 <tr>
-                                    <td colspan="9" class="text-center py-5">
-                                        <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.5;"></i>
-                                        <p>No se encontraron productos</p>
+                                    <td><?php echo $prod['id']; ?></td>
+                                    <td><code><?php echo htmlspecialchars($prod['sku'] ?? 'N/A'); ?></code></td>
+                                    <td><strong><?php echo htmlspecialchars($prod['nombre']); ?></strong></td>
+                                    <td>
+                                        <?php
+                                        $cat = $prod['categoria_id'] ? CategoriaModel::obtenerPorId($prod['categoria_id']) : null;
+                                        echo $cat ? '<span class="badge bg-secondary">' . htmlspecialchars($cat['nombre']) . '</span>' : '-';
+                                        ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($prod['marca'] ?? '-'); ?></td>
+                                    <td><strong>$<?php echo number_format($prod['precio_usd'] ?? 0, 2); ?></strong></td>
+                                    <td>
+                                        <span class="badge bg-<?php echo $badgeClass; ?>"><?php echo $badgeText; ?></span>
+                                        <strong class="ms-2"><?php echo $stock; ?></strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($prod['activo'] ?? true): ?>
+                                            <i class="bi bi-check-circle-fill text-success"></i>
+                                        <?php else: ?>
+                                            <i class="bi bi-x-circle-fill text-danger"></i>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
+                                        <a href="<?php echo RUTA_URL; ?>productos/ver/<?php echo $prod['id']; ?>" class="btn btn-sm btn-info">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="<?php echo RUTA_URL; ?>productos/editar/<?php echo $prod['id']; ?>" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
                                     </td>
                                 </tr>
-                            <?php else: ?>
-                                <?php foreach ($productos as $prod): 
-                                    $stock = (int)($prod['stock_total'] ?? 0);
-                                    $minimo = (int)($prod['stock_minimo'] ?? 10);
-                                    $badgeClass = $stock <= 0 ? 'danger' : ($stock < $minimo ? 'warning' : 'success');
-                                    $badgeText = $stock <= 0 ? 'Agotado' : ($stock < $minimo ? 'Bajo' : 'Normal');
-                                ?>
-                                    <tr>
-                                        <td><?php echo $prod['id']; ?></td>
-                                        <td><code><?php echo htmlspecialchars($prod['sku'] ?? 'N/A'); ?></code></td>
-                                        <td><strong><?php echo htmlspecialchars($prod['nombre']); ?></strong></td>
-                                        <td>
-                                            <?php
-                                            $cat = $prod['categoria_id'] ? CategoriaModel::obtenerPorId($prod['categoria_id']) : null;
-                                            echo $cat ? '<span class="badge bg-secondary">' . htmlspecialchars($cat['nombre']) . '</span>' : '-';
-                                            ?>
-                                        </td>
-                                        <td><?php echo htmlspecialchars($prod['marca'] ?? '-'); ?></td>
-                                        <td><strong>$<?php echo number_format($prod['precio_usd'] ?? 0, 2); ?></strong></td>
-                                        <td>
-                                            <span class="badge bg-<?php echo $badgeClass; ?>"><?php echo $badgeText; ?></span>
-                                            <strong class="ms-2"><?php echo $stock; ?></strong>
-                                        </td>
-                                        <td class="text-center">
-                                            <?php if ($prod['activo'] ?? true): ?>
-                                                <i class="bi bi-check-circle-fill text-success"></i>
-                                            <?php else: ?>
-                                                <i class="bi bi-x-circle-fill text-danger"></i>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <a href="<?php echo RUTA_URL; ?>productos/ver/<?php echo $prod['id']; ?>" class="btn btn-sm btn-info">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
-                                            <a href="<?php echo RUTA_URL; ?>productos/editar/<?php echo $prod['id']; ?>" class="btn btn-sm btn-primary">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>

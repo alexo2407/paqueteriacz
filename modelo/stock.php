@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 /**
  * Class StockModel
@@ -293,7 +294,19 @@ class StockModel
             $stmt->bindValue(':costo_unitario', $datos['costo_unitario'] ?? null);
             
             $stmt->execute();
-            return (int)$db->lastInsertId();
+            $nuevoId = (int)$db->lastInsertId();
+            
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'stock',
+                $nuevoId,
+                'crear',
+                AuditoriaModel::getIdUsuarioActual(),
+                null,
+                $datos
+            );
+            
+            return $nuevoId;
         } catch (Exception $e) {
             error_log('Error al registrar movimiento de stock: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             if (!$pdo) throw $e; // Re-lanzar si no estamos en transacción externa

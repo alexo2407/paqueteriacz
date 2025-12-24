@@ -92,4 +92,56 @@ function cargarRecursos($pagina) {
       echo implode("\n", $recursos["maps"]);
   }
 }
+
+/**
+ * Obtener el ID del usuario actual desde la sesión.
+ * Útil para auditoría y registro de acciones.
+ *
+ * @return int|null ID del usuario logueado o null si no hay sesión
+ */
+function getIdUsuarioActual(): ?int
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        return null;
+    }
+    // Priorizar user_id (variable principal del sistema)
+    if (isset($_SESSION['user_id'])) {
+        return (int)$_SESSION['user_id'];
+    }
+    // Compatibilidad con ID_Usuario
+    return isset($_SESSION['ID_Usuario']) ? (int)$_SESSION['ID_Usuario'] : null;
+}
+
+/**
+ * Obtener la IP del cliente de forma segura.
+ * Soporta proxies, Cloudflare y conexiones directas.
+ *
+ * @return string|null IP del cliente o null si no está disponible
+ */
+function getClientIp(): ?string
+{
+    $headers = [
+        'HTTP_CF_CONNECTING_IP',     // Cloudflare
+        'HTTP_X_FORWARDED_FOR',      // Proxies
+        'HTTP_X_REAL_IP',            // Nginx
+        'HTTP_CLIENT_IP',            // Proxy alternativo
+        'REMOTE_ADDR'                // Conexión directa
+    ];
+    
+    foreach ($headers as $header) {
+        if (!empty($_SERVER[$header])) {
+            $ip = $_SERVER[$header];
+            // Si hay múltiples IPs (X-Forwarded-For), tomar la primera
+            if (strpos($ip, ',') !== false) {
+                $ip = trim(explode(',', $ip)[0]);
+            }
+            // Validar que sea una IP válida
+            if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                return $ip;
+            }
+        }
+    }
+    
+    return null;
+}
 ?>

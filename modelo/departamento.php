@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 /**
  * DepartamentoModel
@@ -54,7 +55,19 @@ class DepartamentoModel
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':id_pais', (int)$id_pais, PDO::PARAM_INT);
         $stmt->execute();
-        return (int)$db->lastInsertId();
+        $nuevoId = (int)$db->lastInsertId();
+        
+        // Registrar auditoría
+        AuditoriaModel::registrar(
+            'departamentos',
+            $nuevoId,
+            'crear',
+            AuditoriaModel::getIdUsuarioActual(),
+            null,
+            ['nombre' => $nombre, 'id_pais' => $id_pais]
+        );
+        
+        return $nuevoId;
     }
 
     /**
@@ -66,12 +79,29 @@ class DepartamentoModel
      */
     public static function actualizar($id, $nombre, $id_pais)
     {
+        // Obtener datos anteriores para auditoría
+        $datosAnteriores = self::obtenerPorId($id);
+        
         $db = (new Conexion())->conectar();
         $stmt = $db->prepare('UPDATE departamentos SET nombre = :nombre, id_pais = :id_pais WHERE id = :id');
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':id_pais', (int)$id_pais, PDO::PARAM_INT);
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $resultado = $stmt->execute();
+        
+        if ($resultado) {
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'departamentos',
+                $id,
+                'actualizar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                ['nombre' => $nombre, 'id_pais' => $id_pais]
+            );
+        }
+        
+        return $resultado;
     }
 
     /**
@@ -81,9 +111,26 @@ class DepartamentoModel
      */
     public static function eliminar($id)
     {
+        // Obtener datos antes de eliminar para auditoría
+        $datosAnteriores = self::obtenerPorId($id);
+        
         $db = (new Conexion())->conectar();
         $stmt = $db->prepare('DELETE FROM departamentos WHERE id = :id');
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $resultado = $stmt->execute();
+        
+        if ($resultado && $datosAnteriores) {
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'departamentos',
+                $id,
+                'eliminar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                null
+            );
+        }
+        
+        return $resultado;
     }
 }

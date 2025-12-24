@@ -5,6 +5,7 @@ include_once __DIR__ . '/moneda.php';
 include_once __DIR__ . '/usuario.php';
 include_once __DIR__ . '/pais.php';
 include_once __DIR__ . '/departamento.php';
+include_once __DIR__ . '/auditoria.php';
 
 class PedidosModel
 {
@@ -910,6 +911,9 @@ class PedidosModel
 
             require_once __DIR__ . '/stock.php';
 
+            // Obtener datos del pedido antes de eliminar (para auditoría)
+            $datosAnteriores = self::obtenerPedidoPorId($idPedido);
+
             // 1. Obtener items del pedido para restaurar stock
             $stmtItems = $db->prepare("SELECT id_producto, cantidad FROM pedidos_productos WHERE id_pedido = :id_pedido");
             $stmtItems->execute([':id_pedido' => $idPedido]);
@@ -937,6 +941,16 @@ class PedidosModel
             // 6. Eliminar pedido
             $stmtDelPedido = $db->prepare("DELETE FROM pedidos WHERE id = :id");
             $stmtDelPedido->execute([':id' => $idPedido]);
+
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'pedidos',
+                $idPedido,
+                'eliminar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                null
+            );
 
             $db->commit();
             return true;
@@ -1289,6 +1303,11 @@ class PedidosModel
     public static function actualizarEstado($id_pedido, $estado) {
         try {
             $db = (new Conexion())->conectar();
+            
+            // Obtener estado anterior
+            $stmtAnterior = $db->prepare("SELECT id_estado FROM pedidos WHERE id = :id");
+            $stmtAnterior->execute([':id' => $id_pedido]);
+            $estadoAnterior = $stmtAnterior->fetchColumn();
     
             $query = "UPDATE pedidos SET id_estado = :estado WHERE id = :id_pedido";
             $stmt = $db->prepare($query);
@@ -1298,7 +1317,21 @@ class PedidosModel
             
             try {
                 $stmt->execute();
-                return $stmt->rowCount() > 0;
+                $resultado = $stmt->rowCount() > 0;
+                
+                if ($resultado) {
+                    // Registrar auditoría
+                    AuditoriaModel::registrar(
+                        'pedidos',
+                        $id_pedido,
+                        'actualizar',
+                        AuditoriaModel::getIdUsuarioActual(),
+                        ['id_estado' => $estadoAnterior],
+                        ['id_estado' => $estado]
+                    );
+                }
+                
+                return $resultado;
             } catch (PDOException $e) {
                 return ["success" => false, "message" => "Error SQL: " . $e->getMessage()];
             }

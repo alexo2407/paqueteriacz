@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 /**
  * ProductoModel
@@ -11,11 +12,24 @@ include_once __DIR__ . '/conexion.php';
  */
 class ProductoModel
 {
-    public static function listarConInventario()
+    /**
+     * Listar productos con inventario.
+     * 
+     * @param int|null $idUsuarioCreador Si se especifica, filtra solo productos creados por este usuario.
+     *                                    Si es null, devuelve todos (para admin).
+     * @return array Lista de productos con su stock total
+     */
+    public static function listarConInventario($idUsuarioCreador = null)
     {
         try {
             $db = (new Conexion())->conectar();
-            $sql = 'SELECT 
+            
+            $whereClause = '';
+            if ($idUsuarioCreador !== null) {
+                $whereClause = 'WHERE p.id_usuario_creador = :id_usuario_creador';
+            }
+            
+            $sql = "SELECT 
                         p.id,
                         p.sku,
                         p.nombre,
@@ -28,14 +42,22 @@ class ProductoModel
                         p.stock_maximo,
                         p.activo,
                         p.imagen_url,
+                        p.id_usuario_creador,
                         COALESCE(SUM(s.cantidad), 0) AS stock_total
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
+                    {$whereClause}
                     GROUP BY p.id, p.sku, p.nombre, p.descripcion, p.precio_usd, 
                              p.categoria_id, p.marca, p.unidad_medida, p.stock_minimo, 
-                             p.stock_maximo, p.activo, p.imagen_url
-                    ORDER BY p.nombre ASC';
+                             p.stock_maximo, p.activo, p.imagen_url, p.id_usuario_creador
+                    ORDER BY p.nombre ASC";
+            
             $stmt = $db->prepare($sql);
+            
+            if ($idUsuarioCreador !== null) {
+                $stmt->bindValue(':id_usuario_creador', $idUsuarioCreador, PDO::PARAM_INT);
+            }
+            
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
@@ -62,6 +84,7 @@ class ProductoModel
                     p.stock_maximo,
                     p.activo,
                     p.imagen_url,
+                    p.id_usuario_creador,
                     p.created_at,
                     p.updated_at,
                     COALESCE(SUM(s.cantidad), 0) AS stock_total
@@ -183,17 +206,25 @@ class ProductoModel
     }
 
     /**
-     * Crear un producto con campos completos
+     * Crear un producto con campos completos.
+     * Automáticamente asigna el id_usuario_creador del usuario actual.
+     * 
      * @param string $nombre
      * @param string|null $descripcion
      * @param float|null $precioUsd
+     * @param int|null $idUsuarioCreador ID del usuario creador (si null, se obtiene automáticamente)
      * @return int|null ID creado o null en error
      */
-    public static function crear($nombre, $descripcion = null, $precioUsd = null)
+    public static function crear($nombre, $descripcion = null, $precioUsd = null, $idUsuarioCreador = null)
     {
         try {
+            // Si no se especifica el creador, obtenerlo del contexto actual
+            if ($idUsuarioCreador === null) {
+                $idUsuarioCreador = AuditoriaModel::getIdUsuarioActual();
+            }
+            
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('INSERT INTO productos (nombre, descripcion, precio_usd) VALUES (:nombre, :descripcion, :precio_usd)');
+            $stmt = $db->prepare('INSERT INTO productos (nombre, descripcion, precio_usd, id_usuario_creador) VALUES (:nombre, :descripcion, :precio_usd, :id_usuario_creador)');
             $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
             if ($descripcion === null || $descripcion === '') {
                 $stmt->bindValue(':descripcion', null, PDO::PARAM_NULL);
@@ -205,8 +236,25 @@ class ProductoModel
             } else {
                 $stmt->bindValue(':precio_usd', $precioUsd);
             }
+            if ($idUsuarioCreador === null) {
+                $stmt->bindValue(':id_usuario_creador', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':id_usuario_creador', $idUsuarioCreador, PDO::PARAM_INT);
+            }
             $stmt->execute();
-            return (int)$db->lastInsertId();
+            $nuevoId = (int)$db->lastInsertId();
+            
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'productos',
+                $nuevoId,
+                'crear',
+                $idUsuarioCreador,
+                null,
+                ['nombre' => $nombre, 'descripcion' => $descripcion, 'precio_usd' => $precioUsd, 'id_usuario_creador' => $idUsuarioCreador]
+            );
+            
+            return $nuevoId;
         } catch (PDOException $e) {
             error_log('Error al crear producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return null;
@@ -277,7 +325,24 @@ class ProductoModel
                 }
             }
             
-            return $stmt->execute();
+            // Obtener datos anteriores para auditoría
+            $datosAnteriores = self::obtenerPorId($id);
+            
+            $resultado = $stmt->execute();
+            
+            if ($resultado) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'productos',
+                    $id,
+                    'actualizar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores,
+                    $datos
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log('Error al actualizar producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;
@@ -292,10 +357,27 @@ class ProductoModel
     public static function eliminar($id)
     {
         try {
+            // Obtener datos antes de eliminar para auditoría
+            $datosAnteriores = self::obtenerPorId($id);
+            
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare('DELETE FROM productos WHERE id = :id');
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
-            return $stmt->execute();
+            $resultado = $stmt->execute();
+            
+            if ($resultado && $datosAnteriores) {
+                // Registrar auditoría
+                AuditoriaModel::registrar(
+                    'productos',
+                    $id,
+                    'eliminar',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    $datosAnteriores,
+                    null
+                );
+            }
+            
+            return $resultado;
         } catch (PDOException $e) {
             error_log('Error al eliminar producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return false;
@@ -583,6 +665,7 @@ class ProductoModel
                         p.stock_maximo,
                         p.activo,
                         p.imagen_url,
+                        p.id_usuario_creador,
                         COALESCE(SUM(s.cantidad), 0) AS stock_total
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
@@ -600,6 +683,69 @@ class ProductoModel
         } catch (PDOException $e) {
             error_log('Error al listar productos con filtros: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return [];
+        }
+    }
+
+    /**
+     * Verificar si un usuario puede editar un producto.
+     * Admin puede editar todos, proveedores solo los suyos.
+     * 
+     * @param int $idProducto ID del producto
+     * @param int $idUsuario ID del usuario
+     * @param bool $esAdmin Si el usuario es administrador
+     * @return bool True si puede editar
+     */
+    public static function puedeEditar($idProducto, $idUsuario, $esAdmin = false)
+    {
+        if ($esAdmin) {
+            return true;
+        }
+        
+        $producto = self::obtenerPorId($idProducto);
+        if (!$producto) {
+            return false;
+        }
+        
+        // Si no tiene creador asignado (legacy), solo admin puede editar
+        if (!isset($producto['id_usuario_creador']) || $producto['id_usuario_creador'] === null) {
+            return $esAdmin;
+        }
+        
+        return (int)$producto['id_usuario_creador'] === (int)$idUsuario;
+    }
+
+    /**
+     * Verificar si un usuario puede eliminar un producto.
+     * Misma lógica que puedeEditar.
+     * 
+     * @param int $idProducto ID del producto
+     * @param int $idUsuario ID del usuario
+     * @param bool $esAdmin Si el usuario es administrador
+     * @return bool True si puede eliminar
+     */
+    public static function puedeEliminar($idProducto, $idUsuario, $esAdmin = false)
+    {
+        return self::puedeEditar($idProducto, $idUsuario, $esAdmin);
+    }
+
+    /**
+     * Obtener el ID del usuario creador de un producto.
+     * 
+     * @param int $idProducto ID del producto
+     * @return int|null ID del usuario creador o null si no tiene
+     */
+    public static function obtenerIdCreador($idProducto)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('SELECT id_usuario_creador FROM productos WHERE id = :id');
+            $stmt->bindValue(':id', $idProducto, PDO::PARAM_INT);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? ($row['id_usuario_creador'] !== null ? (int)$row['id_usuario_creador'] : null) : null;
+        } catch (PDOException $e) {
+            error_log('Error al obtener creador del producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return null;
         }
     }
 }

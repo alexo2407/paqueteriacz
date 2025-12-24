@@ -1,5 +1,6 @@
 <?php
 include_once __DIR__ . '/conexion.php';
+include_once __DIR__ . '/auditoria.php';
 
 /**
  * BarrioModel
@@ -56,7 +57,19 @@ class BarrioModel
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':id_municipio', (int)$id_municipio, PDO::PARAM_INT);
         $stmt->execute();
-        return (int)$db->lastInsertId();
+        $nuevoId = (int)$db->lastInsertId();
+        
+        // Registrar auditoría
+        AuditoriaModel::registrar(
+            'barrios',
+            $nuevoId,
+            'crear',
+            AuditoriaModel::getIdUsuarioActual(),
+            null,
+            ['nombre' => $nombre, 'id_municipio' => $id_municipio]
+        );
+        
+        return $nuevoId;
     }
 
     /**
@@ -69,12 +82,29 @@ class BarrioModel
      */
     public static function actualizar($id, $nombre, $id_municipio)
     {
+        // Obtener datos anteriores para auditoría
+        $datosAnteriores = self::obtenerPorId($id);
+        
         $db = (new Conexion())->conectar();
         $stmt = $db->prepare('UPDATE barrios SET nombre = :nombre, id_municipio = :id_municipio WHERE id = :id');
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':id_municipio', (int)$id_municipio, PDO::PARAM_INT);
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $resultado = $stmt->execute();
+        
+        if ($resultado) {
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'barrios',
+                $id,
+                'actualizar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                ['nombre' => $nombre, 'id_municipio' => $id_municipio]
+            );
+        }
+        
+        return $resultado;
     }
 
     /**
@@ -85,9 +115,26 @@ class BarrioModel
      */
     public static function eliminar($id)
     {
+        // Obtener datos antes de eliminar para auditoría
+        $datosAnteriores = self::obtenerPorId($id);
+        
         $db = (new Conexion())->conectar();
         $stmt = $db->prepare('DELETE FROM barrios WHERE id = :id');
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
-        return $stmt->execute();
+        $resultado = $stmt->execute();
+        
+        if ($resultado && $datosAnteriores) {
+            // Registrar auditoría
+            AuditoriaModel::registrar(
+                'barrios',
+                $id,
+                'eliminar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $datosAnteriores,
+                null
+            );
+        }
+        
+        return $resultado;
     }
 }

@@ -1,20 +1,28 @@
 <?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
+require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
 
 start_secure_session();
 require_login();
 
+// Obtener filtro de usuario (proveedores solo ven sus productos)
+$filtroUsuario = getIdUsuarioCreadorFilter();
+
 $productoId = $_GET['producto'] ?? '';
 $producto = null;
 
-// Obtener productos usando el método correcto
-$productos = ProductoModel::listarConInventario();
+// Obtener productos con filtro de usuario
+$productos = ProductoModel::listarConInventario($filtroUsuario);
 
-// Si hay producto seleccionado
+// Si hay producto seleccionado, verificar que tenga permiso
 if ($productoId) {
     $producto = ProductoModel::obtenerPorId($productoId);
+    // Verificar permiso de acceso
+    if ($producto && !canViewProduct($producto)) {
+        $producto = null; // No tiene permiso
+    }
 }
 ?>
 <!DOCTYPE html>
