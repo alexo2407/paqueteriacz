@@ -4,12 +4,31 @@ require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/stock.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
+require_once __DIR__ . '/../../../modelo/usuario.php';
 
 start_secure_session();
 require_login();
 
-// Obtener filtro de usuario (proveedores solo ven sus movimientos)
+// Verificar si es administrador
+$esAdmin = isSuperAdmin();
+
+// Obtener filtro de usuario 
+// Para admin: puede filtrar por cualquier proveedor via GET, o ver todos
+// Para proveedor: solo ve sus propios movimientos
 $filtroUsuario = getIdUsuarioCreadorFilter();
+
+// Si es admin y hay un filtro de proveedor en GET, usarlo
+$proveedorFiltro = $_GET['proveedor'] ?? '';
+if ($esAdmin && $proveedorFiltro !== '') {
+    $filtroUsuario = (int)$proveedorFiltro;
+}
+
+// Obtener lista de proveedores para el dropdown (solo para admin)
+$proveedores = [];
+if ($esAdmin) {
+    $usuarioModel = new UsuarioModel();
+    $proveedores = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
+}
 
 // Obtener filtros de la URL
 $tipoFiltro = $_GET['tipo'] ?? '';
@@ -26,7 +45,7 @@ $filtros = [];
 if ($tipoFiltro) {
     $filtros['tipo_movimiento'] = $tipoFiltro;
 }
-// Aplicar filtro de usuario si no es admin
+// Aplicar filtro de usuario
 if ($filtroUsuario !== null) {
     $filtros['id_usuario'] = $filtroUsuario;
 }
@@ -70,7 +89,24 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
         <div class="card-body">
             <form method="GET">
                 <div class="row g-3">
-                    <div class="col-md-3">
+                    <?php if ($esAdmin && !empty($proveedores)): ?>
+                    <!-- Filtro por Proveedor (solo Admin) -->
+                    <div class="col-md-2">
+                        <label class="form-label small">
+                            <i class="bi bi-person-badge"></i> Proveedor
+                        </label>
+                        <select name="proveedor" class="form-select">
+                            <option value="">Todos los proveedores</option>
+                            <?php foreach ($proveedores as $prov): ?>
+                                <option value="<?php echo $prov['id']; ?>" <?php echo $proveedorFiltro == $prov['id'] ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($prov['nombre']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="col-md-<?php echo $esAdmin ? '2' : '3'; ?>">
                         <label class="form-label small">Tipo de Movimiento</label>
                         <select name="tipo" class="form-select">
                             <option value="">Todos los tipos</option>
@@ -92,17 +128,17 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
                         </select>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-<?php echo $esAdmin ? '2' : '3'; ?>">
                         <label class="form-label small">Fecha Inicio</label>
                         <input type="date" name="fecha_inicio" class="form-control" value="<?php echo htmlspecialchars($fechaInicio); ?>">
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-<?php echo $esAdmin ? '2' : '3'; ?>">
                         <label class="form-label small">Fecha Fin</label>
                         <input type="date" name="fecha_fin" class="form-control" value="<?php echo htmlspecialchars($fechaFin); ?>">
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-<?php echo $esAdmin ? '2' : '3'; ?>">
                         <label class="form-label small">&nbsp;</label>
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-primary flex-fill">
@@ -114,6 +150,20 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
                         </div>
                     </div>
                 </div>
+                
+                <?php if ($esAdmin && $proveedorFiltro): ?>
+                <div class="alert alert-info mt-3 mb-0 py-2">
+                    <i class="bi bi-info-circle"></i> 
+                    Mostrando movimientos del proveedor: <strong><?php 
+                        foreach ($proveedores as $p) {
+                            if ($p['id'] == $proveedorFiltro) {
+                                echo htmlspecialchars($p['nombre']);
+                                break;
+                            }
+                        }
+                    ?></strong>
+                </div>
+                <?php endif; ?>
             </form>
         </div>
     </div>
