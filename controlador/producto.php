@@ -67,10 +67,9 @@ class ProductosController
         if ($nombre === '') {
             return ['success' => false, 'message' => 'El nombre es obligatorio.'];
         }
-        $descripcion = $data['descripcion'] ?? null;
-        $precio = $data['precio_usd'] ?? null;
 
-        $ok = ProductoModel::actualizar($id, $nombre, $descripcion, $precio);
+        // Pasar el array completo al modelo para que maneje todos los campos
+        $ok = ProductoModel::actualizar($id, $data);
         if (!$ok) {
             return ['success' => false, 'message' => 'No fue posible actualizar el producto.'];
         }

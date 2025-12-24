@@ -405,10 +405,33 @@ $categorias = CategoriaModel::listarJerarquico();
         
         fetch(this.action, {
             method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return response.text().then(text => {
+                console.log('Response text:', text);
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    console.error('Response was:', text);
+                    throw new Error('La respuesta no es JSON válido');
+                }
+            });
+        })
         .then(data => {
+            console.log('Parsed data:', data);
             if (data.success) {
                 Swal.fire({
                     icon: 'success',
@@ -427,10 +450,11 @@ $categorias = CategoriaModel::listarJerarquico();
             }
         })
         .catch(error => {
+            console.error('Fetch error:', error);
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Error de conexión'
+                text: 'Error de conexión: ' + error.message
             });
         });
     });

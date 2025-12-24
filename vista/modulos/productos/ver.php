@@ -70,7 +70,13 @@ if (isset($producto['categoria_id']) && $producto['categoria_id']) {
             <div class="card mb-3">
                 <div class="card-body text-center">
                     <?php if (!empty($producto['imagen_url'])): ?>
-                        <img src="<?php echo htmlspecialchars($producto['imagen_url']); ?>" 
+                        <?php 
+                        $imgSrc = $producto['imagen_url'];
+                        if (!str_starts_with($imgSrc, 'http')) {
+                            $imgSrc = RUTA_URL . $imgSrc;
+                        }
+                        ?>
+                        <img src="<?php echo htmlspecialchars($imgSrc); ?>" 
                              class="img-fluid rounded" 
                              alt="<?php echo htmlspecialchars($producto['nombre']); ?>"
                              onerror="this.src='https://via.placeholder.com/400x300?text=Sin+Imagen'">

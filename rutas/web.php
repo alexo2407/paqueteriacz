@@ -357,6 +357,16 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
         
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         if ($id <= 0) {
+            // Detectar si es AJAX
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                     || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Producto inválido.']);
+                exit;
+            }
+            
             set_flash('error', 'Producto inválido.');
             header('Location: ' . RUTA_URL . 'productos/listar');
             exit;
@@ -378,6 +388,16 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
                     eliminarImagenProducto($_POST['imagen_actual']);
                 }
             } else {
+                // Detectar si es AJAX
+                $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                         || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+                
+                if ($isAjax) {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'Error al subir imagen: ' . $resultado['error']]);
+                    exit;
+                }
+                
                 set_flash('error', 'Error al subir imagen: ' . $resultado['error']);
                 header('Location: ' . RUTA_URL . 'productos/editar/' . $id);
                 exit;
@@ -418,6 +438,20 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
         }
         
         $response = $ctrl->actualizar($id, $payload);
+        
+        // Detectar si es AJAX
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => $response['success'],
+                'message' => $response['message']
+            ]);
+            exit;
+        }
+        
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
         header('Location: ' . RUTA_URL . 'productos/editar/' . $id);
         exit;
