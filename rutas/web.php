@@ -312,10 +312,39 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
     $ctrl = new ProductosController();
 
     if ($accion === 'guardar' || $accion === 'crear') {
+        require_once __DIR__ . '/../utils/image_upload.php';
+        
+        // Procesar imagen
+        $imagenUrl = null;
+        
+        // Primero intentar archivo subido
+        if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $resultado = subirImagenProducto($_FILES['imagen']);
+            if ($resultado['success']) {
+                $imagenUrl = $resultado['path'];
+            } else {
+                set_flash('error', 'Error al subir imagen: ' . $resultado['error']);
+                header('Location: ' . RUTA_URL . 'productos/crear');
+                exit;
+            }
+        } elseif (!empty($_POST['imagen_url'])) {
+            // Si no hay archivo, usar URL externa
+            $imagenUrl = trim($_POST['imagen_url']);
+        }
+        
         $payload = [
             'nombre' => $_POST['nombre'] ?? '',
             'descripcion' => $_POST['descripcion'] ?? null,
             'precio_usd' => isset($_POST['precio_usd']) && $_POST['precio_usd'] !== '' ? $_POST['precio_usd'] : null,
+            'sku' => $_POST['sku'] ?? null,
+            'categoria_id' => !empty($_POST['categoria_id']) ? (int)$_POST['categoria_id'] : null,
+            'marca' => $_POST['marca'] ?? null,
+            'unidad' => $_POST['unidad'] ?? 'unidad',
+            'peso' => isset($_POST['peso']) && $_POST['peso'] !== '' ? (float)$_POST['peso'] : null,
+            'stock_minimo' => isset($_POST['stock_minimo']) ? (int)$_POST['stock_minimo'] : 10,
+            'stock_maximo' => isset($_POST['stock_maximo']) ? (int)$_POST['stock_maximo'] : 100,
+            'activo' => isset($_POST['activo']) ? (int)$_POST['activo'] : 1,
+            'imagen_url' => $imagenUrl,
         ];
         $response = $ctrl->crear($payload);
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
@@ -324,17 +353,70 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
     }
 
     if ($accion === 'actualizar') {
+        require_once __DIR__ . '/../utils/image_upload.php';
+        
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         if ($id <= 0) {
             set_flash('error', 'Producto inválido.');
             header('Location: ' . RUTA_URL . 'productos/listar');
             exit;
         }
+        
+        // Procesar imagen
+        $imagenUrl = null;
+        $imagenCambiada = false;
+        
+        // Primero intentar archivo subido
+        if (isset($_FILES['imagen']) && $_FILES['imagen']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $resultado = subirImagenProducto($_FILES['imagen']);
+            if ($resultado['success']) {
+                $imagenUrl = $resultado['path'];
+                $imagenCambiada = true;
+                
+                // Eliminar imagen anterior si era local
+                if (!empty($_POST['imagen_actual']) && !str_starts_with($_POST['imagen_actual'], 'http')) {
+                    eliminarImagenProducto($_POST['imagen_actual']);
+                }
+            } else {
+                set_flash('error', 'Error al subir imagen: ' . $resultado['error']);
+                header('Location: ' . RUTA_URL . 'productos/editar/' . $id);
+                exit;
+            }
+        } elseif (!empty($_POST['imagen_url'])) {
+            // Si no hay archivo pero hay URL nueva
+            $imagenUrl = trim($_POST['imagen_url']);
+            $imagenCambiada = ($_POST['imagen_actual'] ?? '') !== $imagenUrl;
+        } elseif (isset($_POST['eliminar_imagen']) && $_POST['eliminar_imagen'] == '1') {
+            // Si se marcó eliminar imagen
+            if (!empty($_POST['imagen_actual']) && !str_starts_with($_POST['imagen_actual'], 'http')) {
+                eliminarImagenProducto($_POST['imagen_actual']);
+            }
+            $imagenUrl = null;
+            $imagenCambiada = true;
+        } else {
+            // Mantener imagen actual
+            $imagenUrl = $_POST['imagen_actual'] ?? null;
+        }
+        
         $payload = [
             'nombre' => $_POST['nombre'] ?? '',
             'descripcion' => $_POST['descripcion'] ?? null,
             'precio_usd' => isset($_POST['precio_usd']) && $_POST['precio_usd'] !== '' ? $_POST['precio_usd'] : null,
+            'sku' => $_POST['sku'] ?? null,
+            'categoria_id' => !empty($_POST['categoria_id']) ? (int)$_POST['categoria_id'] : null,
+            'marca' => $_POST['marca'] ?? null,
+            'unidad' => $_POST['unidad'] ?? 'unidad',
+            'peso' => isset($_POST['peso']) && $_POST['peso'] !== '' ? (float)$_POST['peso'] : null,
+            'stock_minimo' => isset($_POST['stock_minimo']) ? (int)$_POST['stock_minimo'] : 10,
+            'stock_maximo' => isset($_POST['stock_maximo']) ? (int)$_POST['stock_maximo'] : 100,
+            'activo' => isset($_POST['activo']) ? (int)$_POST['activo'] : 1,
         ];
+        
+        // Solo incluir imagen si cambió
+        if ($imagenCambiada) {
+            $payload['imagen_url'] = $imagenUrl;
+        }
+        
         $response = $ctrl->actualizar($id, $payload);
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
         header('Location: ' . RUTA_URL . 'productos/editar/' . $id);

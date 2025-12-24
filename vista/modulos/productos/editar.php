@@ -66,12 +66,13 @@ $categorias = CategoriaModel::listarJerarquico();
             </div>
 
             <!-- Formulario -->
-            <form id="formProducto" method="POST" action="<?php echo RUTA_URL; ?>api/productos/actualizar">
+            <form id="formProducto" method="POST" action="<?php echo RUTA_URL; ?>productos/actualizar/<?php echo $id; ?>" enctype="multipart/form-data">
                 <input type="hidden" name="id" value="<?php echo $id; ?>">
+                <input type="hidden" name="imagen_actual" value="<?php echo htmlspecialchars($producto['imagen_url'] ?? ''); ?>">
                 <?php 
                     require_once __DIR__ . '/../../../utils/csrf.php';
                     echo csrf_field(); 
-                ?>>
+                ?>
                 
                 <div class="card">
                     <div class="card-header bg-primary text-white">
@@ -228,20 +229,45 @@ $categorias = CategoriaModel::listarJerarquico();
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-8 mb-3">
-                                <label for="imagen_url" class="form-label">URL de la Imagen</label>
-                                <input type="url" class="form-control" id="imagen_url" name="imagen_url" 
-                                       value="<?php echo htmlspecialchars($producto['imagen_url'] ?? ''); ?>" maxlength="500">
-                                <small class="text-muted">Ingresa la URL de la imagen del producto</small>
+                                <label for="imagen" class="form-label">Subir Nueva Imagen</label>
+                                <input type="file" class="form-control" id="imagen" name="imagen" accept="image/jpeg,image/png,image/gif,image/webp">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i> Formatos: JPG, PNG, GIF, WEBP. Máximo 5MB
+                                </small>
+                                
+                                <div class="mt-2">
+                                    <small class="text-muted">O ingresa una URL externa:</small>
+                                    <input type="url" class="form-control form-control-sm mt-1" id="imagen_url" name="imagen_url" 
+                                           value="<?php echo htmlspecialchars($producto['imagen_url'] ?? ''); ?>" 
+                                           placeholder="https://ejemplo.com/imagen.jpg" maxlength="500">
+                                </div>
+                                
+                                <?php if (!empty($producto['imagen_url'])): ?>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="eliminar_imagen" name="eliminar_imagen" value="1">
+                                    <label class="form-check-label text-danger" for="eliminar_imagen">
+                                        <i class="bi bi-trash"></i> Eliminar imagen actual
+                                    </label>
+                                </div>
+                                <?php endif; ?>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Vista Previa</label>
-                                <div id="imagen-preview" class="border rounded p-2 text-center" style="height: 120px; background: #f8f9fa;">
+                                <div id="imagen-preview" class="border rounded p-2 text-center d-flex align-items-center justify-content-center" style="height: 150px; background: #f8f9fa;">
                                     <?php if (!empty($producto['imagen_url'])): ?>
-                                        <img src="<?php echo htmlspecialchars($producto['imagen_url']); ?>" class="img-fluid" style="max-height: 110px;" 
-                                             onerror="this.parentElement.innerHTML='<i class=\'bi bi-exclamation-triangle text-warning\' style=\'font-size: 3rem;\'></i><p class=\'text-muted small mb-0\'>Error al cargar</p>'">
+                                        <?php 
+                                        $imgSrc = $producto['imagen_url'];
+                                        if (!str_starts_with($imgSrc, 'http')) {
+                                            $imgSrc = RUTA_URL . $imgSrc;
+                                        }
+                                        ?>
+                                        <img src="<?php echo htmlspecialchars($imgSrc); ?>" class="img-fluid rounded" style="max-height: 140px;" 
+                                             onerror="this.parentElement.innerHTML='<div><i class=\'bi bi-exclamation-triangle text-warning\' style=\'font-size: 3rem;\'></i><p class=\'text-muted small mb-0\'>Error al cargar</p></div>'">
                                     <?php else: ?>
-                                        <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                                        <p class="text-muted small mb-0">Sin imagen</p>
+                                        <div>
+                                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                                            <p class="text-muted small mb-0">Sin imagen</p>
+                                        </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -306,17 +332,65 @@ $categorias = CategoriaModel::listarJerarquico();
     });
     <?php endif; ?>
 
-    // Preview de imagen
-    document.getElementById('imagen_url').addEventListener('input', function() {
-        const url = this.value;
+    // Funciones de preview de imagen
+    function mostrarPreview(src) {
         const preview = document.getElementById('imagen-preview');
-        
-        if (url) {
-            preview.innerHTML = `<img src="${url}" class="img-fluid" style="max-height: 110px;" onerror="this.parentElement.innerHTML='<i class=\\'bi bi-exclamation-triangle text-warning\\' style=\\'font-size: 3rem;\\'></i><p class=\\'text-muted small mb-0\\'>Error al cargar</p>'">`;
-        } else {
-            preview.innerHTML = '<i class="bi bi-image text-muted" style="font-size: 3rem;"></i><p class="text-muted small mb-0">Sin imagen</p>';
+        preview.innerHTML = `<img src="${src}" class="img-fluid rounded" style="max-height: 140px;" onerror="resetPreview()">`;
+    }
+    
+    function resetPreview() {
+        const preview = document.getElementById('imagen-preview');
+        preview.innerHTML = '<div><i class="bi bi-image text-muted" style="font-size: 3rem;"></i><p class="text-muted small mb-0">Sin imagen</p></div>';
+    }
+
+    // Preview de archivo subido
+    document.getElementById('imagen').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            document.getElementById('imagen_url').value = '';
+            if (document.getElementById('eliminar_imagen')) {
+                document.getElementById('eliminar_imagen').checked = false;
+            }
+            
+            if (file.size > 5 * 1024 * 1024) {
+                Swal.fire({icon: 'error', title: 'Error', text: 'La imagen excede 5MB'});
+                this.value = '';
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                mostrarPreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
         }
     });
+
+    // Preview de URL externa
+    document.getElementById('imagen_url').addEventListener('input', function() {
+        const url = this.value.trim();
+        if (url) {
+            document.getElementById('imagen').value = '';
+            if (document.getElementById('eliminar_imagen')) {
+                document.getElementById('eliminar_imagen').checked = false;
+            }
+            mostrarPreview(url);
+        } else {
+            resetPreview();
+        }
+    });
+    
+    // Limpiar preview si se marca eliminar
+    const eliminarCheck = document.getElementById('eliminar_imagen');
+    if (eliminarCheck) {
+        eliminarCheck.addEventListener('change', function() {
+            if (this.checked) {
+                resetPreview();
+                document.getElementById('imagen').value = '';
+                document.getElementById('imagen_url').value = '';
+            }
+        });
+    }
 
     // Validación del formulario
     document.getElementById('formProducto').addEventListener('submit', function(e) {

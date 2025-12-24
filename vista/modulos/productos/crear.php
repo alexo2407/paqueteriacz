@@ -38,7 +38,7 @@ $categorias = CategoriaModel::listarJerarquico();
             </div>
 
             <!-- Formulario -->
-            <form id="formProducto" method="POST" action="<?php echo RUTA_URL; ?>productos/guardar">
+            <form id="formProducto" method="POST" action="<?php echo RUTA_URL; ?>productos/guardar" enctype="multipart/form-data">
                 <?php 
                     require_once __DIR__ . '/../../../utils/csrf.php';
                     echo csrf_field(); 
@@ -166,15 +166,24 @@ $categorias = CategoriaModel::listarJerarquico();
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-8 mb-3">
-                                <label for="imagen_url" class="form-label">URL de la Imagen</label>
-                                <input type="url" class="form-control" id="imagen_url" name="imagen_url" placeholder="https://ejemplo.com/imagen.jpg" maxlength="500">
-                                <small class="text-muted">Ingresa la URL de la imagen del producto</small>
+                                <label for="imagen" class="form-label">Subir Imagen</label>
+                                <input type="file" class="form-control" id="imagen" name="imagen" accept="image/jpeg,image/png,image/gif,image/webp">
+                                <small class="text-muted">
+                                    <i class="bi bi-info-circle"></i> Formatos: JPG, PNG, GIF, WEBP. Máximo 5MB
+                                </small>
+                                
+                                <div class="mt-2">
+                                    <small class="text-muted">O ingresa una URL externa:</small>
+                                    <input type="url" class="form-control form-control-sm mt-1" id="imagen_url" name="imagen_url" placeholder="https://ejemplo.com/imagen.jpg" maxlength="500">
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Vista Previa</label>
-                                <div id="imagen-preview" class="border rounded p-2 text-center" style="height: 120px; background: #f8f9fa;">
-                                    <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                                    <p class="text-muted small mb-0">Sin imagen</p>
+                                <div id="imagen-preview" class="border rounded p-2 text-center d-flex align-items-center justify-content-center" style="height: 150px; background: #f8f9fa;">
+                                    <div>
+                                        <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                                        <p class="text-muted small mb-0">Sin imagen</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -202,15 +211,52 @@ $categorias = CategoriaModel::listarJerarquico();
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
-    // Preview de imagen
-    document.getElementById('imagen_url').addEventListener('input', function() {
-        const url = this.value;
+    // Función para mostrar preview
+    function mostrarPreview(src) {
         const preview = document.getElementById('imagen-preview');
-        
-        if (url) {
-            preview.innerHTML = `<img src="${url}" class="img-fluid" style="max-height: 110px;" onerror="this.parentElement.innerHTML='<i class=\\'bi bi-exclamation-triangle text-warning\\' style=\\'font-size: 3rem;\\'></i><p class=\\'text-muted small mb-0\\'>Error al cargar</p>'">`;
+        preview.innerHTML = `<img src="${src}" class="img-fluid rounded" style="max-height: 140px;" onerror="resetPreview()">`;
+    }
+    
+    function resetPreview() {
+        const preview = document.getElementById('imagen-preview');
+        preview.innerHTML = '<div><i class="bi bi-image text-muted" style="font-size: 3rem;"></i><p class="text-muted small mb-0">Sin imagen</p></div>';
+    }
+
+    // Preview de archivo subido
+    document.getElementById('imagen').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Limpiar URL si hay archivo
+            document.getElementById('imagen_url').value = '';
+            
+            // Validar tamaño (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                Swal.fire({icon: 'error', title: 'Error', text: 'La imagen excede 5MB'});
+                this.value = '';
+                resetPreview();
+                return;
+            }
+            
+            // Mostrar preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                mostrarPreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
         } else {
-            preview.innerHTML = '<i class="bi bi-image text-muted" style="font-size: 3rem;"></i><p class="text-muted small mb-0">Sin imagen</p>';
+            resetPreview();
+        }
+    });
+
+    // Preview de URL externa
+    document.getElementById('imagen_url').addEventListener('input', function() {
+        const url = this.value.trim();
+        if (url) {
+            // Limpiar archivo si hay URL
+            document.getElementById('imagen').value = '';
+            mostrarPreview(url);
+        } else {
+            resetPreview();
         }
     });
 
