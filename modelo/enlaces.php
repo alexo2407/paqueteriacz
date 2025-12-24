@@ -40,6 +40,7 @@ class EnlacesModel
             "usuarios",
             "pedidos",
             "productos",
+            "categorias",
             "stock",
             "monedas",
             "paises",

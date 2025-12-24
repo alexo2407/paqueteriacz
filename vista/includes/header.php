@@ -64,6 +64,11 @@
                             </a>
                         </li>
                         <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>categorias/listar">
+                                <i class="bi bi-folder2"></i> Categorías
+                            </a>
+                        </li>
+                        <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>stock/listar">
                                 <i class="bi bi-arrow-down-up"></i> Movimientos de Stock
                             </a>

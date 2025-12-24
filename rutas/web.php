@@ -466,6 +466,106 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
     }
 }
 
+// -----------------------
+// Manejo de categorías (POST a ?enlace=categorias/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/categoria.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/csrf.php';
+    start_secure_session();
+
+    // Validar token CSRF
+    $csrfToken = $_POST['csrf_token'] ?? null;
+    if (!verify_csrf_token($csrfToken)) {
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Token de seguridad inválido']);
+            exit;
+        }
+        
+        set_flash('error', 'Token de seguridad inválido');
+        header('Location: ' . RUTA_URL . 'categorias/listar');
+        exit;
+    }
+
+    $ctrl = new CategoriaController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = [
+            'nombre' => $_POST['nombre'] ?? '',
+            'descripcion' => $_POST['descripcion'] ?? null,
+            'padre_id' => !empty($_POST['padre_id']) ? (int)$_POST['padre_id'] : null,
+        ];
+        
+        $response = $ctrl->crear($payload);
+        
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        }
+        
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'categorias/listar');
+        exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        if ($id <= 0) {
+            $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                     || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+            
+            if ($isAjax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Categoría inválida']);
+                exit;
+            }
+            
+            set_flash('error', 'Categoría inválida');
+            header('Location: ' . RUTA_URL . 'categorias/listar');
+            exit;
+        }
+        
+        $payload = [
+            'nombre' => $_POST['nombre'] ?? '',
+            'descripcion' => $_POST['descripcion'] ?? null,
+            'padre_id' => !empty($_POST['padre_id']) ? (int)$_POST['padre_id'] : null,
+        ];
+        
+        $response = $ctrl->actualizar($id, $payload);
+        
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+        
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        }
+        
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'categorias/editar/' . $id);
+        exit;
+    }
+
+    if ($accion === 'eliminar') {
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        $response = $ctrl->eliminar($id);
+        set_flash($response['success'] ? 'success' : 'error', $response['message']);
+        header('Location: ' . RUTA_URL . 'categorias/listar');
+        exit;
+    }
+}
+
 // Manejo de login vía formulario (POST a ?enlace=login)
 if (isset($ruta[0]) && $ruta[0] === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Cargar dependencias necesarias para el login
