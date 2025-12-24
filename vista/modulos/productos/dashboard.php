@@ -1,18 +1,22 @@
 <?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
+require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
 require_once __DIR__ . '/../../../modelo/categoria.php';
 
 start_secure_session();
 require_login();
 
-// Obtener métricas
+// Obtener filtro de usuario para proveedores
+$filtroUsuario = getIdUsuarioCreadorFilter();
+
+// Obtener métricas (filtrado por proveedor si aplica)
 $totalProductos = 0;
 $stockBajo = 0;
 $agotados = 0;
 
-$productos = ProductoModel::listarConInventario();
+$productos = ProductoModel::listarConInventario($filtroUsuario);
 foreach ($productos as $p) {
     $totalProductos++;
     $stock = (int)($p['stock_total'] ?? 0);
@@ -22,11 +26,11 @@ foreach ($productos as $p) {
     elseif ($stock < $minimo) $stockBajo++;
 }
 
-// Obtener productos con stock bajo
-$productosCriticos = ProductoModel::obtenerStockBajo(10);
+// Obtener productos con stock bajo (filtrado por proveedor si aplica)
+$productosCriticos = ProductoModel::obtenerStockBajo(10, $filtroUsuario);
 
-// Obtener categorías para el gráfico
-$categorias = CategoriaModel::contarProductosPorCategoria();
+// Obtener categorías para el gráfico (filtrado por proveedor si aplica)
+$categorias = CategoriaModel::contarProductosPorCategoria($filtroUsuario);
 
 // Calcular valor estimado
 $valorEstimado = array_sum(array_map(function($p) {

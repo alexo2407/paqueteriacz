@@ -499,12 +499,19 @@ class ProductoModel
      * Obtener productos con stock bajo (menor al mínimo)
      * 
      * @param int $limite Número máximo de resultados
+     * @param int|null $idUsuario ID del usuario creador (para filtrar por proveedor)
      * @return array Lista de productos con stock bajo
      */
-    public static function obtenerStockBajo($limite = 20)
+    public static function obtenerStockBajo($limite = 20, $idUsuario = null)
     {
         try {
             $db = (new Conexion())->conectar();
+            
+            $whereUsuario = '';
+            if ($idUsuario !== null) {
+                $whereUsuario = 'AND p.id_usuario_creador = :id_usuario';
+            }
+            
             $sql = "SELECT 
                         p.id,
                         p.nombre,
@@ -514,7 +521,7 @@ class ProductoModel
                         (p.stock_minimo - COALESCE(SUM(s.cantidad), 0)) as faltante
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
-                    WHERE p.activo = TRUE
+                    WHERE p.activo = TRUE {$whereUsuario}
                     GROUP BY p.id
                     HAVING stock_actual < p.stock_minimo
                     ORDER BY faltante DESC
@@ -522,6 +529,9 @@ class ProductoModel
             
             $stmt = $db->prepare($sql);
             $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+            if ($idUsuario !== null) {
+                $stmt->bindValue(':id_usuario', $idUsuario, PDO::PARAM_INT);
+            }
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {

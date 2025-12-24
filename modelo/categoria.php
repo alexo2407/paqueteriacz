@@ -313,22 +313,33 @@ class CategoriaModel
     /**
      * Contar productos por categoría
      * 
+     * @param int|null $idUsuario ID del usuario creador (para filtrar por proveedor)
      * @return array Array asociativo [id_categoria => cantidad_productos]
      */
-    public static function contarProductosPorCategoria()
+    public static function contarProductosPorCategoria($idUsuario = null)
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->query('
-                SELECT 
+            
+            $whereUsuario = '';
+            if ($idUsuario !== null) {
+                $whereUsuario = 'AND p.id_usuario_creador = :id_usuario';
+            }
+            
+            $sql = "SELECT 
                     c.id,
                     c.nombre,
                     COUNT(p.id) as total_productos
                 FROM categorias_productos c
-                LEFT JOIN productos p ON p.categoria_id = c.id AND p.activo = TRUE
+                LEFT JOIN productos p ON p.categoria_id = c.id AND p.activo = TRUE {$whereUsuario}
                 GROUP BY c.id, c.nombre
-                ORDER BY c.nombre ASC
-            ');
+                ORDER BY c.nombre ASC";
+                
+            $stmt = $db->prepare($sql);
+            if ($idUsuario !== null) {
+                $stmt->bindValue(':id_usuario', $idUsuario, PDO::PARAM_INT);
+            }
+            $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log('Error al contar productos por categoría: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
