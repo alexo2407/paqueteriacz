@@ -189,13 +189,41 @@ $diasRegistrado = isset($usuario['created_at']) ? floor((time() - strtotime($usu
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
-.role-badge-lg {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
+.role-card {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: white;
+}
+.role-card:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+}
+.role-card.selected {
+    border-color: #667eea;
+    background: #f0f3ff;
+}
+.role-card .role-icon {
+    width: 40px;
+    height: 40px;
     border-radius: 10px;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+.role-card .role-name {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+.role-card .role-desc {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+.role-card input[type="checkbox"] {
+    display: none;
 }
 </style>
 
@@ -304,6 +332,7 @@ $diasRegistrado = isset($usuario['created_at']) ? floor((time() - strtotime($usu
                                 <i class="bi bi-person-gear"></i>
                                 Mis Roles
                             </div>
+                            <p class="text-muted small mb-3">Selecciona uno o más roles</p>
                             <div class="row g-3">
                                 <?php foreach ($rolesDisponibles as $rolId => $nombreRol): 
                                     $color = $roleColors[$nombreRol] ?? 'secondary';
@@ -311,16 +340,23 @@ $diasRegistrado = isset($usuario['created_at']) ? floor((time() - strtotime($usu
                                     $isSelected = in_array((int)$rolId, $rolesUsuarioIds, true) || ((int)($usuario['id_rol'] ?? 0) === (int)$rolId && empty($rolesUsuarioIds));
                                 ?>
                                 <div class="col-md-6 col-lg-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="roles[]" 
-                                               value="<?= (int)$rolId ?>" id="rol_<?= $rolId ?>" <?= $isSelected ? 'checked' : '' ?>>
-                                        <label class="form-check-label" for="rol_<?= $rolId ?>">
-                                            <span class="role-badge-lg bg-<?= $color ?>-subtle text-<?= $color ?>">
-                                                <i class="bi bi-<?= $icon ?>"></i>
-                                                <?= htmlspecialchars($nombreRol) ?>
-                                            </span>
-                                        </label>
-                                    </div>
+                                    <label class="role-card d-block <?= $isSelected ? 'selected' : '' ?>" for="rol_<?= $rolId ?>">
+                                        <input type="checkbox" name="roles[]" value="<?= (int)$rolId ?>" id="rol_<?= $rolId ?>" <?= $isSelected ? 'checked' : '' ?>>
+                                        <div class="role-icon bg-<?= $color ?>-subtle text-<?= $color ?>">
+                                            <i class="bi bi-<?= $icon ?>"></i>
+                                        </div>
+                                        <div class="role-name"><?= htmlspecialchars($nombreRol) ?></div>
+                                        <div class="role-desc">
+                                            <?php
+                                            switch($nombreRol) {
+                                                case 'Administrador': echo 'Acceso completo'; break;
+                                                case 'Proveedor': echo 'Gestión de productos'; break;
+                                                case 'Repartidor': echo 'Gestión de entregas'; break;
+                                                default: echo 'Acceso básico';
+                                            }
+                                            ?>
+                                        </div>
+                                    </label>
                                 </div>
                                 <?php endforeach; ?>
                             </div>
@@ -377,4 +413,15 @@ function togglePassword() {
         icon.className = 'bi bi-eye';
     }
 }
+
+// Role card selection visual
+document.querySelectorAll('.role-card input[type="checkbox"]').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+        if (this.checked) {
+            this.closest('.role-card').classList.add('selected');
+        } else {
+            this.closest('.role-card').classList.remove('selected');
+        }
+    });
+});
 </script>
