@@ -101,15 +101,15 @@ $roleColors = [
     padding: 0.4em 0.8em;
 }
 .btn-action {
-    width: 30px;
-    height: 30px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 5px;
     transition: all 0.2s ease;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
 }
 .btn-action:hover {
     transform: translateY(-1px);
