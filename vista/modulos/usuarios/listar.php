@@ -65,29 +65,30 @@ $roleColors = [
     opacity: 0.9;
 }
 .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: white;
     flex-shrink: 0;
 }
 .user-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 .user-name {
     font-weight: 600;
     color: #1a1a2e;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
+    font-size: 0.9rem;
 }
 .user-email {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #666;
 }
 .badge-role {
@@ -100,18 +101,19 @@ $roleColors = [
     padding: 0.4em 0.8em;
 }
 .btn-action {
-    width: 34px;
-    height: 34px;
+    width: 30px;
+    height: 30px;
     padding: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.2s ease;
+    font-size: 0.8rem;
 }
 .btn-action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 #tblUsuarios tbody tr {
     transition: all 0.2s ease;
@@ -120,7 +122,7 @@ $roleColors = [
     background-color: #f8f9ff;
 }
 .table > :not(caption) > * > * {
-    padding: 1rem 0.75rem;
+    padding: 0.65rem 0.5rem;
     vertical-align: middle;
 }
 </style>
