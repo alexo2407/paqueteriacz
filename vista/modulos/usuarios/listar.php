@@ -170,11 +170,9 @@ $roleColors = [
                     <thead class="table-light">
                         <tr>
                             <th>Usuario</th>
-                            <th>Teléfono</th>
                             <th>País</th>
                             <th>Roles</th>
                             <th>Estado</th>
-                            <th>Registrado</th>
                             <th class="text-center">Acciones</th>
                         </tr>
                     </thead>
@@ -216,14 +214,6 @@ $roleColors = [
                                 </div>
                             </td>
                             <td>
-                                <?php if (!empty($usuario['telefono'])): ?>
-                                    <i class="bi bi-telephone text-muted me-1"></i>
-                                    <?= htmlspecialchars($usuario['telefono']) ?>
-                                <?php else: ?>
-                                    <span class="text-muted">—</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
                                 <?php if ($paisNombre !== '—'): ?>
                                     <i class="bi bi-geo-alt text-muted me-1"></i>
                                     <?= htmlspecialchars($paisNombre) ?>
@@ -252,11 +242,6 @@ $roleColors = [
                                         <i class="bi bi-x-circle me-1"></i>Inactivo
                                     </span>
                                 <?php endif; ?>
-                            </td>
-                            <td>
-                                <span class="text-muted">
-                                    <i class="bi bi-calendar3 me-1"></i><?= $fechaCreacion ?>
-                                </span>
                             </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-2">
