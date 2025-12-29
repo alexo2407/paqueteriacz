@@ -1,6 +1,5 @@
 <?php 
 
-
 //iniciar sesion
 
 start_secure_session();
@@ -14,7 +13,6 @@ else
 {
 
 // Redirigir repartidores a su interfaz de seguimiento
-// Redirigir repartidores a su interfaz de seguimiento
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
 $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
 $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
@@ -25,22 +23,8 @@ if ($isRepartidor && !$isAdmin) {
 }
 
 require_once __DIR__ . '/../../controlador/dashboard.php';
-// The original `isRepartidor()` check was likely from `permissions.php`.
-// If `permissions.php` is still needed for other parts, it should be included.
-// Assuming the new logic replaces the old one for repartidor redirection.
-// If `isRepartidor()` is still used elsewhere, `permissions.php` might need to be included.
-// For now, I'm replacing the block as instructed.
-// If the `isRepartidor()` function is defined in `permissions.php` and is still needed,
-// that `require_once` should be kept or moved.
-// Given the instruction, I'm replacing the entire block.
-// If the `isRepartidor()` function is defined in `permissions.php` and is still needed,
-// that `require_once` should be kept or moved.
-// For now, I'm replacing the block as instructed.
-// The new code snippet provided by the user includes `if (isRepartidor())` again,
-// which suggests that `isRepartidor()` might be defined in `dashboard.php` or
-// another globally included file, or the user intends to keep that check.
-// I will include `permissions.php` to ensure `isRepartidor()` is available if needed by the second check.
-require_once __DIR__ . '/../../utils/permissions.php'; // Ensure isRepartidor() is available
+require_once __DIR__ . '/../../utils/permissions.php';
+
 if (isRepartidor()) {
     header('Location: ' . RUTA_URL . 'seguimiento');
     exit;
@@ -48,19 +32,6 @@ if (isRepartidor()) {
 
 include("vista/includes/header.php");
 
-?>
-
-
-<div class="row">
-    <div class="col-sm-6">
-        <h3>Dashboard</h3>
-    </div> 
-</div>
-<div class="row mt-2 caja">
-    <h1>BIENVENIDO ADMIN: <?php echo $_SESSION['nombre']; ?> </h1>
-</div>
-
-<?php
 // Instanciar controlador y obtener datos
 $dashboard = new DashboardController();
 $datos = $dashboard->obtenerDatosDashboard();
@@ -77,109 +48,267 @@ $fechaHasta = $datos['fechaHasta'];
 $fechaDesdeFormateada = date('d/m/Y', strtotime($fechaDesde));
 $fechaHastaFormateada = date('d/m/Y', strtotime($fechaHasta));
 $periodoTexto = "del $fechaDesdeFormateada al $fechaHastaFormateada";
+
+// Nombre del usuario
+$nombreUsuario = $_SESSION['nombre'] ?? 'Usuario';
+$primerNombre = explode(' ', $nombreUsuario)[0];
+
+// Hora del día para saludo
+$hora = (int)date('H');
+if ($hora < 12) {
+    $saludo = 'Buenos días';
+    $saludoIcon = '☀️';
+} elseif ($hora < 19) {
+    $saludo = 'Buenas tardes';
+    $saludoIcon = '🌤️';
+} else {
+    $saludo = 'Buenas noches';
+    $saludoIcon = '🌙';
+}
 ?>
 
-<!-- Filtro de Rango de Fechas -->
-<div class="row mt-3">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <form method="GET" action="<?= RUTA_URL ?>dashboard" class="form-inline">
-                    <div class="form-group mr-3">
-                        <label for="fecha_desde" class="mr-2">Desde:</label>
-                        <input type="date" id="fecha_desde" name="fecha_desde" class="form-control" value="<?= $fechaDesde ?>" required>
-                    </div>
-                    <div class="form-group mr-3">
-                        <label for="fecha_hasta" class="mr-2">Hasta:</label>
-                        <input type="date" id="fecha_hasta" name="fecha_hasta" class="form-control" value="<?= $fechaHasta ?>" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary mr-2">
-                        <i class="fas fa-filter"></i> Filtrar
-                    </button>
-                    <a href="<?= RUTA_URL ?>dashboard" class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Limpiar
-                    </a>
-                </form>
+<style>
+.dashboard-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    color: white;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+}
+.dashboard-header h2 {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.dashboard-header p {
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+.filter-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: none;
+    margin-bottom: 1.5rem;
+}
+.filter-card .form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 0.5rem 1rem;
+}
+.filter-card .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+.filter-card .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 0.5rem 1.5rem;
+}
+.filter-card .btn-secondary {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    color: #6c757d;
+    border-radius: 10px;
+    padding: 0.5rem 1.5rem;
+}
+.kpi-card {
+    border: none;
+    border-radius: 16px;
+    padding: 1.5rem;
+    color: white;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+.kpi-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+.kpi-card.green {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+.kpi-card.blue {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+.kpi-card.orange {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+.kpi-card .kpi-icon {
+    font-size: 2.5rem;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+}
+.kpi-card .kpi-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+.kpi-card .kpi-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+.kpi-card .kpi-desc {
+    font-size: 0.8rem;
+    opacity: 0.75;
+}
+.chart-card {
+    background: white;
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+.chart-card .chart-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+.chart-card .chart-header h5 {
+    margin: 0;
+    font-weight: 600;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.chart-card .chart-header small {
+    color: #6c757d;
+    display: block;
+    margin-top: 0.25rem;
+}
+.chart-card .chart-body {
+    padding: 1.5rem;
+}
+.period-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+</style>
+
+<div class="container-fluid py-3">
+    <!-- Header con saludo -->
+    <div class="dashboard-header">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2><?= $saludoIcon ?> <?= $saludo ?>, <?= htmlspecialchars($primerNombre) ?></h2>
+                <p>Aquí tienes un resumen de tu negocio</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <div class="period-badge">
+                    <i class="bi bi-calendar3"></i>
+                    <?= $periodoTexto ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtro de Rango de Fechas -->
+    <div class="filter-card">
+        <form method="GET" action="<?= RUTA_URL ?>dashboard" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="fecha_desde" class="form-label small text-muted mb-1">
+                    <i class="bi bi-calendar-event me-1"></i>Desde
+                </label>
+                <input type="date" id="fecha_desde" name="fecha_desde" class="form-control" value="<?= $fechaDesde ?>" required>
+            </div>
+            <div class="col-md-3">
+                <label for="fecha_hasta" class="form-label small text-muted mb-1">
+                    <i class="bi bi-calendar-event me-1"></i>Hasta
+                </label>
+                <input type="date" id="fecha_hasta" name="fecha_hasta" class="form-control" value="<?= $fechaHasta ?>" required>
+            </div>
+            <div class="col-md-6 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-funnel me-1"></i>Filtrar
+                </button>
+                <a href="<?= RUTA_URL ?>dashboard" class="btn btn-secondary">
+                    <i class="bi bi-x-lg me-1"></i>Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- KPIs Section -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="kpi-card green">
+                <div class="kpi-icon">💰</div>
+                <div class="kpi-value">$<?= number_format($kpis['totalVendido'], 2) ?></div>
+                <div class="kpi-label">Total Vendido</div>
+                <div class="kpi-desc">Ingresos confirmados en el período</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-card blue">
+                <div class="kpi-icon">🧾</div>
+                <div class="kpi-value">$<?= number_format($kpis['ticketPromedio'], 2) ?></div>
+                <div class="kpi-label">Ticket Promedio</div>
+                <div class="kpi-desc">Gasto promedio por pedido</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="kpi-card orange">
+                <div class="kpi-icon">📦</div>
+                <div class="kpi-value"><?= $kpis['totalPedidos'] ?></div>
+                <div class="kpi-label">Total Pedidos</div>
+                <div class="kpi-desc">Órdenes entregadas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row g-4">
+        <!-- Comparativa Mensual -->
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5><i class="bi bi-graph-up text-primary"></i> Comparativa de Ventas</h5>
+                    <small>Período actual vs anterior</small>
+                </div>
+                <div class="chart-body">
+                    <canvas id="comparativaChart" height="130"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Top Productos -->
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5><i class="bi bi-trophy text-warning"></i> Top 5 Productos</h5>
+                    <small>Más vendidos en el período</small>
+                </div>
+                <div class="chart-body">
+                    <canvas id="productosChart" height="280"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- Acumulado Mensual -->
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5><i class="bi bi-bar-chart-line text-success"></i> Progreso de Ventas Acumuladas</h5>
+                    <small>Evolución <?= $periodoTexto ?></small>
+                </div>
+                <div class="chart-body">
+                    <canvas id="acumuladoChart" height="80"></canvas>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-
-<!-- KPIs Section -->
-<div class="row mt-4">
-    <div class="col-md-4">
-        <div class="card text-white bg-success mb-3">
-            <div class="card-header">💰 Total Vendido (Período)</div>
-            <div class="card-body">
-                <h3 class="card-title"><?= number_format($kpis['totalVendido'], 2) ?></h3>
-                <p class="card-text">Ingresos confirmados <?= $periodoTexto ?></p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-white bg-info mb-3">
-            <div class="card-header">🧾 Ticket Promedio</div>
-            <div class="card-body">
-                <h3 class="card-title"><?= number_format($kpis['ticketPromedio'], 2) ?></h3>
-                <p class="card-text">Gasto promedio por pedido</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card text-white bg-warning mb-3">
-            <div class="card-header">📦 Total Pedidos</div>
-            <div class="card-body">
-                <h3 class="card-title"><?= $kpis['totalPedidos'] ?></h3>
-                <p class="card-text">Órdenes entregadas</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Charts Section -->
-<div class="row mt-4">
-    <!-- Comparativa Mensual -->
-    <div class="col-md-8">
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">📊 Comparativa de Ventas (Período Actual vs Anterior)</h5>
-                <small>Comparando <?= $periodoTexto ?></small>
-            </div>
-            <div class="card-body">
-                <canvas id="comparativaChart" height="150"></canvas>
-            </div>
-        </div>
-    </div>
-    <!-- Top Productos -->
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0">🏆 Top 5 Productos</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="productosChart" height="320"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Acumulado Mensual -->
-    <div class="col-md-12">
-        <div class="card mb-4">
-            <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0">📊 Progreso de Ventas Acumuladas</h5>
-                <small>Período: <?= $periodoTexto ?></small>
-            </div>
-            <div class="card-body">
-                <canvas id="acumuladoChart" height="100"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // Pass PHP data to JavaScript
