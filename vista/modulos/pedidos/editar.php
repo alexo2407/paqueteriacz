@@ -105,8 +105,87 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
     $pedido['id_moneda'] = $monedas[0]['id'];
 }
 ?>
-<div class="container mt-4">
-    <h2>Editar Orden de compra</h2>
+<style>
+.editar-pedido-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+.editar-pedido-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+}
+.editar-pedido-header h3 {
+    margin: 0;
+    font-weight: 600;
+}
+.form-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+.form-section-title {
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+}
+.form-section-title i {
+    color: #667eea;
+}
+.btn-submit-order {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+.btn-submit-order:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+.product-row {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+.order-info-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 0.4rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+}
+</style>
+
+<div class="container-fluid py-4">
+    <div class="card editar-pedido-card">
+        <div class="editar-pedido-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                        <i class="bi bi-pencil-square fs-3"></i>
+                    </div>
+                    <div>
+                        <h3>Editar Pedido</h3>
+                        <p class="mb-0 opacity-75">Modifica los datos del pedido #<?= htmlspecialchars($pedido['numero_orden'] ?? $id_pedido) ?></p>
+                    </div>
+                </div>
+                <div class="order-info-badge">
+                    <i class="bi bi-hash me-1"></i>ID: <?= $id_pedido ?>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-4">
 
     <?= $mensaje ?? '' ?>
 

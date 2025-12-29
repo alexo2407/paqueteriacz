@@ -10,7 +10,6 @@ try {
 }
 
 try {
-    // Listar usuarios con rol Repartidor para asignación
     $vendedores = $pedidosController->obtenerRepartidores();
 } catch (Exception $e) {
     $vendedores = [];
@@ -34,14 +33,11 @@ try {
     $proveedores = [];
 }
 
-// Cargar países y departamentos para los selects de dirección
 require_once __DIR__ . '/../../../modelo/pais.php';
 require_once __DIR__ . '/../../../modelo/departamento.php';
 require_once __DIR__ . '/../../../utils/session.php';
 start_secure_session();
 
-// If the previous non-AJAX submit failed, the router stored the payload in
-// $_SESSION['old_pedido'] — grab it so we can prefill the form and product rows.
 $old_posted = $_SESSION['old_pedido'] ?? null;
 if (isset($_SESSION['old_pedido'])) unset($_SESSION['old_pedido']);
 require_once __DIR__ . '/../../../modelo/municipio.php';
@@ -52,7 +48,6 @@ try {
     $paises = [];
 }
 try {
-    // Listar todos los departamentos (se filtrarán client-side por país)
     $departamentosAll = DepartamentoModel::listarPorPais(null);
 } catch (Exception $e) {
     $departamentosAll = [];
@@ -69,12 +64,76 @@ try {
 }
 ?>
 
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-sm-12">
-            <h3>Nuevo Pedido</h3>
+<style>
+.crear-pedido-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+.crear-pedido-header {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+}
+.crear-pedido-header h3 {
+    margin: 0;
+    font-weight: 600;
+}
+.form-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+.form-section-title {
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+}
+.form-section-title i {
+    color: #11998e;
+}
+.btn-submit-order {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 10px;
+    font-size: 1rem;
+}
+.btn-submit-order:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+}
+.product-row {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+}
+</style>
+
+<div class="container-fluid py-4">
+    <div class="card crear-pedido-card">
+        <div class="crear-pedido-header">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                    <i class="bi bi-plus-circle fs-3"></i>
+                </div>
+                <div>
+                    <h3>Nuevo Pedido</h3>
+                    <p class="mb-0 opacity-75">Completa los datos para crear un nuevo pedido</p>
+                </div>
+            </div>
         </div>
-    </div>
+        
+        <div class="card-body p-4">
 
     <div id="formErrors" class="alert alert-danger d-none" role="alert" tabindex="-1" style="display:block">
         <ul id="formErrorsList" class="mb-0"></ul>

@@ -28,37 +28,9 @@ endif;
 
 
 
-<!-- Botón para abrir modal de importación -->
-<div class="mb-4">
-    <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#modalImportCSV">
-        <i class="bi bi-file-earmark-arrow-up"></i> Importar Pedidos desde CSV
-    </button>
-    <div class="d-inline-block ms-3">
-        <div class="dropdown d-inline-block">
-            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                <i class="bi bi-download"></i> Descargar Plantillas
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_template.php?mode=basico" download>
-                    <i class="bi bi-file-earmark"></i> Plantilla Básica
-                </a></li>
-                <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_template.php?mode=avanzado" download>
-                    <i class="bi bi-file-earmark-text"></i> Plantilla Avanzada
-                </a></li>
-                <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_template.php?mode=ejemplo" download>
-                    <i class="bi bi-file-earmark-check"></i> Plantilla con Ejemplos
-                </a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_export_current.php" download>
-                    <i class="bi bi-file-earmark-spreadsheet"></i> Exportar Pedidos Actuales
-                </a></li>
-            </ul>
-        </div>
-        <a href="<?= RUTA_URL ?>Pedidos/referencia" class="btn btn-outline-info" >
-            <i class="bi bi-book"></i> Ver Referencia de Valores
-        </a>
-    </div>
-</div>
+
+
+
 
 <!-- Modal de Importación CSV -->
 <div class="modal fade" id="modalImportCSV" tabindex="-1" aria-labelledby="modalImportCSVLabel" aria-hidden="true">
@@ -255,16 +227,196 @@ endif;
 
 
 
- <div class="row">
-    <div class="col-sm-6">
-        <h3>Lista de Pedidos</h3>
-    </div>
-  <div class="col-sm-4 offset-sm-8 text-end">
-        <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="btn btn-success">
-            <i class="bi bi-plus-circle-fill"></i> Nuevo Pedido
-        </a>
-    </div>
-</div>
+<?php
+// Obtener estadísticas de pedidos
+$listarPedidos = new PedidosController();
+$estados = $listarPedidos->obtenerEstados();
+$pedidos = $listarPedidos->listarPedidosExtendidos();
+$totalPedidos = count($pedidos);
+
+// Contar por estado
+$pendientes = 0;
+$enProceso = 0;
+$entregados = 0;
+foreach ($pedidos as $p) {
+    $estado = strtolower($p['Estado'] ?? '');
+    if (strpos($estado, 'pend') !== false || strpos($estado, 'nuevo') !== false) $pendientes++;
+    elseif (strpos($estado, 'entreg') !== false) $entregados++;
+    else $enProceso++;
+}
+?>
+
+<style>
+.pedidos-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+.pedidos-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.75rem 2rem;
+}
+.pedidos-header h3 {
+    margin: 0;
+    font-weight: 600;
+}
+.stat-mini {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    min-width: 100px;
+}
+.stat-mini .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+.stat-mini .stat-label {
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+.import-toolbar {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1rem;
+}
+.btn-import {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    border: none;
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 500;
+}
+.btn-import:hover {
+    color: white;
+    box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+}
+.btn-new-order {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 10px;
+    font-weight: 600;
+}
+.btn-new-order:hover {
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+#tblPedidos {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+#tblPedidos thead th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #1a1a2e;
+    border-bottom: 2px solid #e9ecef;
+    padding: 1rem 0.75rem;
+}
+#tblPedidos tbody tr {
+    transition: all 0.2s ease;
+}
+#tblPedidos tbody tr:hover {
+    background-color: #f8f9ff;
+}
+#tblPedidos td {
+    padding: 0.875rem 0.75rem;
+    vertical-align: middle;
+}
+.btn-action-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+}
+.badge-estado {
+    padding: 0.4em 0.8em;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+</style>
+
+<div class="container-fluid py-3">
+    <!-- Card Principal -->
+    <div class="card pedidos-card mb-4">
+        <div class="pedidos-header">
+            <div class="row align-items-center">
+                <div class="col-md-5">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                            <i class="bi bi-box-seam fs-3"></i>
+                        </div>
+                        <div>
+                            <h3>Gestión de Pedidos</h3>
+                            <p class="mb-0 opacity-75">Administra todos los pedidos del sistema</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="d-flex justify-content-end gap-3">
+                        <div class="stat-mini">
+                            <div class="stat-value"><?= $totalPedidos ?></div>
+                            <div class="stat-label">Total</div>
+                        </div>
+                        <div class="stat-mini">
+                            <div class="stat-value"><?= $pendientes ?></div>
+                            <div class="stat-label">Pendientes</div>
+                        </div>
+                        <div class="stat-mini">
+                            <div class="stat-value"><?= $enProceso ?></div>
+                            <div class="stat-label">En Proceso</div>
+                        </div>
+                        <div class="stat-mini">
+                            <div class="stat-value"><?= $entregados ?></div>
+                            <div class="stat-label">Entregados</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-4">
+            <!-- Toolbar de Importación -->
+            <div class="import-toolbar d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-import" data-bs-toggle="modal" data-bs-target="#modalImportCSV">
+                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar CSV
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-download me-1"></i> Plantillas
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_template.php?mode=basico" download>
+                                <i class="bi bi-file-earmark me-2"></i>Plantilla Básica
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_template.php?mode=avanzado" download>
+                                <i class="bi bi-file-earmark-text me-2"></i>Plantilla Avanzada
+                            </a></li>
+                            <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_template.php?mode=ejemplo" download>
+                                <i class="bi bi-file-earmark-check me-2"></i>Con Ejemplos
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="<?= RUTA_URL ?>public/pedidos_export_current.php" download>
+                                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar Actuales
+                            </a></li>
+                        </ul>
+                    </div>
+                    <a href="<?= RUTA_URL ?>Pedidos/referencia" class="btn btn-outline-info">
+                        <i class="bi bi-book me-1"></i> Referencia
+                    </a>
+                </div>
+                <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="btn btn-new-order">
+                    <i class="bi bi-plus-circle me-2"></i>Nuevo Pedido
+                </a>
+            </div>
 
     <div class="row mt-2 caja">
     <div class="col-sm-12">
