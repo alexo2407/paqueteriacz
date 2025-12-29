@@ -111,7 +111,7 @@ try {
                             // echo "<!-- DEBUG: canSelectAnyProveedor=" . ($canSelect ? 'true' : 'false') . " -->";
                             
                             if ($canSelect): ?>
-                                <select class="form-select" id="proveedor" name="proveedor" required>
+                                <select class="form-select select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar proveedor...">
                                     <option value="" disabled selected>Selecciona un proveedor</option>
                                     <?php foreach ($proveedores as $proveedor): ?>
                                         <option value="<?= $proveedor['id']; ?>" <?= (isset($old_posted['proveedor']) && (int)$old_posted['proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
@@ -134,7 +134,7 @@ try {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="moneda" class="form-label">Moneda 💱</label>
-                            <select class="form-select" id="moneda" name="moneda" required>
+                            <select class="form-select select2-searchable" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda...">
                                 <option value="" disabled selected>Selecciona una moneda</option>
                                 <?php foreach ($monedas as $moneda): ?>
                                     <option value="<?= $moneda['id']; ?>" data-tasa="<?= htmlspecialchars($moneda['tasa_usd']); ?>" <?= (isset($old_posted['moneda']) && (int)$old_posted['moneda'] === (int)$moneda['id']) ? 'selected' : '' ?> >
@@ -217,7 +217,7 @@ try {
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label for="id_pais" class="form-label">País</label>
-                        <select class="form-select" id="id_pais" name="id_pais">
+                        <select class="form-select select2-searchable" id="id_pais" name="id_pais" data-placeholder="Buscar país...">
                             <option value="" selected>Selecciona un país</option>
                             <?php foreach ($paises as $p): ?>
                                         <option value="<?= (int)$p['id'] ?>" <?= (isset($old_posted['id_pais']) && (int)$old_posted['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
@@ -226,7 +226,7 @@ try {
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="id_departamento" class="form-label">Departamento</label>
-                        <select class="form-select" id="id_departamento" name="id_departamento">
+                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento" data-placeholder="Buscar departamento...">
                             <option value="" selected>Selecciona un departamento</option>
                             <?php foreach ($departamentosAll as $d): ?>
                                 <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (isset($old_posted['id_departamento']) && (int)$old_posted['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
@@ -266,7 +266,7 @@ try {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="estado" class="form-label">Estado</label>
-                            <select class="form-select" id="estado" name="estado">
+                            <select class="form-select select2-searchable" id="estado" name="estado" data-placeholder="Seleccionar estado...">
                                 <option value="" disabled selected>Selecciona un estado</option>
                                 <?php foreach ($estados as $estado): ?>
                                     <option value="<?= $estado['id']; ?>" <?= (isset($old_posted['estado']) && (int)$old_posted['estado'] === (int)$estado['id']) ? 'selected' : '' ?>><?= htmlspecialchars($estado['nombre_estado']); ?></option>
@@ -278,7 +278,7 @@ try {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="vendedor" class="form-label">Usuario Asignado</label>
-                            <select class="form-select" id="vendedor" name="vendedor">
+                            <select class="form-select select2-searchable" id="vendedor" name="vendedor" data-placeholder="Buscar repartidor...">
                                 <option value="" disabled selected>Selecciona un usuario (Repartidor)</option>
                                 <?php foreach ($vendedores as $vendedor): ?>
                                     <option value="<?= $vendedor['id']; ?>" <?= (isset($old_posted['vendedor']) && (int)$old_posted['vendedor'] === (int)$vendedor['id']) ? 'selected' : '' ?> >
@@ -521,22 +521,34 @@ try {
         if (last) {
             const lastSel = last.querySelector('.producto-select');
             if (lastSel && lastSel.value === '') {
-                lastSel.focus();
+                // Focus en el input de Select2 si está activo
+                const select2Container = last.querySelector('.select2-container');
+                if (select2Container) {
+                    $(lastSel).select2('open');
+                } else {
+                    lastSel.focus();
+                }
                 return;
             }
         }
 
         const row = document.createElement('div');
-        row.className = 'input-group mb-2 producto-row';
+        row.className = 'row mb-2 producto-row align-items-center';
         const index = Date.now() + Math.floor(Math.random() * 1000); // Unique index
         row.innerHTML = `
-            <select name="productos[${index}][producto_id]" class="form-select producto-select" required>
-                ${makeProductOptions(selectedId)}
-            </select>
-            <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cant." style="max-width: 100px;" required>
-            <button type="button" class="btn btn-outline-danger btnRemove">
-                <i class="bi bi-trash"></i> Eliminar
-            </button>
+            <div class="col-md-7">
+                <select name="productos[${index}][producto_id]" class="form-select producto-select" required>
+                    ${makeProductOptions(selectedId)}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cantidad" required>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-outline-danger btnRemove w-100">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </div>
         `;
         productosContainer.appendChild(row);
 
@@ -544,15 +556,48 @@ try {
         const select = row.querySelector('.producto-select');
         const cantidad = row.querySelector('.producto-cantidad');
 
+        // Inicializar Select2 para este dropdown
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(select).select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Escribe para buscar un producto...',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return 'No se encontraron productos';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
+                    }
+                }
+            });
+
+            // Evento change de Select2
+            $(select).on('change.select2', function() {
+                actualizarPrecios();
+                updateProductOptionsAvailability();
+            });
+        }
+
         btnRemove.addEventListener('click', () => {
+            // Destruir Select2 antes de eliminar el elemento
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $(select).select2('destroy');
+            }
             row.remove();
             actualizarPrecios();
             updateProductOptionsAvailability();
         });
-        select.addEventListener('change', () => {
-            actualizarPrecios();
-            updateProductOptionsAvailability();
-        });
+        
+        if (!$.fn.select2) {
+            // Fallback si Select2 no está disponible
+            select.addEventListener('change', () => {
+                actualizarPrecios();
+                updateProductOptionsAvailability();
+            });
+        }
+        
         cantidad.addEventListener('input', actualizarPrecios);
         
         updateProductOptionsAvailability();
@@ -601,7 +646,7 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
     munWrapper.className = 'col-md-6 mb-3';
     munWrapper.innerHTML = `
         <label for="id_municipio" class="form-label">Municipio</label>
-        <select class="form-select" id="id_municipio" name="id_municipio">
+        <select class="form-select select2-searchable" id="id_municipio" name="id_municipio" data-placeholder="Buscar municipio...">
             <option value="" selected>Selecciona un municipio</option>
         </select>`;
     // insert before barrio placeholder (append to the row after departamento)
@@ -612,7 +657,7 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
     barrioWrapper.className = 'col-md-6 mb-3';
     barrioWrapper.innerHTML = `
         <label for="id_barrio" class="form-label">Barrio</label>
-        <select class="form-select" id="id_barrio" name="id_barrio">
+        <select class="form-select select2-searchable" id="id_barrio" name="id_barrio" data-placeholder="Buscar barrio...">
             <option value="" selected>Selecciona un barrio</option>
         </select>`;
     munWrapper.parentElement.insertBefore(barrioWrapper, munWrapper.nextSibling);
@@ -622,7 +667,35 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
     const initialMun = (OLD_POSTED && OLD_POSTED.id_municipio) ? OLD_POSTED.id_municipio : null;
     const initialBarrio = (OLD_POSTED && OLD_POSTED.id_barrio) ? OLD_POSTED.id_barrio : null;
 
+    // Inicializar Select2 en los nuevos selects
+    function initSelect2ForLocationSelects() {
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            // Inicializar Select2 si aún no está inicializado
+            if (!$(munSelect).hasClass('select2-hidden-accessible')) {
+                $(munSelect).select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'Buscar municipio...',
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+            if (!$(barrioSelect).hasClass('select2-hidden-accessible')) {
+                $(barrioSelect).select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'Buscar barrio...',
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+        }
+    }
+
     function populateMunicipios(depId, selectedMunId) {
+        // Destruir Select2 temporalmente para repoblar
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(munSelect).hasClass('select2-hidden-accessible')) {
+            $(munSelect).select2('destroy');
+        }
+        
         munSelect.innerHTML = '<option value="" selected>Selecciona un municipio</option>';
         municipios.forEach(m => {
             if (!depId || depId === '' || parseInt(m.id_departamento) === parseInt(depId)) {
@@ -639,10 +712,19 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
             const opt = munSelect.querySelector('option[value="' + sel + '"]');
             if (opt) opt.selected = true;
         }
+        
+        // Reinicializar Select2
+        initSelect2ForLocationSelects();
+        
         populateBarrios(munSelect.value, initialBarrio);
     }
 
     function populateBarrios(munId, selectedBarrioId) {
+        // Destruir Select2 temporalmente para repoblar
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(barrioSelect).hasClass('select2-hidden-accessible')) {
+            $(barrioSelect).select2('destroy');
+        }
+        
         barrioSelect.innerHTML = '<option value="" selected>Selecciona un barrio</option>';
         barrios.forEach(b => {
             if (!munId || munId === '' || parseInt(b.id_municipio) === parseInt(munId)) {
@@ -658,16 +740,28 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
             const optb = barrioSelect.querySelector('option[value="' + sb + '"]');
             if (optb) optb.selected = true;
         }
+        
+        // Reinicializar Select2
+        initSelect2ForLocationSelects();
     }
 
-    // Events
-    deptSelect.addEventListener('change', function(){
-        const dep = deptSelect.value;
-        populateMunicipios(dep);
-    });
-    munSelect.addEventListener('change', function(){
-        populateBarrios(munSelect.value);
-    });
+    // Events - usar eventos de Select2 si está disponible
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(deptSelect).on('change.select2', function(){
+            populateMunicipios(deptSelect.value);
+        });
+        $(munSelect).on('change.select2', function(){
+            populateBarrios(munSelect.value);
+        });
+    } else {
+        deptSelect.addEventListener('change', function(){
+            const dep = deptSelect.value;
+            populateMunicipios(dep);
+        });
+        munSelect.addEventListener('change', function(){
+            populateBarrios(munSelect.value);
+        });
+    }
 
     // initialize on load
     document.addEventListener('DOMContentLoaded', function(){

@@ -95,7 +95,7 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
                         <label class="form-label small">
                             <i class="bi bi-person-badge"></i> Proveedor
                         </label>
-                        <select name="proveedor" class="form-select">
+                        <select name="proveedor" class="form-select select2-searchable" data-placeholder="Buscar proveedor...">
                             <option value="">Todos los proveedores</option>
                             <?php foreach ($proveedores as $prov): ?>
                                 <option value="<?php echo $prov['id']; ?>" <?php echo $proveedorFiltro == $prov['id'] ? 'selected' : ''; ?>>
@@ -108,7 +108,7 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
 
                     <div class="col-md-<?php echo $esAdmin ? '2' : '3'; ?>">
                         <label class="form-label small">Tipo de Movimiento</label>
-                        <select name="tipo" class="form-select">
+                        <select name="tipo" class="form-select select2-searchable" data-placeholder="Seleccionar tipo...">
                             <option value="">Todos los tipos</option>
                             <option value="entrada" <?php echo $tipoFiltro === 'entrada' ? 'selected' : ''; ?>>
                                 Entradas

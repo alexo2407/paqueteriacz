@@ -93,7 +93,7 @@ sort($marcasUnicas);
                     <div class="row g-3">
                         <div class="col-md-3">
                             <label class="form-label small">Categoría</label>
-                            <select name="categoria" class="form-select">
+                            <select name="categoria" class="form-select select2-searchable" data-placeholder="Buscar categoría...">
                                 <option value="">Todas las categorías</option>
                                 <?php foreach ($categorias as $cat): ?>
                                     <option value="<?php echo $cat['id']; ?>" <?php echo $categoriaFiltro == $cat['id'] ? 'selected' : ''; ?>>
@@ -112,7 +112,7 @@ sort($marcasUnicas);
                         
                         <div class="col-md-2">
                             <label class="form-label small">Marca</label>
-                            <select name="marca" class="form-select">
+                            <select name="marca" class="form-select select2-searchable" data-placeholder="Buscar marca...">
                                 <option value="">Todas las marcas</option>
                                 <?php foreach ($marcasUnicas as $marca): ?>
                                     <option value="<?php echo htmlspecialchars($marca); ?>" <?php echo $marcaFiltro === $marca ? 'selected' : ''; ?>>
@@ -124,7 +124,7 @@ sort($marcasUnicas);
                         
                         <div class="col-md-2">
                             <label class="form-label small">Estado</label>
-                            <select name="estado" class="form-select">
+                            <select name="estado" class="form-select select2-searchable" data-placeholder="Seleccionar estado...">
                                 <option value="">Todos</option>
                                 <option value="1" <?php echo $estadoFiltro === '1' ? 'selected' : ''; ?>>Activos</option>
                                 <option value="0" <?php echo $estadoFiltro === '0' ? 'selected' : ''; ?>>Inactivos</option>

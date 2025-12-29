@@ -21,7 +21,7 @@ $paises = $paisCtrl->listar();
                 </div>
                 <div class="mb-3">
                     <label class="form-label">País</label>
-                    <select name="id_pais" class="form-control" required>
+                    <select name="id_pais" class="form-control select2-searchable" required data-placeholder="Buscar país...">
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($paises as $p): ?>
                             <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['nombre']) ?></option>

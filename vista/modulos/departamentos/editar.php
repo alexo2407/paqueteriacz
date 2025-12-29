@@ -32,7 +32,7 @@ if (!$d) { echo '<div class="container"><div class="alert alert-danger">Departam
                 </div>
                 <div class="mb-3">
                     <label class="form-label">País</label>
-                    <select name="id_pais" class="form-control" required>
+                    <select name="id_pais" class="form-control select2-searchable" required data-placeholder="Buscar país...">
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($paises as $p): ?>
                             <option value="<?= $p['id'] ?>" <?= $p['id']==$d['id_pais']? 'selected':'' ?>><?= htmlspecialchars($p['nombre']) ?></option>

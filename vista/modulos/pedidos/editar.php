@@ -140,7 +140,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                             <?php
                             require_once __DIR__ . '/../../../utils/permissions.php';
                             if (canSelectAnyProveedor()): ?>
-                                <select class="form-control" id="proveedor" name="proveedor" required>
+                                <select class="form-control select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar proveedor...">
                                     <option value="">Selecciona un proveedor</option>
                                     <?php foreach ($proveedores as $proveedor): ?>
                                         <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
@@ -162,7 +162,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="moneda" class="form-label">Moneda 💱</label>
-                            <select class="form-control" id="moneda" name="moneda" required>
+                            <select class="form-control select2-searchable" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda...">
                                 <option value="">Selecciona una moneda</option>
                                 <?php foreach ($monedas as $moneda): ?>
                                     <option value="<?= $moneda['id'] ?>"
@@ -243,7 +243,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                 <div class="row">
                     <div class="col-md-6">
                         <label for="id_pais" class="form-label">País</label>
-                        <select class="form-select" id="id_pais" name="id_pais">
+                        <select class="form-select select2-searchable" id="id_pais" name="id_pais" data-placeholder="Buscar país...">
                             <option value="" selected>Selecciona un país</option>
                             <?php foreach ($paises as $p): ?>
                                 <option value="<?= (int)$p['id'] ?>" <?= (!empty($pedido['id_pais']) && (int)$pedido['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
@@ -252,7 +252,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     </div>
                     <div class="col-md-6">
                         <label for="id_departamento" class="form-label">Departamento</label>
-                        <select class="form-select" id="id_departamento" name="id_departamento">
+                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento" data-placeholder="Buscar departamento...">
                             <option value="" selected>Selecciona un departamento</option>
                             <?php foreach ($departamentosAll as $d): ?>
                                 <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
@@ -290,7 +290,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="estado" class="form-label">Estado del Pedido</label>
-                            <select class="form-control" id="estado" name="estado">
+                            <select class="form-control select2-searchable" id="estado" name="estado" data-placeholder="Seleccionar estado...">
                                 <option value="">Selecciona un estado</option>
                                 <?php foreach ($estados as $estado): ?>
                                     <option value="<?= $estado['id'] ?>" <?= $pedido['id_estado'] == $estado['id'] ? 'selected' : '' ?>>
@@ -306,7 +306,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                             <?php
                             require_once __DIR__ . '/../../../utils/permissions.php';
                             if (canSelectAnyProveedor()): ?>
-                                <select class="form-control" id="proveedor" name="proveedor" required>
+                                <select class="form-control select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar proveedor...">
                                     <option value="">Selecciona un proveedor</option>
                                     <?php foreach ($proveedores as $prov): ?>
                                         <option value="<?= $prov['id'] ?>" <?= $pedido['id_proveedor'] == $prov['id'] ? 'selected' : '' ?>>
@@ -328,7 +328,7 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     <div class="col-md-4">
                         <div class="mb-3">
                             <label for="vendedor" class="form-label">Repartidor Asignado</label>
-                            <select class="form-control" id="vendedor" name="vendedor">
+                            <select class="form-control select2-searchable" id="vendedor" name="vendedor" data-placeholder="Buscar repartidor...">
                                 <option value="">Selecciona un repartidor</option>
                                 <?php foreach ($vendedores as $vendedor): ?>
                                     <option value="<?= $vendedor['id'] ?>" <?= $pedido['id_vendedor'] == $vendedor['id'] ? 'selected' : '' ?>>
@@ -600,16 +600,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function addProductRow(selectedId, qty) {
         const row = document.createElement('div');
-        row.className = 'input-group mb-2 producto-row';
+        row.className = 'row mb-2 producto-row align-items-center';
         const index = Date.now() + Math.floor(Math.random() * 1000); // Unique index
         row.innerHTML = `
-            <select name="productos[${index}][producto_id]" class="form-select producto-select" required>
-                ${makeProductOptions(selectedId)}
-            </select>
-            <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cant." style="max-width: 100px;" required>
-            <button type="button" class="btn btn-outline-danger btnRemove">
-                <i class="bi bi-trash"></i> Eliminar
-            </button>
+            <div class="col-md-7">
+                <select name="productos[${index}][producto_id]" class="form-select producto-select" required>
+                    ${makeProductOptions(selectedId)}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cantidad" required>
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-outline-danger btnRemove w-100">
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+            </div>
         `;
         productosContainer.appendChild(row);
         
@@ -617,13 +623,43 @@ document.addEventListener('DOMContentLoaded', function() {
         const select = row.querySelector('.producto-select');
         const cantidad = row.querySelector('.producto-cantidad');
         
-        select.addEventListener('change', () => {
-            actualizarPrecios();
-            updateProductOptionsAvailability();
-        });
+        // Inicializar Select2 para este dropdown
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(select).select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Escribe para buscar un producto...',
+                allowClear: true,
+                width: '100%',
+                language: {
+                    noResults: function() {
+                        return 'No se encontraron productos';
+                    },
+                    searching: function() {
+                        return 'Buscando...';
+                    }
+                }
+            });
+
+            // Evento change de Select2
+            $(select).on('change.select2', function() {
+                actualizarPrecios();
+                updateProductOptionsAvailability();
+            });
+        } else {
+            // Fallback si Select2 no está disponible
+            select.addEventListener('change', () => {
+                actualizarPrecios();
+                updateProductOptionsAvailability();
+            });
+        }
+        
         cantidad.addEventListener('input', actualizarPrecios);
         
         row.querySelector('.btnRemove').addEventListener('click', () => {
+            // Destruir Select2 antes de eliminar el elemento
+            if (typeof $ !== 'undefined' && $.fn.select2) {
+                $(select).select2('destroy');
+            }
             row.remove();
             actualizarPrecios();
             updateProductOptionsAvailability();
@@ -681,19 +717,46 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!munSelect) {
         const munWrapper = document.createElement('div');
         munWrapper.className = 'col-md-6 mb-3';
-        munWrapper.innerHTML = `\n            <label for="id_municipio" class="form-label">Municipio</label>\n            <select class="form-select" id="id_municipio" name="id_municipio">\n                <option value="" selected>Selecciona un municipio</option>\n            </select>`;
+        munWrapper.innerHTML = `\n            <label for="id_municipio" class="form-label">Municipio</label>\n            <select class="form-select select2-searchable" id="id_municipio" name="id_municipio" data-placeholder="Buscar municipio...">\n                <option value="" selected>Selecciona un municipio</option>\n            </select>`;
         deptSelect.parentElement.parentElement.insertBefore(munWrapper, deptSelect.parentElement.nextSibling);
         munSelect = document.getElementById('id_municipio');
     }
     if (!barrioSelect) {
         const barrioWrapper = document.createElement('div');
         barrioWrapper.className = 'col-md-6 mb-3';
-        barrioWrapper.innerHTML = `\n            <label for="id_barrio" class="form-label">Barrio</label>\n            <select class="form-select" id="id_barrio" name="id_barrio">\n                <option value="" selected>Selecciona un barrio</option>\n            </select>`;
+        barrioWrapper.innerHTML = `\n            <label for="id_barrio" class="form-label">Barrio</label>\n            <select class="form-select select2-searchable" id="id_barrio" name="id_barrio" data-placeholder="Buscar barrio...">\n                <option value="" selected>Selecciona un barrio</option>\n            </select>`;
         munSelect.parentElement.insertBefore(barrioWrapper, munSelect.nextSibling);
         barrioSelect = document.getElementById('id_barrio');
     }
 
+    // Inicializar Select2 en los nuevos selects
+    function initSelect2ForLocationSelects() {
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            if (!$(munSelect).hasClass('select2-hidden-accessible')) {
+                $(munSelect).select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'Buscar municipio...',
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+            if (!$(barrioSelect).hasClass('select2-hidden-accessible')) {
+                $(barrioSelect).select2({
+                    theme: 'bootstrap-5',
+                    placeholder: 'Buscar barrio...',
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+        }
+    }
+
     function populateMunicipios(depId, selectedMunId) {
+        // Destruir Select2 temporalmente para repoblar
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(munSelect).hasClass('select2-hidden-accessible')) {
+            $(munSelect).select2('destroy');
+        }
+        
         munSelect.innerHTML = '<option value="" selected>Selecciona un municipio</option>';
         municipios.forEach(m => {
             if (!depId || depId === '' || parseInt(m.id_departamento) === parseInt(depId)) {
@@ -702,23 +765,45 @@ document.addEventListener('DOMContentLoaded', function() {
                 munSelect.appendChild(opt);
             }
         });
+        
+        // Reinicializar Select2
+        initSelect2ForLocationSelects();
+        
         populateBarrios(munSelect.value, <?= json_encode($pedido['id_barrio'] ?? '') ?>);
     }
 
     function populateBarrios(munId, selectedBarrioId) {
+        // Destruir Select2 temporalmente para repoblar
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(barrioSelect).hasClass('select2-hidden-accessible')) {
+            $(barrioSelect).select2('destroy');
+        }
+        
         barrioSelect.innerHTML = '<option value="" selected>Selecciona un barrio</option>';
         barrios.forEach(b => {
             if (!munId || munId === '' || parseInt(b.id_municipio) === parseInt(munId)) {
                 const opt = document.createElement('option'); opt.value = b.id; opt.textContent = b.nombre; opt.setAttribute('data-id-municipio', b.id_municipio); if (selectedBarrioId && parseInt(selectedBarrioId) === parseInt(b.id)) opt.selected = true; barrioSelect.appendChild(opt);
             }
         });
+        
+        // Reinicializar Select2
+        initSelect2ForLocationSelects();
     }
 
-    deptSelect.addEventListener('change', function(){
-        const dep = deptSelect.value;
-        populateMunicipios(dep, <?= json_encode($pedido['id_municipio'] ?? '') ?>);
-    });
-    munSelect.addEventListener('change', function(){ populateBarrios(munSelect.value); });
+    // Events - usar eventos de Select2 si está disponible
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(deptSelect).on('change.select2', function(){
+            populateMunicipios(deptSelect.value, <?= json_encode($pedido['id_municipio'] ?? '') ?>);
+        });
+        $(munSelect).on('change.select2', function(){ 
+            populateBarrios(munSelect.value); 
+        });
+    } else {
+        deptSelect.addEventListener('change', function(){
+            const dep = deptSelect.value;
+            populateMunicipios(dep, <?= json_encode($pedido['id_municipio'] ?? '') ?>);
+        });
+        munSelect.addEventListener('change', function(){ populateBarrios(munSelect.value); });
+    }
 
     document.addEventListener('DOMContentLoaded', function(){
         // trigger initial population and set selections based on pedido

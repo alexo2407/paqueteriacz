@@ -90,7 +90,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                 <div class="row g-3">
                     <div class="col-md-2">
                         <label class="form-label small">Tabla</label>
-                        <select name="tabla" class="form-select">
+                        <select name="tabla" class="form-select select2-searchable" data-placeholder="Seleccionar tabla...">
                             <option value="">Todas las tablas</option>
                             <?php foreach ($tablasUnicas as $tabla): ?>
                                 <option value="<?php echo htmlspecialchars($tabla); ?>" <?php echo $tablaFiltro === $tabla ? 'selected' : ''; ?>>
@@ -102,7 +102,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                     
                     <div class="col-md-2">
                         <label class="form-label small">Acción</label>
-                        <select name="accion" class="form-select">
+                        <select name="accion" class="form-select select2-searchable" data-placeholder="Seleccionar acción...">
                             <option value="">Todas las acciones</option>
                             <option value="crear" <?php echo $accionFiltro === 'crear' ? 'selected' : ''; ?>>Crear</option>
                             <option value="actualizar" <?php echo $accionFiltro === 'actualizar' ? 'selected' : ''; ?>>Actualizar</option>
@@ -112,7 +112,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
 
                     <div class="col-md-2">
                         <label class="form-label small">Usuario</label>
-                        <select name="usuario" class="form-select">
+                        <select name="usuario" class="form-select select2-searchable" data-placeholder="Buscar usuario...">
                             <option value="">Todos los usuarios</option>
                             <?php foreach ($usuarios as $u): ?>
                                 <option value="<?php echo $u['id']; ?>" <?php echo $usuarioFiltro == $u['id'] ? 'selected' : ''; ?>>

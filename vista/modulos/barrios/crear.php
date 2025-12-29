@@ -21,7 +21,7 @@ $municipios = $munCtrl->listar();
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Municipio</label>
-                    <select name="id_municipio" class="form-control" required>
+                    <select name="id_municipio" class="form-control select2-searchable" required data-placeholder="Buscar municipio...">
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($municipios as $m): ?>
                             <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['nombre']) ?></option>

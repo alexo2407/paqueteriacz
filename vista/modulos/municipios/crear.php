@@ -21,7 +21,7 @@ $departamentos = $depCtrl->listar();
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Departamento</label>
-                    <select name="id_departamento" class="form-control" required>
+                    <select name="id_departamento" class="form-control select2-searchable" required data-placeholder="Buscar departamento...">
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($departamentos as $d): ?>
                             <option value="<?= $d['id'] ?>"><?= htmlspecialchars($d['nombre']) ?></option>

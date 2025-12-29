@@ -58,7 +58,7 @@ if ($productoId) {
             <form method="GET">
                 <div class="row">
                     <div class="col-md-10">
-                        <select class="form-select form-select-lg" name="producto" required>
+                        <select class="form-select form-select-lg select2-searchable" name="producto" required data-placeholder="Buscar producto...">
                             <option value="">Selecciona un producto...</option>
                             <?php foreach ($productos as $p): ?>
                                 <option value="<?php echo $p['id']; ?>" <?php echo ($productoId == $p['id']) ? 'selected' : ''; ?>>

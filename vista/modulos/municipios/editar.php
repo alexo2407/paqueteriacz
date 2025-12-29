@@ -32,7 +32,7 @@ if (!$m) { echo '<div class="container"><div class="alert alert-danger">Municipi
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Departamento</label>
-                    <select name="id_departamento" class="form-control" required>
+                    <select name="id_departamento" class="form-control select2-searchable" required data-placeholder="Buscar departamento...">
                         <option value="">-- Seleccione --</option>
                         <?php foreach ($departamentos as $d): ?>
                             <option value="<?= $d['id'] ?>" <?= $d['id']==$m['id_departamento']? 'selected':'' ?>><?= htmlspecialchars($d['nombre']) ?></option>

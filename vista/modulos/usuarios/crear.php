@@ -45,7 +45,7 @@ $roles = UsuariosController::obtenerRolesDisponibles();
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">País</label>
-                        <select class="form-control" name="id_pais">
+                        <select class="form-control select2-searchable" name="id_pais" data-placeholder="Buscar país...">
                             <option value="">-- Seleccione País --</option>
                             <?php foreach ($paises as $pais): ?>
                                 <option value="<?= $pais['id'] ?>"><?= htmlspecialchars($pais['nombre']) ?></option>

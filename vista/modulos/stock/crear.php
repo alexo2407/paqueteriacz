@@ -123,7 +123,7 @@ $productoPreseleccionado = $_GET['producto'] ?? '';
                     <div class="card-body">
                         <div class="mb-3">
                             <label for="id_producto" class="form-label">Producto <span class="text-danger">*</span></label>
-                            <select class="form-select" id="id_producto" name="id_producto" required>
+                            <select class="form-select select2-searchable" id="id_producto" name="id_producto" required data-placeholder="Buscar producto...">
                                 <option value="">Selecciona un producto</option>
                                 <?php foreach ($productos as $p): ?>
                                     <option value="<?php echo $p['id']; ?>" 

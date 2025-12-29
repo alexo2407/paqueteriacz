@@ -95,7 +95,7 @@ endif;
                                         <!-- Valores por defecto -->
                                         <div class="col-md-6 mb-3">
                                             <label for="default_estado" class="form-label">Estado por defecto</label>
-                                            <select name="default_estado" id="default_estado" class="form-select">
+                                            <select name="default_estado" id="default_estado" class="form-select select2-searchable" data-placeholder="Seleccionar estado...">
                                                 <option value="">-- No especificar --</option>
                                                 <?php
                                                 $ctrl = new PedidosController();
@@ -110,7 +110,7 @@ endif;
 
                                         <div class="col-md-6 mb-3">
                                             <label for="default_proveedor" class="form-label">Proveedor por defecto</label>
-                                            <select name="default_proveedor" id="default_proveedor" class="form-select">
+                                            <select name="default_proveedor" id="default_proveedor" class="form-select select2-searchable" data-placeholder="Buscar proveedor...">
                                                 <option value="">-- No especificar --</option>
                                                 <?php
                                                 $proveedores = $ctrl->obtenerProveedores();
@@ -123,7 +123,7 @@ endif;
 
                                         <div class="col-md-6 mb-3">
                                             <label for="default_moneda" class="form-label">Moneda por defecto</label>
-                                            <select name="default_moneda" id="default_moneda" class="form-select">
+                                            <select name="default_moneda" id="default_moneda" class="form-select select2-searchable" data-placeholder="Seleccionar moneda...">
                                                 <option value="">-- No especificar --</option>
                                                 <?php
                                                 $monedas = $ctrl->obtenerMonedas();
@@ -136,7 +136,7 @@ endif;
 
                                         <div class="col-md-6 mb-3">
                                             <label for="default_vendedor" class="form-label">Vendedor/Repartidor por defecto</label>
-                                            <select name="default_vendedor" id="default_vendedor" class="form-select">
+                                            <select name="default_vendedor" id="default_vendedor" class="form-select select2-searchable" data-placeholder="Buscar repartidor...">
                                                 <option value="">-- No especificar --</option>
                                                 <?php
                                                 $vendedores = $ctrl->obtenerRepartidores();

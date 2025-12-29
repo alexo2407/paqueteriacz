@@ -41,7 +41,7 @@ if (class_exists('ProductoModel')) {
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="id_producto">Producto</label>
-                    <select id="id_producto" name="id_producto" class="form-select" required>
+                    <select id="id_producto" name="id_producto" class="form-select select2-searchable" required data-placeholder="Buscar producto...">
                         <option value="">Selecciona un producto</option>
                         <?php foreach ($productos as $p): ?>
                             <option value="<?= (int)$p['id'] ?>" <?= (isset($registro['id_producto']) && (int)$registro['id_producto'] === (int)$p['id']) ? 'selected' : '' ?> ><?= htmlspecialchars($p['nombre']) ?><?= isset($p['stock_total']) ? ' — Stock: ' . (int)$p['stock_total'] : '' ?></option>

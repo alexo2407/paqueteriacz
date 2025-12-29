@@ -110,7 +110,7 @@ $categorias = CategoriaModel::listarJerarquico();
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="categoria_id" class="form-label">Categoría</label>
-                                <select class="form-select" id="categoria_id" name="categoria_id">
+                                <select class="form-select select2-searchable" id="categoria_id" name="categoria_id" data-placeholder="Buscar categoría...">
                                     <option value="">Sin categoría</option>
                                     <?php foreach ($categorias as $cat): ?>
                                         <option value="<?php echo $cat['id']; ?>" 
@@ -161,7 +161,7 @@ $categorias = CategoriaModel::listarJerarquico();
 
                             <div class="col-md-4 mb-3">
                                 <label for="unidad" class="form-label">Unidad de Medida</label>
-                                <select class="form-select" id="unidad" name="unidad">
+                                <select class="form-select select2-searchable" id="unidad" name="unidad" data-placeholder="Seleccionar unidad...">
                                     <?php 
                                     $unidades = ['unidad', 'caja', 'paquete', 'docena', 'kg', 'litro'];
                                     foreach ($unidades as $u):
