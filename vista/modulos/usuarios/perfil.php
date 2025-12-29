@@ -14,6 +14,11 @@ require_once __DIR__ . '/../../../modelo/usuario.php';
 $um = new UsuarioModel();
 $rolesUsuario = $idUsuario > 0 ? $um->obtenerRolesDeUsuario($idUsuario) : ['ids' => [], 'nombres' => []];
 $rolesUsuarioIds = $rolesUsuario['ids'] ?? [];
+
+// Cargar países para el select
+require_once __DIR__ . '/../../../controlador/pais.php';
+$paisesCtrl = new PaisesController();
+$paises = $paisesCtrl->listar();
 ?>
 
 <div class="row">
@@ -38,6 +43,15 @@ $rolesUsuarioIds = $rolesUsuario['ids'] ?? [];
 				<div class="mb-3">
 					<label class="form-label" for="telefono">Teléfono</label>
 					<input id="telefono" name="telefono" class="form-control" value="<?= htmlspecialchars($usuario['telefono'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+				</div>
+				<div class="mb-3">
+					<label class="form-label" for="id_pais">País</label>
+					<select id="id_pais" name="id_pais" class="form-control select2-searchable" data-placeholder="Seleccionar país...">
+						<option value="">-- Seleccione País --</option>
+						<?php foreach ($paises as $pais): ?>
+							<option value="<?= $pais['id'] ?>" <?= (isset($usuario['id_pais']) && $usuario['id_pais'] == $pais['id']) ? 'selected' : '' ?>><?= htmlspecialchars($pais['nombre']) ?></option>
+						<?php endforeach; ?>
+					</select>
 				</div>
 				
 				<?php if ($isAdmin): ?>

@@ -726,7 +726,8 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
         $payload = [
             'nombre' => $nombre,
             'email' => $email,
-            'telefono' => $telefono === '' ? null : $telefono
+            'telefono' => $telefono === '' ? null : $telefono,
+            'id_pais' => isset($_POST['id_pais']) && $_POST['id_pais'] !== '' ? (int)$_POST['id_pais'] : null
         ];
 
         // Solo permitir cambio de roles si es administrador
