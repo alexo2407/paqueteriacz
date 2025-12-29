@@ -29,7 +29,7 @@ if ($estadoFiltro !== '') $filtros['activo'] = $estadoFiltro === '1';
 
 // Obtener datos con filtro de usuario
 if (empty($filtros)) {
-    $productos = ProductoModel::listarConInventario($filtroUsuarioCreador);
+    $productos = ProductoModel::listarConInventario($filtroUsuarioCreador, false); // false = incluir inactivos en panel admin
 } else {
     // Si hay filtros adicionales, usar listarConFiltros y luego filtrar por usuario
     $productos = ProductoModel::listarConFiltros($filtros);

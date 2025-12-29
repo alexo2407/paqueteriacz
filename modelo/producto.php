@@ -17,17 +17,27 @@ class ProductoModel
      * 
      * @param int|null $idUsuarioCreador Si se especifica, filtra solo productos creados por este usuario.
      *                                    Si es null, devuelve todos (para admin).
+     * @param bool $soloActivos Si es true (por defecto), solo devuelve productos activos.
      * @return array Lista de productos con su stock total
      */
-    public static function listarConInventario($idUsuarioCreador = null)
+    public static function listarConInventario($idUsuarioCreador = null, $soloActivos = true)
     {
         try {
             $db = (new Conexion())->conectar();
             
-            $whereClause = '';
+            $whereClauses = [];
+            
+            // Filtro por usuario creador
             if ($idUsuarioCreador !== null) {
-                $whereClause = 'WHERE p.id_usuario_creador = :id_usuario_creador';
+                $whereClauses[] = 'p.id_usuario_creador = :id_usuario_creador';
             }
+            
+            // Filtro por productos activos (por defecto true)
+            if ($soloActivos) {
+                $whereClauses[] = 'p.activo = TRUE';
+            }
+            
+            $whereClause = !empty($whereClauses) ? 'WHERE ' . implode(' AND ', $whereClauses) : '';
             
             $sql = "SELECT 
                         p.id,
