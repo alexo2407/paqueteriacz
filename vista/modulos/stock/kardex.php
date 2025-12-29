@@ -25,6 +25,22 @@ if ($productoId) {
     }
 }
 ?>
+// Obtener fechas del filtro o usar valores por defecto (mes actual)
+$fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-01');
+$fechaFin = $_GET['fecha_fin'] ?? date('Y-m-d');
+
+$kardexData = [
+    'saldo_inicial' => 0,
+    'movimientos' => [],
+    'saldo_final' => 0
+];
+
+if ($producto) {
+    // Si hay producto, obtener reporte kardex
+    require_once __DIR__ . '/../../../modelo/stock.php';
+    $kardexData = StockModel::generarReporteKardex($producto['id'], $fechaInicio, $fechaFin);
+}
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -38,103 +54,287 @@ if ($productoId) {
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
+<style>
+.kardex-header {
+    background: linear-gradient(135deg, #093028 0%, #237A57 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(17, 153, 142, 0.2);
+}
+.product-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    background: white;
+    overflow: hidden;
+}
+.info-box {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1.5rem;
+    height: 100%;
+    transition: transform 0.2s;
+    border-left: 4px solid #11998e;
+}
+.info-box:hover {
+    transform: translateY(-2px);
+    background: white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+.info-label {
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.5px;
+}
+.info-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #212529;
+}
+.search-card {
+    background: white; 
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border: none;
+}
+.table-kardex th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #e9ecef;
+}
+.badge-mov {
+    font-weight: 500;
+    font-size: 0.8em;
+    padding: 0.4em 0.8em;
+    border-radius: 4px;
+}
+.badge-entrada { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
+.badge-salida { background-color: rgba(220, 53, 69, 0.1); color: #dc3545; }
+.badge-ajuste { background-color: rgba(255, 193, 7, 0.1); color: #ffc107; }
+
+@media print {
+    .no-print { display: none !important; }
+    .kardex-header { background: white; color: black; padding: 0; box-shadow: none; margin-bottom: 1rem; }
+    .kardex-header h2 { color: black; }
+    .card { border: 1px solid #ddd; box-shadow: none; }
+    .info-box { border: 1px solid #eee; }
+    .table-responsive { overflow: visible; }
+}
+</style>
+
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Header -->
+    <div class="kardex-header d-flex justify-content-between align-items-center">
         <div>
-            <h2><i class="bi bi-file-earmark-text"></i> Reporte Kardex</h2>
-            <p class="text-muted mb-0">Historial de movimientos por producto</p>
+            <h2 class="mb-1 fw-bold"><i class="bi bi-file-earmark-text me-2"></i> Reporte Kardex</h2>
+            <p class="mb-0 opacity-75">Historial detallado de movimientos por producto</p>
         </div>
-        <a href="<?php echo RUTA_URL; ?>stock/listar" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Volver
-        </a>
+        <div class="no-print">
+            <a href="<?php echo RUTA_URL; ?>stock/listar" class="btn btn-outline-light border-2 text-white fw-bold">
+                <i class="bi bi-arrow-left me-1"></i> Volver lista
+            </a>
+        </div>
     </div>
 
-    <!-- Selector -->
-    <div class="card mb-3">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-search"></i> Seleccionar Producto</h5>
-        </div>
-        <div class="card-body">
-            <form method="GET">
-                <div class="row">
-                    <div class="col-md-10">
-                        <select class="form-select form-select-lg select2-searchable" name="producto" required data-placeholder="Buscar producto...">
-                            <option value="">Selecciona un producto...</option>
-                            <?php foreach ($productos as $p): ?>
-                                <option value="<?php echo $p['id']; ?>" <?php echo ($productoId == $p['id']) ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($p['nombre']); ?>
-                                    <?php if (!empty($p['sku'])): ?>
-                                        - SKU: <?php echo htmlspecialchars($p['sku']); ?>
-                                    <?php endif; ?>
-                                    - Stock: <?php echo (int)($p['stock_total'] ?? 0); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary btn-lg w-100">
-                            <i class="bi bi-search"></i> Ver
-                        </button>
-                    </div>
+    <!-- Filtros -->
+    <div class="card search-card mb-4 no-print">
+        <div class="card-body p-4">
+            <form method="GET" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label fw-bold text-muted small"><i class="bi bi-search me-1"></i> PRODUCTO</label>
+                    <select class="form-select select2-searchable" name="producto" required data-placeholder="Selecciona un producto...">
+                        <option value="">Selecciona un producto...</option>
+                        <?php foreach ($productos as $p): ?>
+                            <option value="<?php echo $p['id']; ?>" <?php echo ($productoId == $p['id']) ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($p['nombre']); ?>
+                                - Stock: <?php echo (int)($p['stock_total'] ?? 0); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> DESDE</label>
+                    <input type="date" class="form-control" name="fecha_inicio" value="<?php echo $fechaInicio; ?>" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> HASTA</label>
+                    <input type="date" class="form-control" name="fecha_fin" value="<?php echo $fechaFin; ?>" required>
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm" style="background: #11998e; border-color: #11998e;">
+                        <i class="bi bi-search"></i>
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
     <?php if ($producto): ?>
-        <div class="card mb-3">
-            <div class="card-header bg-info text-white">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-box-seam"></i> <?php echo htmlspecialchars($producto['nombre']); ?></h5>
-                    <button class="btn btn-light btn-sm" onclick="window.print()">
-                        <i class="bi bi-printer"></i> Imprimir
+        <!-- Información del Producto -->
+        <div class="card product-card mb-4">
+            <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
+                <h4 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-box-seam me-2 text-success"></i> <?php echo htmlspecialchars($producto['nombre']); ?>
+                </h4>
+                <div class="d-flex align-items-center gap-3 no-print">
+                     <a href="<?php echo RUTA_URL; ?>stock/crear?producto=<?php echo $productoId; ?>" class="btn btn-primary btn-sm">
+                        <i class="bi bi-plus-circle me-1"></i> Nuevo Movimiento
+                    </a>
+                    <button class="btn btn-light btn-sm border" onclick="window.print()">
+                        <i class="bi bi-printer me-1"></i> Imprimir
                     </button>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-3">
-                        <p><strong>SKU:</strong> <code><?php echo htmlspecialchars($producto['sku'] ?? 'N/A'); ?></code></p>
+            <div class="card-body p-4">
+                <div class="row g-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="info-box">
+                            <div class="info-label">Código SKU</div>
+                            <div class="info-value text-break"><?php echo htmlspecialchars($producto['sku'] ?? 'N/A'); ?></div>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <p><strong>Precio:</strong> $<?php echo number_format($producto['precio_usd'] ?? 0, 2); ?> USD</p>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="info-box" style="border-left-color: #38ef7d;">
+                            <div class="info-label">Precio Unitario</div>
+                            <div class="info-value text-success">$<?php echo number_format($producto['precio_usd'] ?? 0, 2); ?></div>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <p><strong>Stock Actual:</strong> 
-                            <span class="badge bg-primary fs-6"><?php echo (int)($producto['stock_total'] ?? 0); ?> unidades</span>
-                        </p>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="info-box" style="border-left-color: #ffc107;">
+                            <div class="info-label">Saldo Inicial Período</div>
+                            <div class="info-value">
+                                <?php echo number_format($kardexData['saldo_inicial']); ?>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <p><strong>Marca:</strong> <?php echo htmlspecialchars($producto['marca'] ?? 'N/A'); ?></p>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="info-box" style="border-left-color: #0dcaf0;">
+                            <div class="info-label">Stock Actual</div>
+                            <div class="info-value">
+                                <span class="badge bg-primary text-white fs-5 px-3 rounded-pill"><?php echo (int)($producto['stock_total'] ?? 0); ?></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="card">
-            <div class="card-header bg-warning">
-                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Movimientos</h6>
+        <!-- Tabla Historial -->
+        <div class="card product-card">
+            <div class="card-header bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-muted text-uppercase"><i class="bi bi-clock-history me-1"></i> Historial de Movimientos</h6>
+                <small class="text-muted">Del <?php echo date('d/m/Y', strtotime($fechaInicio)); ?> al <?php echo date('d/m/Y', strtotime($fechaFin)); ?></small>
             </div>
-            <div class="card-body">
-                <div class="alert alert-info mb-0">
-                    <i class="bi bi-info-circle"></i>
-                    <strong>Nota:</strong> El reporte Kardex completo con entradas/salidas/saldos acumulados estará disponible cuando se actualice la tabla stock con los nuevos campos (tipo_movimiento, motivo, etc.).
-                    <br><br>
-                    Mientras tanto, puedes:
-                    <ul class="mb-0 mt-2">
-                        <li>Ver <a href="<?php echo RUTA_URL; ?>stock/listar" class="alert-link">todos los movimientos de stock</a></li>
-                        <li>Registrar <a href="<?php echo RUTA_URL; ?>stock/crear?producto=<?php echo $productoId; ?>" class="alert-link">un nuevo movimiento</a> para este producto</li>
-                    </ul>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-kardex mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Fecha</th>
+                                <th>Tipo</th>
+                                <th>Referencia</th>
+                                <th>Motivo / Descripción</th>
+                                <th class="text-center">Entrada</th>
+                                <th class="text-center">Salida</th>
+                                <th class="text-end pe-4">Saldo</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Saldo Inicial Row -->
+                            <tr class="table-light">
+                                <td colspan="6" class="ps-4 text-end fw-bold text-muted fst-italic">Saldo al iniciar el período:</td>
+                                <td class="text-end pe-4 fw-bold"><?php echo number_format($kardexData['saldo_inicial']); ?></td>
+                                <td></td>
+                            </tr>
+
+                            <?php if (empty($kardexData['movimientos'])): ?>
+                                <tr>
+                                    <td colspan="8" class="text-center py-5 text-muted">
+                                        <i class="bi bi-calendar-x fs-1 d-block mb-2 text-secondary opacity-25"></i>
+                                        No hay movimientos registrados en este rango de fechas.
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($kardexData['movimientos'] as $mov): 
+                                    $cantidad = (int)$mov['cantidad'];
+                                    $isEntrada = $cantidad > 0;
+                                    $tipoClass = $isEntrada ? 'badge-entrada' : 'badge-salida';
+                                    if ($mov['tipo_movimiento'] === 'ajuste') $tipoClass = 'badge-ajuste';
+                                ?>
+                                <tr>
+                                    <td class="ps-4 text-nowrap"><?php echo date('d/m/Y H:i', strtotime($mov['fecha'])); ?></td>
+                                    <td>
+                                        <span class="badge-mov <?php echo $tipoClass; ?> text-uppercase">
+                                            <?php echo htmlspecialchars($mov['tipo_movimiento']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($mov['referencia_tipo'])): ?>
+                                            <small class="d-block fw-bold text-secondary"><?php echo htmlspecialchars(ucfirst($mov['referencia_tipo'])); ?></small>
+                                            <small class="text-muted">#<?php echo htmlspecialchars($mov['referencia_id'] ?? '-'); ?></small>
+                                        <?php else: ?>
+                                            <span class="text-muted small">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($mov['motivo'] ?? '-'); ?></td>
+                                    
+                                    <!-- Entrada -->
+                                    <td class="text-center text-success fw-bold bg-light bg-opacity-10">
+                                        <?php echo $isEntrada ? '+' . number_format($cantidad) : ''; ?>
+                                    </td>
+                                    
+                                    <!-- Salida -->
+                                    <td class="text-center text-danger fw-bold bg-light bg-opacity-10">
+                                        <?php echo !$isEntrada ? number_format(abs($cantidad)) : ''; ?>
+                                    </td>
+                                    
+                                    <td class="text-end pe-4 fw-bold text-dark">
+                                        <?php echo number_format($mov['saldo']); ?>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-light rounded-circle text-center me-2" style="width:25px; height:25px; line-height:25px;">
+                                                <i class="bi bi-person-fill text-secondary small"></i>
+                                            </div>
+                                            <small class="text-muted"><?php echo htmlspecialchars($mov['usuario'] ?? 'Sistema'); ?></small>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                        <?php if (!empty($kardexData['movimientos'])): ?>
+                        <tfoot>
+                            <tr class="table-light border-top">
+                                <td colspan="6" class="ps-4 text-end fw-bold text-dark">Saldo Final del período:</td>
+                                <td class="text-end pe-4 fw-bold fs-6 text-primary"><?php echo number_format($kardexData['saldo_final']); ?></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                        <?php endif; ?>
+                    </table>
                 </div>
             </div>
         </div>
 
     <?php else: ?>
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <i class="bi bi-file-earmark-text" style="font-size: 4rem; opacity: 0.5;"></i>
-                <h5 class="mt-3">Selecciona un producto</h5>
-                <p class="text-muted">Elige un producto del selector para ver su reporte Kardex</p>
+        <!-- Estado Vacío -->
+        <div class="card border-0 shadow-sm rounded-4 py-5 text-center mt-5">
+            <div class="card-body">
+                <div class="mb-4 text-muted opacity-25">
+                    <i class="bi bi-clipboard-data" style="font-size: 5rem;"></i>
+                </div>
+                <h3 class="fw-bold text-dark">Consulta de Kardex</h3>
+                <p class="text-muted col-md-6 mx-auto">
+                    Selecciona un producto y un rango de fechas para visualizar su historial detallado de movimientos.
+                </p>
             </div>
         </div>
     <?php endif; ?>
@@ -142,9 +342,21 @@ if ($productoId) {
 
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
-<style media="print">
-    .btn, nav, footer, .alert { display: none !important; }
-</style>
-
+<script>
+    $(document).ready(function() {
+        $('.select2-searchable').select2({
+            theme: "bootstrap-5",
+            width: '100%',
+            language: {
+                noResults: function() {
+                    return "No se encontraron resultados";
+                },
+                searching: function() {
+                    return "Buscando...";
+                }
+            }
+        });
+    });
+</script>
 </body>
 </html>

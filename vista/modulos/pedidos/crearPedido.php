@@ -854,4 +854,8 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
 })();
 </script>
 
+        </div><!-- card-body -->
+    </div><!-- card crear-pedido-card -->
+</div><!-- container-fluid -->
+
 <?php include("vista/includes/footer.php"); ?>

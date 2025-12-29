@@ -90,7 +90,7 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
                         <dt class="col-sm-4">Precio</dt>
                         <dd class="col-sm-8">
                             <?php if (!empty($pedido['precio_local'])): ?>
-                                <span class="badge bg-primary me-1">Local: <?= htmlspecialchars($pedido['precio_local']) ?></span>
+                                <span class="badge bg-primary text-white me-1">Local: <?= htmlspecialchars($pedido['precio_local']) ?></span>
                             <?php endif; ?>
                             <?php if (!empty($pedido['precio_usd'])): ?>
                                 <span class="badge bg-success">USD: <?= htmlspecialchars($pedido['precio_usd']) ?></span>

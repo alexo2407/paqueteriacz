@@ -1,5 +1,6 @@
+<?php include("vista/includes/header.php"); ?>
+
 <?php
-include("vista/includes/header.php");
 require_once __DIR__ . '/../../../controlador/departamento.php';
 require_once __DIR__ . '/../../../controlador/pais.php';
 $paisCtrl = new PaisesController();
@@ -12,59 +13,113 @@ $rolesNombres = $_SESSION['roles_nombres'] ?? [];
 $isAdmin = in_array('Administrador', $rolesNombres, true);
 $deleteDisabled = !$isAdmin ? 'disabled' : '';
 ?>
-<div class="container">
-    <h2>Departamentos</h2>
-    <p><a href="<?= RUTA_URL ?>departamentos/crear" class="btn btn-primary">Crear departamento</a></p>
-    <div class="table-responsive">
-        <table class="table table-bordered table-striped dt-responsive tablas" width="100%">
-            <thead>
-                <tr>
-                    <th style="width:10px">#</th>
-                    <th>Departamento</th>
-                    <th>País</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php
-                foreach ($departamentos as $key => $value) {
-                    // Find the country name for the current department
-                    $pais_nombre = '';
-                    foreach ($paises as $p) {
-                        if ($p['id'] == $value['id_pais']) {
-                            $pais_nombre = $p['nombre'];
-                            break;
-                        }
-                    }
 
-                    echo '<tr>
-                            <td>' . ($key + 1) . '</td>
-                            <td>' . htmlspecialchars($value["nombre"]) . '</td>
-                            <td>' . htmlspecialchars($pais_nombre) . '</td>
-                            <td>
-                                <div class="btn-group">
-                                    <a class="btn btn-sm btn-info" href="' . RUTA_URL . 'departamentos/ver/' . urlencode($value['id']) . '">Ver</a>
-                                    <a class="btn btn-sm btn-warning" href="' . RUTA_URL . 'departamentos/editar/' . urlencode($value['id']) . '">Editar</a>
-                                    <form method="post" action="' . RUTA_URL . 'departamentos/eliminar/' . urlencode($value['id']) . '" style="display:inline" onsubmit="return confirm(\'Eliminar departamento?\');">
-                                        <button class="btn btn-sm btn-danger" type="submit" ' . $deleteDisabled . '>Eliminar</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>';
-                }
-                ?>
-            </tbody>
-        </table>
+<style>
+.location-header {
+    background: linear-gradient(135deg, #005C97 0%, #363795 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(33, 147, 176, 0.2);
+}
+.table-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+.btn-delete.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+</style>
+
+<div class="container-fluid py-4">
+    <div class="location-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-1 fw-bold"><i class="bi bi-map me-2"></i> Departamentos</h2>
+            <p class="mb-0 opacity-75">Gestión de divisiones administrativas (Nivel 2)</p>
+        </div>
+        <div>
+            <a href="<?= RUTA_URL ?>departamentos/crear" class="btn btn-light text-info fw-bold shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Nuevo Departamento
+            </a>
+        </div>
+    </div>
+
+    <div class="card table-card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle w-100 tablas">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>Departamento</th>
+                            <th>País Perteneciente</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($departamentos as $key => $value): ?>
+                            <?php
+                            $pais_nombre = '';
+                            foreach ($paises as $p) {
+                                if ($p['id'] == $value['id_pais']) {
+                                    $pais_nombre = $p['nombre'];
+                                    break;
+                                }
+                            }
+                            ?>
+                            <tr>
+                                <td class="fw-bold text-muted text-center"><?= ($key + 1) ?></td>
+                                <td>
+                                    <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($value["nombre"]) ?></span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border"><i class="bi bi-globe-americas me-1"></i> <?= htmlspecialchars($pais_nombre) ?></span>
+                                </td>
+                                <td class="text-end">
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <a href="<?= RUTA_URL ?>departamentos/ver/<?= urlencode($value['id']) ?>" class="btn btn-info btn-square text-white" title="Ver detalles" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="<?= RUTA_URL ?>departamentos/editar/<?= urlencode($value['id']) ?>" class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <?php if ($isAdmin): ?>
+                                            <form method="post" action="<?= RUTA_URL ?>departamentos/eliminar/<?= urlencode($value['id']) ?>" style="display:inline" class="d-inline" onsubmit="return confirm('¿Eliminar departamento?');">
+                                                <button class="btn btn-danger btn-square btn-delete" type="submit" title="Eliminar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        <?php else: ?>
+                                            <button class="btn btn-secondary btn-square disabled" disabled title="Solo administradores" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
+
 <?php include("vista/includes/footer.php"); ?>
+
 <script>
     $(document).ready(function() {
         $('.tablas').DataTable({
             responsive: true,
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
-            }
+            },
+            dom: '<"d-flex justify-content-between align-items-center mb-3"f>t<"d-flex justify-content-between align-items-center mt-3"ip>',
         });
     });
 </script>

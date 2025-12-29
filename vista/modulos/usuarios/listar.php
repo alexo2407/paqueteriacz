@@ -100,24 +100,27 @@ $roleColors = [
     font-size: 0.75rem;
     padding: 0.4em 0.8em;
 }
-.btn-action {
-    width: 28px;
-    height: 28px;
+.btn-icon {
+    width: 34px;
+    height: 34px;
     padding: 0 !important;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 5px;
+    border-radius: 8px;
     transition: all 0.2s ease;
-    line-height: 1;
+    color: #ffffff !important;
+    border: none;
 }
-.btn-action i {
-    font-size: 12px !important;
+.btn-icon i {
+    font-size: 14px !important;
     line-height: 1;
+    color: #ffffff !important;
 }
-.btn-action:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+.btn-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    color: #ffffff !important;
 }
 #tblUsuarios tbody tr {
     transition: all 0.2s ease;
@@ -240,21 +243,21 @@ $roleColors = [
                             </td>
                             <td>
                                 <?php if ($activo): ?>
-                                    <span class="badge bg-success-subtle text-success status-badge">
-                                        <i class="bi bi-check-circle me-1"></i>Activo
+                                    <span class="badge rounded-pill bg-success p-1">
+                                        <i class="bi bi-check-lg fs-6"></i>
                                     </span>
                                 <?php else: ?>
-                                    <span class="badge bg-danger-subtle text-danger status-badge">
-                                        <i class="bi bi-x-circle me-1"></i>Inactivo
+                                    <span class="badge rounded-pill bg-danger p-1">
+                                        <i class="bi bi-x-lg fs-6"></i>
                                     </span>
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">
                                 <div class="d-flex justify-content-center gap-2">
                                     <a href="<?= RUTA_URL ?>usuarios/editar/<?= $usuario['id'] ?>" 
-                                       class="btn btn-outline-primary btn-action" 
+                                       class="btn btn-primary btn-icon" 
                                        title="Editar usuario">
-                                        <i class="bi bi-pencil"></i>
+                                        <i class="bi bi-pencil-square"></i>
                                     </a>
                                     <?php 
                                     // Solo mostrar eliminar si es admin y no es el usuario actual
@@ -264,11 +267,11 @@ $roleColors = [
                                     if ($isAdmin && !$esUsuarioActual): 
                                     ?>
                                     <button type="button" 
-                                            class="btn btn-outline-danger btn-action btn-eliminar" 
+                                            class="btn btn-danger btn-icon btn-eliminar" 
                                             data-id="<?= $usuario['id'] ?>"
                                             data-nombre="<?= htmlspecialchars($usuario['nombre']) ?>"
                                             title="Eliminar usuario">
-                                        <i class="bi bi-trash"></i>
+                                        <i class="bi bi-trash3"></i>
                                     </button>
                                     <?php endif; ?>
                                 </div>

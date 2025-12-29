@@ -23,182 +23,251 @@ $categorias = CategoriaModel::listarJerarquico();
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2><i class="bi bi-plus-circle"></i> Crear Nuevo Producto</h2>
-                    <p class="text-muted mb-0">Completa la información del producto</p>
-                </div>
-                <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-left"></i> Volver
-                </a>
-            </div>
+<style>
+.crear-producto-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+.crear-producto-header {
+    background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+}
+.crear-producto-header h3 {
+    margin: 0;
+    font-weight: 600;
+}
+.form-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e9ecef;
+}
+.form-section-title {
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+.form-section-title i {
+    color: #f5576c;
+}
+.btn-save-product {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 10px;
+    font-size: 1rem;
+    color: white;
+}
+.btn-save-product:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+    color: white;
+}
+.btn-back {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+.btn-back:hover {
+    background: rgba(255,255,255,0.3);
+    color: white;
+}
+</style>
 
-            <!-- Formulario -->
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
             <form id="formProducto" method="POST" action="<?php echo RUTA_URL; ?>productos/guardar" enctype="multipart/form-data">
                 <?php 
                     require_once __DIR__ . '/../../../utils/csrf.php';
                     echo csrf_field(); 
                 ?>
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información Básica</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="sku" class="form-label">SKU <span class="text-muted">(Recomendado)</span></label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="sku" name="sku" placeholder="Ej: ELEC-042" maxlength="50">
-                                    <button type="button" class="btn btn-outline-secondary" id="btnGenerarSKU" onclick="generarSKU()">
-                                        <i class="bi bi-magic"></i> Generar
-                                    </button>
+                
+                <div class="card crear-producto-card">
+                    <div class="crear-producto-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                                    <i class="bi bi-box-seam fs-3"></i>
                                 </div>
-                                <small class="text-muted"><i class="bi bi-info-circle"></i> Recomendado para mejor organización. Usa "Generar" para crear uno automático</small>
+                                <div>
+                                    <h3>Nuevo Producto</h3>
+                                    <p class="mb-0 opacity-75">Ingresa los detalles del nuevo producto</p>
+                                </div>
                             </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="nombre" class="form-label">Nombre del Producto <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="nombre" name="nombre" required placeholder="Ej: Laptop Dell XPS 15">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="categoria_id" class="form-label">Categoría</label>
-                                <select class="form-select select2-searchable" id="categoria_id" name="categoria_id" data-placeholder="Buscar categoría...">
-                                    <option value="">Sin categoría</option>
-                                    <?php foreach ($categorias as $cat): ?>
-                                        <option value="<?php echo $cat['id']; ?>">
-                                            <?php echo htmlspecialchars($cat['nombre']); ?>
-                                        </option>
-                                        <?php if (!empty($cat['subcategorias'])): ?>
-                                            <?php foreach ($cat['subcategorias'] as $subcat): ?>
-                                                <option value="<?php echo $subcat['id']; ?>">
-                                                    &nbsp;&nbsp;↳ <?php echo htmlspecialchars($subcat['nombre']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="marca" class="form-label">Marca</label>
-                                <input type="text" class="form-control" id="marca" name="marca" placeholder="Ej: Dell" maxlength="100">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="descripcion" class="form-label">Descripción</label>
-                            <textarea class="form-control" id="descripcion" name="descripcion" rows="3" placeholder="Descripción detallada del producto"></textarea>
+                            <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-back">
+                                <i class="bi bi-arrow-left me-1"></i> Volver
+                            </a>
                         </div>
                     </div>
-                </div>
 
-                <!-- Precios e Inventario -->
-                <div class="card mt-3">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Precios e Inventario</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="precio_usd" class="form-label">Precio (USD) <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="precio_usd" name="precio_usd" step="0.01" min="0" required placeholder="0.00">
+                    <div class="card-body p-4">
+                        <!-- Información Básica -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-info-circle"></i> Información Básica
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="sku" class="form-label fw-bold">SKU <span class="text-muted small fw-normal">(Opcional)</span></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="sku" name="sku" placeholder="Ej: ELEC-042" maxlength="50">
+                                        <button type="button" class="btn btn-outline-secondary" id="btnGenerarSKU" onclick="generarSKU()">
+                                            <i class="bi bi-magic"></i> Generar
+                                        </button>
+                                    </div>
+                                    <small class="text-muted ms-1">Usa "Generar" para crear uno automático basado en la categoría.</small>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="nombre" class="form-label fw-bold">Nombre del Producto <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required placeholder="Ej: Laptop Dell XPS 15">
                                 </div>
                             </div>
 
-                            <div class="col-md-4 mb-3">
-                                <label for="unidad" class="form-label">Unidad de Medida</label>
-                                <select class="form-select select2-searchable" id="unidad" name="unidad" data-placeholder="Seleccionar unidad...">
-                                    <option value="unidad">Unidad</option>
-                                    <option value="caja">Caja</option>
-                                    <option value="paquete">Paquete</option>
-                                    <option value="docena">Docena</option>
-                                    <option value="kg">Kilogramo</option>
-                                    <option value="litro">Litro</option>
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="categoria_id" class="form-label fw-bold">Categoría</label>
+                                    <select class="form-select select2-searchable" id="categoria_id" name="categoria_id" data-placeholder="Buscar categoría...">
+                                        <option value="">Sin categoría</option>
+                                        <?php foreach ($categorias as $cat): ?>
+                                            <option value="<?php echo $cat['id']; ?>">
+                                                <?php echo htmlspecialchars($cat['nombre']); ?>
+                                            </option>
+                                            <?php if (!empty($cat['subcategorias'])): ?>
+                                                <?php foreach ($cat['subcategorias'] as $subcat): ?>
+                                                    <option value="<?php echo $subcat['id']; ?>">
+                                                        &nbsp;&nbsp;↳ <?php echo htmlspecialchars($subcat['nombre']); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="marca" class="form-label fw-bold">Marca</label>
+                                    <input type="text" class="form-control" id="marca" name="marca" placeholder="Ej: Dell" maxlength="100">
+                                </div>
                             </div>
 
-                            <div class="col-md-4 mb-3">
-                                <label for="peso" class="form-label">Peso (kg)</label>
-                                <input type="number" class="form-control" id="peso" name="peso" step="0.01" min="0" placeholder="0.00">
+                            <div class="mb-3">
+                                <label for="descripcion" class="form-label fw-bold">Descripción</label>
+                                <textarea class="form-control" id="descripcion" name="descripcion" rows="3" placeholder="Descripción detallada del producto"></textarea>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="stock_minimo" class="form-label">Stock Mínimo</label>
-                                <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" value="10" min="0">
-                                <small class="text-muted">Para alertas</small>
+                        <!-- Precios e Inventario -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-currency-dollar"></i> Precios e Inventario
                             </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="precio_usd" class="form-label fw-bold">Precio (USD) <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="precio_usd" name="precio_usd" step="0.01" min="0" required placeholder="0.00">
+                                    </div>
+                                </div>
 
-                            <div class="col-md-4 mb-3">
-                                <label for="stock_maximo" class="form-label">Stock Máximo</label>
-                                <input type="number" class="form-control" id="stock_maximo" name="stock_maximo" value="100" min="0">
-                                <small class="text-muted">Capacidad máxima</small>
-                            </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="unidad" class="form-label fw-bold">Unidad de Medida</label>
+                                    <select class="form-select select2-searchable" id="unidad" name="unidad" data-placeholder="Seleccionar unidad...">
+                                        <option value="unidad">Unidad</option>
+                                        <option value="caja">Caja</option>
+                                        <option value="paquete">Paquete</option>
+                                        <option value="docena">Docena</option>
+                                        <option value="kg">Kilogramo</option>
+                                        <option value="litro">Litro</option>
+                                    </select>
+                                </div>
 
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Estado</label>
-                                <div class="form-check form-switch mt-2">
-                                    <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" checked>
-                                    <label class="form-check-label" for="activo">
-                                        Producto activo
-                                    </label>
+                                <div class="col-md-4 mb-3">
+                                    <label for="peso" class="form-label fw-bold">Peso (kg)</label>
+                                    <input type="number" class="form-control" id="peso" name="peso" step="0.01" min="0" placeholder="0.00">
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Imagen -->
-                <div class="card mt-3">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="bi bi-image"></i> Imagen del Producto</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8 mb-3">
-                                <label for="imagen" class="form-label">Subir Imagen</label>
-                                <input type="file" class="form-control" id="imagen" name="imagen" accept="image/jpeg,image/png,image/gif,image/webp">
-                                <small class="text-muted">
-                                    <i class="bi bi-info-circle"></i> Formatos: JPG, PNG, GIF, WEBP. Máximo 5MB
-                                </small>
-                                
-                                <div class="mt-2">
-                                    <small class="text-muted">O ingresa una URL externa:</small>
-                                    <input type="url" class="form-control form-control-sm mt-1" id="imagen_url" name="imagen_url" placeholder="https://ejemplo.com/imagen.jpg" maxlength="500">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="stock_minimo" class="form-label fw-bold">Stock Mínimo</label>
+                                    <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" value="10" min="0">
+                                    <small class="text-muted">Nivel para alertas de stock bajo</small>
                                 </div>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Vista Previa</label>
-                                <div id="imagen-preview" class="border rounded p-2 text-center d-flex align-items-center justify-content-center" style="height: 150px; background: #f8f9fa;">
-                                    <div>
-                                        <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                                        <p class="text-muted small mb-0">Sin imagen</p>
+
+                                <div class="col-md-4 mb-3">
+                                    <label for="stock_maximo" class="form-label fw-bold">Stock Máximo</label>
+                                    <input type="number" class="form-control" id="stock_maximo" name="stock_maximo" value="100" min="0">
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Estado Inicial</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" checked>
+                                        <label class="form-check-label" for="activo">
+                                            Producto activo
+                                        </label>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Botones -->
-                <div class="card mt-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Cancelar
+                        <!-- Imagen -->
+                        <div class="form-section mb-0">
+                            <div class="form-section-title">
+                                <i class="bi bi-image"></i> Imagen del Producto
+                            </div>
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label for="imagen" class="form-label fw-bold">Subir Imagen</label>
+                                    <input type="file" class="form-control" id="imagen" name="imagen" accept="image/jpeg,image/png,image/gif,image/webp">
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="bi bi-info-circle"></i> Formatos: JPG, PNG, GIF, WEBP. Máximo 5MB surt
+                                    </small>
+                                    
+                                    <div class="mt-3">
+                                        <label class="form-label fw-bold small text-muted">O ingresa una URL externa:</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                            <input type="url" class="form-control" id="imagen_url" name="imagen_url" placeholder="https://ejemplo.com/imagen.jpg" maxlength="500">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <label class="form-label fw-bold">Vista Previa</label>
+                                    <div id="imagen-preview" class="border rounded p-2 d-flex align-items-center justify-content-center mx-auto bg-white" style="height: 160px; width: 100%; max-width: 200px;">
+                                        <div>
+                                            <i class="bi bi-image text-muted opacity-25" style="font-size: 3rem;"></i>
+                                            <p class="text-muted small mb-0 opacity-75">Sin imagen</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-end gap-3 mt-4">
+                            <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-secondary px-4">
+                                Cancelar
                             </a>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-save"></i> Guardar Producto
+                            <button type="submit" class="btn btn-save-product shadow-lg">
+                                <i class="bi bi-check-lg me-1"></i> Guardar Producto
                             </button>
                         </div>
                     </div>

@@ -487,8 +487,9 @@ foreach ($pedidos as $p) {
     </div>
 </div>
 
-</div>
-</div>
+        </div><!-- card-body -->
+    </div><!-- card pedidos-card -->
+</div><!-- container-fluid -->
 
 <?php include("vista/includes/footer.php"); ?>
 

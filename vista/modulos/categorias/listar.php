@@ -1,104 +1,158 @@
-<?php
-require_once __DIR__ . '/../../../config/config.php';
-require_once __DIR__ . '/../../../utils/session.php';
-require_once __DIR__ . '/../../../modelo/categoria.php';
+<?php 
+include __DIR__ . '/../../includes/header.php'; 
+require_once __DIR__ . '/../../../controlador/categoria.php';
 
-start_secure_session();
-require_login();
-
-// Obtener categorías con conteo de productos
-$categorias = CategoriaModel::contarProductosPorCategoria();
-$jerarquia = CategoriaModel::listarJerarquico();
+$ctrl = new CategoriaController();
+$jerarquia = $ctrl->listarJerarquico();
+$categorias = $ctrl->obtenerEstadisticas();
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Categorías - Paquetería CruzValle</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-</head>
-<body>
 
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+<style>
+.category-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 20px rgba(161, 140, 209, 0.2);
+}
+.stat-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    transition: transform 0.3s;
+    height: 100%;
+}
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+.table-card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+.table thead th {
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    font-weight: 600;
+    color: #495057;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    padding: 1rem;
+}
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+}
+.sub-row {
+    background-color: #fcfcfc;
+}
+.sub-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border-left: 2px solid #ced4da;
+    border-bottom: 2px solid #ced4da;
+    margin-right: 10px;
+    margin-left: 15px;
+    border-radius: 0 0 0 5px;
+}
+</style>
 
 <div class="container-fluid py-4">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="category-header d-flex justify-content-between align-items-center">
         <div>
-            <h2><i class="bi bi-folder2"></i> Categorías de Productos</h2>
-            <p class="text-muted mb-0">Gestiona las categorías y subcategorías de tus productos</p>
+            <h2 class="mb-1 fw-bold"><i class="bi bi-folder2-open me-2"></i> Categorías</h2>
+            <p class="mb-0 opacity-75">Organización jerárquica del catálogo de productos</p>
         </div>
         <div>
-            <a href="<?php echo RUTA_URL; ?>categorias/crear" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Nueva Categoría
+            <a href="<?php echo RUTA_URL; ?>categorias/crear" class="btn btn-light text-primary fw-bold shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Nueva Categoría
             </a>
         </div>
     </div>
 
     <!-- Estadísticas -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-folder2"></i> Total Categorías</h6>
-                    <h3 class="mb-0"><?php echo count($categorias); ?></h3>
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="card-body p-4">
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-folder2"></i>
+                    </div>
+                    <h6 class="text-muted text-uppercase small fw-bold mb-1">Total Categorías</h6>
+                    <h3 class="mb-0 fw-bold text-dark"><?php echo count($categorias); ?></h3>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-diagram-3"></i> Categorías Padre</h6>
-                    <h3 class="mb-0"><?php echo count($jerarquia); ?></h3>
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="card-body p-4">
+                    <div class="stat-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <h6 class="text-muted text-uppercase small fw-bold mb-1">Categorías Padre</h6>
+                    <h3 class="mb-0 fw-bold text-dark"><?php echo count($jerarquia); ?></h3>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <h6 class="card-title"><i class="bi bi-box-seam"></i> Total Productos</h6>
-                    <h3 class="mb-0"><?php echo array_sum(array_column($categorias, 'total_productos')); ?></h3>
+        <div class="col-md-4">
+            <div class="card stat-card">
+                <div class="card-body p-4">
+                    <div class="stat-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                    <h6 class="text-muted text-uppercase small fw-bold mb-1">Total Productos Asignados</h6>
+                    <h3 class="mb-0 fw-bold text-dark"><?php echo array_sum(array_column($categorias, 'total_productos')); ?></h3>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Tabla de Categorías -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0"><i class="bi bi-list-ul"></i> Listado de Categorías</h5>
-        </div>
-        <div class="card-body">
+    <div class="card table-card">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-light">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
                         <tr>
-                            <th>ID</th>
+                            <th class="ps-4">ID</th>
                             <th>Nombre</th>
                             <th>Descripción</th>
-                            <th>Tipo</th>
+                            <th>Nivel</th>
                             <th class="text-center">Productos</th>
                             <th class="text-center">Estado</th>
-                            <th class="text-end">Acciones</th>
+                            <th class="text-end pe-4">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($jerarquia)): ?>
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-                                    <p class="mb-0 mt-2">No hay categorías registradas</p>
-                                    <a href="<?php echo RUTA_URL; ?>categorias/crear" class="btn btn-sm btn-primary mt-2">
-                                        <i class="bi bi-plus-circle"></i> Crear Primera Categoría
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="text-muted opacity-50 mb-3">
+                                        <i class="bi bi-folder-x" style="font-size: 3rem;"></i>
+                                    </div>
+                                    <h5 class="text-muted">No hay categorías registradas</h5>
+                                    <a href="<?php echo RUTA_URL; ?>categorias/crear" class="btn btn-primary mt-2">
+                                        <i class="bi bi-plus-circle me-1"></i> Crear Primera Categoría
                                     </a>
                                 </td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($jerarquia as $categoria): ?>
                                 <?php
-                                // Buscar conteo de productos
                                 $productCount = 0;
                                 foreach ($categorias as $cat) {
                                     if ($cat['id'] == $categoria['id']) {
@@ -108,30 +162,37 @@ $jerarquia = CategoriaModel::listarJerarquico();
                                 }
                                 ?>
                                 <tr>
-                                    <td><?php echo $categoria['id']; ?></td>
+                                    <td class="ps-4 fw-bold text-muted">#<?php echo $categoria['id']; ?></td>
                                     <td>
-                                        <strong><?php echo htmlspecialchars($categoria['nombre']); ?></strong>
+                                        <div class="fw-bold text-dark fs-6">
+                                            <i class="bi bi-folder2 text-warning me-2"></i>
+                                            <?php echo htmlspecialchars($categoria['nombre']); ?>
+                                        </div>
                                     </td>
-                                    <td><?php echo htmlspecialchars($categoria['descripcion'] ?? '-'); ?></td>
-                                    <td><span class="badge bg-primary">Categoría Padre</span></td>
+                                    <td class="text-muted small"><?php echo htmlspecialchars($categoria['descripcion'] ?? '-'); ?></td>
+                                    <td><span class="badge bg-primary text-white rounded-pill px-3">Principal</span></td>
                                     <td class="text-center">
-                                        <span class="badge bg-info"><?php echo $productCount; ?></span>
+                                        <span class="badge bg-light text-dark border px-3"><?php echo $productCount; ?></span>
                                     </td>
                                     <td class="text-center">
                                         <?php if ($categoria['activo']): ?>
-                                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Activo</span>
+                                            <span class="badge rounded-pill bg-success p-2">
+                                                <i class="bi bi-check-lg" style="font-size: 1.2rem;"></i>
+                                            </span>
                                         <?php else: ?>
-                                            <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Inactivo</span>
+                                            <span class="badge rounded-pill bg-danger p-2">
+                                                <i class="bi bi-x-lg" style="font-size: 1.2rem;"></i>
+                                            </span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="text-end">
-                                        <div class="btn-group btn-group-sm" role="group">
+                                    <td class="text-end pe-4">
+                                        <div class="d-flex justify-content-end gap-2">
                                             <a href="<?php echo RUTA_URL; ?>categorias/ver/<?php echo $categoria['id']; ?>" 
-                                               class="btn btn-outline-info" title="Ver detalles">
+                                               class="btn btn-info btn-square text-white" title="Ver detalles" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                             <a href="<?php echo RUTA_URL; ?>categorias/editar/<?php echo $categoria['id']; ?>" 
-                                               class="btn btn-outline-primary" title="Editar">
+                                               class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                                                 <i class="bi bi-pencil"></i>
                                             </a>
                                         </div>
@@ -142,7 +203,6 @@ $jerarquia = CategoriaModel::listarJerarquico();
                                 <?php if (!empty($categoria['subcategorias'])): ?>
                                     <?php foreach ($categoria['subcategorias'] as $subcategoria): ?>
                                         <?php
-                                        // Buscar conteo de productos para subcategoría
                                         $subProductCount = 0;
                                         foreach ($categorias as $cat) {
                                             if ($cat['id'] == $subcategoria['id']) {
@@ -151,34 +211,39 @@ $jerarquia = CategoriaModel::listarJerarquico();
                                             }
                                         }
                                         ?>
-                                        <tr class="table-secondary">
-                                            <td><?php echo $subcategoria['id']; ?></td>
+                                        <tr class="sub-row">
+                                            <td class="ps-4 text-muted small">#<?php echo $subcategoria['id']; ?></td>
                                             <td>
-                                                <span class="ms-4">
-                                                    <i class="bi bi-arrow-return-right"></i>
+                                                <div class="d-flex align-items-center text-dark">
+                                                    <span class="sub-indicator"></span>
+                                                    <i class="bi bi-folder2-open text-secondary me-2"></i>
                                                     <?php echo htmlspecialchars($subcategoria['nombre']); ?>
-                                                </span>
+                                                </div>
                                             </td>
-                                            <td><?php echo htmlspecialchars($subcategoria['descripcion'] ?? '-'); ?></td>
-                                            <td><span class="badge bg-secondary">Subcategoría</span></td>
+                                            <td class="text-muted small"><?php echo htmlspecialchars($subcategoria['descripcion'] ?? '-'); ?></td>
+                                            <td><span class="badge bg-secondary rounded-pill px-3">Subcategoría</span></td>
                                             <td class="text-center">
-                                                <span class="badge bg-info"><?php echo $subProductCount; ?></span>
+                                                <span class="badge bg-white text-muted border px-3"><?php echo $subProductCount; ?></span>
                                             </td>
                                             <td class="text-center">
                                                 <?php if ($subcategoria['activo']): ?>
-                                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Activo</span>
+                                                    <span class="badge rounded-pill bg-success p-2">
+                                                        <i class="bi bi-check-lg" style="font-size: 1.2rem;"></i>
+                                                    </span>
                                                 <?php else: ?>
-                                                    <span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Inactivo</span>
+                                                    <span class="badge rounded-pill bg-danger p-2">
+                                                        <i class="bi bi-x-lg" style="font-size: 1.2rem;"></i>
+                                                    </span>
                                                 <?php endif; ?>
                                             </td>
-                                            <td class="text-end">
-                                                <div class="btn-group btn-group-sm" role="group">
+                                            <td class="text-end pe-4">
+                                                <div class="d-flex justify-content-end gap-2">
                                                     <a href="<?php echo RUTA_URL; ?>categorias/ver/<?php echo $subcategoria['id']; ?>" 
-                                                       class="btn btn-outline-info" title="Ver detalles">
+                                                       class="btn btn-info btn-square text-white" title="Ver detalles" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                                                         <i class="bi bi-eye"></i>
                                                     </a>
                                                     <a href="<?php echo RUTA_URL; ?>categorias/editar/<?php echo $subcategoria['id']; ?>" 
-                                                       class="btn btn-outline-primary" title="Editar">
+                                                       class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
                                                 </div>
@@ -196,6 +261,5 @@ $jerarquia = CategoriaModel::listarJerarquico();
 </div>
 
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
-
 </body>
 </html>

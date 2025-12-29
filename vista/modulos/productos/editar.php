@@ -46,26 +46,90 @@ $categorias = CategoriaModel::listarJerarquico();
 
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h2><i class="bi bi-pencil"></i> Editar Producto</h2>
-                    <p class="text-muted mb-0"><?php echo htmlspecialchars($producto['nombre']); ?></p>
-                </div>
-                <div>
-                    <a href="<?php echo RUTA_URL;?>productos/ver/<?php echo $id; ?>" class="btn btn-outline-info me-2">
-                        <i class="bi bi-eye"></i> Ver
-                    </a>
-                    <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> Volver
-                    </a>
-                </div>
-            </div>
+<style>
+.editar-producto-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+.editar-producto-header {
+    background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+}
+.editar-producto-header h3 {
+    margin: 0;
+    font-weight: 600;
+}
+.form-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e9ecef;
+}
+.form-section-title {
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 0.5rem;
+}
+.form-section-title i {
+    color: #f5576c;
+}
+.btn-save-product {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border: none;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 10px;
+    font-size: 1rem;
+    color: white;
+}
+.btn-save-product:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+    color: white;
+}
+.btn-action-outline {
+    background: white;
+    color: #f5576c;
+    border: 1px solid rgba(245, 87, 108, 0.3);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+    font-weight: 500;
+}
+.btn-action-outline:hover {
+    background: #fff0f3;
+    color: #d93d52;
+    border-color: #d93d52;
+}
+.btn-back {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.4);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+    text-decoration: none;
+}
+.btn-back:hover {
+    background: rgba(255,255,255,0.3);
+    color: white;
+}
+</style>
 
-            <!-- Formulario -->
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
             <form id="formProducto" method="POST" action="<?php echo RUTA_URL; ?>productos/actualizar/<?php echo $id; ?>" enctype="multipart/form-data">
                 <input type="hidden" name="id" value="<?php echo $id; ?>">
                 <input type="hidden" name="imagen_actual" value="<?php echo htmlspecialchars($producto['imagen_url'] ?? ''); ?>">
@@ -74,216 +138,241 @@ $categorias = CategoriaModel::listarJerarquico();
                     echo csrf_field(); 
                 ?>
                 
-                <div class="card">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información Básica</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="sku" class="form-label">SKU <span class="text-muted">(Recomendado)</span></label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="sku" name="sku" 
-                                           value="<?php echo htmlspecialchars($producto['sku'] ?? ''); ?>" maxlength="50" placeholder="Ej: ELEC-042">
-                                    <?php if (empty($producto['sku'])): ?>
-                                        <button type="button" class="btn btn-outline-secondary" id="generarSKU">
-                                            <i class="bi bi-magic"></i> Generar
-                                        </button>
-                                    <?php endif; ?>
+                <div class="card editar-producto-card">
+                    <div class="editar-producto-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-white bg-opacity-25 rounded-circle p-3">
+                                    <i class="bi bi-pencil-square fs-3"></i>
                                 </div>
-                                <small class="text-muted">
-                                    <?php if (empty($producto['sku'])): ?>
-                                        <i class="bi bi-lightbulb"></i> <strong>Sugerencia:</strong> Asigna un SKU para mejor organización. Puedes generarlo automáticamente o escribirlo manualmente.
-                                    <?php else: ?>
-                                        <i class="bi bi-check-circle text-success"></i> Código único del producto
-                                    <?php endif; ?>
-                                </small>
+                                <div>
+                                    <h3>Editar Producto</h3>
+                                    <p class="mb-0 opacity-75">Editando: <?php echo htmlspecialchars($producto['nombre']); ?></p>
+                                </div>
                             </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label for="nombre" class="form-label">Nombre del Producto <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="nombre" name="nombre" required 
-                                       value="<?php echo htmlspecialchars($producto['nombre']); ?>">
+                            <div class="d-flex gap-2">
+                                <a href="<?php echo RUTA_URL;?>productos/ver/<?php echo $id; ?>" class="btn btn-back">
+                                    <i class="bi bi-eye"></i> Ver Detalle
+                                </a>
+                                <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-back">
+                                    <i class="bi bi-arrow-left"></i> Volver
+                                </a>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="categoria_id" class="form-label">Categoría</label>
-                                <select class="form-select select2-searchable" id="categoria_id" name="categoria_id" data-placeholder="Buscar categoría...">
-                                    <option value="">Sin categoría</option>
-                                    <?php foreach ($categorias as $cat): ?>
-                                        <option value="<?php echo $cat['id']; ?>" 
-                                                <?php echo ($producto['categoria_id'] == $cat['id']) ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($cat['nombre']); ?>
-                                        </option>
-                                        <?php if (!empty($cat['subcategorias'])): ?>
-                                            <?php foreach ($cat['subcategorias'] as $subcat): ?>
-                                                <option value="<?php echo $subcat['id']; ?>"
-                                                        <?php echo ($producto['categoria_id'] == $subcat['id']) ? 'selected' : ''; ?>>
-                                                    &nbsp;&nbsp;↳ <?php echo htmlspecialchars($subcat['nombre']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
+                    <div class="card-body p-4">
+                        <!-- Información Básica -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-info-circle"></i> Información Básica
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="sku" class="form-label fw-bold">SKU</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="sku" name="sku" 
+                                               value="<?php echo htmlspecialchars($producto['sku'] ?? ''); ?>" maxlength="50" placeholder="Ej: ELEC-042">
+                                        <?php if (empty($producto['sku'])): ?>
+                                            <button type="button" class="btn btn-outline-secondary" id="generarSKU">
+                                                <i class="bi bi-magic"></i> Generar
+                                            </button>
                                         <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                                    </div>
+                                    <small class="text-muted ms-1">
+                                        <?php if (empty($producto['sku'])): ?>
+                                            <i class="bi bi-lightbulb"></i> Sugerencia: Asigna un SKU para mejor organización.
+                                        <?php else: ?>
+                                            <i class="bi bi-check-circle text-success"></i> Código único del producto
+                                        <?php endif; ?>
+                                    </small>
+                                </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label for="marca" class="form-label">Marca</label>
-                                <input type="text" class="form-control" id="marca" name="marca" 
-                                       value="<?php echo htmlspecialchars($producto['marca'] ?? ''); ?>" maxlength="100">
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="descripcion" class="form-label">Descripción</label>
-                            <textarea class="form-control" id="descripcion" name="descripcion" rows="3"><?php echo htmlspecialchars($producto['descripcion'] ?? ''); ?></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Precios e Inventario -->
-                <div class="card mt-3">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Precios e Inventario</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="precio_usd" class="form-label">Precio (USD) <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input type="number" class="form-control" id="precio_usd" name="precio_usd" step="0.01" min="0" required 
-                                           value="<?php echo $producto['precio_usd']; ?>">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nombre" class="form-label fw-bold">Nombre del Producto <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required 
+                                           value="<?php echo htmlspecialchars($producto['nombre']); ?>">
                                 </div>
                             </div>
 
-                            <div class="col-md-4 mb-3">
-                                <label for="unidad" class="form-label">Unidad de Medida</label>
-                                <select class="form-select select2-searchable" id="unidad" name="unidad" data-placeholder="Seleccionar unidad...">
-                                    <?php 
-                                    $unidades = ['unidad', 'caja', 'paquete', 'docena', 'kg', 'litro'];
-                                    foreach ($unidades as $u):
-                                    ?>
-                                        <option value="<?php echo $u; ?>" <?php echo ($producto['unidad'] == $u) ? 'selected' : ''; ?>>
-                                            <?php echo ucfirst($u); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="categoria_id" class="form-label fw-bold">Categoría</label>
+                                    <select class="form-select select2-searchable" id="categoria_id" name="categoria_id" data-placeholder="Buscar categoría...">
+                                        <option value="">Sin categoría</option>
+                                        <?php foreach ($categorias as $cat): ?>
+                                            <option value="<?php echo $cat['id']; ?>" 
+                                                    <?php echo ($producto['categoria_id'] == $cat['id']) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($cat['nombre']); ?>
+                                            </option>
+                                            <?php if (!empty($cat['subcategorias'])): ?>
+                                                <?php foreach ($cat['subcategorias'] as $subcat): ?>
+                                                    <option value="<?php echo $subcat['id']; ?>"
+                                                            <?php echo ($producto['categoria_id'] == $subcat['id']) ? 'selected' : ''; ?>>
+                                                        &nbsp;&nbsp;↳ <?php echo htmlspecialchars($subcat['nombre']); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="marca" class="form-label fw-bold">Marca</label>
+                                    <input type="text" class="form-control" id="marca" name="marca" 
+                                           value="<?php echo htmlspecialchars($producto['marca'] ?? ''); ?>" maxlength="100">
+                                </div>
                             </div>
 
-                            <div class="col-md-4 mb-3">
-                                <label for="peso" class="form-label">Peso (kg)</label>
-                                <input type="number" class="form-control" id="peso" name="peso" step="0.01" min="0" 
-                                       value="<?php echo $producto['peso'] ?? 0; ?>">
+                            <div class="mb-3">
+                                <label for="descripcion" class="form-label fw-bold">Descripción</label>
+                                <textarea class="form-control" id="descripcion" name="descripcion" rows="3"><?php echo htmlspecialchars($producto['descripcion'] ?? ''); ?></textarea>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="stock_minimo" class="form-label">Stock Mínimo</label>
-                                <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" min="0" 
-                                       value="<?php echo $producto['stock_minimo'] ?? 10; ?>">
-                                <small class="text-muted">Para alertas</small>
+                        <!-- Precios e Inventario -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-currency-dollar"></i> Precios e Inventario
                             </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label for="stock_maximo" class="form-label">Stock Máximo</label>
-                                <input type="number" class="form-control" id="stock_maximo" name="stock_maximo" min="0" 
-                                       value="<?php echo $producto['stock_maximo'] ?? 100; ?>">
-                                <small class="text-muted">Capacidad máxima</small>
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Estado</label>
-                                <div class="form-check form-switch mt-2">
-                                    <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" 
-                                           <?php echo (isset($producto['activo']) && $producto['activo']) ? 'checked' : ''; ?>>
-                                    <label class="form-check-label" for="activo">
-                                        Producto activo
-                                    </label>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="precio_usd" class="form-label fw-bold">Precio (USD) <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="precio_usd" name="precio_usd" step="0.01" min="0" required 
+                                               value="<?php echo $producto['precio_usd']; ?>">
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle"></i> <strong>Stock Actual:</strong> 
-                            <?php 
-                            $stockActual = $producto['stock_total'] ?? 0;
-                            $stockMinimo = $producto['stock_minimo'] ?? 10;
-                            echo $stockActual . ' unidades';
-                            if ($stockActual < $stockMinimo) {
-                                echo ' <span class="badge bg-warning text-dark">Stock Bajo</span>';
-                            }
-                            ?>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Imagen -->
-                <div class="card mt-3">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="bi bi-image"></i> Imagen del Producto</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8 mb-3">
-                                <label for="imagen" class="form-label">Subir Nueva Imagen</label>
-                                <input type="file" class="form-control" id="imagen" name="imagen" accept="image/jpeg,image/png,image/gif,image/webp">
-                                <small class="text-muted">
-                                    <i class="bi bi-info-circle"></i> Formatos: JPG, PNG, GIF, WEBP. Máximo 5MB
-                                </small>
-                                
-                                <div class="mt-2">
-                                    <small class="text-muted">O ingresa una URL externa:</small>
-                                    <input type="url" class="form-control form-control-sm mt-1" id="imagen_url" name="imagen_url" 
-                                           value="<?php echo htmlspecialchars($producto['imagen_url'] ?? ''); ?>" 
-                                           placeholder="https://ejemplo.com/imagen.jpg" maxlength="500">
-                                </div>
-                                
-                                <?php if (!empty($producto['imagen_url'])): ?>
-                                <div class="form-check mt-2">
-                                    <input class="form-check-input" type="checkbox" id="eliminar_imagen" name="eliminar_imagen" value="1">
-                                    <label class="form-check-label text-danger" for="eliminar_imagen">
-                                        <i class="bi bi-trash"></i> Eliminar imagen actual
-                                    </label>
-                                </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Vista Previa</label>
-                                <div id="imagen-preview" class="border rounded p-2 text-center d-flex align-items-center justify-content-center" style="height: 150px; background: #f8f9fa;">
-                                    <?php if (!empty($producto['imagen_url'])): ?>
+                                <div class="col-md-4 mb-3">
+                                    <label for="unidad" class="form-label fw-bold">Unidad de Medida</label>
+                                    <select class="form-select select2-searchable" id="unidad" name="unidad" data-placeholder="Seleccionar unidad...">
                                         <?php 
-                                        $imgSrc = $producto['imagen_url'];
-                                        if (!str_starts_with($imgSrc, 'http')) {
-                                            $imgSrc = RUTA_URL . $imgSrc;
-                                        }
+                                        $unidades = ['unidad', 'caja', 'paquete', 'docena', 'kg', 'litro'];
+                                        foreach ($unidades as $u):
                                         ?>
-                                        <img src="<?php echo htmlspecialchars($imgSrc); ?>" class="img-fluid rounded" style="max-height: 140px;" 
-                                             onerror="this.parentElement.innerHTML='<div><i class=\'bi bi-exclamation-triangle text-warning\' style=\'font-size: 3rem;\'></i><p class=\'text-muted small mb-0\'>Error al cargar</p></div>'">
-                                    <?php else: ?>
-                                        <div>
-                                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
-                                            <p class="text-muted small mb-0">Sin imagen</p>
-                                        </div>
+                                            <option value="<?php echo $u; ?>" <?php echo ($producto['unidad'] == $u) ? 'selected' : ''; ?>>
+                                                <?php echo ucfirst($u); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label for="peso" class="form-label fw-bold">Peso (kg)</label>
+                                    <input type="number" class="form-control" id="peso" name="peso" step="0.01" min="0" 
+                                           value="<?php echo $producto['peso'] ?? 0; ?>">
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="stock_minimo" class="form-label fw-bold">Stock Mínimo</label>
+                                    <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" min="0" 
+                                           value="<?php echo $producto['stock_minimo'] ?? 10; ?>">
+                                    <small class="text-muted">Para alertas de stock bajo</small>
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label for="stock_maximo" class="form-label fw-bold">Stock Máximo</label>
+                                    <input type="number" class="form-control" id="stock_maximo" name="stock_maximo" min="0" 
+                                           value="<?php echo $producto['stock_maximo'] ?? 100; ?>">
+                                </div>
+
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Estado</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" 
+                                               <?php echo (isset($producto['activo']) && $producto['activo']) ? 'checked' : ''; ?>>
+                                        <label class="form-check-label" for="activo">
+                                            Producto activo
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 p-3 bg-white rounded border border-info bg-opacity-10">
+                                <div class="d-flex align-items-center text-info">
+                                    <i class="bi bi-box-seam me-2 fs-5"></i>
+                                    <strong>Stock Actual:</strong> 
+                                    <span class="ms-2 fs-5 text-dark fw-bold">
+                                        <?php 
+                                        $stockActual = $producto['stock_total'] ?? 0;
+                                        $stockMinimo = $producto['stock_minimo'] ?? 10;
+                                        echo $stockActual;
+                                        ?>
+                                    	<span class="fs-6 fw-normal text-muted">unidades</span>
+                                    </span>
+                                    <?php if ($stockActual < $stockMinimo): ?>
+                                        <span class="badge bg-warning text-dark ms-2">Stock Bajo</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Botones -->
-                <div class="card mt-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-secondary">
-                                <i class="bi bi-x-circle"></i> Cancelar
+                        <!-- Imagen -->
+                        <div class="form-section mb-0">
+                            <div class="form-section-title">
+                                <i class="bi bi-image"></i> Imagen del Producto
+                            </div>
+                            <div class="row">
+                                <div class="col-md-8 mb-3">
+                                    <label for="imagen" class="form-label fw-bold">Subir Nueva Imagen</label>
+                                    <input type="file" class="form-control" id="imagen" name="imagen" accept="image/jpeg,image/png,image/gif,image/webp">
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="bi bi-info-circle"></i> Formatos: JPG, PNG, GIF, WEBP. Máximo 5MB
+                                    </small>
+                                    
+                                    <div class="mt-3">
+                                        <label class="form-label fw-bold small text-muted">O ingresa una URL externa:</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                            <input type="url" class="form-control" id="imagen_url" name="imagen_url" 
+                                                value="<?php echo htmlspecialchars($producto['imagen_url'] ?? ''); ?>" 
+                                                placeholder="https://ejemplo.com/imagen.jpg" maxlength="500">
+                                        </div>
+                                    </div>
+                                    
+                                    <?php if (!empty($producto['imagen_url'])): ?>
+                                    <div class="form-check mt-3 pt-2 border-top">
+                                        <input class="form-check-input" type="checkbox" id="eliminar_imagen" name="eliminar_imagen" value="1">
+                                        <label class="form-check-label text-danger fw-bold" for="eliminar_imagen">
+                                            <i class="bi bi-trash"></i> Eliminar imagen actual
+                                        </label>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <label class="form-label fw-bold">Vista Previa Actual</label>
+                                    <div id="imagen-preview" class="border rounded p-2 d-flex align-items-center justify-content-center mx-auto bg-white" style="height: 160px; width: 100%; max-width: 200px;">
+                                        <?php if (!empty($producto['imagen_url'])): ?>
+                                            <?php 
+                                            $imgSrc = $producto['imagen_url'];
+                                            if (!str_starts_with($imgSrc, 'http')) {
+                                                $imgSrc = RUTA_URL . $imgSrc;
+                                            }
+                                            ?>
+                                            <img src="<?php echo htmlspecialchars($imgSrc); ?>" class="img-fluid rounded" style="max-height: 140px;" 
+                                                 onerror="this.parentElement.innerHTML='<div><i class=\'bi bi-exclamation-triangle text-warning\' style=\'font-size: 3rem;\'></i><p class=\'text-muted small mb-0\'>Error al cargar</p></div>'">
+                                        <?php else: ?>
+                                            <div>
+                                                <i class="bi bi-image text-muted opacity-25" style="font-size: 3rem;"></i>
+                                                <p class="text-muted small mb-0 opacity-75">Sin imagen</p>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-end gap-3 mt-4">
+                            <a href="<?php echo RUTA_URL; ?>productos/listar" class="btn btn-secondary px-4">
+                                Cancelar
                             </a>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-save"></i> Guardar Cambios
+                            <button type="submit" class="btn btn-save-product shadow-lg">
+                                <i class="bi bi-check-lg me-1"></i> Guardar Cambios
                             </button>
                         </div>
                     </div>
