@@ -24,7 +24,7 @@ if ($productoId) {
         $producto = null; // No tiene permiso
     }
 }
-?>
+
 // Obtener fechas del filtro o usar valores por defecto (mes actual)
 $fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-01');
 $fechaFin = $_GET['fecha_fin'] ?? date('Y-m-d');
