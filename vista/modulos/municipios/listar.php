@@ -80,7 +80,6 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                                     <td>
                                         <span class="badge bg-light text-dark border"><i class="bi bi-map me-1"></i> <?= htmlspecialchars($depName) ?></span>
                                     </td>
-                                    <td class="text-end">
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
                                         <a href="<?= RUTA_URL ?>municipios/ver/<?= urlencode($value['id']) ?>" class="btn btn-info btn-square text-white" title="Ver detalles" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
