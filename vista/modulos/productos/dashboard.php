@@ -339,13 +339,13 @@ $valorEstimado = array_sum(array_map(function($p) {
                                             </td>
                                             <td class="text-center text-muted"><?php echo $prod['stock_minimo']; ?></td>
                                             <td class="text-center">
-                                                <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill">
+                                                <span class="badge bg-danger text-white px-3 py-2 rounded-pill">
                                                     -<?php echo $prod['faltante']; ?> unid.
                                                 </span>
                                             </td>
                                             <td class="text-center">
                                                 <?php if ($prod['stock_actual'] == 0): ?>
-                                                    <span class="badge bg-danger">AGOTADO</span>
+                                                    <span class="badge bg-danger text-white">AGOTADO</span>
                                                 <?php else: ?>
                                                     <span class="badge bg-warning text-dark">BAJO</span>
                                                 <?php endif; ?>
