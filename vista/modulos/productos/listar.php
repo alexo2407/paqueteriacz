@@ -285,11 +285,11 @@ sort($marcasUnicas);
                                 <td class="text-center">
                                     <?php if ($prod['activo'] ?? true): ?>
                                         <span class="badge rounded-pill bg-success p-2">
-                                            <i class="bi bi-check-lg" style="font-size: 1.2rem;"></i>
+                                            <i class="bi bi-check-lg text-white" style="font-size: 1.2rem;"></i>
                                         </span>
                                     <?php else: ?>
                                         <span class="badge rounded-pill bg-danger p-2">
-                                            <i class="bi bi-x-lg" style="font-size: 1.2rem;"></i>
+                                            <i class="bi bi-x-lg text-white" style="font-size: 1.2rem;"></i>
                                         </span>
                                     <?php endif; ?>
                                 </td>

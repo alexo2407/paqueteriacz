@@ -114,9 +114,9 @@ if ($producto) {
     padding: 0.4em 0.8em;
     border-radius: 4px;
 }
-.badge-entrada { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
-.badge-salida { background-color: rgba(220, 53, 69, 0.1); color: #dc3545; }
-.badge-ajuste { background-color: rgba(255, 193, 7, 0.1); color: #ffc107; }
+.badge-entrada { background-color: #198754; color: white; }
+.badge-salida { background-color: #dc3545; color: white; }
+.badge-ajuste { background-color: #ffc107; color: #212529; }
 
 @media print {
     .no-print { display: none !important; }

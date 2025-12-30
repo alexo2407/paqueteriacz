@@ -251,11 +251,11 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
                                 if (!$tipoMov) $tipoMov = ($mov['cantidad'] >= 0) ? 'entrada' : 'salida';
                                 
                                 $badges = [
-                                    'entrada' => '<span class="badge bg-success bg-opacity-10 text-success badge-movement"><i class="bi bi-arrow-down-circle me-1"></i> Entrada</span>',
-                                    'salida' => '<span class="badge bg-danger bg-opacity-10 text-danger badge-movement"><i class="bi bi-arrow-up-circle me-1"></i> Salida</span>',
-                                    'ajuste' => '<span class="badge bg-warning bg-opacity-10 text-dark badge-movement"><i class="bi bi-wrench me-1"></i> Ajuste</span>',
-                                    'devolucion' => '<span class="badge bg-info bg-opacity-10 text-info badge-movement"><i class="bi bi-arrow-counterclockwise me-1"></i> Devolución</span>',
-                                    'transferencia' => '<span class="badge bg-primary bg-opacity-10 text-primary badge-movement"><i class="bi bi-arrow-left-right me-1"></i> Transf.</span>'
+                                    'entrada' => '<span class="badge bg-success text-white badge-movement"><i class="bi bi-arrow-down-circle me-1"></i> Entrada</span>',
+                                    'salida' => '<span class="badge bg-danger text-white badge-movement"><i class="bi bi-arrow-up-circle me-1"></i> Salida</span>',
+                                    'ajuste' => '<span class="badge bg-warning text-dark badge-movement"><i class="bi bi-wrench me-1"></i> Ajuste</span>',
+                                    'devolucion' => '<span class="badge bg-info text-white badge-movement"><i class="bi bi-arrow-counterclockwise me-1"></i> Devolución</span>',
+                                    'transferencia' => '<span class="badge bg-primary text-white badge-movement"><i class="bi bi-arrow-left-right me-1"></i> Transf.</span>'
                                 ];
                                 $tipoBadge = $badges[$tipoMov] ?? '<span class="badge bg-secondary badge-movement">Otro</span>';
                                 
