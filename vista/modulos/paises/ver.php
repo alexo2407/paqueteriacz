@@ -1,6 +1,7 @@
 <?php
 include("vista/includes/header.php");
 require_once __DIR__ . '/../../../controlador/pais.php';
+global $ruta; // Ensure $ruta is available in this scope
 $ctrl = new PaisesController();
 $id = isset($ruta[2]) ? (int)$ruta[2] : null;
 $p = $ctrl->ver($id);
