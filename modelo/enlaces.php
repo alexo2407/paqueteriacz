@@ -52,6 +52,7 @@ class EnlacesModel
             "recuperar-password",
             "reset-password",
             "auditoria",
+            "crm",
             "salir"
         ];
 

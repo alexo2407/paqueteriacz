@@ -1,0 +1,27 @@
+# API Router Configuration
+# Redirige todas las peticiones a /api/ al router index.php
+
+Options -Indexes
+Options -MultiViews
+
+# Habilitar rewrite engine
+RewriteEngine On
+
+# Pasar el header Authorization como variable de entorno para JWT
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+
+# Si el proxy envía X-Forwarded-Proto=https, marcar HTTPS en env
+RewriteCond %{HTTP:X-Forwarded-Proto} =https [OR]
+RewriteCond %{HTTP:X-Forwarded-Ssl} =on
+RewriteRule .* - [E=HTTPS:on]
+
+# No reescribir si es el archivo index.php del router
+RewriteCond %{REQUEST_URI} !^/paqueteriacz/api/index\.php
+
+# No reescribir si es un archivo o directorio que existe físicamente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Redirigir todas las peticiones al router API (index.php)
+RewriteRule ^(.*)$ index.php [QSA,L]

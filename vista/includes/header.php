@@ -130,14 +130,58 @@
                 <?php endif; ?>
 
                 <!-- ========================================== -->
-                <!-- 5. ADMINISTRACIÓN - Solo Admin -->
+                <!-- 6. CRM - Solo Admin (Nuevo Módulo) -->
                 <!-- ========================================== -->
+                <?php if ($isAdmin): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarCRM" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-diagram-3"></i> CRM Relay
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarCRM">
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/listar">
+                                <i class="bi bi-people-fill"></i> Leads
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/integraciones">
+                                <i class="bi bi-plug"></i> Integraciones
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/monitor">
+                                <i class="bi bi-activity"></i> Monitor Worker
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/reportes">
+                                <i class="bi bi-graph-up"></i> Reportes
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+
+            </ul>
+
+            <!-- ========================================== -->
+            <!-- MENÚ DERECHO - Administración, Docs y Usuario -->
+            <!-- ========================================== -->
+            <ul class="navbar-nav mb-2 mb-lg-0">
+
+                <!-- Administración (Solo Admin) -->
                 <?php if ($isAdmin): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarAdmin" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-gear"></i> Administración
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarAdmin">
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarAdmin">
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios/listar">
                                 <i class="bi bi-people"></i> Usuarios
@@ -149,23 +193,21 @@
                                 <i class="bi bi-clock-history"></i> Historial de Auditoría
                             </a>
                         </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-header">Documentación API</li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>api/doc/">
+                                <i class="bi bi-book"></i> Documentación General
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>api/doc/crmdoc.php">
+                                <i class="bi bi-diagram-3"></i> Documentación CRM
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <?php endif; ?>
-
-            </ul>
-
-            <!-- ========================================== -->
-            <!-- MENÚ DERECHO - Usuario y Ayuda -->
-            <!-- ========================================== -->
-            <ul class="navbar-nav mb-2 mb-lg-0">
-                
-                <!-- Documentación API -->
-                <li class="nav-item">
-                    <a class="nav-link text-muted" href="<?= RUTA_URL ?>/api/doc/" title="Documentación API">
-                        <i class="bi bi-code-slash"></i>
-                    </a>
-                </li>
 
                 <!-- Usuario -->
                 <?php

@@ -969,3 +969,118 @@ if (isset($ruta[0]) && $ruta[0] === 'cambiarEstados') {
         exit;
     }
 }
+
+// -----------------------
+// Manejo de CRM (POST a ?enlace=crm/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/crm.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/permissions.php';
+    start_secure_session();
+    
+    // Solo admin tiene acceso
+    if (!isAdmin()) {
+        set_flash('error', 'No tienes permisos para realizar esta acción.');
+        header('Location: ' . RUTA_URL . 'dashboard');
+        exit;
+    }
+    
+    $ctrl = new CrmController();
+    
+    if ($accion === 'cambiarEstado') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $nuevoEstado = $_POST['estado'] ?? '';
+        $observaciones = $_POST['observaciones'] ?? null;
+        
+        $resultado = $ctrl->cambiarEstado($id, $nuevoEstado, $observaciones);
+        set_flash($resultado['success'] ? 'success' : 'error', $resultado['message']);
+        header('Location: ' . RUTA_URL . 'crm/ver/' . $id);
+        exit;
+    }
+
+    // Guardar integración (crear/editar)
+    if ($accion === 'guardarIntegracion') {
+        $resultado = $ctrl->guardarIntegracion($_POST);
+        set_flash($resultado['success'] ? 'success' : 'error', $resultado['message']);
+        header('Location: ' . RUTA_URL . 'crm/integraciones');
+        exit;
+    }
+
+    // Eliminar integración
+    if ($accion === 'eliminarIntegracion') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $resultado = $ctrl->eliminarIntegracion($id);
+        set_flash($resultado['success'] ? 'success' : 'error', $resultado['message']);
+        header('Location: ' . RUTA_URL . 'crm/integraciones');
+        exit;
+    }
+
+    // Guardar Lead (manual)
+    if ($accion === 'guardarLead') {
+        $resultado = $ctrl->guardarLead($_POST);
+        
+        if ($resultado['success']) {
+            set_flash('success', $resultado['message']);
+            // Redirigir al lead creado/editado si hay ID (crear devuelve lead_id)
+            $id = isset($resultado['lead_id']) ? $resultado['lead_id'] : ($_POST['id'] ?? 0);
+            if ($id > 0) {
+                header('Location: ' . RUTA_URL . 'crm/ver/' . $id);
+            } else {
+                header('Location: ' . RUTA_URL . 'crm/listar');
+            }
+        } else {
+            set_flash('error', $resultado['message']);
+            if (!empty($_POST['id'])) {
+                header('Location: ' . RUTA_URL . 'crm/editar/' . $_POST['id']);
+            } else {
+                header('Location: ' . RUTA_URL . 'crm/crear');
+            }
+        }
+        exit;
+    }
+    // Acciones de Cola (Monitor)
+    if ($accion === 'reintentarOutbox') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $ctrl->reintentarOutbox($id);
+        set_flash('success', 'Mensaje reprogramado para reintento.');
+        header('Location: ' . RUTA_URL . 'crm/monitor');
+        exit;
+    }
+
+    if ($accion === 'eliminarOutbox') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $ctrl->eliminarOutbox($id);
+        set_flash('success', 'Mensaje eliminado de la cola de salida.');
+        header('Location: ' . RUTA_URL . 'crm/monitor');
+        exit;
+    }
+
+    if ($accion === 'reintentarInbox') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $ctrl->reintentarInbox($id);
+        set_flash('success', 'Mensaje reprogramado para procesamiento.');
+        header('Location: ' . RUTA_URL . 'crm/monitor');
+        exit;
+    }
+
+    if ($accion === 'eliminarInbox') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $ctrl->eliminarInbox($id);
+        set_flash('success', 'Mensaje eliminado de la cola de entrada.');
+        header('Location: ' . RUTA_URL . 'crm/monitor');
+        exit;
+    }
+
+    if ($accion === 'exportar') {
+        $filters = [
+            'estado' => $_GET['estado'] ?? '',
+            'fecha_desde' => $_GET['fecha_desde'] ?? '',
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
+            'busqueda' => $_GET['busqueda'] ?? ''
+        ];
+        $ctrl->exportarLeads($filters);
+    }
+}
+

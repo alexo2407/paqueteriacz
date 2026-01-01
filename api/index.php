@@ -126,6 +126,50 @@ if (preg_match('/\/api\/monedas\/eliminar$/', $path) && $method === 'DELETE') {
     exit;
 }
 
+// -----------------------
+// Rutas CRM Relay
+// -----------------------
+
+// POST /api/crm/leads - Recibir leads (individual o batch)
+if (preg_match('/\/api\/crm\/leads$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/crm/leads.php';
+    exit;
+}
+
+// GET /api/crm/leads - Listar leads
+if (preg_match('/\/api\/crm\/leads$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/crm/leads_list.php';
+    exit;
+}
+
+// POST /api/crm/leads/{id}/estado - Actualizar estado
+if (preg_match('/\/api\/crm\/leads\/(\d+)\/estado$/', $path, $matches) && $method === 'POST') {
+    $_GET['lead_id'] = $matches[1];
+    require_once __DIR__ . '/crm/lead_status.php';
+    exit;
+}
+
+// GET /api/crm/leads/{id}/timeline - Ver timeline
+if (preg_match('/\/api\/crm\/leads\/(\d+)\/timeline$/', $path, $matches) && $method === 'GET') {
+    $_GET['lead_id'] = $matches[1];
+    $_GET['action'] = 'timeline';
+    require_once __DIR__ . '/crm/lead_detail.php';
+    exit;
+}
+
+// GET /api/crm/leads/{id} - Ver detalle
+if (preg_match('/\/api\/crm\/leads\/(\d+)$/', $path, $matches) && $method === 'GET') {
+    $_GET['lead_id'] = $matches[1];
+    require_once __DIR__ . '/crm/lead_detail.php';
+    exit;
+}
+
+// GET /api/crm/metrics - Métricas (admin only)
+if (preg_match('/\/api\/crm\/metrics$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/crm/metrics.php';
+    exit;
+}
+
 // Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
 if (strpos($path, '/api/') === 0) {
     http_response_code(404);

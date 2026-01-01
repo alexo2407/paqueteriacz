@@ -260,3 +260,13 @@ function getCurrentUserId() {
     return null;
 }
 
+/**
+ * Alias para isSuperAdmin() - verificar si el usuario es administrador.
+ * 
+ * @return bool
+ */
+function isAdmin() {
+    return isSuperAdmin();
+}
+
+
