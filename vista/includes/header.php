@@ -205,6 +205,11 @@
                                 <i class="bi bi-diagram-3"></i> Documentación CRM
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/manual">
+                                <i class="bi bi-book-half"></i> Manual CRM
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <?php endif; ?>
