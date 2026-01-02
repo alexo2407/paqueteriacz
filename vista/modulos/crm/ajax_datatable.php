@@ -83,12 +83,16 @@ try {
     if (!empty($busqueda)) {
         // Si es numérico, buscar exacto en ID (más rápido)
         if (is_numeric($busqueda)) {
-            $where[] = '(cl.id = :busqueda_exact OR cl.proveedor_lead_id LIKE :busqueda OR cl.nombre LIKE :busqueda OR cl.telefono LIKE :busqueda)';
+            $where[] = '(cl.id = :busqueda_exact OR cl.proveedor_lead_id LIKE :busqueda1 OR cl.nombre LIKE :busqueda2 OR cl.telefono LIKE :busqueda3)';
             $params[':busqueda_exact'] = (int)$busqueda;
-            $params[':busqueda'] = '%' . $busqueda . '%';
+            $params[':busqueda1'] = '%' . $busqueda . '%';
+            $params[':busqueda2'] = '%' . $busqueda . '%';
+            $params[':busqueda3'] = '%' . $busqueda . '%';
         } else {
-            $where[] = '(cl.proveedor_lead_id LIKE :busqueda OR cl.nombre LIKE :busqueda OR cl.telefono LIKE :busqueda)';
-            $params[':busqueda'] = '%' . $busqueda . '%';
+            $where[] = '(cl.proveedor_lead_id LIKE :busqueda1 OR cl.nombre LIKE :busqueda2 OR cl.telefono LIKE :busqueda3)';
+            $params[':busqueda1'] = '%' . $busqueda . '%';
+            $params[':busqueda2'] = '%' . $busqueda . '%';
+            $params[':busqueda3'] = '%' . $busqueda . '%';
         }
     }
     
