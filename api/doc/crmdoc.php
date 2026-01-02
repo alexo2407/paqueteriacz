@@ -501,8 +501,8 @@
         <div class="container text-center mt-4">
             <h1 data-lang="en">CRM Relay API Documentation</h1>
             <h1 data-lang="es">Documentación API CRM Relay</h1>
-            <p class="lead" data-lang="en">Async lead processing with inbox/outbox pattern and HMAC-signed webhooks</p>
-            <p class="lead" data-lang="es">Procesamiento asíncrono de leads con patrón inbox/outbox y webhooks firmados con HMAC</p>
+            <p class="lead" data-lang="en">Simple JWT-authenticated API for lead management</p>
+            <p class="lead" data-lang="es">API simple con autenticación JWT para gestión de leads</p>
             <p class="mt-3">
                 <a class="btn btn-outline-light btn-sm" href="../../docs/CRM_CURL_EXAMPLES.md" target="_blank" data-lang="en">📋 View cURL Examples</a>
                 <a class="btn btn-outline-light btn-sm" href="../../docs/CRM_CURL_EXAMPLES.md" target="_blank" data-lang="es">📋 Ver Ejemplos cURL</a>
@@ -516,28 +516,28 @@
             <h2 class="section-title" data-lang="en">Quick Reference</h2>
             <h2 class="section-title" data-lang="es">Referencia Rápida</h2>
             
-            <p data-lang="en">The CRM Relay module enables <strong>providers</strong> to submit leads (individual or batch), which are processed asynchronously and forwarded to <strong>clients</strong> via signed webhooks. Clients can update lead status, triggering automatic notifications to providers.</p>
-            <p data-lang="es">El módulo CRM Relay permite a los <strong>proveedores</strong> enviar leads (individuales o en lote), que se procesan de forma asíncrona y se reenvían a los <strong>clientes</strong> mediante webhooks firmados. Los clientes pueden actualizar el estado del lead, activando notificaciones automáticas a los proveedores.</p>
+            <p data-lang="en">The CRM API allows <strong>providers</strong> to create and view leads, while <strong>clients</strong> can update lead status. All endpoints use JWT authentication.</p>
+            <p data-lang="es">La API CRM permite a los <strong>proveedores</strong> crear y ver leads, mientras que los <strong>clientes</strong> pueden actualizar el estado. Todos los endpoints usan autenticación JWT.</p>
             
             <h4 data-lang="en">✨ Key Features</h4>
             <h4 data-lang="es">✨ Características Principales</h4>
             
             <ul data-lang="en">
-                <li><strong>202 Accepted</strong> — Immediate responses without blocking</li>
-                <li><strong>Strong Idempotency</strong> — Unique <code>proveedor_lead_id</code> prevents duplicates</li>
+                <li><strong>202 Accepted</strong> — Immediate responses for lead creation</li>
+                <li><strong>Idempotency</strong> — Unique <code>proveedor_lead_id</code> prevents duplicates</li>
                 <li><strong>State Normalization</strong> — Auto-converts aliases ("Aprovado" → "APROBADO")</li>
-                <li><strong>HMAC SHA256</strong> — Cryptographically signed webhooks</li>
-                <li><strong>Exponential Backoff</strong> — Automatic retries: 1m, 5m, 15m, 1h, 6h</li>
-                <li><strong>Role-Based Access</strong> — Stateless JWT authentication</li>
+                <li><strong>JWT Authentication</strong> — Secure Bearer token authentication</li>
+                <li><strong>Role-Based Access</strong> — Providers, Clients, and Administrators</li>
+                <li><strong>Filtering & Pagination</strong> — Easy data retrieval</li>
             </ul>
             
             <ul data-lang="es">
-                <li><strong>202 Accepted</strong> — Respuestas inmediatas sin bloqueo</li>
-                <li><strong>Idempotencia Fuerte</strong> — <code>proveedor_lead_id</code> único previene duplicados</li>
+                <li><strong>202 Accepted</strong> — Respuestas inmediatas para creación de leads</li>
+                <li><strong>Idempotencia</strong> — <code>proveedor_lead_id</code> único previene duplicados</li>
                 <li><strong>Normalización de Estados</strong> — Convierte automáticamente aliases ("Aprovado" → "APROBADO")</li>
-                <li><strong>HMAC SHA256</strong> — Webhooks firmados criptográficamente</li>
-                <li><strong>Backoff Exponencial</strong> — Reintentos automáticos: 1m, 5m, 15m, 1h, 6h</li>
-                <li><strong>Acceso por Roles</strong> — Autenticación JWT sin estado</li>
+                <li><strong>Autenticación JWT</strong> — Autenticación segura con Bearer token</li>
+                <li><strong>Acceso por Roles</strong> — Proveedores, Clientes y Administradores</li>
+                <li><strong>Filtrado y Paginación</strong> — Recuperación fácil de datos</li>
             </ul>
         </div>
 
