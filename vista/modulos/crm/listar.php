@@ -47,11 +47,11 @@ include("vista/includes/header.php");
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Desde</label>
-                    <input type="date" name="fecha_desde" class="form-control">
+                    <input type="date" name="fecha_desde" class="form-control" value="<?= date('Y-m-01') ?>">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Hasta</label>
-                    <input type="date" name="fecha_hasta" class="form-control">
+                    <input type="date" name="fecha_hasta" class="form-control" value="<?= date('Y-m-d') ?>">
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Buscar</label>
