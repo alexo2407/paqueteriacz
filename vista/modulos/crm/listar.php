@@ -112,7 +112,6 @@ function exportarCSV() {
 
 $(document).ready(function() {
     const apiUrl = '<?= RUTA_URL ?>vista/modulos/crm/ajax_datatable.php';
-    console.log('DataTables API URL:', apiUrl);
     
     const table = $('#leadsTable').DataTable({
         processing: true,
