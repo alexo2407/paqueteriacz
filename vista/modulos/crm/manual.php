@@ -53,7 +53,8 @@ include("vista/includes/header.php");
                                 <li><a href="#arquitectura" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 2. Arquitectura del Sistema</a></li>
                                 <li><a href="#flujo-leads" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 3. Flujo de Leads</a></li>
                                 <li><a href="#integraciones" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 4. Integraciones Externas</a></li>
-                                <li><a href="#api" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 5. API REST</a></li>
+                                <li><a href="#api" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 5. API REST (Proveedores)</a></li>
+                                <li><a href="#api-clientes" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 5.5. API para Clientes</a></li>
                             </ul>
                         </div>
                         <div class="col-md-6">
@@ -122,8 +123,15 @@ include("vista/includes/header.php");
                                     <strong>1. CRM Inbox</strong>
                                 </div>
                                 <div class="card-body">
-                                    <p><strong>Propósito:</strong> Recibe leads desde sistemas externos</p>
+                                    <p><strong>Propósito:</strong> Cola de entrada para procesar leads de proveedores</p>
                                     <p><strong>Tabla:</strong> <code>crm_inbox</code></p>
+                                    <p><strong>Campos clave:</strong></p>
+                                    <ul>
+                                        <li><code>source</code> - Origen: 'proveedor' o 'cliente'</li>
+                                        <li><code>idempotency_key</code> - Clave única para evitar duplicados</li>
+                                        <li><code>payload</code> - Datos JSON del lead</li>
+                                        <li><code>status</code> - pending/processed/failed</li>
+                                    </ul>
                                     <p><strong>Estados:</strong></p>
                                     <ul>
                                         <li><span class="badge bg-warning">pending</span> - Esperando procesamiento</li>
@@ -178,15 +186,20 @@ include("vista/includes/header.php");
                                     <strong>4. CRM Integrations</strong>
                                 </div>
                                 <div class="card-body">
-                                    <p><strong>Propósito:</strong> Configura conexiones con CRMs externos</p>
+                                    <p><strong>Propósito:</strong> Configura webhooks para usuarios del sistema</p>
                                     <p><strong>Tabla:</strong> <code>crm_integrations</code></p>
-                                    <p><strong>Datos:</strong></p>
+                                    <p><strong>Modelo:</strong> Cada integración está vinculada a un <strong>usuario</strong> del sistema</p>
+                                    <p><strong>Campos:</strong></p>
                                     <ul>
-                                        <li>Nombre de la integración</li>
-                                        <li>URL del webhook externo</li>
-                                        <li>API Key y Secret Key (HMAC)</li>
-                                        <li>Estado (activo/inactivo)</li>
+                                        <li><code>user_id</code> - ID del usuario propietario</li>
+                                        <li><code>kind</code> - Tipo: 'proveedor' o 'cliente'</li>
+                                        <li><code>webhook_url</code> - URL destino para webhooks salientes</li>
+                                        <li><code>secret</code> - Clave para firmar webhooks (HMAC)</li>
+                                        <li><code>is_active</code> - Estado activo/inactivo</li>
                                     </ul>
+                                    <div class="alert alert-info mb-0">
+                                        <small><i class="bi bi-info-circle"></i> Un usuario puede tener dos integraciones: una como 'proveedor' y otra como 'cliente'.</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -217,36 +230,57 @@ include("vista/includes/header.php");
                     <div class="timeline">
                         <div class="card mb-3 border-primary">
                             <div class="card-header bg-primary text-white">
-                                <strong>Paso 1:</strong> CRM Externo envía webhook
+                                <strong>Paso 1:</strong> Usuario Proveedor envía lead
                             </div>
                             <div class="card-body">
                                 <p><strong>Endpoint:</strong> <code>POST /api/crm/leads</code></p>
                                 <p><strong>Headers requeridos:</strong></p>
                                 <pre class="bg-light p-2"><code>Content-Type: application/json
-X-API-Key: [tu_api_key]
-X-Signature: [hmac_sha256_signature]</code></pre>
-                                <p><strong>Payload ejemplo:</strong></p>
+Authorization: Bearer [JWT_TOKEN]</code></pre>
+                                <p><strong>Payload ejemplo (individual):</strong></p>
                                 <pre class="bg-light p-2"><code>{
-  "nombre": "Juan Pérez",
-  "email": "juan@example.com",
-  "telefono": "+502 1234-5678",
-  "mensaje": "Interesado en servicio de paquetería",
-  "origen": "Formulario Web",
-  "external_id": "lead_12345"
+  "lead": {
+    "proveedor_lead_id": "lead_12345",
+    "fecha_hora": "2026-01-02T10:30:00Z",
+    "nombre": "Juan Pérez",
+    "email": "juan@example.com",
+    "telefono": "+502 1234-5678",
+    "mensaje": "Interesado en servicio de paquetería",
+    "origen": "Formulario Web"
+  }
+}</code></pre>
+                                <p><strong>Payload ejemplo (batch):</strong></p>
+                                <pre class="bg-light p-2"><code>{
+  "leads": [
+    {
+      "proveedor_lead_id": "lead_001",
+      "fecha_hora": "2026-01-02T10:30:00Z",
+      "nombre": "Cliente 1",
+      "email": "cliente1@example.com"
+    },
+    {
+      "proveedor_lead_id": "lead_002",
+      "fecha_hora": "2026-01-02T10:35:00Z",
+      "nombre": "Cliente 2",
+      "email": "cliente2@example.com"
+    }
+  ]
 }</code></pre>
                             </div>
                         </div>
 
                         <div class="card mb-3 border-warning">
                             <div class="card-header bg-warning text-dark">
-                                <strong>Paso 2:</strong> Sistema valida autenticación
+                                <strong>Paso 2:</strong> Sistema valida autenticación JWT
                             </div>
                             <div class="card-body">
                                 <ul class="mb-0">
-                                    <li>Verifica que el API Key exista en la tabla <code>crm_integrations</code></li>
-                                    <li>Calcula HMAC-SHA256 del payload usando el Secret Key</li>
-                                    <li>Compara con la firma en header <code>X-Signature</code></li>
-                                    <li>Si no coincide → <span class="badge bg-danger">401 Unauthorized</span></li>
+                                    <li>Decodifica y valida el JWT del header <code>Authorization: Bearer</code></li>
+                                    <li>Verifica que el token no esté expirado</li>
+                                    <li>Extrae el <code>user_id</code> del payload del token</li>
+                                    <li>Verifica que el usuario tenga rol <strong>Proveedor</strong> o <strong>Admin</strong></li>
+                                    <li>Si falta token → <span class="badge bg-danger">401 Unauthorized</span></li>
+                                    <li>Si rol insuficiente → <span class="badge bg-danger">403 Forbidden</span></li>
                                 </ul>
                             </div>
                         </div>
@@ -258,11 +292,15 @@ X-Signature: [hmac_sha256_signature]</code></pre>
                             <div class="card-body">
                                 <p>Se guarda en <code>crm_inbox</code> con:</p>
                                 <ul class="mb-0">
-                                    <li>integration_id (de la integración autenticada)</li>
-                                    <li>payload (JSON completo recibido)</li>
-                                    <li>status = <span class="badge bg-warning">pending</span></li>
-                                    <li>created_at (timestamp actual)</li>
+                                    <li><strong>source</strong> = 'proveedor' (origen del mensaje)</li>
+                                    <li><strong>idempotency_key</strong> = hash SHA-256 del payload (evita duplicados)</li>
+                                    <li><strong>payload</strong> = JSON completo incluyendo user_id y datos del lead</li>
+                                    <li><strong>status</strong> = <span class="badge bg-warning">pending</span></li>
+                                    <li><strong>created_at</strong> = timestamp actual</li>
                                 </ul>
+                                <div class="alert alert-info mt-2 mb-0">
+                                    <small><i class="bi bi-shield-check"></i> <strong>Idempotencia:</strong> Si se reenvía el mismo payload, el sistema detecta el duplicado por idempotency_key y no crea un registro nuevo.</small>
+                                </div>
                             </div>
                         </div>
 
@@ -357,7 +395,91 @@ X-Signature: [hmac_signature]</code></pre>
             </div>
         </div>
     </div>
+<!-- 3.3. Flujo desde Cliente (vía API) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-diagram-2"></i> 3.3. Flujo Alternativo: Cliente Actualiza Lead vía API
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> <strong>Escenario:</strong><br>
+                    Un <strong>distribuidor/cliente</strong> recibe leads asignados y puede actualizarlos desde su
+                    propio sistema usando la API,
+                    sin necesidad de entrar a la interfaz web.
+                </div>
 
+                <div class="timeline">
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-primary text-white">
+                            <strong>Paso 1:</strong> Cliente se autentica vía API
+                        </div>
+                        <div class="card-body">
+                            <p>El cliente obtiene su token JWT:</p>
+                            <pre class="bg-light p-2"><code>POST <?= RUTA_URL ?>api/auth/login
+{
+  "email": "cliente@distribuidor.com",
+  "password": "password_seguro"
+}
+// Response: {"success": true, "token": "eyJ0eXAi..."}</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 border-info">
+                        <div class="card-header bg-info text-white">
+                            <strong>Paso 2:</strong> Cliente lista sus leads pendientes
+                        </div>
+                        <div class="card-body">
+                            <p>Obtiene la lista de leads asignados:</p>
+                            <pre class="bg-light p-2"><code>GET <?= RUTA_URL ?>api/crm/leads?estado=new
+Authorization: Bearer [JWT_TOKEN]
+// Solo ve leads donde cliente_id = user_id</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <strong>Paso 3:</strong> Cliente actualiza estado del lead
+                        </div>
+                        <div class="card-body">
+                            <pre class="bg-light p-2"><code>POST <?= RUTA_URL ?>api/crm/leads/456/estado
+{
+  "estado": "qualified",
+  "observaciones": "Cliente confirmó interés"
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 border-success">
+                        <div class="card-header bg-success text-white">
+                            <strong>Paso 4:</strong> Sistema crea notificación en Outbox
+                        </div>
+                        <div class="card-body">
+                            <p>Automáticamente, crea registro en <code>crm_outbox</code> para notificar al proveedor.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3 border-dark">
+                        <div class="card-header bg-dark text-white">
+                            <strong>Paso 5:</strong> Proveedor recibe notificación
+                        </div>
+                        <div class="card-body">
+                            <p>Si el proveedor configuró webhook, recibe la actualización vía HMAC.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-check-circle"></i> <strong>Ventajas:</strong>
+                    Cliente gestiona leads sin entrar al sistema web, con notificación automática al proveedor.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
     <!-- 4. Integraciones Externas -->
     <div class="row mb-4" id="integraciones">
         <div class="col-12">
@@ -366,16 +488,23 @@ X-Signature: [hmac_signature]</code></pre>
                     <h4 class="mb-0">4. Integraciones Externas</h4>
                 </div>
                 <div class="card-body">
-                    <h5><i class="bi bi-plus-circle"></i> Crear una Integración</h5>
+                    <h5><i class="bi bi-plus-circle"></i> Configurar una Integración</h5>
+                    <p class="lead">El sistema CRM vincula webhook integrations a <strong>usuarios</strong> del sistema con rol Proveedor.</p>
                     
                     <ol>
                         <li class="mb-3">
-                            <strong>Ir a CRM → Integraciones → Nueva Integración</strong>
-                            <p class="text-muted">Ruta: <code><?= RUTA_URL ?>crm/integraciones/crear</code></p>
+                            <strong>Paso 1: Crear Usuario Proveedor</strong>
+                            <p>Si aún no existe, crea un usuario en el sistema con rol <span class="badge bg-primary">Proveedor</span>.</p>
+                            <p class="text-muted">Ruta: <code><?= RUTA_URL ?>usuarios/crear</code></p>
+                            <div class="alert alert-info">
+                                <small><i class="bi bi-info-circle"></i> Este usuario se usará para autenticar las llamadas API mediante JWT.</small>
+                            </div>
                         </li>
                         
                         <li class="mb-3">
-                            <strong>Llenar el formulario:</strong>
+                            <strong>Paso 2: Configurar Webhook de Integración</strong>
+                            <p>Si necesitas recibir actualizaciones de vuelta (webhooks salientes), configura la integración para ese usuario.</p>
+                            <p class="text-muted">Ruta: <code><?= RUTA_URL ?>crm/integraciones/crear</code></p>
                             <table class="table table-bordered mt-2">
                                 <tr>
                                     <th>Campo</th>
@@ -383,56 +512,75 @@ X-Signature: [hmac_signature]</code></pre>
                                     <th>Ejemplo</th>
                                 </tr>
                                 <tr>
-                                    <td><strong>Nombre</strong></td>
-                                    <td>Identificador descriptivo</td>
-                                    <td>HubSpot CRM Principal</td>
+                                    <td><strong>Usuario</strong></td>
+                                    <td>Usuario propietario de la integración</td>
+                                    <td>Seleccionar del dropdown</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tipo (Kind)</strong></td>
+                                    <td>Rol de la integración</td>
+                                    <td>'proveedor' o 'cliente'</td>
                                 </tr>
                                 <tr>
                                     <td><strong>Webhook URL</strong></td>
-                                    <td>Endpoint donde enviar actualizaciones</td>
-                                    <td>https://api.hubspot.com/webhooks/leads</td>
+                                    <td>URL donde enviar actualizaciones (webhooks salientes)</td>
+                                    <td>https://api.externo.com/webhooks/leads</td>
                                 </tr>
                                 <tr>
-                                    <td><strong>API Key</strong></td>
-                                    <td>Clave pública para identificar la integración</td>
-                                    <td>hub_abc123xyz789</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Secret Key</strong></td>
-                                    <td>Clave privada para firmar mensajes (HMAC)</td>
-                                    <td>secret_key_muy_secreto_123</td>
+                                    <td><strong>Secret</strong></td>
+                                    <td>Clave para firmar webhooks salientes (HMAC)</td>
+                                    <td>secret_key_abc123</td>
                                 </tr>
                                 <tr>
                                     <td><strong>Activo</strong></td>
-                                    <td>Checkbox para activar/desactivar</td>
+                                    <td>Estado de la integración</td>
                                     <td>✓ Marcado</td>
                                 </tr>
                             </table>
+                            <div class="alert alert-warning">
+                                <small><i class="bi bi-exclamation-triangle"></i> <strong>Nota:</strong> El Secret se usa solo para <strong>webhooks salientes</strong>. Los webhooks entrantes usan autenticación JWT.</small>
+                            </div>
                         </li>
 
                         <li class="mb-3">
-                            <strong>Guardar la integración</strong>
-                            <p class="text-muted">El sistema genera un ID único para esta integración</p>
+                            <strong>Paso 3: Obtener JWT del Usuario</strong>
+                            <p>El usuario proveedor debe autenticarse para obtener un token JWT:</p>
+                            <div class="bg-light p-3 border rounded">
+                                <code>POST <?= RUTA_URL ?>api/auth/login</code>
+                                <pre class="mb-0 mt-2">{
+  "email": "proveedor@example.com",
+  "password": "password_seguro"
+}</pre>
+                            </div>
+                            <p class="text-muted mt-2"><small>Response: <code>{"success": true, "token": "eyJ0eXAi..."}</code></small></p>
                         </li>
 
                         <li class="mb-3">
-                            <strong>Configurar el CRM externo</strong>
-                            <p>Proporciona al CRM externo:</p>
-                            <div class="alert alert-info">
+                            <strong>Paso 4: Configurar el Sistema Externo</strong>
+                            <p>Proporciona al sistema externo la siguiente información para enviar leads:</p>
+                            <div class="alert alert-primary">
                                 <p><strong>Endpoint para enviar leads:</strong></p>
                                 <code><?= RUTA_URL ?>api/crm/leads</code>
-                                <p class="mt-2"><strong>Headers a incluir:</strong></p>
+                                <p class="mt-2"><strong>Headers requeridos:</strong></p>
                                 <pre><code>Content-Type: application/json
-X-API-Key: hub_abc123xyz789
-X-Signature: [firma_hmac_sha256_del_payload]</code></pre>
+Authorization: Bearer [JWT_TOKEN_DEL_USUARIO]</code></pre>
+                                <p class="mt-2"><strong>Payload ejemplo:</strong></p>
+                                <pre><code>{
+  "lead": {
+    "proveedor_lead_id": "ext_lead_123",
+    "fecha_hora": "2026-01-02T10:30:00Z",
+    "nombre": "Cliente Ejemplo",
+    "email": "cliente@example.com", "telefono": "+502 1234-5678"
+  }
+}</code></pre>
                             </div>
                         </li>
                     </ol>
 
-                    <div class="alert alert-warning mt-4">
-                        <i class="bi bi-exclamation-triangle"></i> <strong>Importante:</strong>
-                        Guarda el Secret Key en un lugar seguro. No lo compartas por correo o canales inseguros.
-                        Es necesario para validar todas las comunicaciones.
+                    <div class="alert alert-success mt-4">
+                        <i class="bi bi-check-circle"></i> <strong>¡Listo!</strong>
+                        El sistema externo ya puede enviar leads usando JWT. Si configuraste un webhook saliente,
+                        recibirás actualizaciones firmadas con HMAC cuando cambien los estados de los leads.
                     </div>
                 </div>
             </div>
@@ -469,51 +617,348 @@ X-Signature: [firma_hmac_sha256_del_payload]</code></pre>
                                 <td><span class="badge bg-success">POST</span></td>
                                 <td><code>/api/crm/leads</code></td>
                                 <td>Recibir nuevo lead desde CRM externo</td>
-                                <td>HMAC</td>
+                                <td>JWT</td>
                             </tr>
                             <tr>
                                 <td><span class="badge bg-primary">GET</span></td>
                                 <td><code>/api/crm/leads</code></td>
                                 <td>Listar todos los leads (con filtros)</td>
-                                <td>HMAC</td>
+                                <td>JWT</td>
                             </tr>
                             <tr>
                                 <td><span class="badge bg-primary">GET</span></td>
                                 <td><code>/api/crm/leads/{id}</code></td>
                                 <td>Obtener detalle de un lead específico</td>
-                                <td>HMAC</td>
+                                <td>JWT</td>
                             </tr>
                             <tr>
                                 <td><span class="badge bg-warning">PUT</span></td>
                                 <td><code>/api/crm/leads/{id}/status</code></td>
                                 <td>Actualizar estado de un lead</td>
-                                <td>HMAC</td>
+                                <td>JWT</td>
                             </tr>
                             <tr>
                                 <td><span class="badge bg-primary">GET</span></td>
                                 <td><code>/api/crm/metrics</code></td>
                                 <td>Obtener métricas y estadísticas</td>
-                                <td>HMAC</td>
+                                <td>JWT</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <h5 class="mt-4">Ejemplo de Autenticación HMAC</h5>
-                    <pre class="bg-dark text-light p-3"><code>// PHP - Generar firma HMAC
-$payload = json_encode($data);
-$signature = hash_hmac('sha256', $payload, $secret_key);
+                    <h5 class="mt-4">Autenticación JWT - Paso a Paso</h5>
+                    <div class="card border-primary mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <strong>Paso 1: Obtener Token JWT</strong>
+                        </div>
+                        <div class="card-body">
+                            <p>Primero debes autenticarte en el sistema para obtener un token JWT:</p>
+                            <pre class="bg-dark text-light p-3"><code>// PHP - Login para obtener JWT
+$loginUrl = '<?= RUTA_URL ?>api/auth/login';
+$credentials = [
+    'email' => 'proveedor@example.com',
+    'password' => 'tu_password_seguro'
+];
 
-// Incluir en headers
+$ch = curl_init($loginUrl);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($credentials));
+curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+
+$response = curl_exec($ch);
+$data = json_decode($response, true);
+$token = $data['token']; // Tu JWT token
+
+curl_close($ch);</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white">
+                            <strong>Paso 2: Usar el Token en Llamadas API</strong>
+                        </div>
+                        <div class="card-body">
+                            <p>Incluye el token en el header <code>Authorization</code>:</p>
+                            <pre class="bg-dark text-light p-3"><code>// PHP - Enviar lead usando JWT
+$apiUrl = '<?= RUTA_URL ?>api/crm/leads';
+$leadData = [
+    'lead' => [
+        'proveedor_lead_id' => 'lead_12345',
+        'fecha_hora' => date('c'),
+        'nombre' => 'Juan Pérez',
+        'email' => 'juan@example.com',
+        'telefono' => '+502 1234-5678'
+    ]
+];
+
 $headers = [
     'Content-Type: application/json',
-    'X-API-Key: ' . $api_key,
-    'X-Signature: ' . $signature
-];</code></pre>
+    'Authorization: Bearer ' . $token  // <-- Token JWT aquí
+];
+
+$ch = curl_init($apiUrl);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($leadData));
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+$response = curl_exec($ch);
+$result = json_decode($response, true);
+
+curl_close($ch);</code></pre>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 5.5. API para Clientes -->
+    <div class="row mb-4" id="api-clientes">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">5.5. API para Usuarios Cliente - Gestión de Leads</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success">
+                        <i class="bi bi-people"></i> <strong>¿Quién puede usar esta API?</strong><br>
+                        Usuarios con rol <span class="badge bg-primary">Cliente</span> o <span class="badge bg-danger">Admin</span> pueden usar estos endpoints para gestionar los leads asignados a ellos.
+                    </div>
+
+                    <h5 class="mt-3"><i class="bi bi-key"></i> Autenticación</h5>
+                    <p>Los clientes usan la misma autenticación JWT que los proveedores:</p>
+                    
+                    <div class="card border-primary mb-3">
+                        <div class="card-header bg-primary text-white">
+                            <strong>Obtener Token JWT</strong>
+                        </div>
+                        <div class="card-body">
+                            <pre class="bg-dark text-light p-3"><code>POST <?= RUTA_URL ?>api/auth/login
+
+{
+  "email": "cliente@empresa.com",
+  "password": "password_seguro"
+}
+
+// Response
+{
+  "success": true,
+  "token": "eyJ0eXAiOiJKV1QiLCJhbGci..."
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4"><i class="bi bi-server"></i> Endpoints Disponibles</h5>
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Método</th>
+                                <th>Endpoint</th>
+                                <th>Descripción</th>
+                                <th>Restricción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-primary">GET</span></td>
+                                <td><code>/api/crm/leads</code></td>
+                                <td>Listar leads asignados al cliente</td>
+                                <td>Solo ve sus propios leads</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">GET</span></td>
+                                <td><code>/api/crm/leads/{id}</code></td>
+                                <td>Ver detalle de un lead específico</td>
+                                <td>Solo sus leads</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning">POST</span></td>
+                                <td><code>/api/crm/leads/{id}/estado</code></td>
+                                <td>Actualizar estado de un lead</td>
+                                <td>Solo sus leads</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h5 class="mt-4"><i class="bi bi-list-check"></i> Ejemplo 1: Listar Leads del Cliente</h5>
+                    <div class="card border-info mb-3">
+                        <div class="card-header bg-info text-white">
+                            Request
+                        </div>
+                        <div class="card-body">
+                            <pre class="bg-dark text-light p-3"><code>GET <?= RUTA_URL ?>api/crm/leads?estado=new&page=1&limit=10
+Authorization: Bearer [JWT_TOKEN]
+
+// Parámetros opcionales:
+// - estado: new, contacted, qualified, converted, rejected
+// - fecha_desde: 2026-01-01
+// - fecha_hasta: 2026-01-31
+// - page: número de página (default: 1)
+// - limit: resultados por página (default: 50, max: 100)</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="card border-success mb-3">
+                        <div class="card-header bg-success text-white">
+                            Response
+                        </div>
+                        <div class="card-body">
+                            <pre class="bg-dark text-light p-3"><code>{
+  "success": true,
+  "total": 25,
+  "page": 1,
+  "limit": 10,
+  "leads": [
+    {
+      "id": 123,
+      "proveedor_lead_id": "fb_lead_98765",
+      "nombre": "María González",
+      "email": "maria@example.com",
+      "telefono": "+502 5555-1234",
+      "estado_actual": "new",
+      "origen": "Facebook Ads",
+      "created_at": "2026-01-02 10:30:00"
+    }
+  ]
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <h5 class="mt-4"><i class="bi bi-pencil-square"></i> Ejemplo 2: Actualizar Estado de un Lead</h5>
+                    <p>Cuando el cliente (distribuidor) contacta al lead y quiere actualizar su estado:</p>
+
+                    <div class="card border-warning mb-3">
+                        <div class="card-header bg-warning text-dark">
+                            Request
+                        </div>
+                        <div class="card-body">
+                            <pre class="bg-dark text-light p-3"><code>POST <?= RUTA_URL ?>api/crm/leads/123/estado
+Authorization: Bearer [JWT_TOKEN]
+Content-Type: application/json
+
+{
+  "estado": "qualified",
+  "observaciones": "Cliente muy interesado, listo para cierre."
+}</code></pre>
+                        </div>
+                    </div>
+
+                   <div class="card border-success mb-3">
+                        <div class="card-header bg-success text-white">
+                            Response
+                        </div>
+                        <div class="card-body">
+                            <pre class="bg-dark text-light p-3"><code>{
+  "success": true,
+  "message": "Estado actualizado a qualified",
+  "estado_anterior": "contacted",
+  "estado_nuevo": "qualified"
+}</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-bell"></i> <strong>Notificación Automática:</strong><br>
+                        Cuando un cliente actualiza el estado, el sistema <strong>automáticamente notifica al proveedor</strong> 
+                        mediante webhook (si está configurado).
+                    </div>
+
+                    <h5 class="mt-4"><i class="bi bi-tags"></i> Estados Válidos para Pedidos/Leads</h5>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> <strong>Importante:</strong> Estos estados representan el ciclo de vida de un pedido/orden en el sistema de paquetería. 
+                        El cliente tiene <strong>total flexibilidad</strong> para cambiar a cualquier estado según su necesidad.
+                    </div>
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Estado</th>
+                                <th>Código</th>
+                                <th>Descripción</th>
+                                <th>Cuándo usar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="badge bg-secondary">EN_ESPERA</span></td>
+                                <td><code>EN_ESPERA</code></td>
+                                <td>Pedido recibido, esperando aprobación</td>
+                                <td>Estado inicial cuando se crea el pedido</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-success">APROBADO</span></td>
+                                <td><code>APROBADO</code></td>
+                                <td>Pedido aprobado y validado</td>
+                                <td>Después de revisar y aprobar el pedido</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-primary">CONFIRMADO</span></td>
+                                <td><code>CONFIRMADO</code></td>
+                                <td>Pedido confirmado con el cliente</td>
+                                <td>Cliente confirmó que procede con el pedido</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-warning text-dark">EN_TRANSITO</span></td>
+                                <td><code>EN_TRANSITO</code></td>
+                                <td>Paquete en camino al destino</td>
+                                <td>El paquete salió y está siendo transportado</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-info">EN_BODEGA</span></td>
+                                <td><code>EN_BODEGA</code></td>
+                                <td>Paquete llegó a bodega/almacén</td>
+                                <td>Paquete recibido y almacenado</td>
+                            </tr>
+                            <tr>
+                                <td><span class="badge bg-danger">CANCELADO</span></td>
+                                <td><code>CANCELADO</code></td>
+                                <td>Pedido cancelado</td>
+                                <td>Pedido no procede por cualquier razón</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Aliases Permitidos:</strong><br>
+                        El sistema acepta variaciones del nombre y las normaliza automáticamente:
+                        <ul class="mb-0 mt-2">
+                            <li><code>"approved"</code>, <code>"aprovado"</code> → <code>APROBADO</code></li>
+                            <li><code>"cancelled"</code>, <code>"canceled"</code> → <code>CANCELADO</code></li>
+                            <li><code>"confirmed"</code> → <code>CONFIRMADO</code></li>
+                            <li><code>"pending"</code>, <code>"waiting"</code> → <code>EN_ESPERA</code></li>
+                            <li><code>"transit"</code> → <code>EN_TRANSITO</code></li>
+                            <li><code>"warehouse"</code> → <code>EN_BODEGA</code></li>
+                        </ul>
+                    </div>
+
+                    <h5 class="mt-4"><i class="bi bi-shield-check"></i> Permisos</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">✅ Sí puede</div>
+                                <div class="card-body"><ul class="mb-0">
+                                    <li>Ver solo sus leads</li>
+                                    <li>Actualizar estado</li>
+                                    <li>Agregar observaciones</li>
+                                </ul></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">❌ No puede</div>
+                                <div class="card-body"><ul class="mb-0">
+                                    <li>Ver leads ajenos</li>
+                                    <li>Eliminar leads</li>
+                                    <li>Crear leads</li>
+                                </ul></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- 6. Worker CLI -->
     <div class="row mb-4" id="worker">
         <div class="col-12">

@@ -591,6 +591,62 @@
             <p data-lang="en">All CRM endpoints require JWT authentication. Use the token from <code>POST /api/auth/login</code>.</p>
             <p data-lang="es">Todos los endpoints CRM requieren autenticación JWT. Usa el token de <code>POST /api/auth/login</code>.</p>
 
+            <h4 data-lang="en">Step 1: Login to Get JWT Token</h4>
+            <h4 data-lang="es">Paso 1: Login para Obtener Token JWT</h4>
+            
+            <p data-lang="en">Authenticate with your credentials to receive a JWT token:</p>
+            <p data-lang="es">Autentícate con tus credenciales para recibir un token JWT:</p>
+
+            <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/auth/login</div>
+
+            <h4 data-lang="en">Request Body</h4>
+            <h4 data-lang="es">Cuerpo de la Petición</h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "email": "proveedor@example.com",
+    "password": "your_secure_password"
+}</code></pre>
+
+            <h4>Response — Success <span class="status-badge status-200">200</span></h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Login exitoso",
+    "data": {
+        "id": "123",
+        "nombre": "Usuario Proveedor",
+        "email": "proveedor@example.com",
+        "rol": "Proveedor",
+        "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6IjEyMyIsIm5vbWJyZSI6IlVzdWFyaW8gUHJvdmVlZG9yIiwiZW1haWwiOiJwcm92ZWVkb3JAZXhhbXBsZS5jb20iLCJyb2wiOiJQcm92ZWVkb3IiLCJleHAiOjE3MDQ4MTI0MDB9.signature_here"
+    }
+}</code></pre>
+
+            <div class="alert alert-warning" data-lang="en">
+                <strong>Important:</strong> The token is nested inside <code>data.token</code>, not at the root level. Extract it as: <code>response.data.token</code>
+            </div>
+            <div class="alert alert-warning" data-lang="es">
+                <strong>Importante:</strong> El token está anidado dentro de <code>data.token</code>, no en el nivel raíz. Extráelo como: <code>response.data.token</code>
+            </div>
+
+            <h4>Response — Invalid Credentials <span class="status-badge status-401">401</span></h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": false,
+    "message": "Credenciales inválidas"
+}</code></pre>
+
+            <h4 data-lang="en">Example: Full Login Flow</h4>
+            <h4 data-lang="es">Ejemplo: Flujo Completo de Login</h4>
+            <pre class="code-block line-numbers"><code class="language-bash"># Login and extract token
+curl -X POST "http://localhost/paqueteriacz/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"proveedor@example.com","password":"your_password"}'
+
+# Response contains token at data.token
+# Use it in subsequent requests:
+curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLC..."</code></pre>
+
+            <h4 data-lang="en">Step 2: Use Token in API Requests</h4>
+            <h4 data-lang="es">Paso 2: Usar Token en Peticiones API</h4>
+
             <h4 data-lang="en">Required Header</h4>
             <h4 data-lang="es">Encabezado Requerido</h4>
             <div class="code-block">Authorization: Bearer &lt;JWT_TOKEN&gt;</div>
@@ -707,8 +763,8 @@
             <h2 class="section-title" data-lang="en">Update Lead Status</h2>
             <h2 class="section-title" data-lang="es">Actualizar Estado de Lead</h2>
             
-            <p data-lang="en">Update lead state with automatic normalization and transition validation.</p>
-            <p data-lang="es">Actualiza el estado del lead con normalización automática y validación de transiciones.</p>
+            <p data-lang="en">Update lead state with automatic normalization. Clients have <strong>full flexibility</strong> to change to any valid state.</p>
+            <p data-lang="es">Actualiza el estado del lead con normalización automática. Clientes tienen <strong>total flexibilidad</strong> para cambiar a cualquier estado válido.</p>
 
             <h4 data-lang="en">Endpoint</h4>
             <h4 data-lang="es">Endpoint</h4>
@@ -753,14 +809,39 @@
                 </tbody>
             </table>
 
-            <h4 data-lang="en">State Transition Matrix</h4>
-            <h4 data-lang="es">Matriz de Transición de Estados</h4>
-            <pre class="code-block line-numbers"><code>EN_ESPERA    ✓ APROBADO, CANCELADO
-APROBADO     ✓ CONFIRMADO, CANCELADO
-CONFIRMADO   ✓ EN_TRANSITO, CANCELADO
-EN_TRANSITO  ✓ EN_BODEGA, CANCELADO
-EN_BODEGA    ✓ CANCELADO
-CANCELADO    ✗ (final state / estado final)</code></pre>
+            <h4 data-lang="en">State Descriptions</h4>
+            <h4 data-lang="es">Descripción de Estados</h4>
+            
+            <table class="table table-sm table-bordered" data-lang="en">
+                <thead><tr><th>State</th><th>Description</th><th>When to Use</th></tr></thead>
+                <tbody>
+                    <tr><td><code>EN_ESPERA</code></td><td>Waiting for approval</td><td>Initial state when order is created</td></tr>
+                    <tr><td><code>APROBADO</code></td><td>Approved and validated</td><td>After reviewing and approving the order</td></tr>
+                    <tr><td><code>CONFIRMADO</code></td><td>Confirmed with customer</td><td>Customer confirmed they want to proceed</td></tr>
+                    <tr><td><code>EN_TRANSITO</code></td><td>Package on the way</td><td>Package shipped and being transported</td></tr>
+                    <tr><td><code>EN_BODEGA</code></td><td>Package arrived at warehouse</td><td>Package received and stored</td></tr>
+                    <tr><td><code>CANCELADO</code></td><td>Order cancelled</td><td>Order will not proceed for any reason</td></tr>
+                </tbody>
+            </table>
+            
+            <table class="table table-sm table-bordered" data-lang="es">
+                <thead><tr><th>Estado</th><th>Descripción</th><th>Cuándo Usar</th></tr></thead>
+                <tbody>
+                    <tr><td><code>EN_ESPERA</code></td><td>Esperando aprobación</td><td>Estado inicial cuando se crea el pedido</td></tr>
+                    <tr><td><code>APROBADO</code></td><td>Aprobado y validado</td><td>Después de revisar y aprobar el pedido</td></tr>
+                    <tr><td><code>CONFIRMADO</code></td><td>Confirmado con cliente</td><td>Cliente confirmó que procede con el pedido</td></tr>
+                    <tr><td><code>EN_TRANSITO</code></td><td>Paquete en camino</td><td>Paquete salió y está siendo transportado</td></tr>
+                    <tr><td><code>EN_BODEGA</code></td><td>Paquete llegó a bodega</td><td>Paquete recibido y almacenado</td></tr>
+                    <tr><td><code>CANCELADO</code></td><td>Pedido cancelado</td><td>Pedido no procede por cualquier razón</td></tr>
+                </tbody>
+            </table>
+            
+            <div class="alert alert-info" data-lang="en">
+                <strong>Note:</strong> There are no transition restrictions. Clients can change from any state to any other valid state according to their business needs.
+            </div>
+            <div class="alert alert-info" data-lang="es">
+                <strong>Nota:</strong> No hay restricciones de transición. Los clientes pueden cambiar de cualquier estado a cualquier otro estado válido según sus necesidades de negocio.
+            </div>
 
             <h4>Response — Success <span class="status-badge status-200">200</span></h4>
             <pre class="code-block line-numbers"><code class="language-json">{
@@ -770,10 +851,11 @@ CANCELADO    ✗ (final state / estado final)</code></pre>
     "estado_nuevo": "APROBADO"
 }</code></pre>
 
-            <h4>Response — Invalid Transition <span class="status-badge status-400">400</span></h4>
+            <h4>Response — Invalid State <span class="status-badge status-400">400</span></h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": false,
-    "message": "Transición no permitida de EN_ESPERA a EN_TRANSITO"
+    "message": "Estado inválido: INVALID_STATE",
+    "estados_validos": ["EN_ESPERA", "APROBADO", "CONFIRMADO", "EN_TRANSITO", "EN_BODEGA", "CANCELADO"]
 }</code></pre>
         </div>
 

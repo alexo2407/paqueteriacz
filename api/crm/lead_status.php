@@ -98,9 +98,10 @@ try {
         exit;
     }
     
-    // Verificar transición
+    // Verificar transición (DESHABILITADO - Cliente puede cambiar a cualquier estado)
     $estadoAnterior = $lead['estado_actual'];
     
+    /*
     if (!canTransition($estadoAnterior, $estadoNuevo)) {
         http_response_code(400);
         echo json_encode([
@@ -109,6 +110,7 @@ try {
         ]);
         exit;
     }
+    */
     
     $observaciones = $data['observaciones'] ?? null;
     
