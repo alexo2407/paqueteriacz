@@ -178,19 +178,10 @@ $(document).ready(function() {
         }
     });
 
-    // Enviar formulario normalmente
+    // Enviar formulario normalmente (submit con botón o Enter)
     $('#filtrosForm').on('submit', function(e) {
         e.preventDefault();
         table.ajax.reload();
-    });
-
-    // Debounce para el campo de búsqueda (500ms)
-    let searchTimeout;
-    $('[name="busqueda"]').on('input', function() {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(function() {
-            table.ajax.reload();
-        }, 500); // Espera 500ms después de dejar de escribir
     });
 
     // Recargar inmediatamente cuando cambian los selectores
