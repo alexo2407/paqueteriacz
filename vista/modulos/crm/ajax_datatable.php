@@ -54,6 +54,9 @@ try {
     $fechaHasta = isset($_POST['fecha_hasta']) ? $_POST['fecha_hasta'] : '';
     $busqueda = isset($_POST['busqueda']) ? $_POST['busqueda'] : '';
     
+    // Debug logging
+    error_log("DataTables Request - Draw: $draw, Estado: $estado, Busqueda: $busqueda, Desde: $fechaDesde, Hasta: $fechaHasta");
+    
     // Conexión a la base de datos
     $db = (new Conexion())->conectar();
     
@@ -86,17 +89,6 @@ try {
         } else {
             $where[] = '(cl.proveedor_lead_id LIKE :busqueda OR cl.nombre LIKE :busqueda OR cl.telefono LIKE :busqueda)';
             $params[':busqueda'] = '%' . $busqueda . '%';
-        }
-    }
-    
-    if (!empty($searchValue)) {
-        if (is_numeric($searchValue)) {
-            $where[] = '(cl.id = :search_exact OR cl.proveedor_lead_id LIKE :search OR cl.nombre LIKE :search OR cl.telefono LIKE :search)';
-            $params[':search_exact'] = (int)$searchValue;
-            $params[':search'] = '%' . $searchValue . '%';
-        } else {
-            $where[] = '(cl.proveedor_lead_id LIKE :search OR cl.nombre LIKE :search OR cl.telefono LIKE :search)';
-            $params[':search'] = '%' . $searchValue . '%';
         }
     }
     
