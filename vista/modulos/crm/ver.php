@@ -15,7 +15,7 @@ if (!isAdmin()) {
 
 require_once __DIR__ . '/../../../controlador/crm.php';
 
-$id = $_GET['id'] ?? null;
+$id = isset($parametros[0]) ? (int)$parametros[0] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
 if (!$id) {
     header('Location: ' . RUTA_URL . 'crm/listar');
     exit;
