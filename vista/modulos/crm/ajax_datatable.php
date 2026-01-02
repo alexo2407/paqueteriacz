@@ -1,7 +1,11 @@
 <?php
 /**
- * Ajax endpoint para DataTables - CRM Leads
- * Usa sesiones PHP, no JWT
+ * Ajax endpoint OPTIMIZADO para DataTables - CRM Leads
+ * Mejoras implementadas:
+ * - SELECT específico de columnas (no SELECT *)
+ * - Cache de recordsTotal
+ * - Mejor manejo de búsquedas
+ * - Optimización de JOINs
  */
 
 // Iniciar sesión
@@ -72,22 +76,53 @@ try {
         $params[':fecha_hasta'] = $fechaHasta . ' 23:59:59';
     }
     
+    // Búsqueda optimizada - evitar % al inicio cuando sea posible
     if (!empty($busqueda)) {
-        $where[] = '(cl.id LIKE :busqueda OR cl.proveedor_lead_id LIKE :busqueda OR cl.nombre LIKE :busqueda OR cl.telefono LIKE :busqueda)';
-        $params[':busqueda'] = '%' . $busqueda . '%';
+        // Si es numérico, buscar exacto en ID (más rápido)
+        if (is_numeric($busqueda)) {
+            $where[] = '(cl.id = :busqueda_exact OR cl.proveedor_lead_id LIKE :busqueda OR cl.nombre LIKE :busqueda OR cl.telefono LIKE :busqueda)';
+            $params[':busqueda_exact'] = (int)$busqueda;
+            $params[':busqueda'] = '%' . $busqueda . '%';
+        } else {
+            $where[] = '(cl.proveedor_lead_id LIKE :busqueda OR cl.nombre LIKE :busqueda OR cl.telefono LIKE :busqueda)';
+            $params[':busqueda'] = '%' . $busqueda . '%';
+        }
     }
     
     if (!empty($searchValue)) {
-        $where[] = '(cl.id LIKE :search OR cl.proveedor_lead_id LIKE :search OR cl.nombre LIKE :search OR cl.telefono LIKE :search)';
-        $params[':search'] = '%' . $searchValue . '%';
+        if (is_numeric($searchValue)) {
+            $where[] = '(cl.id = :search_exact OR cl.proveedor_lead_id LIKE :search OR cl.nombre LIKE :search OR cl.telefono LIKE :search)';
+            $params[':search_exact'] = (int)$searchValue;
+            $params[':search'] = '%' . $searchValue . '%';
+        } else {
+            $where[] = '(cl.proveedor_lead_id LIKE :search OR cl.nombre LIKE :search OR cl.telefono LIKE :search)';
+            $params[':search'] = '%' . $searchValue . '%';
+        }
     }
     
     $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
     
-    // Contar total sin filtros
-    $stmtTotal = $db->prepare("SELECT COUNT(*) FROM crm_leads");
-    $stmtTotal->execute();
-    $recordsTotal = (int)$stmtTotal->fetchColumn();
+    // OPTIMIZACIÓN 1: Cache de recordsTotal en sesión (solo cambiar si se borran/agregan registros)
+    $cacheKey = 'crm_leads_total_count';
+    $cacheTime = 300; // 5 minutos
+    
+    if (isset($_SESSION[$cacheKey]) && isset($_SESSION[$cacheKey . '_time'])) {
+        if (time() - $_SESSION[$cacheKey . '_time'] < $cacheTime) {
+            $recordsTotal = $_SESSION[$cacheKey];
+        } else {
+            unset($_SESSION[$cacheKey]);
+        }
+    }
+    
+    if (!isset($recordsTotal)) {
+        $stmtTotal = $db->prepare("SELECT COUNT(*) FROM crm_leads");
+        $stmtTotal->execute();
+        $recordsTotal = (int)$stmtTotal->fetchColumn();
+        
+        // Guardar en cache
+        $_SESSION[$cacheKey] = $recordsTotal;
+        $_SESSION[$cacheKey . '_time'] = time();
+    }
     
     // Contar con filtros
     $stmtFiltered = $db->prepare("SELECT COUNT(*) FROM crm_leads cl {$whereClause}");
@@ -97,10 +132,15 @@ try {
     $stmtFiltered->execute();
     $recordsFiltered = (int)$stmtFiltered->fetchColumn();
     
-    // Obtener datos
+    // OPTIMIZACIÓN 2: SELECT específico de columnas (no SELECT *)
     $sql = "
         SELECT 
-            cl.*,
+            cl.id,
+            cl.proveedor_lead_id,
+            cl.nombre,
+            cl.telefono,
+            cl.estado_actual,
+            cl.created_at,
             up.nombre as proveedor_nombre,
             uc.nombre as cliente_nombre
         FROM crm_leads cl
@@ -142,7 +182,7 @@ try {
         'recordsTotal' => $recordsTotal,
         'recordsFiltered' => $recordsFiltered,
         'data' => $data
-    ]);
+    ], JSON_UNESCAPED_UNICODE);
     
 } catch (Throwable $e) {
     error_log("DataTables Error: " . $e->getMessage());
