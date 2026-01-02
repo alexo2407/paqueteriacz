@@ -83,7 +83,8 @@ function cargarRecursos($pagina) {
     "municipios",
     "barrios",
     "productos",
-    "seguimiento"
+    "seguimiento",
+    "crm"
   ];
 
   if (in_array($pagina, $modulosConDatatables, true)) {

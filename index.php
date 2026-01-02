@@ -6,14 +6,16 @@ $ruta = array_values(array_filter($ruta, fn($v) => $v !== ''));
 
 if ($ruta[0] === "api") {
     // Incluir el archivo API correspondiente sin cargar el template
-    $archivoAPI = "api/" . (isset($ruta[1]) ? $ruta[1] : "index") . "/" . (isset($ruta[2]) ? $ruta[2] : "index") . ".php";
+    // Reconstruir la ruta completa después de 'api/'
+    $rutaApi = array_slice($ruta, 1); // Quitar 'api' del inicio
+    $archivoAPI = "api/" . implode("/", $rutaApi) . ".php";
     
     if (file_exists($archivoAPI)) {
         include $archivoAPI;
     } else {
         // Manejar error si el archivo API no existe
         header("HTTP/1.0 404 Not Found");
-        echo json_encode(["error" => "Endpoint not found"]);
+        echo json_encode(["error" => "Endpoint not found", "path" => $archivoAPI]);
     }
     exit; // Detener la ejecución
 }

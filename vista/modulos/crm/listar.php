@@ -97,9 +97,7 @@ include("vista/includes/header.php");
     </div>
 </div>
 
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<?php include("vista/includes/footer.php"); ?>
 
 <script>
 function exportarCSV() {
@@ -113,17 +111,29 @@ function exportarCSV() {
 }
 
 $(document).ready(function() {
+    const apiUrl = '<?= RUTA_URL ?>vista/modulos/crm/ajax_datatable.php';
+    console.log('DataTables API URL:', apiUrl);
+    
     const table = $('#leadsTable').DataTable({
         processing: true,
         serverSide: true,
         ajax: {
-            url: '<?= RUTA_URL ?>api/crm/leads/datatable',
+            url: apiUrl,
             type: 'POST',
             data: function(d) {
                 d.estado = $('[name="estado"]').val();
                 d.fecha_desde = $('[name="fecha_desde"]').val();
                 d.fecha_hasta = $('[name="fecha_hasta"]').val();
                 d.busqueda = $('[name="busqueda"]').val();
+            },
+            error: function(xhr, error, code) {
+                console.error('DataTables AJAX Error:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    responseText: xhr.responseText,
+                    error: error,
+                    code: code
+                });
             }
         },
         columns: [
@@ -178,5 +188,3 @@ $(document).ready(function() {
     });
 });
 </script>
-
-<?php include("vista/includes/footer.php"); ?>
