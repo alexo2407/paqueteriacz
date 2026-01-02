@@ -177,13 +177,32 @@ $(document).ready(function() {
         }
     });
 
+    // Enviar formulario normalmente
     $('#filtrosForm').on('submit', function(e) {
         e.preventDefault();
         table.ajax.reload();
     });
 
+    // Debounce para el campo de búsqueda (500ms)
+    let searchTimeout;
+    $('[name="busqueda"]').on('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            table.ajax.reload();
+        }, 500); // Espera 500ms después de dejar de escribir
+    });
+
+    // Recargar inmediatamente cuando cambian los selectores
+    $('[name="estado"], [name="fecha_desde"], [name="fecha_hasta"]').on('change', function() {
+        table.ajax.reload();
+    });
+
+    // Limpiar filtros
     $('#limpiarFiltros').on('click', function() {
         $('#filtrosForm')[0].reset();
+        // Establecer valores por defecto de fechas
+        $('[name="fecha_desde"]').val('<?= date('Y-m-01') ?>');
+        $('[name="fecha_hasta"]').val('<?= date('Y-m-d') ?>');
         table.ajax.reload();
     });
 });
