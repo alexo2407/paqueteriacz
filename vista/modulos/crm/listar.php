@@ -117,6 +117,7 @@ $(document).ready(function() {
     const table = $('#leadsTable').DataTable({
         processing: true,
         serverSide: true,
+        searching: false, // Desactivar búsqueda nativa de DataTables
         ajax: {
             url: apiUrl,
             type: 'POST',
