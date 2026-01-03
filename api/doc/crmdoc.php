@@ -1198,6 +1198,11 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
             <h4 data-lang="es">Endpoint</h4>
             <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/crm/jobs/{job_id}</div>
 
+            <h4 data-lang="en">Allowed Roles</h4>
+            <h4 data-lang="es">Roles Permitidos</h4>
+            <p data-lang="en"><code>Cliente</code> (own jobs only), <code>Administrador</code></p>
+            <p data-lang="es"><code>Cliente</code> (solo sus propios jobs), <code>Administrador</code></p>
+
             <h4 data-lang="en">URL Parameters</h4>
             <h4 data-lang="es">Parámetros de URL</h4>
             <table class="table table-sm table-bordered">
@@ -1352,6 +1357,11 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
             <h4 data-lang="es">Endpoint</h4>
             <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/crm/leads</div>
 
+            <h4 data-lang="en">Allowed Roles</h4>
+            <h4 data-lang="es">Roles Permitidos</h4>
+            <p data-lang="en"><code>Cliente</code> (own leads only), <code>Administrador</code></p>
+            <p data-lang="es"><code>Cliente</code> (solo sus propios leads), <code>Administrador</code></p>
+
             <h4 data-lang="en">Query Parameters</h4>
             <h4 data-lang="es">Parámetros de Consulta</h4>
             
@@ -1395,6 +1405,11 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
             <h4 data-lang="es">Endpoints</h4>
             <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/crm/leads/{id}</div>
             <div class="code-block mt-2"><span class="badge-endpoint badge-get">GET</span> /api/crm/leads/{id}/timeline</div>
+
+            <h4 data-lang="en">Allowed Roles</h4>
+            <h4 data-lang="es">Roles Permitidos</h4>
+            <p data-lang="en"><code>Cliente</code> (own lead only), <code>Administrador</code></p>
+            <p data-lang="es"><code>Cliente</code> (solo su propio lead), <code>Administrador</code></p>
 
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
