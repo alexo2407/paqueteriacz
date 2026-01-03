@@ -161,6 +161,12 @@ if (preg_match('/\/api\/crm\/leads\/bulk-status-async$/', $path) && $method === 
     exit;
 }
 
+// POST /api/crm/leads/assign-client - Asignar cliente a lead(s)
+if (preg_match('/\/api\/crm\/leads\/assign-client$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/crm/lead_assign_client.php';
+    exit;
+}
+
 // GET /api/crm/jobs/{job_id} - Consultar estado de job asíncrono
 if (preg_match('/\/api\/crm\/jobs\/([a-zA-Z0-9_]+)$/', $path, $matches) && $method === 'GET') {
     $_GET['job_id'] = $matches[1];

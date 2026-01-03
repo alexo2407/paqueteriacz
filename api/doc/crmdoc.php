@@ -859,6 +859,71 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 }</code></pre>
         </div>
 
+        <!-- POST /api/crm/leads/assign-client -->
+        <div class="section-container">
+            <h2 class="section-title" data-lang="en">Assign Client to Leads</h2>
+            <h2 class="section-title" data-lang="es">Asignar Cliente a Leads</h2>
+            
+            <p data-lang="en">Assign one or multiple leads to a specific client. Providers can only assign their own leads.</p>
+            <p data-lang="es">Asigna uno o múltiples leads a un cliente específico. Los proveedores solo pueden asignar sus propios leads.</p>
+
+            <h4 data-lang="en">Endpoint</h4>
+            <h4 data-lang="es">Endpoint</h4>
+            <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/crm/leads/assign-client</div>
+
+            <h4 data-lang="en">Allowed Roles</h4>
+            <h4 data-lang="es">Roles Permitidos</h4>
+            <p data-lang="en"><code>Proveedor</code> (own leads only), <code>Administrador</code></p>
+            <p data-lang="es"><code>Proveedor</code> (solo sus propios leads), <code>Administrador</code></p>
+
+            <h4 data-lang="en">Request Body</h4>
+            <h4 data-lang="es">Cuerpo de la Petición</h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "cliente_id": 5,
+    "lead_ids": [101, 102, 103],
+    "observaciones": "Asignación manual"
+}</code></pre>
+
+            <table class="table table-sm table-bordered" data-lang="en">
+                <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>cliente_id</code></td><td>integer</td><td>✅ Yes</td><td>Target Client ID (User ID with role 'Cliente')</td></tr>
+                    <tr><td><code>lead_ids</code></td><td>array|int</td><td>✅ Yes</td><td>List of Lead IDs or single ID</td></tr>
+                    <tr><td><code>observaciones</code></td><td>string</td><td>No</td><td>Optional notes</td></tr>
+                </tbody>
+            </table>
+            
+            <table class="table table-sm table-bordered" data-lang="es">
+                <thead><tr><th>Campo</th><th>Tipo</th><th>Requerido</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>cliente_id</code></td><td>integer</td><td>✅ Sí</td><td>ID Cliente Destino (ID Usuario con rol 'Cliente')</td></tr>
+                    <tr><td><code>lead_ids</code></td><td>array|int</td><td>✅ Sí</td><td>Lista de IDs de Leads o ID único</td></tr>
+                    <tr><td><code>observaciones</code></td><td>string</td><td>No</td><td>Notas opcionales</td></tr>
+                </tbody>
+            </table>
+
+            <h4 data-lang="en">Response — Success <span class="status-badge status-200">200</span></h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Operación completada. 3 asignados a 'Cliente Juan'.",
+    "updated": 3,
+    "failed": 0,
+    "total_processed": 3
+}</code></pre>
+
+            <h4 data-lang="en">Response — Partial Failure <span class="status-badge status-200">200</span></h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Operación completada. 2 asignados a 'Cliente Juan'. (1 fallos)",
+    "updated": 2,
+    "failed": 1,
+    "total_processed": 3,
+    "failed_details": [
+        {"lead_id": 103, "error": "No tienes permiso (No eres el proveedor creador)"}
+    ]
+}</code></pre>
+        </div>
+
         <!-- POST /api/crm/leads/bulk-status -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">Bulk Update Lead Status</h2>
