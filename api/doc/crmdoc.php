@@ -1503,8 +1503,8 @@ VALUES (5, 'cliente', 'https://app.com/webhook', 'secret_123', 1);</code></pre>
             <p data-lang="en">Background worker for async processing with 3-second polling interval.</p>
             <p data-lang="es">Worker en segundo plano para procesamiento asíncrono con intervalo de sondeo de 3 segundos.</p>
 
-            <h4 data-lang="en">Commands</h4>
-            <h4 data-lang="es">Comandos</h4>
+            <h4 data-lang="en">1. General Worker (Webhooks & Retries)</h4>
+            <h4 data-lang="es">1. Worker General (Webhooks y Reintentos)</h4>
             <pre class="code-block" data-lang="en"><code class="language-bash"># One-time execution (cron)
 php cli/crm_worker.php --once
 
@@ -1515,6 +1515,22 @@ php cli/crm_worker.php --once
 
 # Modo daemon (systemd)
 php cli/crm_worker.php --loop</code></pre>
+
+            <h4 data-lang="en">2. Bulk Update Worker 🚀</h4>
+            <h4 data-lang="es">2. Worker de Actualización Masiva 🚀</h4>
+            <p data-lang="en">Processes asynchronous bulk update jobs from <code>POST /bulk-status-async</code>.</p>
+            <p data-lang="es">Procesa jobs de actualización masiva asíncrona de <code>POST /bulk-status-async</code>.</p>
+            
+            <pre class="code-block"><code class="language-bash"># Start worker (runs continuously)
+php cli/crm_bulk_worker.php</code></pre>
+
+            <h4 data-lang="en">3. Maintenance & Cleanup 🧹</h4>
+            <h4 data-lang="es">3. Mantenimiento y Limpieza 🧹</h4>
+            <p data-lang="en">Removes old jobs and monitors stuck processes. Run daily via Cron/Task Scheduler.</p>
+            <p data-lang="es">Elimina jobs antiguos y monitorea procesos atascados. Ejecutar diariamente vía Cron/Task Scheduler.</p>
+            
+            <pre class="code-block"><code class="language-bash"># Run cleanup
+php cli/crm_jobs_cleanup.php</code></pre>
 
             <h4 data-lang="en">Systemd Service</h4>
             <h4 data-lang="es">Servicio Systemd</h4>
