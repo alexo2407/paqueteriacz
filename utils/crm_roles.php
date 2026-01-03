@@ -26,8 +26,6 @@ function getRolesForUser($userId) {
     try {
         $db = (new Conexion())->conectar();
         
-        error_log("getRolesForUser - Buscando roles para user_id: {$userId}");
-        
         $stmt = $db->prepare("
             SELECT r.nombre_rol 
             FROM usuarios_roles ur
@@ -38,9 +36,6 @@ function getRolesForUser($userId) {
         $stmt->execute([':user_id' => $userId]);
         $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);
         
-        error_log("getRolesForUser - Roles encontrados: " . json_encode($roles));
-        error_log("getRolesForUser - Número de roles: " . count($roles));
-        
         // Cachear resultado
         $cache[$userId] = $roles;
         
@@ -48,7 +43,6 @@ function getRolesForUser($userId) {
         
     } catch (Exception $e) {
         error_log("Error getting roles for user {$userId}: " . $e->getMessage());
-        error_log("Error trace: " . $e->getTraceAsString());
         return [];
     }
 }

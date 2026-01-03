@@ -149,6 +149,26 @@ if (preg_match('/\/api\/crm\/leads\/(\d+)\/estado$/', $path, $matches) && $metho
     exit;
 }
 
+// POST /api/crm/leads/bulk-status - Actualizar estado masivo (síncrono, límite 100)
+if (preg_match('/\/api\/crm\/leads\/bulk-status$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/crm/lead_bulk_status.php';
+    exit;
+}
+
+// POST /api/crm/leads/bulk-status-async - Actualizar estado masivo (asíncrono, sin límite)
+if (preg_match('/\/api\/crm\/leads\/bulk-status-async$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/crm/lead_bulk_status_async.php';
+    exit;
+}
+
+// GET /api/crm/jobs/{job_id} - Consultar estado de job asíncrono
+if (preg_match('/\/api\/crm\/jobs\/([a-zA-Z0-9_]+)$/', $path, $matches) && $method === 'GET') {
+    $_GET['job_id'] = $matches[1];
+    require_once __DIR__ . '/crm/job_status.php';
+    exit;
+}
+
+
 // GET /api/crm/leads/{id}/timeline - Ver timeline
 if (preg_match('/\/api\/crm\/leads\/(\d+)\/timeline$/', $path, $matches) && $method === 'GET') {
     $_GET['lead_id'] = $matches[1];
