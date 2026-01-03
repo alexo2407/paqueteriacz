@@ -1113,6 +1113,32 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
     "check_status_url": "/api/crm/jobs/bulk_6958aaf4d1477_1767418612"
 }</code></pre>
 
+            <h4>Response — Job Queued with Warnings <span class="status-badge status-200" style="background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);">202 Accepted</span></h4>
+            <p data-lang="en">When some leads have validation errors but the job is still queued (pre-validation feedback):</p>
+            <p data-lang="es">Cuando algunos leads tienen errores de validación pero el job igualmente se encola (feedback de pre-validación):</p>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "job_id": "bulk_6958b182d5773_1767420290",
+    "status": "queued",
+    "total_leads": 191,
+    "message": "Job encolado. 188 leads pueden fallar.",
+    "check_status_url": "/api/crm/jobs/bulk_6958b182d5773_1767420290",
+    "valid_leads_count": 3,
+    "error_rate": "98.43%",
+    "validation_warnings": [
+        {"lead_id": 10, "error": "No tienes permiso para este lead"},
+        {"lead_id": 11, "error": "Lead no encontrado"},
+        // ... más warnings
+    ]
+}</code></pre>
+
+            <div class="alert alert-info" data-lang="en">
+                <strong>💡 Pre-Validation:</strong> The endpoint validates leads before queuing. If errors are found, they're shown in <code>validation_warnings</code> immediately, allowing you to decide whether to proceed or fix the issues.
+            </div>
+            <div class="alert alert-info" data-lang="es">
+                <strong>💡 Pre-Validación:</strong> El endpoint valida leads antes de encolar. Si encuentra errores, se muestran en <code>validation_warnings</code> inmediatamente, permitiéndote decidir si proceder o corregir los problemas.
+            </div>
+
             <h4>Response — Rate Limit Exceeded <span class="status-badge status-400" style="background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%); color: #92400e;">429 Too Many</span></h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": false,
@@ -1242,6 +1268,36 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
         {"lead_id": 999, "error": "Lead no encontrado"}
     ]
 }</code></pre>
+
+            <h4>Response — Job Completed (Many Failures) <span class="status-badge status-200">200 OK</span></h4>
+            <p data-lang="en">When there are more failures than successes, <code>successful_details</code> is shown instead:</p>
+            <p data-lang="es">Cuando hay más fallos que éxitos, se muestra <code>successful_details</code> en su lugar:</p>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "job_id": "bulk_6958b3ea2e5ad_1767420906",
+    "status": "completed",
+    "total_leads": 191,
+    "processed_leads": 191,
+    "successful_leads": 3,
+    "failed_leads": 188,
+    "estado": "CANCELADO",
+    "created_at": "2026-01-03 00:15:06",
+    "started_at": "2026-01-03 00:15:06",
+    "completed_at": "2026-01-03 00:15:08",
+    "progress_percent": 100,
+    "successful_details": [
+        {"lead_id": 1, "estado_anterior": "EN_ESPERA", "estado_nuevo": "CANCELADO"},
+        {"lead_id": 5, "estado_anterior": "EN_PROCESO", "estado_nuevo": "CANCELADO"},
+        {"lead_id": 12, "estado_anterior": "APROBADO", "estado_nuevo": "CANCELADO"}
+    ]
+}</code></pre>
+
+            <div class="alert alert-success" data-lang="en">
+                <strong>✅ Smart Response:</strong> The endpoint shows whichever array is smaller (<code>successful_details</code> or <code>failed_details</code>) to optimize response size and provide the most actionable information.
+            </div>
+            <div class="alert alert-success" data-lang="es">
+                <strong>✅ Respuesta Inteligente:</strong> El endpoint muestra el array más pequeño (<code>successful_details</code> o <code>failed_details</code>) para optimizar el tamaño de respuesta y dar la información más útil.
+            </div>
 
             <h4 data-lang="en">Job Status Values</h4>
             <h4 data-lang="es">Valores de Estado del Job</h4>
