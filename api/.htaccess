@@ -21,7 +21,7 @@ RewriteCond %{REQUEST_URI} !^/paqueteriacz/api/index\.php
 
 # No reescribir si es un archivo o directorio que existe físicamente
 RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteCond %{REQUEST_FILENAME} !-d
 
 # Redirigir todas las peticiones al router API (index.php)
 RewriteRule ^(.*)$ index.php [QSA,L]
