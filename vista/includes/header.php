@@ -149,6 +149,19 @@
                             </a>
                         </li>
                         <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/notificaciones">
+                                <i class="bi bi-bell"></i> Notificaciones
+                                <?php
+                                    require_once "modelo/crm_notification.php";
+                                    $userId = $_SESSION['usuario_id'] ?? 0;
+                                    $unreadMenuCount = $userId > 0 ? CrmNotificationModel::contarNoLeidas($userId) : 0;
+                                    if ($unreadMenuCount > 0):
+                                ?>
+                                    <span class="badge bg-danger ms-1"><?= $unreadMenuCount ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>crm/integraciones">
                                 <i class="bi bi-plug"></i> Integraciones
                             </a>
@@ -211,6 +224,25 @@
                             </a>
                         </li>
                     </ul>
+                </li>
+                <?php endif; ?>
+
+                <!-- Notificaciones (Para usuarios excepto repartidores básicos) -->
+                <?php if (!$isRepartidor || $isAdmin): ?>
+                <?php
+                    require_once "modelo/crm_notification.php";
+                    $userId = $_SESSION['usuario_id'] ?? 0;
+                    $unreadCount = $userId > 0 ? CrmNotificationModel::contarNoLeidas($userId) : 0;
+                ?>
+                <li class="nav-item">
+                    <a class="nav-link position-relative" href="<?= RUTA_URL ?>crm/notificaciones" title="Notificaciones">
+                        <i class="bi bi-bell" style="font-size: 1.2rem;"></i>
+                        <?php if ($unreadCount > 0): ?>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge">
+                                <?= $unreadCount ?>
+                            </span>
+                        <?php endif; ?>
+                    </a>
                 </li>
                 <?php endif; ?>
 

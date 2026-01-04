@@ -221,6 +221,7 @@ class UsuariosController
             // id numérico principal (primer rol si existe)
             $_SESSION['rol'] = is_array($user['Roles']) && !empty($user['Roles']) ? (int)$user['Roles'][0] : ($user['Rol'] ?? null);
             $_SESSION['user_id'] = $user['ID_Usuario'];
+            $_SESSION['idUsuario'] = $user['ID_Usuario']; // Compatibilidad con el resto del sistema
 
             // Guardar también el nombre del rol para facilitar comprobaciones por vista
             try {
@@ -253,11 +254,20 @@ class UsuariosController
             $rolesNombres = $_SESSION['roles_nombres'] ?? [];
             $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
             $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+            $isCliente = in_array('Cliente', $rolesNombres, true);
             
             // Si es repartidor (y no es admin), redirigir a su página de seguimiento
             if ($isRepartidor && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'seguimiento/listar' : 'index.php?enlace=seguimiento/listar';
+                header('Location: ' . $redirectUrl);
+                exit;
+            }
+            
+            // Si es cliente (y no es admin), redirigir a su página de notificaciones
+            if ($isCliente && !$isAdmin) {
+                set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
+                $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'crm/notificaciones' : 'index.php?enlace=crm/notificaciones';
                 header('Location: ' . $redirectUrl);
                 exit;
             }

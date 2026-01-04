@@ -8,8 +8,7 @@
 
 require_once __DIR__ . '/../modelo/crm_inbox.php';
 require_once __DIR__ . '/../modelo/crm_lead.php';
-require_once __DIR__ . '/../modelo/crm_outbox.php';
-require_once __DIR__ . '/../modelo/crm_integration.php';
+require_once __DIR__ . '/../modelo/crm_notification.php';
 require_once __DIR__ . '/../utils/crm_status.php';
 
 class CrmInboxService {
@@ -119,27 +118,24 @@ class CrmInboxService {
             return $resultado;
         }
         
-        // Si hay cliente_id y tiene integración activa, encolar para envío
+        // Crear notificación interna para el cliente (si está asignado)
         $clienteId = $leadData['cliente_id'] ?? null;
         if ($clienteId) {
-            $integracion = CrmIntegrationModel::obtenerActiva($clienteId, 'cliente');
-            if ($integracion) {
-                // Encolar SEND_TO_CLIENT
-                CrmOutboxModel::agregar(
-                    'SEND_TO_CLIENT',
-                    $resultado['lead_id'],
-                    $clienteId,
-                    [
-                        'lead_id' => $resultado['lead_id'],
-                        'proveedor_lead_id' => $leadData['proveedor_lead_id'],
-                        'nombre' => $leadData['nombre'] ?? null,
-                        'telefono' => $leadData['telefono'] ?? null,
-                        'producto' => $leadData['producto'] ?? null,
-                        'precio' => $leadData['precio'] ?? null,
-                        'fecha_hora' => $leadData['fecha_hora']
-                    ]
-                );
-            }
+            // Notificar al cliente sobre el nuevo lead
+            CrmNotificationModel::agregar(
+                'SEND_TO_CLIENT',
+                $resultado['lead_id'],
+                $clienteId,
+                [
+                    'lead_id' => $resultado['lead_id'],
+                    'proveedor_lead_id' => $leadData['proveedor_lead_id'],
+                    'nombre' => $leadData['nombre'] ?? null,
+                    'telefono' => $leadData['telefono'] ?? null,
+                    'producto' => $leadData['producto'] ?? null,
+                    'precio' => $leadData['precio'] ?? null,
+                    'fecha_hora' => $leadData['fecha_hora']
+                ]
+            );
         }
         
         return $resultado;

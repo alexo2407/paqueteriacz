@@ -73,11 +73,12 @@ function userHasAnyRole($userId, array $roleNames) {
 
 /**
  * Verifica si un usuario es administrador.
+ * Renombrado para evitar conflicto con permissions.php
  * 
  * @param int $userId ID del usuario
  * @return bool True si es administrador
  */
-function isAdmin($userId) {
+function isUserAdmin($userId) {
     return userHasRole($userId, 'Administrador');
 }
 
@@ -87,7 +88,7 @@ function isAdmin($userId) {
  * @param int $userId ID del usuario
  * @return bool True si es proveedor
  */
-function isProveedor($userId) {
+function isUserProveedor($userId) {
     return userHasRole($userId, 'Proveedor');
 }
 
@@ -97,7 +98,7 @@ function isProveedor($userId) {
  * @param int $userId ID del usuario
  * @return bool True si es cliente
  */
-function isCliente($userId) {
+function isUserCliente($userId) {
     return userHasRole($userId, 'Cliente');
 }
 

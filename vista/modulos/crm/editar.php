@@ -1,12 +1,16 @@
 <?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
-require_once __DIR__ . '/../../../utils/permissions.php';
-if (!isAdmin()) { header('Location: ' . RUTA_URL . 'dashboard'); exit; }
+require_once __DIR__ . '/../../../utils/crm_roles.php';
+$userId = (int)$_SESSION['idUsuario'];
+
+// Si no es admin y no es cliente, fuera
+if (!isUserAdmin($userId) && !isUserCliente($userId)) { header('Location: ' . RUTA_URL . 'dashboard'); exit; }
 
 require_once __DIR__ . '/../../../controlador/crm.php';
 $crmController = new CrmController();
-$usuarios = $crmController->obtenerUsuarios();
+// Obtener usuarios solo si es admin (optimización)
+$usuarios = isUserAdmin($userId) ? $crmController->obtenerUsuarios() : [];
 
 $id = isset($parametros[0]) ? (int)$parametros[0] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
 if ($id <= 0) {
@@ -22,6 +26,14 @@ if (!$lead) {
     exit;
 }
 
+// Validar Ownership
+if (!isUserAdmin($userId)) {
+    if (isUserCliente($userId) && $lead['cliente_id'] != $userId) {
+         header('Location: ' . RUTA_URL . 'crm/listar');
+         exit;
+    }
+}
+
 include("vista/includes/header.php");
 ?>
 
@@ -35,8 +47,10 @@ include("vista/includes/header.php");
                          <a href="<?= RUTA_URL ?>crm/ver/<?= $id ?>" class="btn btn-sm btn-info text-white me-2">
                             <i class="bi bi-eye"></i> Ver Detalle
                         </a>
-                        <a href="<?= RUTA_URL ?>crm/listar" class="btn btn-sm btn-light text-primary">
-                            <i class="bi bi-arrow-left"></i> Volver al Listado
+                        <!-- Volver condicional -->
+                        <?php $backLink = isUserCliente($userId) && !isUserAdmin($userId) ? RUTA_URL.'crm/notificaciones' : RUTA_URL.'crm/listar'; ?>
+                        <a href="<?= $backLink ?>" class="btn btn-sm btn-light text-primary">
+                            <i class="bi bi-arrow-left"></i> Volver
                         </a>
                     </div>
                 </div>
@@ -45,6 +59,10 @@ include("vista/includes/header.php");
                         <input type="hidden" name="id" value="<?= $id ?>">
                         <!-- Mantener proveedor original para updates -->
                         <input type="hidden" name="proveedor_id" value="<?= $lead['proveedor_id'] ?>">
+                        <!-- Si es cliente, mantener su propio ID oculto -->
+                        <?php if(!isUserAdmin($userId)): ?>
+                            <input type="hidden" name="cliente_id" value="<?= $lead['cliente_id'] ?>">
+                        <?php endif; ?>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -86,6 +104,7 @@ include("vista/includes/header.php");
                             </div>
                         </div>
 
+                        <?php if(isUserAdmin($userId)): ?>
                         <hr>
                         <h6 class="text-muted mb-3">Asignación</h6>
 
@@ -100,6 +119,7 @@ include("vista/includes/header.php");
                                 <?php endforeach; ?>
                             </select>
                         </div>
+                        <?php endif; ?>
 
                         <div class="d-grid gap-2 mt-4">
                             <button type="submit" class="btn btn-primary">

@@ -21,31 +21,46 @@ try {
     require_once __DIR__ . '/../../utils/crm_roles.php';
     require_once __DIR__ . '/../../utils/crm_status.php';
     require_once __DIR__ . '/../../modelo/crm_lead.php';
-    require_once __DIR__ . '/../../modelo/crm_outbox.php';
+    require_once __DIR__ . '/../../modelo/crm_notification.php';
+    require_once __DIR__ . '/../../utils/session.php';
     
-    // Validar JWT
+    // Iniciar sessión para verificar auth híbrida
+    start_secure_session();
+    
+    $userId = 0;
+    
+    // Estrategia de Autenticación Híbrida (JWT o Sesión Web)
     $headers = getallheaders();
-    if (!isset($headers['Authorization'])) {
+    $authMethod = 'none';
+
+    if (isset($headers['Authorization'])) {
+        // Intento 1: JWT
+        $token = str_replace('Bearer ', '', $headers['Authorization']);
+        $auth = new AuthMiddleware();
+        $validacion = $auth->validarToken($token);
+        
+        if ($validacion['success']) {
+            $userData = $validacion['data'];
+            $userId = (int)$userData['id'];
+            $authMethod = 'jwt';
+        }
+    } 
+    
+    // Intento 2: Sesión Web (Fallback)
+    if ($userId === 0 && isset($_SESSION['registrado']) && $_SESSION['registrado'] === true) {
+        $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+        $authMethod = 'session';
+    }
+
+    // Si fallaron ambos
+    if ($userId <= 0) {
         http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Token requerido']);
+        echo json_encode(['success' => false, 'message' => 'No autenticado (Token o Sesión requerida)']);
         exit;
     }
-    
-    $token = str_replace('Bearer ', '', $headers['Authorization']);
-    $auth = new AuthMiddleware();
-    $validacion = $auth->validarToken($token);
-    
-    if (!$validacion['success']) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => $validacion['message']]);
-        exit;
-    }
-    
-    $userData = $validacion['data'];
-    $userId = (int)$userData['id'];
     
     // Verificar que es Cliente o Admin
-    if (!isCliente($userId) && !isAdmin($userId)) {
+    if (!isUserCliente($userId) && !isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Acceso denegado: solo clientes']);
         exit;
@@ -70,7 +85,7 @@ try {
     }
     
     // Verificar ownership (solo si no es admin)
-    if (!isAdmin($userId) && (int)$lead['cliente_id'] !== $userId) {
+    if (!isUserAdmin($userId) && (int)$lead['cliente_id'] !== $userId) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'No tienes permiso para este lead']);
         exit;
@@ -123,8 +138,8 @@ try {
         exit;
     }
     
-    // Encolar notificación al proveedor
-    CrmOutboxModel::agregar(
+    // Crear notificación interna para el proveedor
+    CrmNotificationModel::agregar(
         'SEND_TO_PROVIDER',
         $leadId,
         (int)$lead['proveedor_id'],

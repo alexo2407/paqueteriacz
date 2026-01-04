@@ -51,13 +51,23 @@ require_once __DIR__ . '/rutas/web.php';
 require_once __DIR__ . '/utils/session.php';
 start_secure_session();
 
-// Redirigir raíz según estado de sesión
+// Redirigir raíz según estado de sesión y rol
 $enlaceSolicitado = $_GET['enlace'] ?? null;
 $primerSegmento = $ruta[0] ?? '';
 
 if ($enlaceSolicitado === null || $enlaceSolicitado === '') {
     if (!empty($_SESSION['registrado'])) {
-        header('Location: ' . RUTA_URL . 'dashboard');
+        // Redirigir según el rol del usuario
+        require_once __DIR__ . '/utils/crm_roles.php';
+        $userId = (int)$_SESSION['idUsuario'];
+        
+        if (isUserCliente($userId) && !isUserAdmin($userId)) {
+            // Los clientes van a su página de notificaciones
+            header('Location: ' . RUTA_URL . 'crm/notificaciones');
+        } else {
+            // Otros roles van al dashboard
+            header('Location: ' . RUTA_URL . 'dashboard');
+        }
     } else {
         header('Location: ' . RUTA_URL . 'login');
     }
@@ -65,7 +75,17 @@ if ($enlaceSolicitado === null || $enlaceSolicitado === '') {
 }
 
 if ($primerSegmento === 'inicio' && !empty($_SESSION['registrado'])) {
-    header('Location: ' . RUTA_URL . 'dashboard');
+    // Redirigir según el rol del usuario
+    require_once __DIR__ . '/utils/crm_roles.php';
+    $userId = (int)$_SESSION['idUsuario'];
+    
+    if (isUserCliente($userId) && !isUserAdmin($userId)) {
+        // Los clientes van a su página de notificaciones
+        header('Location: ' . RUTA_URL . 'crm/notificaciones');
+    } else {
+        // Otros roles van al dashboard
+        header('Location: ' . RUTA_URL . 'dashboard');
+    }
     exit;
 }
 

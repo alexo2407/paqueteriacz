@@ -190,6 +190,25 @@ if (preg_match('/\/api\/crm\/leads\/(\d+)$/', $path, $matches) && $method === 'G
     exit;
 }
 
+// GET /api/crm/notifications - Obtener notificaciones del usuario
+if (preg_match('/\/api\/crm\/notifications$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/crm/notifications.php';
+    exit;
+}
+
+// POST /api/crm/notifications/{id}/read - Marcar notificación como leída
+if (preg_match('/\/api\/crm\/notifications\/(\d+)\/read$/', $path, $matches) && $method === 'POST') {
+    $_GET['notification_id'] = $matches[1];
+    require_once __DIR__ . '/crm/notification_read.php';
+    exit;
+}
+
+// POST /api/crm/notifications/read-all - Marcar todas como leídas
+if (preg_match('/\/api\/crm\/notifications\/read-all$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/crm/notifications_read_all.php';
+    exit;
+}
+
 // GET /api/crm/metrics - Métricas (admin only)
 if (preg_match('/\/api\/crm\/metrics$/', $path) && $method === 'GET') {
     require_once __DIR__ . '/crm/metrics.php';

@@ -46,11 +46,11 @@ try {
     // DEBUG: Log para verificar roles
     $userRoles = getRolesForUser($userId);
     error_log("CRM API - User ID: {$userId}, Roles: " . json_encode($userRoles));
-    error_log("CRM API - isAdmin: " . (isAdmin($userId) ? 'true' : 'false'));
-    error_log("CRM API - isProveedor: " . (isProveedor($userId) ? 'true' : 'false'));
+    error_log("CRM API - isAdmin: " . (isUserAdmin($userId) ? 'true' : 'false'));
+    error_log("CRM API - isProveedor: " . (isUserProveedor($userId) ? 'true' : 'false'));
     
     // Verificar que es Proveedor o Admin
-    if (!isProveedor($userId) && !isAdmin($userId)) {
+    if (!isUserProveedor($userId) && !isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode([
             'success' => false, 
@@ -58,8 +58,8 @@ try {
             'debug' => [
                 'user_id' => $userId,
                 'roles' => $userRoles,
-                'is_admin' => isAdmin($userId),
-                'is_proveedor' => isProveedor($userId)
+                'is_admin' => isUserAdmin($userId),
+                'is_proveedor' => isUserProveedor($userId)
             ]
         ]);
         exit;

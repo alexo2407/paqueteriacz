@@ -71,7 +71,10 @@ include("vista/includes/header.php");
 
                         <div class="mb-3">
                             <label class="form-label">Webhook URL <span class="text-danger">*</span></label>
-                            <input type="url" name="webhook_url" class="form-control" value="<?= htmlspecialchars($integracion['webhook_url']) ?>" required>
+                            <input type="text" name="webhook_url" id="webhookUrl" class="form-control" value="<?= htmlspecialchars($integracion['webhook_url']) ?>" required>
+                            <div class="form-text">
+                                URL donde se enviarán los eventos POST. Puede ser externa (HTTPS) o interna (localhost/IP privada) para testing.
+                            </div>
                         </div>
 
                         <div class="mb-3">

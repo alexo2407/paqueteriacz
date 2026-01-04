@@ -73,10 +73,33 @@ class CrmController {
     public function ver($id) {
         require_once "modelo/crm_lead.php";
         require_once "modelo/crm_outbox.php";
+        require_once __DIR__ . '/../utils/crm_roles.php';
         
         $lead = CrmLead::obtenerPorId($id);
         if (!$lead) {
             return null;
+        }
+        
+        // Validación de Seguridad (Ownership)
+        $userId = $_SESSION['idUsuario'] ?? 0;
+        
+        // Si no es admin, verificar propiedad
+        if (!isUserAdmin($userId)) {
+            $esCliente = isUserCliente($userId);
+            $esProveedor = isUserProveedor($userId); // Asumiendo que existe esta función en crm_roles
+            
+            if ($esCliente && (int)$lead['cliente_id'] !== $userId) {
+                return null; // Acceso denegado, lead de otro cliente
+            }
+            
+            if ($esProveedor && (int)$lead['proveedor_id'] !== $userId) {
+                return null; // Acceso denegado, lead de otro proveedor
+            }
+            
+            // Si no es ni cliente ni proveedor ni admin (y entró aquí), bloquear
+            if (!$esCliente && !$esProveedor) {
+                return null;
+            }
         }
         
         // Timeline de cambios de estado
@@ -97,8 +120,22 @@ class CrmController {
      */
     public function cambiarEstado($id, $nuevoEstado, $observaciones = null) {
         require_once "modelo/crm_lead.php";
+        require_once __DIR__ . '/../utils/crm_roles.php';
         
-        return CrmLead::cambiarEstado($id, $nuevoEstado, $observaciones, $_SESSION['user_id']);
+        $userId = (int)($_SESSION['idUsuario'] ?? 0);
+        
+        // Validar Ownership
+        if (!isUserAdmin($userId)) {
+            $lead = CrmLead::obtenerPorId($id);
+            if (!$lead) return ['success' => false, 'message' => 'Lead no encontrado'];
+            
+            // Cliente solo puede cambiar su lead
+            if (isUserCliente($userId) && (int)$lead['cliente_id'] !== $userId) {
+                return ['success' => false, 'message' => 'Acceso denegado: este lead no te pertenece'];
+            }
+        }
+        
+        return CrmLead::cambiarEstado($id, $nuevoEstado, $observaciones, $userId);
     }
 
     /**
@@ -236,8 +273,18 @@ class CrmController {
      */
     public function guardarLead($data) {
         require_once "modelo/crm_lead.php";
+        require_once __DIR__ . '/../utils/crm_roles.php';
         
         $id = isset($data['id']) ? (int)$data['id'] : 0;
+        $userId = (int)($_SESSION['idUsuario'] ?? 0);
+        
+        // Validar Edición
+        if ($id > 0 && !isUserAdmin($userId)) {
+             $lead = CrmLead::obtenerPorId($id);
+             if (isUserCliente($userId) && (int)$lead['cliente_id'] !== $userId) {
+                  return ['success' => false, 'message' => 'No puedes editar un lead que no es tuyo'];
+             }
+        }
         
         // Datos básicos
         $leadData = [
@@ -300,6 +347,59 @@ class CrmController {
         require_once "modelo/crm_inbox.php";
         return ['success' => CrmInbox::eliminar($id)];
     }
+    
+    /**
+     * Notificaciones - Bandeja de entrada del usuario
+     */
+    public function notificaciones() {
+        require_once "modelo/crm_notification.php";
+        
+        $userId = $_SESSION['idUsuario'] ?? 0;
+        if ($userId <= 0) {
+            return ['notificaciones' => [], 'unread_count' => 0, 'pagination' => []];
+        }
+        
+        // Parámetros de paginación
+        $page = isset($_GET['page']) ? max((int)$_GET['page'], 1) : 1;
+        $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 50) : 20; // Reducimos default a 20 para UX más limpia
+        $offset = ($page - 1) * $limit;
+        $onlyUnread = isset($_GET['unread']) && $_GET['unread'] === 'true';
+        
+        // Obtener datos
+        $notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, $onlyUnread, $limit, $offset);
+        $totalNotificaciones = CrmNotificationModel::contarTotalPorUsuario($userId, $onlyUnread);
+        $unreadCount = CrmNotificationModel::contarNoLeidas($userId);
+        
+        // Obtener leads pendientes "reales" (No paginados, son tareas)
+        $leadsPendientes = CrmNotificationModel::obtenerLeadsPendientes($userId);
+        
+        // Función helper local para decodificar
+        $decoder = function(&$item) {
+            if (isset($item['payload']) && is_string($item['payload'])) {
+                $item['payload'] = json_decode($item['payload'], true);
+            }
+        };
+        
+        // Decodificar ambos arrays
+        array_walk($notificaciones, $decoder);
+        array_walk($leadsPendientes, $decoder);
+        
+        // Calcular info de paginación
+        $totalPages = ceil($totalNotificaciones / $limit);
+        
+        return [
+            'notificaciones' => $notificaciones, // Historial Paginado
+            'leads_pendientes' => $leadsPendientes, // Lista de tareas urgentes
+            'unread_count' => $unreadCount,
+            'pagination' => [
+                'current_page' => $page,
+                'total_pages' => $totalPages,
+                'total_items' => $totalNotificaciones,
+                'limit' => $limit
+            ]
+        ];
+    }
+    
     /**
      * Exportar leads a CSV
      */

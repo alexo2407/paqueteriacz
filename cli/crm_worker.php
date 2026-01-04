@@ -3,7 +3,7 @@
 /**
  * CRM Worker CLI
  * 
- * Worker para procesar las colas inbox y outbox del CRM Relay.
+ * Worker para procesar la cola inbox del CRM Relay.
  * 
  * Modos de ejecución:
  *   php cli/crm_worker.php --once    # Procesa una vez y termina (para cron)
@@ -16,7 +16,6 @@
 // Cargar dependencias
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../services/crm_inbox_service.php';
-require_once __DIR__ . '/../services/crm_outbox_service.php';
 
 // Configuración
 $pollInterval = 3; // Segundos entre polls
@@ -43,22 +42,7 @@ function processIteration() {
             }
         }
         
-        // Procesar outbox
-        echo "[{$timestamp}] Processing outbox...\n";
-        $outboxStats = CrmOutboxService::procesar();
-        
-        if ($outboxStats['sent'] > 0 || $outboxStats['failed'] > 0) {
-            echo "[{$timestamp}] Outbox: sent={$outboxStats['sent']}, failed={$outboxStats['failed']}\n";
-            
-            if (!empty($outboxStats['errors'])) {
-                foreach ($outboxStats['errors'] as $error) {
-                    error_log("[CRM Worker][Outbox] $error");
-                }
-            }
-        }
-        
-        if ($inboxStats['processed'] == 0 && $inboxStats['failed'] == 0 && 
-            $outboxStats['sent'] == 0 && $outboxStats['failed'] == 0) {
+        if ($inboxStats['processed'] == 0 && $inboxStats['failed'] == 0) {
             echo "[{$timestamp}] No pending messages.\n";
         }
         

@@ -8,7 +8,11 @@ if(!isset($_SESSION['registrado'])) {
 }
 
 require_once __DIR__ . '/../../../utils/permissions.php';
-if (!isAdmin()) {
+require_once __DIR__ . '/../../../utils/crm_roles.php';
+
+// Verificar permisos: Admin o Cliente
+$userId = (int)$_SESSION['idUsuario'];
+if (!isUserAdmin($userId) && !isUserCliente($userId)) {
     header('Location: ' . RUTA_URL . 'dashboard');
     exit;
 }

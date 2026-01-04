@@ -22,7 +22,6 @@ try {
     require_once __DIR__ . '/../../utils/crm_roles.php';
     require_once __DIR__ . '/../../utils/crm_status.php';
     require_once __DIR__ . '/../../modelo/crm_lead.php';
-    require_once __DIR__ . '/../../modelo/crm_outbox.php';
     
     // Validar JWT
     $headers = getallheaders();
@@ -46,8 +45,8 @@ try {
     $userId = (int)$userData['id'];
     
     // Verificar que es Cliente o Admin
-    $isAdmin = isAdmin($userId);
-    $isCliente = isCliente($userId);
+    $isAdmin = isUserAdmin($userId);
+    $isCliente = isUserCliente($userId);
     
     if (!$isCliente && !$isAdmin) {
         http_response_code(403);
@@ -246,10 +245,10 @@ try {
                 $historyStmt->execute($historyParams);
             }
             
-            // PASO 5: Batch INSERT - Outbox (todas las notificaciones en una query)
+            // PASO 5: Batch INSERT - Notificaciones internas (todas en una query)
             if (!empty($outboxData)) {
-                $outboxValues = [];
-                $outboxParams = [];
+                $notifValues = [];
+                $notifParams = [];
                 
                 // Pre-crear template de payload base (optimización)
                 $basePayload = [
@@ -260,10 +259,11 @@ try {
                 ];
                 
                 foreach ($outboxData as $o) {
-                    $outboxValues[] = "(?, ?, ?, ?, 'pending', 0, NOW(), NOW(), NOW())";
-                    $outboxParams[] = 'SEND_TO_PROVIDER'; // event_type
-                    $outboxParams[] = $o['lead_id'];
-                    $outboxParams[] = $o['proveedor_id']; // destination_user_id
+                    $notifValues[] = "(?, ?, ?, ?, ?, 0, NOW())";
+                    $notifParams[] = $o['proveedor_id']; // user_id (destinatario)
+                    $notifParams[] = 'status_updated'; // type
+                    $notifParams[] = 'SEND_TO_PROVIDER'; // event_type
+                    $notifParams[] = $o['lead_id']; // related_lead_id
                     
                     // Merge con datos específicos del lead
                     $payloadFinal = array_merge($basePayload, [
@@ -273,16 +273,16 @@ try {
                         'estado_nuevo' => $o['estado_nuevo']
                     ]);
                     
-                    $outboxParams[] = json_encode($payloadFinal, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $notifParams[] = json_encode($payloadFinal, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                 }
                 
-                $outboxSQL = "
-                    INSERT INTO crm_outbox 
-                    (event_type, lead_id, destination_user_id, payload, status, attempts, next_retry_at, created_at, updated_at)
-                    VALUES " . implode(', ', $outboxValues);
+                $notifSQL = "
+                    INSERT INTO crm_notifications 
+                    (user_id, type, event_type, related_lead_id, payload, is_read, created_at)
+                    VALUES " . implode(', ', $notifValues);
                 
-                $outboxStmt = $db->prepare($outboxSQL);
-                $outboxStmt->execute($outboxParams);
+                $notifStmt = $db->prepare($notifSQL);
+                $notifStmt->execute($notifParams);
             }
         }
         

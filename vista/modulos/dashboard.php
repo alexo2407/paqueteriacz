@@ -16,19 +16,22 @@ else
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
 $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
 $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+$isCliente = in_array('Cliente', $rolesNombres, true);
 
+// Repartidores van a seguimiento
 if ($isRepartidor && !$isAdmin) {
     header('Location: ' . RUTA_URL . 'seguimiento/listar');
     exit;
 }
 
-require_once __DIR__ . '/../../controlador/dashboard.php';
-require_once __DIR__ . '/../../utils/permissions.php';
-
-if (isRepartidor()) {
-    header('Location: ' . RUTA_URL . 'seguimiento');
+// Clientes van a sus notificaciones (su página principal)
+if ($isCliente && !$isAdmin) {
+    header('Location: ' . RUTA_URL . 'crm/notificaciones');
     exit;
 }
+
+require_once __DIR__ . '/../../controlador/dashboard.php';
+require_once __DIR__ . '/../../utils/permissions.php';
 
 include("vista/includes/header.php");
 

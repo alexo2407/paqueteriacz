@@ -61,9 +61,9 @@ try {
     }
     
     // Verificar acceso (ownership o admin)
-    $esAdmin = isAdmin($userId);
-    $esProveedor = isProveedor($userId) && (int)$lead['proveedor_id'] === $userId;
-    $esCliente = isCliente($userId) && (int)$lead['cliente_id'] === $userId;
+    $esAdmin = isUserAdmin($userId);
+    $esProveedor = isUserProveedor($userId) && (int)$lead['proveedor_id'] === $userId;
+    $esCliente = isUserCliente($userId) && (int)$lead['cliente_id'] === $userId;
     
     if (!$esAdmin && !$esProveedor && !$esCliente) {
         http_response_code(403);

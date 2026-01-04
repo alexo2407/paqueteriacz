@@ -977,11 +977,11 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
     $accion = isset($ruta[1]) ? $ruta[1] : '';
     require_once __DIR__ . '/../controlador/crm.php';
     require_once __DIR__ . '/../utils/session.php';
-    require_once __DIR__ . '/../utils/permissions.php';
-    start_secure_session();
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
     
-    // Solo admin tiene acceso
-    if (!isAdmin()) {
+    // Permitir Admin o Cliente
+    if (!isUserAdmin($userId) && !isUserCliente($userId)) {
         set_flash('error', 'No tienes permisos para realizar esta acción.');
         header('Location: ' . RUTA_URL . 'dashboard');
         exit;

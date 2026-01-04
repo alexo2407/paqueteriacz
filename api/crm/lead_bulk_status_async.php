@@ -46,7 +46,7 @@ try {
     $userId = (int)$userData['id'];
     
     // Verificar que es Cliente o Admin
-    if (!isCliente($userId) && !isAdmin($userId)) {
+    if (!isUserCliente($userId) && !isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Acceso denegado: solo clientes o administradores']);
         exit;
@@ -130,7 +130,7 @@ try {
     require_once __DIR__ . '/../../utils/crm_roles.php';
     
     $db = (new Conexion())->conectar();
-    $isAdmin = isAdmin($userId);
+    $isAdmin = isUserAdmin($userId);
     
     // Obtener leads para validación previa
     $placeholders = implode(',', array_fill(0, count($leadIds), '?'));

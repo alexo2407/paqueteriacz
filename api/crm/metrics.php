@@ -44,7 +44,7 @@ try {
     $userId = (int)$userData['id'];
     
     // Solo admin
-    if (!isAdmin($userId)) {
+    if (!isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Acceso denegado: solo administradores']);
         exit;

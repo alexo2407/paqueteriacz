@@ -49,8 +49,30 @@ include("vista/includes/header.php");
 
                         <div class="mb-3">
                             <label class="form-label">Webhook URL <span class="text-danger">*</span></label>
-                            <input type="url" name="webhook_url" class="form-control" placeholder="https://api.ejemplo.com/webhook" required>
-                            <div class="form-text">URL donde se enviarán los eventos POST.</div>
+                            <input type="text" name="webhook_url" id="webhookUrl" class="form-control" placeholder="https://api.ejemplo.com/webhook" required>
+                            <div class="form-text">
+                                URL donde se enviarán los eventos POST.
+                                <br>
+                                <small>
+                                    <strong>Ejemplos:</strong>
+                                    <ul class="mb-0 mt-1">
+                                        <li><code>https://miapp.com/api/leads</code> - Producción (URL externa)</li>
+                                        <li><code>http://localhost:3000/webhook</code> - Desarrollo local</li>
+                                        <li><code>http://192.168.1.100/api/crm</code> - Red interna</li>
+                                    </ul>
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input class="form-check-input" type="checkbox" name="allow_internal" value="1" id="allowInternal">
+                            <label class="form-check-label" for="allowInternal">
+                                Permitir URL interna (localhost, IPs privadas)
+                            </label>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle"></i> 
+                                Activa esto solo para desarrollo/testing. En producción, usa URLs externas seguras (HTTPS).
+                            </div>
                         </div>
 
                         <div class="mb-3">

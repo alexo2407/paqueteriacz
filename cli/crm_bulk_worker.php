@@ -8,7 +8,7 @@
 
 require_once __DIR__ . '/../modelo/conexion.php';
 require_once __DIR__ . '/../modelo/crm_lead.php';
-require_once __DIR__ . '/../modelo/crm_outbox.php';
+require_once __DIR__ . '/../modelo/crm_notification.php';
 require_once __DIR__ . '/../utils/crm_status.php';
 require_once __DIR__ . '/../utils/crm_roles.php';
 
@@ -84,7 +84,7 @@ function processJob($job) {
     $currentTimestamp = date('Y-m-d H:i:s');
     
     // Verificar si es admin (para ownership validation)
-    $isAdmin = isAdmin($userId);
+    $isAdmin = isUserAdmin($userId);
     
     try {
         // PASO 1: Obtener todos los leads (batch)
@@ -183,10 +183,10 @@ function processJob($job) {
                 $historyStmt->execute($historyParams);
             }
             
-            // PASO 5: Batch INSERT - Outbox
+            // PASO 5: Batch INSERT - Notificaciones Internas
             if (!empty($outboxData)) {
-                $outboxValues = [];
-                $outboxParams = [];
+                $notifValues = [];
+                $notifParams = [];
                 
                 $basePayload = [
                     'observaciones' => $observacionesFinal,
@@ -196,10 +196,11 @@ function processJob($job) {
                 ];
                 
                 foreach ($outboxData as $o) {
-                    $outboxValues[] = "(?, ?, ?, ?, 'pending', 0, NOW(), NOW(), NOW())";
-                    $outboxParams[] = 'SEND_TO_PROVIDER';
-                    $outboxParams[] = $o['lead_id'];
-                    $outboxParams[] = $o['proveedor_id'];
+                    $notifValues[] = "(?, ?, ?, ?, ?, 0, NOW())";
+                    $notifParams[] = $o['proveedor_id']; // user_id
+                    $notifParams[] = 'status_updated'; // type
+                    $notifParams[] = 'SEND_TO_PROVIDER'; // event_type
+                    $notifParams[] = $o['lead_id']; // related_lead_id
                     
                     $payloadFinal = array_merge($basePayload, [
                         'lead_id' => $o['lead_id'],
@@ -208,16 +209,16 @@ function processJob($job) {
                         'estado_nuevo' => $o['estado_nuevo']
                     ]);
                     
-                    $outboxParams[] = json_encode($payloadFinal, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $notifParams[] = json_encode($payloadFinal, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                 }
                 
-                $outboxSQL = "
-                    INSERT INTO crm_outbox 
-                    (event_type, lead_id, destination_user_id, payload, status, attempts, next_retry_at, created_at, updated_at)
-                    VALUES " . implode(', ', $outboxValues);
+                $notifSQL = "
+                    INSERT INTO crm_notifications 
+                    (user_id, type, event_type, related_lead_id, payload, is_read, created_at)
+                    VALUES " . implode(', ', $notifValues);
                 
-                $outboxStmt = $db->prepare($outboxSQL);
-                $outboxStmt->execute($outboxParams);
+                $notifStmt = $db->prepare($notifSQL);
+                $notifStmt->execute($notifParams);
             }
             
             $db->commit();
