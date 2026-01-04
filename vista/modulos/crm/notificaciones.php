@@ -5,16 +5,136 @@ if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(
 require_once __DIR__ . '/../../../controlador/crm.php';
 require_once __DIR__ . '/../../../utils/crm_roles.php';
 
+// Obtener datos del controlador
 $crmController = new CrmController();
-$datos = $crmController->notificaciones(); // Obtiene las últimas 50-100 por defecto
+$datos = $crmController->notificaciones(); 
 $notificaciones = $datos['notificaciones'];
 $unreadCount = $datos['unread_count'];
 
-// Verificar rol
-$userId = (int)$_SESSION['idUsuario'];
+// helpers/roles.php ya cargado en index
+$userId = $_SESSION['idUsuario'] ?? 0;
+
+// Validar Permisos
+if ($userId <= 0) {
+    header("Location: ".RUTA_URL."login");
+    exit;
+}
+
+// Permitir Clientes y Admins
 $esCliente = isUserCliente($userId) && !isUserAdmin($userId);
 
-// --- LÓGICA DE PROCESAMIENTO FRONTEND ---
+// =========================================================================
+// FUNCIÓN HELPER DE RENDERIZADO (MOVIDA AL INICIO PARA USO AJAX Y NORMAL)
+// =========================================================================
+function renderNotificationCard($notif) {
+    // Asegurar payload
+    $payload = is_array($notif['payload']) ? $notif['payload'] : json_decode($notif['payload'], true);
+    
+    $isRead = $notif['is_read'];
+    $unreadClass = $isRead ? '' : 'unread shadow-sm';
+    $time = date('H:i', strtotime($notif['created_at']));
+    
+    // Datos Vivos
+    $leadStatusLive = $notif['lead_status_live'] ?? null;
+    
+    // Mapa de colores para estados
+    $colores = [
+        'EN_ESPERA' => 'bg-warning text-dark',
+        'nuevo'     => 'bg-warning text-dark',
+        'APROBADO'  => 'bg-success',
+        'CONFIRMADO'=> 'bg-primary',
+        'EN_TRANSITO'=> 'bg-info text-dark',
+        'EN_BODEGA' => 'bg-secondary',
+        'CANCELADO' => 'bg-danger'
+    ];
+    
+    $badgeClass = $colores[$leadStatusLive] ?? 'bg-light text-dark border';
+    $estadoBadge = $leadStatusLive ? "<span class='badge {$badgeClass} me-1'>{$leadStatusLive}</span>" : "";
+    
+    // Configuración según tipo
+    if ($notif['type'] === 'new_lead') {
+        $icon = '<i class="bi bi-person-plus-fill"></i>';
+        $title = $payload['nombre'] ?? 'Nuevo Lead';
+        $leadId = $payload['lead_id'] ?? 0;
+        $iconClass = 'bg-soft-success';
+        $typeClass = 'type-lead';
+        
+        $prodInfo = isset($payload['producto']) ? "Interesado en: <b>{$payload['producto']}</b>" : 'Nuevo cliente asignado';
+        $subtitle = $estadoBadge . " " . $prodInfo;
+        
+    } else {
+        $icon = '<i class="bi bi-arrow-repeat"></i>';
+        $iconClass = 'bg-soft-info';
+        $typeClass = 'type-update';
+        $title = "Actualización Lead #{$notif['related_lead_id']}";
+        $estadoAnterior = $payload['estado_anterior'] ?? '?';
+        $estadoNuevo = $payload['estado_nuevo'] ?? '?';
+        $subtitle = "Cambio: <span class='badge bg-secondary'>$estadoAnterior</span> <i class='bi bi-arrow-right small'></i> <span class='badge bg-primary'>$estadoNuevo</span>";
+        $leadId = $notif['related_lead_id'] ?? 0;
+    }
+?>
+    <div class="col-12">
+        <div class="card notif-card <?= $unreadClass ?> <?= $typeClass ?> p-3 h-100" id="notif-card-<?= $notif['id'] ?>">
+            <div class="d-flex align-items-start">
+                <div class="notif-icon <?= $iconClass ?> flex-shrink-0 me-3">
+                    <?= $icon ?>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h6 class="mb-1 fw-bold text-dark"><?= $title ?></h6>
+                        <small class="text-muted ms-2"><?= $time ?></small>
+                    </div>
+                    <p class="mb-2 text-muted small"><?= $subtitle ?></p>
+                    <a href="<?= RUTA_URL ?>crm/ver/<?= $leadId ?>" class="btn btn-sm btn-light border">Ver Detalles</a>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php
+}
+
+// --- LÓGICA AJAX: Si se pide búsqueda, devolver solo HTML y salir ---
+if (isset($_GET['ajax_search'])) {
+    // Limpiar buffers previos si hubiera
+    while (ob_get_level()) ob_end_clean();
+    
+    // Procesar agrupación para el renderizado parcial
+    $groupedAjax = [
+        'Hoy' => [], 'Ayer' => [], 'Anteriores' => []
+    ];
+    $hoy = date('Y-m-d');
+    $ayer = date('Y-m-d', strtotime('-1 day'));
+
+    foreach ($notificaciones as $notif) {
+        $fechaNotif = date('Y-m-d', strtotime($notif['created_at']));
+        if ($fechaNotif === $hoy) $groupedAjax['Hoy'][] = $notif;
+        elseif ($fechaNotif === $ayer) $groupedAjax['Ayer'][] = $notif;
+        else $groupedAjax['Anteriores'][] = $notif;
+    }
+
+    if (empty($notificaciones)) {
+        $q = htmlspecialchars($_GET['q'] ?? '');
+        echo "<div class='text-center py-5 text-muted'>
+                <i class='bi bi-search display-4 opacity-25'></i>
+                <p class='mt-3'>No se encontraron resultados para <strong>'$q'</strong> en tu historial.</p>
+                <div class='mt-3'>
+                    <a href='" . RUTA_URL . "crm/listar?search=" . urlencode($_GET['q'] ?? '') . "' class='btn btn-outline-primary btn-sm'>
+                        <i class='bi bi-search'></i> Buscar en todos los Leads
+                    </a>
+                </div>
+              </div>";
+    } else {
+        foreach ($groupedAjax as $label => $group) {
+            if(empty($group)) continue;
+            echo "<div class='timeline-label'>$label</div><div class='row'>";
+            foreach($group as $notif) renderNotificationCard($notif);
+            echo "</div>";
+        }
+    }
+    exit; // DETENER EJECUCIÓN (No renderizar el resto de la página)
+}
+
+// --- LÓGICA DE PROCESAMIENTO FRONTEND (NORMAL) ---
 // 1. Leads Pendientes (Vienen directo del controlador, lista completa de tareas)
 $leadsPendientesList = $datos['leads_pendientes'] ?? [];
 
@@ -79,8 +199,9 @@ include("vista/includes/header.php");
         font-weight: 600;
     }
     
+    /* Estilos para cards de notificación */
     .notif-card {
-        transition: all 0.2s ease;
+        transition: all 0.2s;
         border: 1px solid #e9ecef;
         border-left: 4px solid transparent; /* Indicador de tipo */
         border-radius: 8px;
@@ -88,15 +209,13 @@ include("vista/includes/header.php");
         margin-bottom: 0.75rem;
     }
     .notif-card:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.03);
-        border-color: #dee2e6;
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+        border-color: #dee2e6; /* Keep original hover border color */
     }
-    .notif-card.unread {
-        background-color: #f8fbff;
-        border-left-color: #0d6efd;
-    }
-    .notif-card.type-lead { border-left-color: #198754; }
+    
+    .notif-card.unread { background-color: #f8f9fa; border-left-color: #0d6efd; }
+    .notif-card.type-lead { border-left-color: #198754; } 
     .notif-card.type-update { border-left-color: #0dcaf0; }
     
     .timeline-label {
@@ -120,6 +239,20 @@ include("vista/includes/header.php");
     .bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
     .bg-soft-success { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
     .bg-soft-info { background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
+    /* DATATABLES GRID HACK: Transformar Tabla en Grid */
+    #tablaHistorial thead { display: none; }
+    #tablaHistorial tbody { display: flex; flex-wrap: wrap; margin-right: -15px; margin-left: -15px; }
+    #tablaHistorial tr { width: 50%; padding: 0 15px; box-sizing: border-box; display: block; }
+    #tablaHistorial td { display: block; width: 100%; padding: 0; border: none !important; }
+    
+    @media (max-width: 992px) {
+        #tablaHistorial tr { width: 100%; }
+    }
+    
+    /* Ajustes paginación DataTables */
+    .dataTables_wrapper .dataTables_paginate { margin-top: 1rem; display: flex; justify-content: center; }
+    .dataTables_wrapper .dataTables_filter { text-align: left !important; margin-bottom: 1rem; }
+    .dataTables_wrapper .dataTables_filter input { margin-left: 0; width: 100%; max-width: 300px; display: inline-block; }
 </style>
 
 <!-- Header de CRM -->
@@ -155,58 +288,137 @@ include("vista/includes/header.php");
 
 <div class="container mb-5">
     
+    <?php
+    // Determinar Tab Activa (Persistencia tras recarga)
+    // Default: 'leads' (Por Atender)
+    $activeTab = $_GET['tab'] ?? 'leads';
+    
+    // Mapeo simple para clases CSS
+    $showLeads = ($activeTab === 'leads') ? 'active' : '';
+    $showUpdates = ($activeTab === 'updates') ? 'active' : '';
+    $showAll = ($activeTab === 'all') ? 'active' : ''; // Historial
+    
+    $paneLeads = ($activeTab === 'leads') ? 'show active' : '';
+    $paneUpdates = ($activeTab === 'updates') ? 'show active' : '';
+    $paneAll = ($activeTab === 'all') ? 'show active' : '';
+    ?>
+
     <div class="row">
         <div class="col-lg-3 mb-4">
              <!-- Filtros Verticales -->
             <div class="list-group list-group-flush border rounded shadow-sm">
                 <!-- Tab: Pendientes (Prioridad) -->
-                <a class="list-group-item list-group-item-action fw-bold active d-flex justify-content-between align-items-center" id="pills-leads-tab" data-bs-toggle="pill" href="#pills-leads">
+                <a class="list-group-item list-group-item-action fw-bold <?= $showLeads ?> d-flex justify-content-between align-items-center" id="pills-leads-tab" data-bs-toggle="pill" href="#pills-leads" onclick="history.pushState(null, '', '?tab=leads')">
                     <span><i class="bi bi-star-fill text-warning me-2"></i> Por Atender</span>
                     <?php if($countPendientes > 0): ?><span class="badge bg-danger rounded-pill"><?= $countPendientes ?></span><?php endif; ?>
                 </a>
                 
                 <!-- Tab: Actualizaciones -->
-                 <a class="list-group-item list-group-item-action" id="pills-updates-tab" data-bs-toggle="pill" href="#pills-updates">
+                 <a class="list-group-item list-group-item-action <?= $showUpdates ?>" id="pills-updates-tab" data-bs-toggle="pill" href="#pills-updates" onclick="history.pushState(null, '', '?tab=updates')">
                     <i class="bi bi-arrow-repeat me-2"></i> Actualizaciones
                 </a>
 
                 <!-- Tab: Historial -->
-                <a class="list-group-item list-group-item-action" id="pills-all-tab" data-bs-toggle="pill" href="#pills-all">
+                <a class="list-group-item list-group-item-action <?= $showAll ?>" id="pills-all-tab" data-bs-toggle="pill" href="#pills-all" onclick="history.pushState(null, '', '?tab=all')">
                     <i class="bi bi-archive me-2"></i> Historial Completo
                 </a>
             </div>
         
             <!-- Info Paginación -->
-            <div class="mt-3 text-center text-muted small">
+            <?php if($activeTab === 'all'): ?>
+            <div class="mt-3 text-center text-muted small fade show">
                 Mostrando pág. <?= $currentPage ?> de <?= $totalPages ?>
                 <br>
                 (Total: <?= $pagination['total_items'] ?? 0 ?>)
             </div>
+            <?php endif; ?>
         </div>
         
         <div class="col-lg-9">
             <!-- Contenido -->
             <div class="tab-content" id="pills-tabContent">
                 
-                <!-- Tab: PENDIENTES (Default Active) -->
-                <div class="tab-pane fade show active" id="pills-leads" role="tabpanel">
-                    <?php 
-                    if (empty($leadsPendientesList)) {
-                         echo '<div class="text-center py-5 border rounded bg-light">
-                                <i class="bi bi-check-circle display-1 text-success opacity-50"></i>
-                                <h5 class="mt-3 text-success">¡Todo al día!</h5>
-                                <p class="text-muted">No tienes leads nuevos pendientes de atender.</p>
-                               </div>';
-                    } else {
-                        echo '<div class="row">';
-                        foreach ($leadsPendientesList as $notif) { renderNotificationCard($notif); }
-                        echo '</div>';
-                    }
-                    ?>
+                <!-- Tab: PENDIENTES -->
+                <div class="tab-pane fade <?= $paneLeads ?>" id="pills-leads" role="tabpanel">
+                    <?php if (empty($leadsPendientesList)): ?>
+                         <div class="text-center py-5 border rounded bg-light">
+                            <i class="bi bi-check-circle display-1 text-success opacity-50"></i>
+                            <h5 class="mt-3 text-success">¡Todo al día!</h5>
+                            <p class="text-muted">No tienes leads nuevos pendientes de atender.</p>
+                         </div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table id="tablaPendientes" class="table table-hover align-middle" style="width:100%">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Lead / Interesado</th>
+                                        <th>Producto de Interés</th>
+                                        <th style="min-width: 130px;">Contacto</th>
+                                        <th>Fecha</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($leadsPendientesList as $notif): 
+                                    $payload = is_array($notif['payload']) ? $notif['payload'] : json_decode($notif['payload'], true);
+                                    $nombre = $payload['nombre'] ?? 'Desconocido';
+                                    $producto = $payload['producto'] ?? 'N/A';
+                                    $leadId = $payload['lead_id'] ?? 0;
+                                    $leadPhoneLive = $notif['lead_phone_live'] ?? ($payload['telefono'] ?? '');
+                                    $fecha = date('d/m H:i', strtotime($notif['created_at']));
+                                ?>
+                                    <tr id="row-notif-<?= $notif['id'] ?>">
+                                        <td>
+                                            <div class="fw-bold text-dark"><?= $nombre ?></div>
+                                            <small class="text-muted">ID: #<?= $leadId ?></small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border"><?= $producto ?></span>
+                                        </td>
+                                        <td>
+                                            <?php if(!empty($leadPhoneLive)): ?>
+                                                <div class="d-flex gap-1">
+                                                    <a href="https://wa.me/52<?= preg_replace('/[^0-9]/', '', $leadPhoneLive) ?>" target="_blank" class="btn btn-sm btn-success text-white" title="WhatsApp">
+                                                        <i class="bi bi-whatsapp"></i>
+                                                    </a>
+                                                    <a href="tel:<?= $leadPhoneLive ?>" class="btn btn-sm btn-outline-primary" title="Llamar">
+                                                        <i class="bi bi-telephone"></i>
+                                                    </a>
+                                                    <small class="ms-1 align-self-center"><?= $leadPhoneLive ?></small>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted small">--</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><small><?= $fecha ?></small></td>
+                                        <td class="text-end">
+                                            <div class="d-flex align-items-center justify-content-end gap-2">
+                                                <!-- Selector de Estado -->
+                                                <select class="form-select form-select-sm" style="width: auto; font-weight: 500;" 
+                                                        onchange="confirmarCambioEstado(this, <?= $leadId ?>, <?= $notif['id'] ?>)">
+                                                    <option selected disabled value="">Acción...</option>
+                                                    <option value="APROBADO" class="text-success fw-bold">APROBADO</option>
+                                                    <option value="CONFIRMADO" class="text-primary fw-bold">CONFIRMADO</option>
+                                                    <option value="EN_TRANSITO" class="text-info fw-bold">EN TRANSITO</option>
+                                                    <option value="EN_BODEGA" class="text-secondary fw-bold">EN BODEGA</option>
+                                                    <option value="CANCELADO" class="text-danger fw-bold">CANCELADO</option>
+                                                </select>
+                                                
+                                                <a href="<?= RUTA_URL ?>crm/ver/<?= $leadId ?>" class="btn btn-sm btn-outline-secondary" title="Ver Detalles">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Tab: ACTUALIZACIONES -->
-                <div class="tab-pane fade" id="pills-updates" role="tabpanel">
+                <div class="tab-pane fade <?= $paneUpdates ?>" id="pills-updates" role="tabpanel">
                     <?php 
                     if (empty($actualizaciones)) {
                         echo '<div class="alert alert-light text-center">No hay actualizaciones recientes.</div>';
@@ -218,154 +430,51 @@ include("vista/includes/header.php");
                     ?>
                 </div>
                 
-                <!-- Tab: HISTORIAL -->
-                <div class="tab-pane fade" id="pills-all" role="tabpanel">
-                    <div class="alert alert-info py-2 small"><i class="bi bi-info-circle me-1"></i> Aquí se muestra todo el historial, incluyendo lo ya atendido.</div>
-                    <?php 
-                    if (empty($notificaciones)) {
-                        echo '<div class="text-center py-5 text-muted"><p>No hay historial disponible.</p></div>';
-                    } else {
-                        foreach ($groupedByDate as $label => $group): 
-                            if(empty($group)) continue;
-                    ?>
-                        <div class="timeline-label"><?= $label ?></div>
-                        <div class="row">
-                            <?php foreach($group as $notif) { renderNotificationCard($notif); } ?>
+                <!-- Tab: HISTORIAL (DataTable Card View) -->
+                <div class="tab-pane fade <?= $paneAll ?>" id="pills-all" role="tabpanel">
+                    
+                    <!-- Filtros de Fecha y Exportación -->
+                    <div class="d-flex flex-wrap align-items-end gap-2 mb-3 bg-light p-2 rounded border">
+                        <div class="col-auto">
+                            <label class="small text-muted fw-bold">Desde:</label>
+                            <input type="date" id="filterStartDate" class="form-control form-control-sm" 
+                                   value="<?= htmlspecialchars($datos['start_date']) ?>">
                         </div>
-                    <?php endforeach; } ?>
+                        <div class="col-auto">
+                            <label class="small text-muted fw-bold">Hasta:</label>
+                            <input type="date" id="filterEndDate" class="form-control form-control-sm" 
+                                   value="<?= htmlspecialchars($datos['end_date']) ?>">
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-sm btn-primary" onclick="filtrarHistorial()"><i class="bi bi-filter"></i> Filtrar</button>
+                        </div>
+                        <div class="ms-auto">
+                            <button class="btn btn-sm btn-success" onclick="descargarExcel()"><i class="bi bi-file-earmark-excel"></i> Exportar Excel</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table id="tablaHistorial" class="table table-borderless" style="width:100%">
+                            <thead class="d-none">
+                                <tr>
+                                    <th>Contenido</th>
+                                    <th>FechaSort</th>
+                                    <th>SearchData</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data cargada via Server-Side AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            
                 </div>
 
             </div>
-            
-            <!-- Paginador -->
-            <?php if($totalPages > 1): ?>
-            <nav class="mt-4 border-top pt-3">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item <?= ($currentPage <= 1) ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $currentPage - 1])) ?>">
-                            <i class="bi bi-chevron-left"></i> Anterior
-                        </a>
-                    </li>
-                    
-                    <?php for($i = max(1, $currentPage - 2); $i <= min($totalPages, $currentPage + 2); $i++): ?>
-                        <li class="page-item <?= ($i == $currentPage) ? 'active' : '' ?>">
-                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>"><?= $i ?></a>
-                        </li>
-                    <?php endfor; ?>
-                    
-                    <li class="page-item <?= ($currentPage >= $totalPages) ? 'disabled' : '' ?>">
-                        <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $currentPage + 1])) ?>">
-                            Siguiente <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-            <?php endif; ?>
-            
-        </div>
-    </div>
 </div>
 
-<?php 
-// FUNCIÓN HELPER PARA RENDERIZAR TARJETAS
-function renderNotificationCard($notif) {
-    // Asegurar payload (ya decodificado arriba, pero por si acaso)
-    $payload = is_array($notif['payload']) ? $notif['payload'] : json_decode($notif['payload'], true);
-    
-    $isRead = $notif['is_read'];
-    $unreadClass = $isRead ? '' : 'unread shadow-sm';
-    $time = date('H:i', strtotime($notif['created_at']));
-    
-    // Datos Vivos del Lead (si existen)
-    $leadStatusLive = $notif['lead_status_live'] ?? null;
-    $leadPhoneLive = $notif['lead_phone_live'] ?? ($payload['telefono'] ?? '');
-    
-    // Si el estado es distinto a los de "espera", se considera atendido
-    $yaAtendido = ($leadStatusLive && !in_array($leadStatusLive, ['nuevo', 'NUEVO', 'EN_ESPERA']));
-    
-    // Configuración según tipo
-    if ($notif['type'] === 'new_lead') {
-        $icon = '<i class="bi bi-person-plus-fill"></i>';
-        $title = $payload['nombre'] ?? 'Nuevo Lead';
-        $leadId = $payload['lead_id'] ?? 0;
-        
-        // Si ya fue atendido, cambiar visualmente
-        if ($yaAtendido) {
-            $iconClass = 'bg-light text-muted border';
-            $typeClass = ''; // Sin borde de color
-            $subtitle = "<span class='badge bg-light text-dark border'>Atendido: $leadStatusLive</span> <span class='text-muted small ms-1'>Lead #$leadId</span>";
-        } else {
-            $iconClass = 'bg-soft-success';
-            $typeClass = 'type-lead';
-            $subtitle = isset($payload['producto']) ? "Interesado en: <b>{$payload['producto']}</b>" : 'Nuevo cliente potencial asignado';
-        }
-        
-    } else {
-        $icon = '<i class="bi bi-arrow-repeat"></i>';
-        $iconClass = 'bg-soft-info';
-        $typeClass = 'type-update';
-        $title = "Actualización Lead #{$notif['related_lead_id']}";
-        $estadoAnterior = $payload['estado_anterior'] ?? '?';
-        $estadoNuevo = $payload['estado_nuevo'] ?? '?';
-        $subtitle = "Cambio de estado: <span class='badge bg-secondary'>$estadoAnterior</span> <i class='bi bi-arrow-right small'></i> <span class='badge bg-primary'>$estadoNuevo</span>";
-        
-        $leadId = $notif['related_lead_id'] ?? 0;
-        // Para actualizaciones, usamos el estado nuevo como referencia
-        $yaAtendido = true; // No requiere acción inmediata de "atender"
-    }
-?>
-    <div class="col-12 col-lg-6">
-        <div class="card notif-card <?= $unreadClass ?> <?= $typeClass ?> p-3" id="notif-<?= $notif['id'] ?>">
-            <div class="d-flex align-items-start">
-                <!-- Icono -->
-                <div class="notif-icon <?= $iconClass ?> flex-shrink-0 me-3">
-                    <?= $icon ?>
-                </div>
-                
-                <!-- Contenido -->
-                <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <h6 class="mb-1 fw-bold text-dark"><?= $title ?></h6>
-                        <small class="text-muted ms-2"><?= $time ?></small>
-                    </div>
-                    <p class="mb-2 text-muted small"><?= $subtitle ?></p>
-                    
-                    <!-- Botones de Acción -->
-                    <div class="d-flex gap-2 mt-2 flex-wrap">
-                        <a href="<?= RUTA_URL ?>crm/ver/<?= $leadId ?>" class="btn btn-sm btn-light border" onclick="markAsRead(<?= $notif['id'] ?>, false)">
-                            <i class="bi bi-eye"></i> Ver
-                        </a>
-                        
-                        <?php if($notif['type'] === 'new_lead' && !$yaAtendido): ?>
-                            <!-- Botones de Acción Rápida para Nuevos Leads -->
-                            <?php if(!empty($leadPhoneLive)): ?>
-                                <a href="https://wa.me/52<?= preg_replace('/[^0-9]/', '', $leadPhoneLive) ?>" target="_blank" class="btn btn-sm btn-success text-white" onclick="markAsRead(<?= $notif['id'] ?>, false)">
-                                    <i class="bi bi-whatsapp"></i> Chat
-                                </a>
-                                <a href="tel:<?= $leadPhoneLive ?>" class="btn btn-sm btn-primary" onclick="markAsRead(<?= $notif['id'] ?>, false)">
-                                    <i class="bi bi-telephone"></i>
-                                </a>
-                            <?php endif; ?>
-                            
-                            <!-- Botón Mágico: Avanzar estado -->
-                            <button class="btn btn-sm btn-outline-success" onclick="quickStatusChange(<?= $leadId ?>, 'APROBADO', <?= $notif['id'] ?>)">
-                                <i class="bi bi-check-circle"></i> Aprobar / Interesado
-                            </button>
-                        <?php endif; ?>
-                        
-                        <?php if(!$isRead): ?>
-                            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="markAsRead(<?= $notif['id'] ?>, true)" title="Marcar como leída">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-<?php
-}
-?>
+
 
 <script>
 // Función para marcar como leída
@@ -377,78 +486,76 @@ function markAsRead(id, hideElement) {
     .then(response => response.json())
     .then(data => {
         if (data.success && hideElement) {
-            const card = document.getElementById('notif-' + id);
-            if(card) {
-                card.classList.remove('unread', 'shadow-sm', 'type-lead', 'type-update'); // Quitar estilos de nuevo
-                card.style.opacity = '0.6';
-            }
+            // Eliminar fila de tabla si existe
+            const row = document.getElementById('row-notif-' + id);
+            if(row) row.remove();
         }
-    })
-    .catch(error => console.error('Error:', error));
+    });
 }
 
-// Función para cambio rápido de estado
-function quickStatusChange(leadId, nuevoEstado, notifId) {
+// Confirmar cambio desde Dropdown
+function confirmarCambioEstado(selectElem, leadId, notifId) {
+    const nuevoEstado = selectElem.value;
+    const textoEstado = selectElem.options[selectElem.selectedIndex].text;
+    
+    // Resetear valor visualmente por si cancela
+    const reset = () => { selectElem.value = ""; };
+    
+    if(!nuevoEstado) return;
+
     Swal.fire({
-        title: '¿Confirmar contacto?',
-        text: "El lead se marcará como 'Contactado' y la notificación como leída.",
-        icon: 'info',
+        title: '¿Cambiar estado?',
+        text: `El lead pasará a estado: ${textoEstado}`,
+        icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#198754',
-        confirmButtonText: 'Sí, confirmar'
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, cambiar',
+        cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Obtener token JWT (asumiendo que está en localStorage o cookie, si no, se requerirá auth header)
-            // NOTA: Si usas sesión PHP normal para API, esto funciona. Si usas JWT estricto, necesitas el token.
-            // Para este caso, asumimos sesión PHP o inyección de token.
-            
-            // Simular token para ejemplo (ajustar según tu auth.js real)
-            const token = localStorage.getItem('jwt_token') || ''; 
-
-            fetch('<?= RUTA_URL ?>api/crm/leads/' + leadId + '/estado', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    estado: nuevoEstado,
-                    observaciones: 'Contacto rápido desde notificaciones'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Actualizado!',
-                        text: 'Lead marcado como contactado',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    // Marcar notificación como leída y actualizar UI
-                    markAsRead(notifId, true);
-                    // Actualizar tarjeta visualmente para reflejar que ya fue atendido
-                    const card = document.getElementById('notif-' + notifId);
-                    if(card) {
-                        const subtitle = card.querySelector('p.text-muted');
-                        if(subtitle) subtitle.innerHTML = "<span class='badge bg-light text-dark border'>Atendido: contactado</span>";
-                        // Quitar botones de acción rápida
-                        const statusBtn = card.querySelector('button[onclick*="quickStatusChange"]');
-                        if(statusBtn) statusBtn.remove();
-                    }
-                } else {
-                    Swal.fire('Error', data.message || 'No se pudo actualizar', 'error');
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                Swal.fire('Error', 'Hubo un problema de conexión', 'error');
-            });
+            quickStatusChange(leadId, nuevoEstado, notifId);
+        } else {
+            reset();
         }
-    })
+    });
 }
 
+// Función AJAX cambio de estado
+function quickStatusChange(leadId, nuevoEstado, notifId) {
+    fetch('<?= RUTA_URL ?>api/crm/leads/' + leadId + '/estado', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            estado: nuevoEstado,
+            observaciones: 'Cambio rápido desde notificaciones'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Actualizado!',
+                text: 'Estado cambiado correctamente',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            // Al tener éxito, el lead sale de la lista de pendientes
+            markAsRead(notifId, true); 
+        } else {
+            Swal.fire('Error', data.message || 'No se pudo actualizar', 'error');
+        }
+    })
+    .catch(error => {
+        console.error(error);
+        Swal.fire('Error', 'Hubo un problema de conexión', 'error');
+    });
+}
+
+// Función para marcar todas como leídas
 function marcarTodasLeidas() {
     Swal.fire({
         title: '¿Marcar todo como leído?',
@@ -479,6 +586,83 @@ function marcarTodasLeidas() {
         }
     })
 }
+
+// Inicializar DataTables PENDIENTES
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof $ !== 'undefined' && $.fn.dataTable) {
+        
+        // Tabla Pendientes (Normal)
+        if ($('#tablaPendientes').length) {
+            $('#tablaPendientes').DataTable({
+                language: { url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json' },
+                order: [[3, 'desc']],
+                pageLength: 20,
+                lengthMenu: [10, 20, 50, 100],
+                responsive: true,
+                columnDefs: [{ orderable: false, targets: 4 }]
+            });
+        }
+
+        // Tabla Historial (Server-Side)
+        if ($('#tablaHistorial').length) {
+            historialTable = $('#tablaHistorial').DataTable({
+                language: { 
+                    url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json',
+                    zeroRecords: "No se encontraron coincidencias en este periodo. Intenta ampliar el rango de fechas."
+                },
+                processing: true,
+                serverSide: true,
+                searchDelay: 500, // Esperar al escribir
+                ajax: {
+                    url: '<?= RUTA_URL ?>api/crm/notifications_datatable.php',
+                    data: function(d) {
+                        d.start_date = document.getElementById('filterStartDate').value;
+                        d.end_date = document.getElementById('filterEndDate').value;
+                        d.tab = 'all';
+                    }
+                },
+                order: [[1, 'desc']], // Ordenar por columna oculta Timestamp
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                // El render ya viene como HTML en la col 0
+                columns: [
+                    { 
+                        data: 0, 
+                        render: function(data, type, row) { return '<div class="p-0 mb-3 d-block">' + data + '</div>'; } 
+                    },
+                    { data: 1 }, // Timestamp
+                    { data: 2 }  // SearchText
+                ],
+                dom: '<"d-flex justify-content-between mb-3"f>rt<"d-flex justify-content-between mt-3"ip>', 
+                columnDefs: [
+                    { targets: [1, 2], visible: false, searchable: true },
+                    { targets: 0, orderable: false } // No ordenar por HTML
+                ]
+            });
+        }
+
+    } else {
+        console.warn('DataTables no está cargado o jQuery falla.');
+    }
+});
+
+var historialTable;
+
+function filtrarHistorial() {
+    if(historialTable) {
+        historialTable.draw(); // Recargar Ajax
+    }
+}
+
+function descargarExcel() {
+    const start = document.getElementById('filterStartDate').value;
+    const end = document.getElementById('filterEndDate').value;
+    const url = '<?= RUTA_URL ?>api/crm/notifications_excel.php?start_date=' + start + '&end_date=' + end;
+    window.location.href = url;
+}
+
+
+
 </script>
 
 <?php include("vista/includes/footer.php"); ?>

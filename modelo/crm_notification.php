@@ -66,13 +66,12 @@ class CrmNotificationModel {
      * @param int $limit Límite de resultados
      * @return array Lista de notificaciones
      */
-    public static function obtenerPorUsuario($userId, $onlyUnread = false, $limit = 50, $offset = 0) {
+    public static function obtenerPorUsuario($userId, $onlyUnread = false, $limit = 500, $offset = 0, $search = '', $startDate = null, $endDate = null) {
         try {
             $db = (new Conexion())->conectar();
             
-            // JOIN con crm_leads para obtener estado actual y teléfono vivo
             $sql = "
-                SELECT n.*, 
+                SELECT n.*,
                        l.estado_actual as lead_status_live,
                        l.telefono as lead_phone_live,
                        l.nombre as lead_name_live
@@ -81,18 +80,39 @@ class CrmNotificationModel {
                 WHERE n.user_id = :user_id
             ";
             
+            $params = [':user_id' => $userId];
+            
             if ($onlyUnread) {
                 $sql .= " AND n.is_read = 0";
+            }
+            
+            if (!empty($search)) {
+                // Truco para buscar unicode escapado en JSON
+                $searchUnicode = substr(json_encode($search), 1, -1);
+                
+                $sql .= " AND (l.nombre LIKE :search OR l.telefono LIKE :search OR n.payload LIKE :search OR n.payload LIKE :searchUnicode)";
+                $params[':search'] = "%$search%";
+                $params[':searchUnicode'] = "%$searchUnicode%";
+            }
+
+            if ($startDate && $endDate) {
+                $sql .= " AND DATE(n.created_at) BETWEEN :start AND :end";
+                $params[':start'] = $startDate;
+                $params[':end'] = $endDate;
             }
             
             $sql .= " ORDER BY n.created_at DESC LIMIT :limit OFFSET :offset";
             
             $stmt = $db->prepare($sql);
-            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            
+            // Bind params
+            foreach ($params as $key => $val) {
+                $stmt->bindValue($key, $val);
+            }
             $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
             $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
-            $stmt->execute();
             
+            $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
@@ -104,19 +124,43 @@ class CrmNotificationModel {
     /**
      * Cuenta el total de notificaciones para paginación.
      */
-    public static function contarTotalPorUsuario($userId, $onlyUnread = false) {
+    public static function contarTotalPorUsuario($userId, $onlyUnread = false, $search = '', $startDate = null, $endDate = null) {
         try {
             $db = (new Conexion())->conectar();
-            $sql = "SELECT COUNT(*) FROM crm_notifications WHERE user_id = :user_id";
+            
+            $sql = "
+                SELECT COUNT(*) 
+                FROM crm_notifications n
+                LEFT JOIN crm_leads l ON l.id = n.related_lead_id
+                WHERE n.user_id = :user_id
+            ";
+            
+            $params = [':user_id' => $userId];
             
             if ($onlyUnread) {
-                $sql .= " AND is_read = 0";
+                $sql .= " AND n.is_read = 0";
+            }
+            
+            if (!empty($search)) {
+                // Truco para buscar unicode escapado en JSON
+                $searchUnicode = substr(json_encode($search), 1, -1);
+                
+                $sql .= " AND (l.nombre LIKE :search OR l.telefono LIKE :search OR n.payload LIKE :search OR n.payload LIKE :searchUnicode)";
+                $params[':search'] = "%$search%";
+                $params[':searchUnicode'] = "%$searchUnicode%";
+            }
+
+            if ($startDate && $endDate) {
+                $sql .= " AND DATE(n.created_at) BETWEEN :start AND :end";
+                $params[':start'] = $startDate;
+                $params[':end'] = $endDate;
             }
             
             $stmt = $db->prepare($sql);
-            $stmt->execute([':user_id' => $userId]);
+            $stmt->execute($params);
             
             return (int)$stmt->fetchColumn();
+            
         } catch (Exception $e) {
             error_log("Error counting notifications: " . $e->getMessage());
             return 0;

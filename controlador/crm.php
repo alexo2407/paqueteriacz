@@ -359,15 +359,20 @@ class CrmController {
             return ['notificaciones' => [], 'unread_count' => 0, 'pagination' => []];
         }
         
-        // Parámetros de paginación
         $page = isset($_GET['page']) ? max((int)$_GET['page'], 1) : 1;
-        $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 50) : 20; // Reducimos default a 20 para UX más limpia
+        // Aumentamos a 500 para permitir que DataTables gestione un buen historial en cliente
+        $limit = isset($_GET['limit']) ? min((int)$_GET['limit'], 500) : 500; 
         $offset = ($page - 1) * $limit;
         $onlyUnread = isset($_GET['unread']) && $_GET['unread'] === 'true';
+        $search = isset($_GET['q']) ? trim($_GET['q']) : '';
+        
+        // Fechas por defecto: Últimos 6 meses
+        $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-6 months'));
+        $endDate = $_GET['end_date'] ?? date('Y-m-d');
         
         // Obtener datos
-        $notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, $onlyUnread, $limit, $offset);
-        $totalNotificaciones = CrmNotificationModel::contarTotalPorUsuario($userId, $onlyUnread);
+        $notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, $onlyUnread, $limit, $offset, $search, $startDate, $endDate);
+        $totalNotificaciones = CrmNotificationModel::contarTotalPorUsuario($userId, $onlyUnread, $search, $startDate, $endDate);
         $unreadCount = CrmNotificationModel::contarNoLeidas($userId);
         
         // Obtener leads pendientes "reales" (No paginados, son tareas)
@@ -388,9 +393,12 @@ class CrmController {
         $totalPages = ceil($totalNotificaciones / $limit);
         
         return [
-            'notificaciones' => $notificaciones, // Historial Paginado
+            'notificaciones' => $notificaciones, // Historial Paginado + Busqueda
             'leads_pendientes' => $leadsPendientes, // Lista de tareas urgentes
             'unread_count' => $unreadCount,
+            'search_query' => $search,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
             'pagination' => [
                 'current_page' => $page,
                 'total_pages' => $totalPages,
