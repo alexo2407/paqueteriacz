@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 try {
     require_once __DIR__ . '/../utils/autenticacion.php';
+    require_once __DIR__ . '/../utils/url_helper.php';
     require_once __DIR__ . '/../../utils/crm_roles.php';
     require_once __DIR__ . '/../../utils/crm_status.php';
     require_once __DIR__ . '/../../modelo/conexion.php';
@@ -211,7 +212,7 @@ try {
         'status' => 'queued',
         'total_leads' => count($leadIds),
         'message' => 'Job encolado para procesamiento',
-        'check_status_url' => "/api/crm/jobs/$jobId"
+        'check_status_url' => getApiUrl("crm/jobs/$jobId")
     ];
     
     // Si hay errores, incluir warnings y estadísticas
