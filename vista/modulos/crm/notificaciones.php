@@ -20,8 +20,15 @@ if ($userId <= 0) {
     exit;
 }
 
-// Permitir Clientes y Admins
+// Permitir Clientes, Proveedores y Admins
 $esCliente = isUserCliente($userId) && !isUserAdmin($userId);
+$esProveedor = isUserProveedor($userId) && !isUserAdmin($userId);
+
+// Validar que el usuario tenga al menos uno de estos roles
+if (!$esCliente && !$esProveedor && !isUserAdmin($userId)) {
+    header("Location: ".RUTA_URL."acceso-denegado");
+    exit;
+}
 
 // =========================================================================
 // FUNCIÓN HELPER DE RENDERIZADO (MOVIDA AL INICIO PARA USO AJAX Y NORMAL)
