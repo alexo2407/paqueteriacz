@@ -403,7 +403,7 @@ include("vista/includes/header.php");
                                             <?php if(!empty($leadPhoneLive)): ?>
                                                 <div class="d-flex gap-1">
                                                     <a href="https://wa.me/52<?= preg_replace('/[^0-9]/', '', $leadPhoneLive) ?>" target="_blank" class="btn btn-sm btn-success text-white d-flex align-items-center gap-1" title="Enviar WhatsApp">
-                                                        <i class="fab fa-whatsapp"></i> WhatsApp
+                                                        <i class="fab fa-whatsapp"></i> 
                                                     </a>
                                                     <a href="tel:<?= $leadPhoneLive ?>" class="btn btn-sm btn-outline-primary" title="Llamar">
                                                         <i class="bi bi-telephone"></i>
