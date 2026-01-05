@@ -64,11 +64,19 @@ class CrmNotificationModel {
      * @param int $userId ID del usuario
      * @param bool $onlyUnread Solo no leídas
      * @param int $limit Límite de resultados
+     * @param int $offset Desplazamiento
+     * @param string $search Término de búsqueda
+     * @param string $startDate Fecha de inicio para filtrar
+     * @param string $endDate Fecha de fin para filtrar
+     * @param string $leadStatus Estado del lead para filtrar
      * @return array Lista de notificaciones
      */
-    public static function obtenerPorUsuario($userId, $onlyUnread = false, $limit = 500, $offset = 0, $search = '', $startDate = null, $endDate = null) {
+    public static function obtenerPorUsuario($userId, $onlyUnread = false, $limit = 500, $offset = 0, $search = '', $startDate = null, $endDate = null, $leadStatus = null) {
         try {
             $db = (new Conexion())->conectar();
+            
+            // Enable emulation to allow parameter reuse (:search múltiples veces)
+            $db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
             
             $sql = "
                 SELECT n.*,
@@ -87,11 +95,19 @@ class CrmNotificationModel {
             }
             
             if (!empty($search)) {
-                // Truco para buscar unicode escapado en JSON
+                // Convertir búsqueda a minúsculas para case-insensitive
+                $searchLower = strtolower($search);
                 $searchUnicode = substr(json_encode($search), 1, -1);
                 
-                $sql .= " AND (l.nombre LIKE :search OR l.telefono LIKE :search OR n.payload LIKE :search OR n.payload LIKE :searchUnicode)";
-                $params[':search'] = "%$search%";
+                // Usar COLLATE utf8mb4_unicode_ci para búsqueda insensible a acentos y mayúsculas
+                $sql .= " AND (
+                    COALESCE(l.nombre, '') COLLATE utf8mb4_unicode_ci LIKE :search 
+                    OR COALESCE(l.telefono, '') LIKE :search 
+                    OR COALESCE(l.estado_actual, '') COLLATE utf8mb4_unicode_ci LIKE :search
+                    OR n.payload COLLATE utf8mb4_unicode_ci LIKE :search 
+                    OR n.payload LIKE :searchUnicode
+                )";
+                $params[':search'] = "%$searchLower%";
                 $params[':searchUnicode'] = "%$searchUnicode%";
             }
 
@@ -101,22 +117,24 @@ class CrmNotificationModel {
                 $params[':end'] = $endDate;
             }
             
-            $sql .= " ORDER BY n.created_at DESC LIMIT :limit OFFSET :offset";
+            if (!empty($leadStatus)) {
+                $sql .= " AND l.estado_actual = :leadStatus";
+                $params[':leadStatus'] = $leadStatus;
+            }
+            
+            // Inject LIMIT and OFFSET directly (safe because cast to int)
+            $sql .= " ORDER BY n.created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
             
             $stmt = $db->prepare($sql);
+            $success = $stmt->execute($params);
             
-            // Bind params
-            foreach ($params as $key => $val) {
-                $stmt->bindValue($key, $val);
-            }
-            $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
-            $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+
             
-            $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
             
         } catch (Exception $e) {
             error_log("Error fetching notifications: " . $e->getMessage());
+
             return [];
         }
     }
@@ -124,9 +142,12 @@ class CrmNotificationModel {
     /**
      * Cuenta el total de notificaciones para paginación.
      */
-    public static function contarTotalPorUsuario($userId, $onlyUnread = false, $search = '', $startDate = null, $endDate = null) {
+    public static function contarTotalPorUsuario($userId, $onlyUnread = false, $search = '', $startDate = null, $endDate = null, $leadStatus = null) {
         try {
             $db = (new Conexion())->conectar();
+            
+            // Enable emulation to allow parameter reuse
+            $db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
             
             $sql = "
                 SELECT COUNT(*) 
@@ -142,11 +163,19 @@ class CrmNotificationModel {
             }
             
             if (!empty($search)) {
-                // Truco para buscar unicode escapado en JSON
+                // Convertir búsqueda a minúsculas para case-insensitive
+                $searchLower = strtolower($search);
                 $searchUnicode = substr(json_encode($search), 1, -1);
                 
-                $sql .= " AND (l.nombre LIKE :search OR l.telefono LIKE :search OR n.payload LIKE :search OR n.payload LIKE :searchUnicode)";
-                $params[':search'] = "%$search%";
+                // Usar COLLATE utf8mb4_unicode_ci para búsqueda insensible a acentos y mayúsculas
+                $sql .= " AND (
+                    COALESCE(l.nombre, '') COLLATE utf8mb4_unicode_ci LIKE :search 
+                    OR COALESCE(l.telefono, '') LIKE :search 
+                    OR COALESCE(l.estado_actual, '') COLLATE utf8mb4_unicode_ci LIKE :search
+                    OR n.payload COLLATE utf8mb4_unicode_ci LIKE :search 
+                    OR n.payload LIKE :searchUnicode
+                )";
+                $params[':search'] = "%$searchLower%";
                 $params[':searchUnicode'] = "%$searchUnicode%";
             }
 
@@ -156,6 +185,11 @@ class CrmNotificationModel {
                 $params[':end'] = $endDate;
             }
             
+            if (!empty($leadStatus)) {
+                $sql .= " AND l.estado_actual = :leadStatus";
+                $params[':leadStatus'] = $leadStatus;
+            }
+            
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             
@@ -163,6 +197,7 @@ class CrmNotificationModel {
             
         } catch (Exception $e) {
             error_log("Error counting notifications: " . $e->getMessage());
+
             return 0;
         }
     }

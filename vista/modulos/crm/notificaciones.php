@@ -251,8 +251,21 @@ include("vista/includes/header.php");
     
     /* Ajustes paginación DataTables */
     .dataTables_wrapper .dataTables_paginate { margin-top: 1rem; display: flex; justify-content: center; }
-    .dataTables_wrapper .dataTables_filter { text-align: left !important; margin-bottom: 1rem; }
-    .dataTables_wrapper .dataTables_filter input { margin-left: 0; width: 100%; max-width: 300px; display: inline-block; }
+    .dataTables_wrapper .dataTables_filter { display: none !important; } /* Ocultar búsqueda por defecto */
+    
+    /* Estilo del campo de búsqueda personalizado */
+    #customSearch {
+        border: 1px solid #dee2e6;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    #customSearch:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    .input-group-text {
+        border: 1px solid #dee2e6;
+    }
+
 </style>
 
 <!-- Header de CRM -->
@@ -433,6 +446,14 @@ include("vista/includes/header.php");
                 <!-- Tab: HISTORIAL (DataTable Card View) -->
                 <div class="tab-pane fade <?= $paneAll ?>" id="pills-all" role="tabpanel">
                     
+                    <!-- Búsqueda y Filtros -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                            <input type="text" id="customSearch" class="form-control" placeholder="Buscar por nombre, teléfono o estado...">
+                        </div>
+                    </div>
+                    
                     <!-- Filtros de Fecha y Exportación -->
                     <div class="d-flex flex-wrap align-items-end gap-2 mb-3 bg-light p-2 rounded border">
                         <div class="col-auto">
@@ -444,6 +465,19 @@ include("vista/includes/header.php");
                             <label class="small text-muted fw-bold">Hasta:</label>
                             <input type="date" id="filterEndDate" class="form-control form-control-sm" 
                                    value="<?= htmlspecialchars($datos['end_date']) ?>">
+                        </div>
+                        <div class="col-auto">
+                            <label class="small text-muted fw-bold">Estado del Lead:</label>
+                            <select id="filterLeadStatus" class="form-select form-select-sm" style="min-width: 150px;">
+                                <option value="">Todos los estados</option>
+                                <option value="EN_ESPERA">EN_ESPERA</option>
+                                <option value="nuevo">NUEVO</option>
+                                <option value="APROBADO">APROBADO</option>
+                                <option value="CONFIRMADO">CONFIRMADO</option>
+                                <option value="EN_TRANSITO">EN TRANSITO</option>
+                                <option value="EN_BODEGA">EN BODEGA</option>
+                                <option value="CANCELADO">CANCELADO</option>
+                            </select>
                         </div>
                         <div class="col-auto">
                             <button class="btn btn-sm btn-primary" onclick="filtrarHistorial()"><i class="bi bi-filter"></i> Filtrar</button>
@@ -612,12 +646,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 },
                 processing: true,
                 serverSide: true,
+                searching: true, // Habilitar búsqueda
                 searchDelay: 500, // Esperar al escribir
                 ajax: {
                     url: '<?= RUTA_URL ?>api/crm/notifications_datatable.php',
                     data: function(d) {
                         d.start_date = document.getElementById('filterStartDate').value;
                         d.end_date = document.getElementById('filterEndDate').value;
+                        d.lead_status = document.getElementById('filterLeadStatus').value;
                         d.tab = 'all';
                     }
                 },
@@ -633,11 +669,21 @@ document.addEventListener("DOMContentLoaded", function() {
                     { data: 1 }, // Timestamp
                     { data: 2 }  // SearchText
                 ],
-                dom: '<"d-flex justify-content-between mb-3"f>rt<"d-flex justify-content-between mt-3"ip>', 
+                dom: '<"d-flex justify-content-between mb-3">rt<"d-flex justify-content-between mt-3"ip>', // Removido 'f' para ocultar búsqueda
                 columnDefs: [
                     { targets: [1, 2], visible: false, searchable: true },
                     { targets: 0, orderable: false } // No ordenar por HTML
                 ]
+            });
+            
+            // Conectar búsqueda personalizada
+            let searchTimeout;
+            $('#customSearch').on('keyup', function() {
+                clearTimeout(searchTimeout);
+                const searchValue = this.value;
+                searchTimeout = setTimeout(function() {
+                    historialTable.search(searchValue).draw();
+                }, 500); // Debounce de 500ms
             });
         }
 
@@ -657,7 +703,11 @@ function filtrarHistorial() {
 function descargarExcel() {
     const start = document.getElementById('filterStartDate').value;
     const end = document.getElementById('filterEndDate').value;
-    const url = '<?= RUTA_URL ?>api/crm/notifications_excel.php?start_date=' + start + '&end_date=' + end;
+    const status = document.getElementById('filterLeadStatus').value;
+    let url = '<?= RUTA_URL ?>api/crm/notifications_excel.php?start_date=' + start + '&end_date=' + end;
+    if (status) {
+        url += '&lead_status=' + status;
+    }
     window.location.href = url;
 }
 

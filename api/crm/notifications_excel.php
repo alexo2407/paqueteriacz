@@ -13,6 +13,7 @@ if ($userId <= 0) { die("Acceso denegado"); }
 // Filtros
 $startDate = $_GET['start_date'] ?? null;
 $endDate = $_GET['end_date'] ?? null;
+$leadStatus = $_GET['lead_status'] ?? null;
 // Si user quiere todo absoluto, podría enviar fechas vacias.
 // Pero por seguridad/performance, si no envía fechas, ponemos un default razonable (ej. año actual) o todo.
 // Dejemos que si están vacíos traiga todo (o limitado a 5000).
@@ -23,7 +24,7 @@ set_time_limit(300);
 
 // Obtener datos (Sin paginación = límites altos)
 // Usamos offset 0 y un limite muy alto (ej 10000)
-$notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, false, 10000, 0, '', $startDate, $endDate);
+$notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, false, 10000, 0, '', $startDate, $endDate, $leadStatus);
 
 // Headers para descarga CSV
 $filename = "historial_notificaciones_" . date('Y-m-d_H-i') . ".csv";

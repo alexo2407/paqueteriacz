@@ -23,23 +23,21 @@ $start = $_GET['start'] ?? 0;
 $length = $_GET['length'] ?? 10;
 $searchValue = $_GET['search']['value'] ?? '';
 
-// DEBUG: Ver qué llega
-file_put_contents('c:/xampp/htdocs/paqueteriacz/debug_api.txt', "Search: '$searchValue' | Start: $start\n", FILE_APPEND);
-
 // 2. Parámetros Custom (Filtros Fecha)
 $startDate = $_GET['start_date'] ?? null;
 $endDate = $_GET['end_date'] ?? null;
+$leadStatus = $_GET['lead_status'] ?? null;
 $tab = $_GET['tab'] ?? 'all';
 
 // Validar fechas vacías
 if (empty($startDate) || $startDate == 'null') $startDate = null;
 if (empty($endDate) || $endDate == 'null') $endDate = null;
+if (empty($leadStatus) || $leadStatus == 'null') $leadStatus = null;
 
 // 3. Consultar Datos
-// Nota: 'all' implica historial. Si venía de otra tab podría variar, pero aquí asumimos historial.
-$notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, false, $length, $start, $searchValue, $startDate, $endDate);
-$totalRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, '', $startDate, $endDate); // Total sin filtros (aprox) o con filtros fecha
-$filteredRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, $searchValue, $startDate, $endDate);
+$notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, false, $length, $start, $searchValue, $startDate, $endDate, $leadStatus);
+$totalRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, '', $startDate, $endDate, $leadStatus);
+$filteredRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, $searchValue, $startDate, $endDate, $leadStatus);
 
 // 4. Construir Array DataTables
 $data = [];

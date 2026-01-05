@@ -1,0 +1,6 @@
+# Ignorar todo el contenido de esta carpeta de respaldo
+*
+# Excepto este archivo .gitignore
+!.gitignore
+# Y el README que explica la carpeta
+!README.md
