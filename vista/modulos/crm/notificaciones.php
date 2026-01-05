@@ -316,6 +316,9 @@ include("vista/includes/header.php");
 <?php if ($esProveedor): ?>
 <div class="container mt-4 mb-4">
     <?php
+    // IMPORTANTE: Redeclarar userId porque estamos en un nuevo bloque PHP
+    $userId = $_SESSION['user_id'] ?? 0;
+    
     // Obtener métricas del proveedor
     require_once __DIR__ . '/../../../modelo/crm_lead.php';
     $metricas = CrmLeadModel::obtenerMetricasProveedor($userId);
