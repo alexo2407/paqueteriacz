@@ -85,7 +85,7 @@ function renderNotificationCard($notif) {
                         <small class="text-muted ms-2"><?= $time ?></small>
                     </div>
                     <p class="mb-2 text-muted small"><?= $subtitle ?></p>
-                    <a href="<?= RUTA_URL ?>crm/ver/<?= $leadId ?>" class="btn btn-sm btn-light border">Ver Detalles</a>
+                    <a href="<?= url('crm/ver/' . $leadId) ?>" class="btn btn-sm btn-light border">Ver Detalles</a>
                 </div>
             </div>
         </div>
@@ -118,7 +118,7 @@ if (isset($_GET['ajax_search'])) {
                 <i class='bi bi-search display-4 opacity-25'></i>
                 <p class='mt-3'>No se encontraron resultados para <strong>'$q'</strong> en tu historial.</p>
                 <div class='mt-3'>
-                    <a href='" . RUTA_URL . "crm/listar?search=" . urlencode($_GET['q'] ?? '') . "' class='btn btn-outline-primary btn-sm'>
+                    <a href='" . url('crm/listar?search=' . urlencode($_GET['q'] ?? '')) . "' class='btn btn-outline-primary btn-sm'>
                         <i class='bi bi-search'></i> Buscar en todos los Leads
                     </a>
                 </div>
@@ -428,7 +428,7 @@ include("vista/includes/header.php");
                                                     <option value="CANCELADO" class="text-danger fw-bold">CANCELADO</option>
                                                 </select>
                                                 
-                                                <a href="<?= RUTA_URL ?>crm/ver/<?= $leadId ?>" class="btn btn-sm btn-outline-secondary" title="Ver Detalles">
+                                                <a href="<?= url('crm/ver/' . $leadId) ?>" class="btn btn-sm btn-outline-secondary" title="Ver Detalles">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
                                             </div>
@@ -527,7 +527,7 @@ include("vista/includes/header.php");
 <script>
 // Función para marcar como leída
 function markAsRead(id, hideElement) {
-    fetch('<?= RUTA_URL ?>api/crm/notifications/' + id + '/read', {
+    fetch('<?= url('api/crm/notifications/' + id + '/read') ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     })
@@ -571,7 +571,7 @@ function confirmarCambioEstado(selectElem, leadId, notifId) {
 
 // Función AJAX cambio de estado
 function quickStatusChange(leadId, nuevoEstado, notifId) {
-    fetch('<?= RUTA_URL ?>api/crm/leads/' + leadId + '/estado', {
+    fetch('<?= url('api/crm/leads/' + leadId + '/estado') ?>', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -616,7 +616,7 @@ function marcarTodasLeidas() {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('<?= RUTA_URL ?>api/crm/notifications/read-all', {
+            fetch('<?= url('api/crm/notifications/read-all') ?>', {
                 method: 'POST'
             })
             .then(response => response.json())
@@ -668,7 +668,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 searching: true, // Habilitar búsqueda
                 searchDelay: 500, // Esperar al escribir
                 ajax: {
-                    url: '<?= RUTA_URL ?>api/crm/notifications_datatable.php',
+                    url: '<?= url('api/crm/notifications_datatable.php') ?>',
                     data: function(d) {
                         d.start_date = document.getElementById('filterStartDate').value;
                         d.end_date = document.getElementById('filterEndDate').value;
@@ -723,7 +723,7 @@ function descargarExcel() {
     const start = document.getElementById('filterStartDate').value;
     const end = document.getElementById('filterEndDate').value;
     const status = document.getElementById('filterLeadStatus').value;
-    let url = '<?= RUTA_URL ?>api/crm/notifications_excel.php?start_date=' + start + '&end_date=' + end;
+    let url = '<?= url('api/crm/notifications_excel.php?start_date=' + start + '&end_date=' + end) ?>';
     if (status) {
         url += '&lead_status=' + status;
     }

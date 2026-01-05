@@ -148,4 +148,42 @@ function getClientIp(): ?string
     
     return null;
 }
+
+/**
+ * Genera una URL relativa que funciona tanto en desarrollo como en producción
+ * 
+ * En desarrollo: /paqueteriacz/crm/ver/1
+ * En producción: /crm/ver/1
+ * 
+ * @param string $path Ruta relativa (ej: 'crm/ver/123')
+ * @return string URL completa con el prefijo correcto
+ */
+function url($path = '') {
+    // Remover slash inicial si existe
+    $path = ltrim($path, '/');
+    
+    // En producción, la aplicación está en la raíz
+    // En desarrollo (localhost/paqueteriacz), necesitamos el prefijo
+    $isLocalhost = (
+        isset($_SERVER['HTTP_HOST']) && 
+        (strpos($_SERVER['HTTP_HOST'], 'localhost') !== false || 
+         strpos($_SERVER['HTTP_HOST'], '127.0.0.1') !== false)
+    );
+    
+    if ($isLocalhost) {
+        // Detectar el directorio base automáticamente
+        $scriptName = $_SERVER['SCRIPT_NAME']; // ej: /paqueteriacz/index.php
+        $baseDir = dirname($scriptName); // ej: /paqueteriacz
+        
+        // Si está en la raíz, baseDir será '/'
+        if ($baseDir === '/' || $baseDir === '\\') {
+            return '/' . $path;
+        }
+        
+        return $baseDir . '/' . $path;
+    }
+    
+    // En producción, usar ruta absoluta desde raíz
+    return '/' . $path;
+}
 ?>
