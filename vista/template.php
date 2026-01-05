@@ -12,7 +12,7 @@
     cargarRecursos($paginaActual); 
     
     ?>
-    <title>Aplicacion Paqueteria</title>
+    <title>Aplicacion App</title>
 </head>
 
 <body>

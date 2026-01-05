@@ -568,7 +568,7 @@
             <h4 data-lang="en">Example: Create Lead</h4>
             <h4 data-lang="es">Ejemplo: Crear Lead</h4>
             
-            <pre class="code-block"><code class="language-bash">curl -X POST "http://localhost/paqueteriacz/api/crm/leads" \
+            <pre class="code-block"><code class="language-bash">curl -X POST "http://localhost/Appcz/api/crm/leads" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;TOKEN&gt;" \
   -d '{"lead":{"proveedor_lead_id":"PR-001","nombre":"Juan Pérez","telefono":"+50512345678","fecha_hora":"2025-01-15 10:00:00"}}'</code></pre>
@@ -635,13 +635,13 @@
             <h4 data-lang="en">Example: Full Login Flow</h4>
             <h4 data-lang="es">Ejemplo: Flujo Completo de Login</h4>
             <pre class="code-block line-numbers"><code class="language-bash"># Login and extract token
-curl -X POST "http://localhost/paqueteriacz/api/auth/login" \
+curl -X POST "http://localhost/Appcz/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"proveedor@example.com","password":"your_password"}'
 
 # Response contains token at data.token
 # Use it in subsequent requests:
-curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
+curl -X GET "http://localhost/Appcz/api/crm/leads" \
   -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLC..."</code></pre>
 
             <h4 data-lang="en">Step 2: Use Token in API Requests</h4>
@@ -979,7 +979,7 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block line-numbers"><code class="language-bash">curl -X POST "http://localhost/paqueteriacz/api/crm/leads/bulk-status" \
+            <pre class="code-block line-numbers"><code class="language-bash">curl -X POST "http://localhost/Appcz/api/crm/leads/bulk-status" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;TOKEN&gt;" \
   -d '{
@@ -1159,7 +1159,7 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block line-numbers"><code class="language-bash">curl -X POST "http://localhost/paqueteriacz/api/crm/leads/bulk-status-async" \
+            <pre class="code-block line-numbers"><code class="language-bash">curl -X POST "http://localhost/Appcz/api/crm/leads/bulk-status-async" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;TOKEN&gt;" \
   -d '{
@@ -1284,7 +1284,7 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block line-numbers"><code class="language-bash">curl -X GET "http://localhost/paqueteriacz/api/crm/jobs/bulk_6958aaf4d1477_1767418612" \
+            <pre class="code-block line-numbers"><code class="language-bash">curl -X GET "http://localhost/Appcz/api/crm/jobs/bulk_6958aaf4d1477_1767418612" \
   -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
 
             <h4>Response — Job Queued <span class="status-badge status-200">200 OK</span></h4>
@@ -1454,7 +1454,7 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block"><code class="language-bash">curl "http://localhost/paqueteriacz/api/crm/leads?page=1&limit=10&estado=APROBADO" \
+            <pre class="code-block"><code class="language-bash">curl "http://localhost/Appcz/api/crm/leads?page=1&limit=10&estado=APROBADO" \
   -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
         </div>
 
@@ -1479,18 +1479,18 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
             <pre class="code-block" data-lang="en"><code class="language-bash"># View detail
-curl "http://localhost/paqueteriacz/api/crm/leads/1" \
+curl "http://localhost/Appcz/api/crm/leads/1" \
   -H "Authorization: Bearer &lt;TOKEN&gt;"
 
 # View timeline
-curl "http://localhost/paqueteriacz/api/crm/leads/1/timeline" \
+curl "http://localhost/Appcz/api/crm/leads/1/timeline" \
   -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
             <pre class="code-block" data-lang="es"><code class="language-bash"># Ver detalle
-curl "http://localhost/paqueteriacz/api/crm/leads/1" \
+curl "http://localhost/Appcz/api/crm/leads/1" \
   -H "Authorization: Bearer &lt;TOKEN&gt;"
 
 # Ver cronología
-curl "http://localhost/paqueteriacz/api/crm/leads/1/timeline" \
+curl "http://localhost/Appcz/api/crm/leads/1/timeline" \
   -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
         </div>
 
@@ -1513,7 +1513,7 @@ curl "http://localhost/paqueteriacz/api/crm/leads/1/timeline" \
 
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block"><code class="language-bash">curl "http://localhost/paqueteriacz/api/crm/metrics" \
+            <pre class="code-block"><code class="language-bash">curl "http://localhost/Appcz/api/crm/metrics" \
   -H "Authorization: Bearer &lt;ADMIN_TOKEN&gt;"</code></pre>
         </div>
 
@@ -1606,7 +1606,7 @@ After=mariadb.service
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/xampp/htdocs/paqueteriacz
+WorkingDirectory=/xampp/htdocs/Appcz
 ExecStart=/usr/bin/php cli/crm_worker.php --loop
 Restart=always
 

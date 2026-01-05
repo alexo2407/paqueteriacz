@@ -90,7 +90,7 @@ function renderCardHtml($notif) {
     $badgeClass = $colores[$leadStatusLive] ?? 'bg-light text-dark border';
     $estadoBadge = $leadStatusLive ? "<span class='badge {$badgeClass} me-1'>{$leadStatusLive}</span>" : "";
     
-    $rutaUrl = '/paqueteriacz/'; // Ajustar si es necesario obtener dinámicamente
+    $rutaUrl = '/Appcz/'; // Ajustar si es necesario obtener dinámicamente
 
     if ($notif['type'] === 'new_lead') {
         $icon = '<i class="bi bi-person-plus-fill"></i>';

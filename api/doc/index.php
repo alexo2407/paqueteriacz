@@ -119,7 +119,7 @@
             <h1>Logistics API Documentation</h1>
             <p class="lead">Guía práctica para consumir la API local del sistema de paquetería</p>
             <p>
-                <a class="btn btn-outline-primary btn-sm" href="./paqueteria_api.yaml" target="_blank">Ver OpenAPI (YAML)</a>
+                <a class="btn btn-outline-primary btn-sm" href="./App_api.yaml" target="_blank">Ver OpenAPI (YAML)</a>
             </p>
         </div>
         <div>
@@ -130,7 +130,7 @@
         <div class="section-container" style="color: #212529;">
             <h2 class="section-title">Quick Reference</h2>
             <p>This documentation describes the most used endpoints for integration: <strong>Authentication</strong>, <strong>Products</strong> and <strong>Orders (Pedidos)</strong>. Examples show request shape, response shape and common errors.</p>
-            <p>OpenAPI (machine-readable): <a href="./paqueteria_api.yaml" target="_blank">paqueteria_api.yaml</a>.</p>
+            <p>OpenAPI (machine-readable): <a href="./App_api.yaml" target="_blank">App_api.yaml</a>.</p>
         </div>
 
         <!-- Table of contents / Quickstart -->

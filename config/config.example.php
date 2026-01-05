@@ -1,13 +1,13 @@
 <?php
 
-// Example config file for paqueteriacz
+// Example config file for Appcz
 // Copy this file to config.php and edit values for your environment.
 
 // Base URL detection (do not include trailing slash)
 $protocolo = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
 $servidor = $_SERVER['SERVER_NAME'] ?? 'localhost';
 $puerto = isset($_SERVER['SERVER_PORT']) ? ':' . $_SERVER['SERVER_PORT'] : '';
-define('RUTA_URL', $protocolo . $servidor . $puerto . '/paqueteriacz/');
+define('RUTA_URL', $protocolo . $servidor . $puerto . '/Appcz/');
 
 // API keys / secrets (replace with your real secret in local config.php)
 define('JWT_SECRET_KEY', 'CHANGE_ME_REPLACE_WITH_SECURE_RANDOM');

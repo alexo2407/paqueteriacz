@@ -1,5 +1,5 @@
 /**
- * Inicialización global de Select2 para el sistema Paquetería RutaEx-Latam
+ * Inicialización global de Select2 para el sistema App RutaEx-Latam
  * 
  * Este script inicializa Select2 automáticamente en todos los selects 
  * que tengan la clase 'select2-searchable'.

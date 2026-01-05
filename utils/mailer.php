@@ -92,7 +92,7 @@ class Mailer {
     public static function enviarEmailRecuperacion($email, $token) {
         $resetLink = RUTA_URL . 'reset-password?token=' . urlencode($token);
         
-        $asunto = 'Recuperación de Contraseña - Paqueteria RutaEx-Latam';
+        $asunto = 'Recuperación de Contraseña - App RutaEx-Latam';
         
         $cuerpoHTML = self::templateRecuperacion($resetLink);
         
@@ -103,7 +103,7 @@ class Mailer {
                      . "Este enlace expirará en 1 hora por seguridad.\n\n"
                      . "Si no solicitaste este cambio, puedes ignorar este mensaje.\n\n"
                      . "Saludos,\n"
-                     . "Equipo de Paqueteria RutaEx-Latam";
+                     . "Equipo de App RutaEx-Latam";
         
         return self::enviarEmail($email, $asunto, $cuerpoHTML, $cuerpoTexto);
     }
@@ -142,7 +142,7 @@ class Mailer {
                                 Hola,
                             </p>
                             <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
-                                Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>Paqueteria RutaEx-Latam</strong>.
+                                Hemos recibido una solicitud para restablecer la contraseña de tu cuenta en <strong>App RutaEx-Latam</strong>.
                             </p>
                             <p style="margin: 0 0 30px; font-size: 16px; line-height: 1.6; color: #333333;">
                                 Para crear una nueva contraseña, haz clic en el siguiente botón:
@@ -186,7 +186,7 @@ class Mailer {
                         <td style="padding: 30px; background-color: #f8f9fa; text-align: center; border-top: 1px solid #dee2e6;">
                             <p style="margin: 0 0 10px; font-size: 14px; color: #6c757d;">
                                 Saludos,<br>
-                                <strong>Equipo de Paqueteria RutaEx-Latam</strong>
+                                <strong>Equipo de App RutaEx-Latam</strong>
                             </p>
                             <p style="margin: 0; font-size: 12px; color: #adb5bd;">
                                 Este es un email automático, por favor no respondas a este mensaje.

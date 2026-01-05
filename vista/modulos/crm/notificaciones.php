@@ -506,7 +506,10 @@ include("vista/includes/header.php");
                 </div>
 
             </div>
+        </div>
+    </div>
 </div>
+<!-- Fin container principal de notificaciones -->
 
 
 

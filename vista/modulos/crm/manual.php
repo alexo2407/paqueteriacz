@@ -991,8 +991,8 @@ php cli/crm_worker.php</code></pre>
                         <div class="card-body">
                             <p>Crea archivo <code>/etc/supervisor/conf.d/crm_worker.conf</code>:</p>
                             <pre class="bg-dark text-light p-3"><code>[program:crm_worker]
-command=php /var/www/paqueteria/cli/crm_worker.php
-directory=/var/www/paqueteria
+command=php /var/www/App/cli/crm_worker.php
+directory=/var/www/App
 autostart=true
 autorestart=true
 user=www-data
@@ -1016,8 +1016,8 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/var/www/paqueteria
-ExecStart=/usr/bin/php /var/www/paqueteria/cli/crm_worker.php
+WorkingDirectory=/var/www/App
+ExecStart=/usr/bin/php /var/www/App/cli/crm_worker.php
 Restart=always
 
 [Install]
