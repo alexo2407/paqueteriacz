@@ -360,6 +360,17 @@ include("vista/includes/header.php");
                             <p class="text-muted">No tienes leads nuevos pendientes de atender.</p>
                          </div>
                     <?php else: ?>
+                        
+                        <!-- Buscador DataTables Pendientes -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                    <input type="text" id="pendientesSearch" class="form-control border-start-0 ps-0" placeholder="Buscar lead, producto o teléfono...">
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="table-responsive">
                             <table id="tablaPendientes" class="table table-hover align-middle" style="width:100%">
                                 <thead class="table-light">
@@ -630,13 +641,18 @@ document.addEventListener("DOMContentLoaded", function() {
         
         // Tabla Pendientes (Normal)
         if ($('#tablaPendientes').length) {
-            $('#tablaPendientes').DataTable({
+            var tablePendientes = $('#tablaPendientes').DataTable({
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json' },
                 order: [[3, 'desc']],
                 pageLength: 20,
                 lengthMenu: [10, 20, 50, 100],
                 responsive: true,
+                dom: 'lrtip',
                 columnDefs: [{ orderable: false, targets: 4 }]
+            });
+
+            $('#pendientesSearch').on('keyup', function() {
+                tablePendientes.search(this.value).draw();
             });
         }
 
