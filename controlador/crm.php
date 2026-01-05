@@ -120,22 +120,47 @@ class CrmController {
      */
     public function cambiarEstado($id, $nuevoEstado, $observaciones = null) {
         require_once "modelo/crm_lead.php";
+        require_once "modelo/crm_notification.php";
         require_once __DIR__ . '/../utils/crm_roles.php';
         
-        $userId = (int)($_SESSION['idUsuario'] ?? 0);
+        $userId = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+        
+        // Obtener lead ANTES de cambiar estado
+        $lead = CrmLead::obtenerPorId($id);
+        if (!$lead) return ['success' => false, 'message' => 'Lead no encontrado'];
+        
+        $estadoAnterior = $lead['estado_actual'];
         
         // Validar Ownership
         if (!isUserAdmin($userId)) {
-            $lead = CrmLead::obtenerPorId($id);
-            if (!$lead) return ['success' => false, 'message' => 'Lead no encontrado'];
-            
             // Cliente solo puede cambiar su lead
             if (isUserCliente($userId) && (int)$lead['cliente_id'] !== $userId) {
                 return ['success' => false, 'message' => 'Acceso denegado: este lead no te pertenece'];
             }
         }
         
-        return CrmLead::cambiarEstado($id, $nuevoEstado, $observaciones, $userId);
+        // Cambiar estado
+        $resultado = CrmLead::cambiarEstado($id, $nuevoEstado, $observaciones, $userId);
+        
+        // Si el cambio fue exitoso Y lo hizo un cliente, crear notificación para el proveedor
+        if ($resultado['success'] && isUserCliente($userId) && !empty($lead['proveedor_id'])) {
+            CrmNotificationModel::agregar(
+                'SEND_TO_PROVIDER',
+                $id,
+                (int)$lead['proveedor_id'],
+                [
+                    'lead_id' => $id,
+                    'proveedor_lead_id' => $lead['proveedor_lead_id'],
+                    'estado_anterior' => $estadoAnterior,
+                    'estado_nuevo' => $nuevoEstado,
+                    'observaciones' => $observaciones,
+                    'updated_by' => $userId,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]
+            );
+        }
+        
+        return $resultado;
     }
 
     /**
