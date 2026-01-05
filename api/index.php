@@ -215,6 +215,13 @@ if (preg_match('/\/api\/crm\/metrics$/', $path) && $method === 'GET') {
     exit;
 }
 
+// GET /api/crm/provider-metrics - Métricas de proveedor
+if (preg_match('/\/api\/crm\/provider-metrics$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/crm/provider_metrics.php';
+    exit;
+}
+
+
 // Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
 if (strpos($path, '/api/') === 0) {
     http_response_code(404);

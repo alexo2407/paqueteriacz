@@ -281,14 +281,20 @@ include("vista/includes/header.php");
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <h4 class="fw-bold mb-1 text-dark">
-                    <?php if($esCliente): ?>
+                    <?php if($esProveedor): ?>
+                        <i class="bi bi-graph-up me-2 text-primary"></i>Dashboard de Leads
+                    <?php elseif($esCliente): ?>
                         <i class="bi bi-briefcase me-2 text-primary"></i>Mis Leads
                     <?php else: ?>
                         <i class="bi bi-inbox me-2 text-primary"></i>Centro de Notificaciones
                     <?php endif; ?>
                 </h4>
                 <p class="mb-0 text-muted small">
-                    Gestiona tus leads y mantente al día con las actualizaciones.
+                    <?php if($esProveedor): ?>
+                        Métricas y actualizaciones de tus leads enviados.
+                    <?php else: ?>
+                        Gestiona tus leads y mantente al día con las actualizaciones.
+                    <?php endif; ?>
                     <?php if($unreadCount > 0): ?>
                         <span class="badge bg-primary rounded-pill ms-1"><?= $unreadCount ?> sin leer</span>
                     <?php endif; ?>
@@ -305,6 +311,119 @@ include("vista/includes/header.php");
         </div>
     </div>
 </div>
+
+<!-- Dashboard de Métricas para Proveedores -->
+<?php if ($esProveedor): ?>
+<div class="container mt-4 mb-4">
+    <?php
+    // Obtener métricas del proveedor
+    require_once __DIR__ . '/../../../modelo/crm_lead.php';
+    $metricas = CrmLeadModel::obtenerMetricasProveedor($userId);
+    
+    $totalLeads = $metricas['total'] ?? 0;
+    $procesados = $metricas['procesados'] ?? 0;
+    $enEspera = $metricas['en_espera'] ?? 0;
+    $porcentajeProcesado = $totalLeads > 0 ? round(($procesados / $totalLeads) * 100) : 0;
+    ?>
+    
+    <div class="row">
+        <!-- Card: Total Leads -->
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-send-fill text-primary fs-3"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Enviados</h6>
+                            <h2 class="mb-0 fw-bold"><?= number_format($totalLeads) ?></h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card: Procesados -->
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Procesados</h6>
+                            <h2 class="mb-0 fw-bold"><?= number_format($procesados) ?></h2>
+                            <small class="text-success">
+                                <i class="bi bi-arrow-up"></i> <?= $porcentajeProcesado ?>%
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Card: En Espera -->
+        <div class="col-md-4 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0 bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-clock-fill text-warning fs-3"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">En Espera</h6>
+                            <h2 class="mb-0 fw-bold"><?= number_format($enEspera) ?></h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Gráfico de Distribución por Estado -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title mb-3">
+                        <i class="bi bi-pie-chart-fill me-2"></i>Distribución por Estado
+                    </h5>
+                    <div class="row">
+                        <?php foreach ($metricas['por_estado'] ?? [] as $estado => $cantidad): 
+                            $colores = [
+                                'EN_ESPERA' => 'warning',
+                                'nuevo' => 'warning',
+                                'APROBADO' => 'success',
+                                'CONFIRMADO' => 'primary',
+                                'EN_TRANSITO' => 'info',
+                                'EN_BODEGA' => 'secondary',
+                                'CANCELADO' => 'danger'
+                            ];
+                            $color = $colores[$estado] ?? 'secondary';
+                            $porcentaje = $totalLeads > 0 ? round(($cantidad / $totalLeads) * 100) : 0;
+                        ?>
+                        <div class="col-md-4 mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <small class="text-muted"><?= $estado ?></small>
+                                    <div class="progress mt-1" style="height: 8px;">
+                                        <div class="progress-bar bg-<?= $color ?>" 
+                                             style="width: <?= $porcentaje ?>%"></div>
+                                    </div>
+                                </div>
+                                <div class="ms-2">
+                                    <span class="badge bg-<?= $color ?>"><?= $cantidad ?></span>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="container mb-5">
     
@@ -327,11 +446,13 @@ include("vista/includes/header.php");
         <div class="col-lg-3 mb-4">
              <!-- Filtros Verticales -->
             <div class="list-group list-group-flush border rounded shadow-sm">
+                <?php if (!$esProveedor): // Solo clientes y admins ven "Por Atender" ?>
                 <!-- Tab: Pendientes (Prioridad) -->
                 <a class="list-group-item list-group-item-action fw-bold <?= $showLeads ?> d-flex justify-content-between align-items-center" id="pills-leads-tab" data-bs-toggle="pill" href="#pills-leads" onclick="history.pushState(null, '', '?tab=leads')">
                     <span><i class="bi bi-star-fill text-warning me-2"></i> Por Atender</span>
                     <?php if($countPendientes > 0): ?><span class="badge bg-danger rounded-pill"><?= $countPendientes ?></span><?php endif; ?>
                 </a>
+                <?php endif; ?>
                 
                 <!-- Tab: Actualizaciones -->
                  <a class="list-group-item list-group-item-action <?= $showUpdates ?>" id="pills-updates-tab" data-bs-toggle="pill" href="#pills-updates" onclick="history.pushState(null, '', '?tab=updates')">

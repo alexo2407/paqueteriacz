@@ -516,6 +516,71 @@ class CrmLeadModel {
             return ['success' => false, 'message' => 'Error al actualizar lead'];
         }
     }
+    
+    /**
+     * Obtiene métricas de leads para un proveedor.
+     * Calcula: total enviados, procesados, en espera, y distribución por estado.
+     * 
+     * @param int $proveedorId ID del proveedor
+     * @return array Métricas: total, procesados, en_espera, por_estado
+     */
+    public static function obtenerMetricasProveedor($proveedorId) {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Total de leads enviados por el proveedor
+            $stmt = $db->prepare("
+                SELECT COUNT(*) as total
+                FROM crm_leads
+                WHERE proveedor_id = :proveedor_id
+            ");
+            $stmt->execute([':proveedor_id' => $proveedorId]);
+            $total = (int)$stmt->fetchColumn();
+            
+            // Procesados (cualquier estado diferente de EN_ESPERA/nuevo/NUEVO)
+            $stmt = $db->prepare("
+                SELECT COUNT(*) as procesados
+                FROM crm_leads
+                WHERE proveedor_id = :proveedor_id
+                AND estado_actual NOT IN ('EN_ESPERA', 'nuevo', 'NUEVO')
+            ");
+            $stmt->execute([':proveedor_id' => $proveedorId]);
+            $procesados = (int)$stmt->fetchColumn();
+            
+            // En espera
+            $enEspera = $total - $procesados;
+            
+            // Distribución por estado
+            $stmt = $db->prepare("
+                SELECT estado_actual, COUNT(*) as cantidad
+                FROM crm_leads
+                WHERE proveedor_id = :proveedor_id
+                GROUP BY estado_actual
+                ORDER BY cantidad DESC
+            ");
+            $stmt->execute([':proveedor_id' => $proveedorId]);
+            $porEstado = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $porEstado[$row['estado_actual']] = (int)$row['cantidad'];
+            }
+            
+            return [
+                'total' => $total,
+                'procesados' => $procesados,
+                'en_espera' => $enEspera,
+                'por_estado' => $porEstado
+            ];
+            
+        } catch (Exception $e) {
+            error_log("Error obteniendo métricas proveedor: " . $e->getMessage());
+            return [
+                'total' => 0,
+                'procesados' => 0,
+                'en_espera' => 0,
+                'por_estado' => []
+            ];
+        }
+    }
 }
 
 // Alias de clase para compatibilidad con el controlador
