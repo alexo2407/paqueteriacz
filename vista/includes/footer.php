@@ -6,7 +6,7 @@
         <p class="float-end mb-1">
           <a href="#">Volver arriba</a>
         </p>
-        <p class="mb-1 text-white">Seguimiento de paquetería CruzValle</p>
+        <p class="mb-1 text-white">Seguimiento de paquetería RutaEx-Latam</p>
         <p class="mb-0 text-white">Desarrollado por:<a href="#"> @albertoCalero</a></p>
       </div>
   </footer>
