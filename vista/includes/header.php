@@ -153,8 +153,8 @@
                                 <i class="bi bi-bell"></i> Notificaciones
                                 <?php
                                     require_once "modelo/crm_notification.php";
-                                    $userId = $_SESSION['usuario_id'] ?? 0;
-                                    $unreadMenuCount = $userId > 0 ? CrmNotificationModel::contarNoLeidas($userId) : 0;
+                                    $navUserId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
+                                    $unreadMenuCount = $navUserId > 0 ? CrmNotificationModel::contarNoLeidas($navUserId) : 0;
                                     if ($unreadMenuCount > 0):
                                 ?>
                                     <span class="badge bg-danger ms-1"><?= $unreadMenuCount ?></span>
@@ -231,12 +231,23 @@
                 <?php if (!$isRepartidor || $isAdmin): ?>
                 <?php
                     require_once "modelo/crm_notification.php";
-                    $userId = $_SESSION['usuario_id'] ?? 0;
-                    $unreadCount = $userId > 0 ? CrmNotificationModel::contarNoLeidas($userId) : 0;
+                    require_once "modelo/crm_lead.php"; // Asegurar modelo cargado
+                    $navUserId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
+                    
+                    if ($isProveedor) {
+                        $unreadCount = $navUserId > 0 ? CrmLead::contarPendientesProveedor($navUserId) : 0;
+                    } else {
+                        $unreadCount = $navUserId > 0 ? CrmNotificationModel::contarNoLeidas($navUserId) : 0;
+                    }
                 ?>
                 <li class="nav-item">
-                    <a class="nav-link position-relative" href="<?= RUTA_URL ?>crm/notificaciones" title="Notificaciones">
-                        <i class="bi bi-bell" style="font-size: 1.2rem;"></i>
+                    <a class="nav-link position-relative" href="<?= RUTA_URL ?>crm/notificaciones" title="<?= $isProveedor ? 'Leads' : 'Notificaciones' ?>">
+                        <?php if ($isProveedor): ?>
+                            <i class="bi bi-people-fill"></i> Leads
+                        <?php else: ?>
+                            <i class="bi bi-bell" style="font-size: 1.2rem;"></i>
+                        <?php endif; ?>
+                        
                         <?php if ($unreadCount > 0): ?>
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge">
                                 <?= $unreadCount ?>

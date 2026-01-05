@@ -1,6 +1,7 @@
 <?php 
-
 start_secure_session();
+
+
 
 if(!isset($_SESSION['registrado'])) {
     header('location:'.RUTA_URL.'login');
@@ -10,9 +11,9 @@ if(!isset($_SESSION['registrado'])) {
 require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../utils/crm_roles.php';
 
-// Verificar permisos: Admin o Cliente
-$userId = (int)$_SESSION['idUsuario'];
-if (!isUserAdmin($userId) && !isUserCliente($userId)) {
+// Verificar permisos: Admin, Cliente o Proveedor
+$userId = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
     header('Location: ' . RUTA_URL . 'dashboard');
     exit;
 }
@@ -41,24 +42,34 @@ include("vista/includes/header.php");
 ?>
 
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2><i class="bi bi-file-earmark-text"></i> Detalle del Lead #<?= $lead['id'] ?></h2>
-        <div>
-            <button type="button" class="btn btn-warning me-2 text-dark" data-bs-toggle="modal" data-bs-target="#cambiarEstadoModal">
-                <i class="bi bi-arrow-repeat"></i> Cambiar Estado
-            </button>
-            <a href="<?= RUTA_URL ?>crm/editar/<?= $lead['id'] ?>" class="btn btn-primary me-2">
-                <i class="bi bi-pencil"></i> Editar
-            </a>
-            <a href="<?= RUTA_URL ?>crm/listar" class="btn btn-outline-primary">
-                <i class="bi bi-arrow-left"></i> Volver
-            </a>
-        </div>
-    </div>
+<?php
+// Roles Checks
+$esProveedor = isUserProveedor($userId) && !isUserAdmin($userId);
+
+
+?>
 
     <div class="row">
         <!-- Información del Lead -->
-        <div class="col-lg-8">
+        <div class="col-lg-<?= $esProveedor ? '12' : '8' ?>">
+             <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="bi bi-file-earmark-text"></i> Detalle del Lead #<?= $lead['id'] ?></h2>
+                <div>
+                    <?php if(!$esProveedor): ?>
+                    <button type="button" class="btn btn-warning me-2 text-dark" data-bs-toggle="modal" data-bs-target="#cambiarEstadoModal">
+                        <i class="bi bi-arrow-repeat"></i> Cambiar Estado
+                    </button>
+                    <a href="<?= RUTA_URL ?>crm/editar/<?= $lead['id'] ?>" class="btn btn-primary me-2">
+                        <i class="bi bi-pencil"></i> Editar
+                    </a>
+                    <?php endif; ?>
+                    
+                    <a href="<?= RUTA_URL ?>crm/listar" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="bi bi-person-badge"></i> Información del Lead</h5>
@@ -73,8 +84,10 @@ include("vista/includes/header.php");
                         </div>
                         <div class="col-md-6">
                             <p><strong>Precio:</strong> Q<?= number_format($lead['precio'] ?? 0, 2) ?></p>
+                            <?php if(!$esProveedor): ?>
                             <p><strong>Proveedor ID:</strong> <?= $lead['proveedor_id'] ?></p>
                             <p><strong>Cliente ID:</strong> <?= $lead['cliente_id'] ?? 'N/A' ?></p>
+                            <?php endif; ?>
                             <p><strong>Fecha/Hora:</strong> <?= date('d/m/Y H:i', strtotime($lead['fecha_hora'])) ?></p>
                         </div>
                     </div>
@@ -138,6 +151,7 @@ include("vista/includes/header.php");
             </div>
         </div>
 
+        <?php if(!$esProveedor): ?>
         <!-- Webhooks -->
         <div class="col-lg-4">
             <div class="card">
@@ -167,6 +181,7 @@ include("vista/includes/header.php");
                 </div>
             </div>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 

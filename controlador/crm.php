@@ -133,6 +133,11 @@ class CrmController {
         
         // Validar Ownership
         if (!isUserAdmin($userId)) {
+            // Proveedores NO pueden cambiar estado
+            if (isUserProveedor($userId)) {
+                return ['success' => false, 'message' => 'Acceso denegado: los proveedores no pueden cambiar estados.'];
+            }
+
             // Cliente solo puede cambiar su lead
             if (isUserCliente($userId) && (int)$lead['cliente_id'] !== $userId) {
                 return ['success' => false, 'message' => 'Acceso denegado: este lead no te pertenece'];
@@ -306,6 +311,12 @@ class CrmController {
         // Validar Edición
         if ($id > 0 && !isUserAdmin($userId)) {
              $lead = CrmLead::obtenerPorId($id);
+             
+             // Proveedores NO pueden editar
+             if (isUserProveedor($userId)) {
+                 return ['success' => false, 'message' => 'Acceso denegado: los proveedores no pueden editar leads.'];
+             }
+
              if (isUserCliente($userId) && (int)$lead['cliente_id'] !== $userId) {
                   return ['success' => false, 'message' => 'No puedes editar un lead que no es tuyo'];
              }
@@ -394,8 +405,20 @@ class CrmController {
         // Fechas por defecto: Últimos 6 meses
         $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-6 months'));
         $endDate = $_GET['end_date'] ?? date('Y-m-d');
+        $clientId = isset($_GET['client_id']) ? (int)$_GET['client_id'] : null;
+
+        // FILTROS DASHBOARD PROVEEDOR
+        $dashboardFilters = [
+            'start_date' => $startDate, 
+            'end_date' => $endDate,
+            'client_id' => $clientId
+        ];
         
         // Obtener datos
+        // NOTA: Para el listado de notificaciones (historial), podríamos querer filtrar también por cliente si es lead update,
+        // pero por ahora el requerimiento principal es el dashboard. 
+        // Si se requiere filtrar el historial de notificaciones por cliente, se necesitaría update en CrmNotificationModel.
+        
         $notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, $onlyUnread, $limit, $offset, $search, $startDate, $endDate);
         $totalNotificaciones = CrmNotificationModel::contarTotalPorUsuario($userId, $onlyUnread, $search, $startDate, $endDate);
         $unreadCount = CrmNotificationModel::contarNoLeidas($userId);
@@ -403,6 +426,15 @@ class CrmController {
         // Obtener leads pendientes "reales" (No paginados, son tareas)
         $leadsPendientes = CrmNotificationModel::obtenerLeadsPendientes($userId);
         
+        // Obtener clientes asociados (para el dropdown de filtros del proveedor)
+        $clientesAsociados = [];
+        if (isUserProveedor($userId)) {
+             require_once "modelo/crm_lead.php";
+             $clientesAsociados = CrmLead::obtenerClientesAsociados($userId);
+             
+             // Si hay filtro de cliente, verificar que pertenezca al proveedor
+        }
+
         // Función helper local para decodificar
         $decoder = function(&$item) {
             if (isset($item['payload']) && is_string($item['payload'])) {
@@ -424,6 +456,9 @@ class CrmController {
             'search_query' => $search,
             'start_date' => $startDate,
             'end_date' => $endDate,
+            'client_id' => $clientId,
+            'dashboard_filters' => $dashboardFilters, // Para pasar al modelo de métricas en la vista si se llama directo o aquí
+            'clientes_asociados' => $clientesAsociados,
             'pagination' => [
                 'current_page' => $page,
                 'total_pages' => $totalPages,

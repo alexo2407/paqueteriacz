@@ -347,14 +347,8 @@ include("vista/includes/header.php");
                     <?php endif; ?>
                 </p>
             </div>
-            <div class="d-flex gap-2">
-                 <button class="btn btn-outline-secondary btn-sm" onclick="location.reload()">
-                    <i class="bi bi-arrow-clockwise"></i>
-                </button>
-                <button class="btn btn-outline-primary btn-sm" onclick="marcarTodasLeidas()">
-                    <i class="bi bi-check-all me-1"></i> Marcar todo leído
-                </button>
-            </div>
+            <!-- Botones eliminados por solicitud -->
+            <div class="d-flex gap-2"></div>
         </div>
     </div>
 </div>
@@ -367,10 +361,57 @@ include("vista/includes/header.php");
     $userId = $_SESSION['user_id'] ?? 0;
     
     // Obtener métricas del proveedor
+    // Obtener métricas del proveedor USANDO FILTROS
     require_once __DIR__ . '/../../../modelo/crm_lead.php';
-    $metricas = CrmLeadModel::obtenerMetricasProveedor($userId);
+    
+    // Recuperar filtros del controlador
+    $filtrosDashboard = $datos['dashboard_filters'] ?? [];
+    $metricas = CrmLeadModel::obtenerMetricasProveedor($userId, $filtrosDashboard);
     
     $totalLeads = $metricas['total'] ?? 0;
+    
+    // Variables para prellenar inputs
+    $filtroFechaInicio = $datos['start_date'] ?? date('Y-m-d', strtotime('-30 days'));
+    $filtroFechaFin = $datos['end_date'] ?? date('Y-m-d');
+    $filtroClienteId = $datos['client_id'] ?? '';
+    $clientesOpciones = $datos['clientes_asociados'] ?? [];
+    ?>
+    
+    <!-- Filtros Dashboard -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-3 bg-light rounded">
+            <form method="GET" action="" class="row g-2 align-items-end">
+                <!-- Mantener tab activa -->
+                <input type="hidden" name="tab" value="<?= htmlspecialchars($_GET['tab'] ?? 'updates') ?>">
+                
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">Fecha Inicio</label>
+                    <input type="date" name="start_date" class="form-control form-control-sm" value="<?= $filtroFechaInicio ?>">
+                </div>
+                <div class="col-md-3">
+                    <label class="small text-muted fw-bold">Fecha Fin</label>
+                    <input type="date" name="end_date" class="form-control form-control-sm" value="<?= $filtroFechaFin ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="small text-muted fw-bold">Filtrar por Cliente</label>
+                    <select name="client_id" class="form-select form-select-sm">
+                        <option value="">-- Todos los Clientes --</option>
+                        <?php foreach($clientesOpciones as $cli): ?>
+                            <option value="<?= $cli['id'] ?>" <?= ($filtroClienteId == $cli['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cli['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-filter"></i> Filtrar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php
     $procesados = $metricas['procesados'] ?? 0;
     $enEspera = $metricas['en_espera'] ?? 0;
     $porcentajeProcesado = $totalLeads > 0 ? round(($procesados / $totalLeads) * 100) : 0;
@@ -480,7 +521,7 @@ include("vista/includes/header.php");
     <?php
     // Determinar Tab Activa (Persistencia tras recarga)
     // Default: 'leads' (Por Atender)
-    $activeTab = $_GET['tab'] ?? 'leads';
+    $activeTab = $_GET['tab'] ?? ($esProveedor ? 'updates' : 'leads');
     
     // Mapeo simple para clases CSS
     $showLeads = ($activeTab === 'leads') ? 'active' : '';
@@ -530,6 +571,7 @@ include("vista/includes/header.php");
             <div class="tab-content" id="pills-tabContent">
                 
                 <!-- Tab: PENDIENTES -->
+                <?php if (!$esProveedor): ?>
                 <div class="tab-pane fade <?= $paneLeads ?>" id="pills-leads" role="tabpanel">
                     <?php if (empty($leadsPendientesList)): ?>
                          <div class="text-center py-5 border rounded bg-light">
@@ -598,16 +640,14 @@ include("vista/includes/header.php");
                                                 <!-- Selector de Estado -->
                                                 <select class="form-select form-select-sm" style="width: auto; font-weight: 500;" 
                                                         onchange="confirmarCambioEstado(this, <?= $leadId ?>, <?= $notif['id'] ?>)">
-                                                    <option selected disabled value="">Acción...</option>
-                                                    <option value="APROBADO" class="text-success fw-bold">APROBADO</option>
-                                                    <option value="CONFIRMADO" class="text-primary fw-bold">CONFIRMADO</option>
-                                                    <option value="EN_TRANSITO" class="text-info fw-bold">EN TRANSITO</option>
-                                                    <option value="EN_BODEGA" class="text-secondary fw-bold">EN BODEGA</option>
-                                                    <option value="CANCELADO" class="text-danger fw-bold">CANCELADO</option>
+                                                    <option selected disabled>Acción rápida...</option>
+                                                    <option value="APROBADO" class="text-success fw-bold">&#10003; Aprobar Lead</option>
+                                                    <option value="CANCELADO" class="text-danger">&#10007; Cancelar / Rechazar</option>
+                                                    <option value="EN_ESPERA" class="text-muted">&#8635; Dejar en Espera</option>
                                                 </select>
                                                 
-                                                <a href="<?= RUTA_URL ?>crm/ver/<?= $leadId ?>" class="btn btn-sm btn-outline-secondary" title="Ver Detalles">
-                                                    <i class="bi bi-eye"></i>
+                                                <a href="<?= RUTA_URL ?>crm/ver/<?= $leadId ?>" class="btn btn-sm btn-light border" title="Ver Detalles">
+                                                    <i class="bi bi-arrow-right"></i>
                                                 </a>
                                             </div>
                                         </td>
@@ -618,6 +658,7 @@ include("vista/includes/header.php");
                         </div>
                     <?php endif; ?>
                 </div>
+                <?php endif; ?>
 
                 <!-- Tab: ACTUALIZACIONES -->
                 <div class="tab-pane fade <?= $paneUpdates ?>" id="pills-updates" role="tabpanel">

@@ -518,33 +518,47 @@ class CrmLeadModel {
     }
     
     /**
-     * Obtiene métricas de leads para un proveedor.
-     * Calcula: total enviados, procesados, en espera, y distribución por estado.
+     * Obtiene métricas de leads para un proveedor con filtros opcionales.
      * 
      * @param int $proveedorId ID del proveedor
+     * @param array $filters Filtros opcionales: start_date, end_date, client_id
      * @return array Métricas: total, procesados, en_espera, por_estado
      */
-    public static function obtenerMetricasProveedor($proveedorId) {
+    public static function obtenerMetricasProveedor($proveedorId, $filters = []) {
         try {
             $db = (new Conexion())->conectar();
             
-            // Total de leads enviados por el proveedor
-            $stmt = $db->prepare("
-                SELECT COUNT(*) as total
-                FROM crm_leads
-                WHERE proveedor_id = :proveedor_id
-            ");
-            $stmt->execute([':proveedor_id' => $proveedorId]);
+            $where = "WHERE proveedor_id = :proveedor_id";
+            $params = [':proveedor_id' => $proveedorId];
+            
+            // Filtro de Fechas
+            if (!empty($filters['start_date'])) {
+                $where .= " AND created_at >= :start_date";
+                $params[':start_date'] = $filters['start_date'] . " 00:00:00";
+            }
+            if (!empty($filters['end_date'])) {
+                $where .= " AND created_at <= :end_date";
+                $params[':end_date'] = $filters['end_date'] . " 23:59:59";
+            }
+            
+            // Filtro de Cliente
+            if (!empty($filters['client_id'])) {
+                $where .= " AND cliente_id = :client_id";
+                $params[':client_id'] = $filters['client_id'];
+            }
+            
+            // Total de leads
+            $stmt = $db->prepare("SELECT COUNT(*) as total FROM crm_leads $where");
+            $stmt->execute($params);
             $total = (int)$stmt->fetchColumn();
             
-            // Procesados (cualquier estado diferente de EN_ESPERA/nuevo/NUEVO)
+            // Procesados
             $stmt = $db->prepare("
                 SELECT COUNT(*) as procesados
                 FROM crm_leads
-                WHERE proveedor_id = :proveedor_id
-                AND estado_actual NOT IN ('EN_ESPERA', 'nuevo', 'NUEVO')
+                $where AND estado_actual NOT IN ('EN_ESPERA', 'nuevo', 'NUEVO')
             ");
-            $stmt->execute([':proveedor_id' => $proveedorId]);
+            $stmt->execute($params);
             $procesados = (int)$stmt->fetchColumn();
             
             // En espera
@@ -554,11 +568,11 @@ class CrmLeadModel {
             $stmt = $db->prepare("
                 SELECT estado_actual, COUNT(*) as cantidad
                 FROM crm_leads
-                WHERE proveedor_id = :proveedor_id
+                $where
                 GROUP BY estado_actual
                 ORDER BY cantidad DESC
             ");
-            $stmt->execute([':proveedor_id' => $proveedorId]);
+            $stmt->execute($params);
             $porEstado = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $porEstado[$row['estado_actual']] = (int)$row['cantidad'];
@@ -568,7 +582,8 @@ class CrmLeadModel {
                 'total' => $total,
                 'procesados' => $procesados,
                 'en_espera' => $enEspera,
-                'por_estado' => $porEstado
+                'por_estado' => $porEstado,
+                'filters' => $filters 
             ];
             
         } catch (Exception $e) {
@@ -577,8 +592,57 @@ class CrmLeadModel {
                 'total' => 0,
                 'procesados' => 0,
                 'en_espera' => 0,
-                'por_estado' => []
+                'por_estado' => [],
+                'error' => $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Obtiene la lista de clientes a los que un proveedor ha enviado leads.
+     * Útil para filtros.
+     * 
+     * @param int $proveedorId
+     * @return array Lista de clientes [id, nombre]
+     */
+    public static function obtenerClientesAsociados($proveedorId) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT DISTINCT u.id, u.nombre 
+                FROM crm_leads l
+                JOIN usuarios u ON l.cliente_id = u.id
+                WHERE l.proveedor_id = :proveedor_id
+                ORDER BY u.nombre ASC
+            ");
+            $stmt->execute([':proveedor_id' => $proveedorId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error fetching associated clients: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Cuenta los leads en estado EN_ESPERA para un proveedor específico.
+     * 
+     * @param int $proveedorId
+     * @return int
+     */
+    public static function contarPendientesProveedor($proveedorId) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT COUNT(*) 
+                FROM crm_leads 
+                WHERE proveedor_id = :proveedor_id 
+                AND estado_actual = 'EN_ESPERA'
+            ");
+            $stmt->execute([':proveedor_id' => $proveedorId]);
+            return (int) $stmt->fetchColumn();
+        } catch (Exception $e) {
+            error_log("Error counting pending leads: " . $e->getMessage());
+            return 0;
         }
     }
 }
