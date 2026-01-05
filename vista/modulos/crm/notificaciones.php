@@ -33,16 +33,20 @@ if (!$esCliente && !$esProveedor && !isUserAdmin($userId)) {
 // =========================================================================
 // FUNCIÓN HELPER DE RENDERIZADO (MOVIDA AL INICIO PARA USO AJAX Y NORMAL)
 // =========================================================================
-function renderNotificationCard($notif) {
-    // Asegurar payload
-    $payload = is_array($notif['payload']) ? $notif['payload'] : json_decode($notif['payload'], true);
+function renderNotificationCard($notifs) {
+    // $notifs puede ser un array de notificaciones agrupadas o una sola notificación
+    $notifs = is_array($notifs) && isset($notifs[0]) ? $notifs : [$notifs];
+    $firstNotif = $notifs[0];
     
-    $isRead = $notif['is_read'];
+    // Asegurar payload
+    $payload = is_array($firstNotif['payload']) ? $firstNotif['payload'] : json_decode($firstNotif['payload'], true);
+    
+    $isRead = $firstNotif['is_read'];
     $unreadClass = $isRead ? '' : 'unread shadow-sm';
-    $time = date('H:i', strtotime($notif['created_at']));
+    $time = date('H:i', strtotime($firstNotif['created_at']));
     
     // Datos Vivos
-    $leadStatusLive = $notif['lead_status_live'] ?? null;
+    $leadStatusLive = $firstNotif['lead_status_live'] ?? null;
     
     // Mapa de colores para estados
     $colores = [
@@ -55,33 +59,61 @@ function renderNotificationCard($notif) {
         'CANCELADO' => 'bg-danger'
     ];
     
-    $badgeClass = $colores[$leadStatusLive] ?? 'bg-light text-dark border';
-    $estadoBadge = $leadStatusLive ? "<span class='badge {$badgeClass} me-1'>{$leadStatusLive}</span>" : "";
-    
     // Configuración según tipo
-    if ($notif['type'] === 'new_lead') {
+    if ($firstNotif['type'] === 'new_lead') {
         $icon = '<i class="bi bi-person-plus-fill"></i>';
         $title = $payload['nombre'] ?? 'Nuevo Lead';
         $leadId = $payload['lead_id'] ?? 0;
         $iconClass = 'bg-soft-success';
         $typeClass = 'type-lead';
         
+        $badgeClass = $colores[$leadStatusLive] ?? 'bg-light text-dark border';
+        $estadoBadge = $leadStatusLive ? "<span class='badge {$badgeClass} me-1'>{$leadStatusLive}</span>" : "";
+        
         $prodInfo = isset($payload['producto']) ? "Interesado en: <b>{$payload['producto']}</b>" : 'Nuevo cliente asignado';
         $subtitle = $estadoBadge . " " . $prodInfo;
         
     } else {
+        // Actualizaciones: Mostrar secuencia de cambios
         $icon = '<i class="bi bi-arrow-repeat"></i>';
         $iconClass = 'bg-soft-info';
         $typeClass = 'type-update';
-        $title = "Actualización Lead #{$notif['related_lead_id']}";
-        $estadoAnterior = $payload['estado_anterior'] ?? '?';
-        $estadoNuevo = $payload['estado_nuevo'] ?? '?';
-        $subtitle = "Cambio: <span class='badge bg-secondary'>$estadoAnterior</span> <i class='bi bi-arrow-right small'></i> <span class='badge bg-primary'>$estadoNuevo</span>";
-        $leadId = $notif['related_lead_id'] ?? 0;
+        $leadId = $firstNotif['related_lead_id'] ?? 0;
+        $title = "Actualización Lead #{$leadId}";
+        
+        // Si hay múltiples cambios, mostrar secuencia
+        if (count($notifs) > 1) {
+            $estados = [];
+            foreach ($notifs as $n) {
+                $p = is_array($n['payload']) ? $n['payload'] : json_decode($n['payload'], true);
+                $estados[] = $p['estado_nuevo'] ?? '?';
+            }
+            // Agregar primer estado (estado_anterior del primer cambio)
+            $firstPayload = is_array($notifs[count($notifs)-1]['payload']) 
+                ? $notifs[count($notifs)-1]['payload'] 
+                : json_decode($notifs[count($notifs)-1]['payload'], true);
+            array_unshift($estados, $firstPayload['estado_anterior'] ?? '?');
+            
+            // Renderizar secuencia con badges
+            $secuencia = [];
+            foreach ($estados as $estado) {
+                $badgeClass = $colores[$estado] ?? 'bg-secondary';
+                $secuencia[] = "<span class='badge {$badgeClass}'>{$estado}</span>";
+            }
+            $subtitle = implode(" <i class='bi bi-arrow-right small mx-1'></i> ", $secuencia);
+            $subtitle .= " <span class='badge bg-light text-dark ms-2'>" . count($notifs) . " cambios</span>";
+        } else {
+            // Un solo cambio
+            $estadoAnterior = $payload['estado_anterior'] ?? '?';
+            $estadoNuevo = $payload['estado_nuevo'] ?? '?';
+            $badgeAnt = $colores[$estadoAnterior] ?? 'bg-secondary';
+            $badgeNue = $colores[$estadoNuevo] ?? 'bg-primary';
+            $subtitle = "<span class='badge {$badgeAnt}'>{$estadoAnterior}</span> <i class='bi bi-arrow-right small'></i> <span class='badge {$badgeNue}'>{$estadoNuevo}</span>";
+        }
     }
 ?>
     <div class="col-12">
-        <div class="card notif-card <?= $unreadClass ?> <?= $typeClass ?> p-3 h-100" id="notif-card-<?= $notif['id'] ?>">
+        <div class="card notif-card <?= $unreadClass ?> <?= $typeClass ?> p-3 h-100" id="notif-card-<?= $firstNotif['id'] ?>">
             <div class="d-flex align-items-start">
                 <div class="notif-icon <?= $iconClass ?> flex-shrink-0 me-3">
                     <?= $icon ?>
@@ -146,7 +178,8 @@ if (isset($_GET['ajax_search'])) {
 $leadsPendientesList = $datos['leads_pendientes'] ?? [];
 
 // 2. Historial y Actualizaciones (Vienen paginados)
-$actualizaciones = [];
+// NUEVA LÓGICA: Agrupar actualizaciones por lead_id
+$actualizacionesPorLead = [];
 $groupedByDate = [
     'Hoy' => [],
     'Ayer' => [],
@@ -157,14 +190,16 @@ $hoy = date('Y-m-d');
 $ayer = date('Y-m-d', strtotime('-1 day'));
 
 foreach ($notificaciones as $notif) {
-    // El payload ya viene decodificado por array_walk en el controlador
-    
-    // Separar Actualizaciones (solo para la tab de Updates)
+    // Agrupar Actualizaciones (solo para la tab de Updates)
     if ($notif['type'] !== 'new_lead') {
-        $actualizaciones[] = $notif;
+        $leadId = $notif['related_lead_id'] ?? 0;
+        if (!isset($actualizacionesPorLead[$leadId])) {
+            $actualizacionesPorLead[$leadId] = [];
+        }
+        $actualizacionesPorLead[$leadId][] = $notif;
     }
     
-    // Agrupar TODO para el Historial
+    // Agrupar TODO para el Historial (sin agrupar por lead aquí)
     $fechaNotif = date('Y-m-d', strtotime($notif['created_at']));
     if ($fechaNotif === $hoy) {
         $groupedByDate['Hoy'][] = $notif;
@@ -174,6 +209,18 @@ foreach ($notificaciones as $notif) {
         $groupedByDate['Anteriores'][] = $notif;
     }
 }
+
+// Convertir agrupaciones de leads en array plano para tab Actualizaciones
+$actualizaciones = [];
+foreach ($actualizacionesPorLead as $leadId => $notifs) {
+    // Ordenar por fecha DESC (más reciente primero)
+    usort($notifs, function($a, $b) {
+        return strtotime($b['created_at']) - strtotime($a['created_at']);
+    });
+    // Guardar el array completo de notificaciones del lead
+    $actualizaciones[] = $notifs;
+}
+
 // Recalcular conteo real
 $countPendientes = count($leadsPendientesList);
 
