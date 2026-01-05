@@ -12,7 +12,7 @@ $notificaciones = $datos['notificaciones'];
 $unreadCount = $datos['unread_count'];
 
 // helpers/roles.php ya cargado en index
-$userId = $_SESSION['idUsuario'] ?? 0;
+$userId = $_SESSION['user_id'] ?? 0;
 
 // Validar Permisos
 if ($userId <= 0) {
