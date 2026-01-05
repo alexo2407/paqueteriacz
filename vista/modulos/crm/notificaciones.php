@@ -644,7 +644,7 @@ document.addEventListener("DOMContentLoaded", function() {
             var tablePendientes = $('#tablaPendientes').DataTable({
                 language: { url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json' },
                 order: [[3, 'desc']],
-                pageLength: 20,
+                pageLength: 15,
                 lengthMenu: [10, 20, 50, 100],
                 responsive: true,
                 dom: 'lrtip',
@@ -677,7 +677,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 },
                 order: [[1, 'desc']], // Ordenar por columna oculta Timestamp
-                pageLength: 10,
+                pageLength: 20,
                 lengthMenu: [10, 25, 50, 100],
                 // El render ya viene como HTML en la col 0
                 columns: [
