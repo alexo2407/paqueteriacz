@@ -30,6 +30,13 @@ $tendencia = $datos['tendencia'];
 
 // Calcular totales
 $totalLeads = array_sum(array_column($leadsPorEstado, 'total'));
+
+$proveedores = $datos['proveedores'] ?? [];
+$filters = $datos['filters'] ?? [];
+$fechaDesde = $filters['fecha_desde'] ?? '';
+$fechaHasta = $filters['fecha_hasta'] ?? '';
+$proveedorId = $filters['proveedor_id'] ?? '';
+
 ?>
 
 <style>
@@ -113,6 +120,43 @@ $totalLeads = array_sum(array_column($leadsPorEstado, 'total'));
     <div class="crm-header">
         <h2><i class="bi bi-diagram-3"></i> Dashboard CRM</h2>
         <p>Sistema de gestión de leads y webhooks</p>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4 border-0 shadow-sm" style="border-radius: 16px;">
+        <div class="card-body p-4">
+            <form method="GET" action="<?= RUTA_URL ?>crm/dashboard" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Proveedor</label>
+                    <select name="proveedor_id" class="form-select">
+                        <option value="">Todos los proveedores</option>
+                        <?php foreach ($proveedores as $prov): ?>
+                            <option value="<?= $prov['id'] ?>" <?= $proveedorId == $prov['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($prov['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Desde</label>
+                    <input type="date" name="fecha_desde" class="form-control" value="<?= $fechaDesde ?>">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Hasta</label>
+                    <input type="date" name="fecha_hasta" class="form-control" value="<?= $fechaHasta ?>">
+                </div>
+                <div class="col-md-3">
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary flex-grow-1">
+                            <i class="bi bi-funnel"></i> Filtrar
+                        </button>
+                        <a href="<?= RUTA_URL ?>crm/dashboard" class="btn btn-light border">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Stats -->

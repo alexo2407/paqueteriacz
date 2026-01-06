@@ -347,16 +347,37 @@ class CrmLeadModel {
     }
     
     /**
-     * Contar leads por estado
+     * Contar leads por estado con filtros opcionales
      */
-    public static function contarPorEstado() {
+    public static function contarPorEstado($filters = []) {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->query("
+            
+            $where = "WHERE 1=1";
+            $params = [];
+            
+            if (!empty($filters['proveedor_id'])) {
+                $where .= " AND proveedor_id = :proveedor_id";
+                $params[':proveedor_id'] = $filters['proveedor_id'];
+            }
+            
+            if (!empty($filters['fecha_desde'])) {
+                $where .= " AND fecha_hora >= :fecha_desde";
+                $params[':fecha_desde'] = $filters['fecha_desde'];
+            }
+            
+            if (!empty($filters['fecha_hasta'])) {
+                $where .= " AND fecha_hora <= :fecha_hasta";
+                $params[':fecha_hasta'] = $filters['fecha_hasta'] . ' 23:59:59';
+            }
+
+            $stmt = $db->prepare("
                 SELECT estado_actual as estado, COUNT(*) as total 
                 FROM crm_leads 
+                $where
                 GROUP BY estado_actual
             ");
+            $stmt->execute($params);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log("Error counting leads by status: " . $e->getMessage());
@@ -365,13 +386,40 @@ class CrmLeadModel {
     }
     
     /**
-     * Obtener leads recientes
+     * Obtener leads recientes con filtros opcionales
      */
-    public static function obtenerRecientes($limit = 10) {
+    public static function obtenerRecientes($limit = 10, $filters = []) {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("SELECT * FROM crm_leads ORDER BY created_at DESC LIMIT :limit");
+            
+            $where = "WHERE 1=1";
+            $params = [];
+            
+            if (!empty($filters['proveedor_id'])) {
+                $where .= " AND proveedor_id = :proveedor_id";
+                $params[':proveedor_id'] = $filters['proveedor_id'];
+            }
+            
+            // Nota: Para "Recientes", usualmente queremos los últimos creados, 
+            // pero si hay filtro de fechas, lo aplicamos a fecha_hora o created_at.
+            // Usaremos fecha_hora para consistencia con los reportes.
+            if (!empty($filters['fecha_desde'])) {
+                $where .= " AND fecha_hora >= :fecha_desde";
+                $params[':fecha_desde'] = $filters['fecha_desde'];
+            }
+            
+            if (!empty($filters['fecha_hasta'])) {
+                $where .= " AND fecha_hora <= :fecha_hasta";
+                $params[':fecha_hasta'] = $filters['fecha_hasta'] . ' 23:59:59';
+            }
+
+            $stmt = $db->prepare("SELECT * FROM crm_leads $where ORDER BY created_at DESC LIMIT :limit");
+            
+            foreach ($params as $key => $val) {
+                $stmt->bindValue($key, $val);
+            }
             $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
@@ -381,19 +429,54 @@ class CrmLeadModel {
     }
     
     /**
-     * Obtener tendencia de leads
+     * Obtener tendencia de leads con filtros opcionales
      */
-    public static function obtenerTendencia($dias = 30) {
+    public static function obtenerTendencia($dias = 30, $filters = []) {
         try {
             $db = (new Conexion())->conectar();
+            
+            $where = "WHERE created_at >= DATE_SUB(NOW(), INTERVAL :dias DAY)";
+            $params = [':dias' => $dias];
+            
+            if (!empty($filters['proveedor_id'])) {
+                $where .= " AND proveedor_id = :proveedor_id";
+                $params[':proveedor_id'] = $filters['proveedor_id'];
+            }
+            
+            // Si el filtro de fechas es más específico que "últimos X días", 
+            // podríamos sobrescribir el WHERE, pero por ahora mantenemos la lógica de 
+            // "Tendencia de los últimos X días" filtrada por el proveedor seleccionado.
+            // Si se quisiera tendencia en rango de fechas arbitrario, se ajustaría aquí.
+            if (!empty($filters['fecha_desde']) && !empty($filters['fecha_hasta'])) {
+                // Si hay rango explícito, ignoramos $dias y usamos el rango
+                $where = "WHERE fecha_hora BETWEEN :fecha_desde AND :fecha_hasta";
+                unset($params[':dias']);
+                $params[':fecha_desde'] = $filters['fecha_desde'];
+                $params[':fecha_hasta'] = $filters['fecha_hasta'] . ' 23:59:59';
+                
+                if (!empty($filters['proveedor_id'])) {
+                    $where .= " AND proveedor_id = :proveedor_id";
+                    $params[':proveedor_id'] = $filters['proveedor_id'];
+                }
+            }
+
             $stmt = $db->prepare("
                 SELECT DATE(created_at) as fecha, COUNT(*) as total
                 FROM crm_leads
-                WHERE created_at >= DATE_SUB(NOW(), INTERVAL :dias DAY)
+                $where
                 GROUP BY DATE(created_at)
                 ORDER BY fecha ASC
             ");
-            $stmt->bindValue(':dias', $dias, PDO::PARAM_INT);
+            
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v); // Bind all params
+            }
+            
+            // Special handling for :dias if it exists and wasn't unset (it's INT for DATE_SUB)
+            // But PDO bindValue infers type usually. Strictly, INTERVAL parameterization consists of quirks. 
+            // In standard MySQL via PDO, INTERVAL :param DAY works if param is int.
+            // However, safe bet is to verify binding.
+            
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {

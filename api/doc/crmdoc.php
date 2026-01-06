@@ -501,8 +501,8 @@
         <div class="container text-center mt-4">
             <h1 data-lang="en">CRM Relay API Documentation</h1>
             <h1 data-lang="es">Documentación API CRM Relay</h1>
-            <p class="lead" data-lang="en">Simple JWT-authenticated API for lead management</p>
-            <p class="lead" data-lang="es">API simple con autenticación JWT para gestión de leads</p>
+            <p class="lead" data-lang="en" style="color: white;">Simple JWT-authenticated API for lead management</p>
+            <p class="lead" data-lang="es" style="color: white;">API simple con autenticación JWT para gestión de leads</p>
             <p class="mt-3">
                 <a class="btn btn-outline-light btn-sm" href="../../docs/CRM_CURL_EXAMPLES.md" target="_blank" data-lang="en">📋 View cURL Examples</a>
                 <a class="btn btn-outline-light btn-sm" href="../../docs/CRM_CURL_EXAMPLES.md" target="_blank" data-lang="es">📋 Ver Ejemplos cURL</a>
@@ -511,6 +511,40 @@
     </header>
 
     <div class="container mt-5">
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-4" id="crmTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="true">
+                    <span data-lang="en">General</span><span data-lang="es">General</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="provider-tab" data-bs-toggle="tab" data-bs-target="#provider" type="button" role="tab" aria-controls="provider" aria-selected="false">
+                    <span data-lang="en">Provider API</span><span data-lang="es">API Proveedor</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="client-tab" data-bs-toggle="tab" data-bs-target="#client" type="button" role="tab" aria-controls="client" aria-selected="false">
+                    <span data-lang="en">Client API</span><span data-lang="es">API Cliente</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="core-tab" data-bs-toggle="tab" data-bs-target="#core" type="button" role="tab" aria-controls="core" aria-selected="false">
+                    <span data-lang="en">Core Resources</span><span data-lang="es">Recursos Comunes</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="integration-tab" data-bs-toggle="tab" data-bs-target="#integration" type="button" role="tab" aria-controls="integration" aria-selected="false">
+                    <span data-lang="en">Integration</span><span data-lang="es">Integración</span>
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab panes -->
+        <div class="tab-content" id="crmTabsContent">
+            <!-- Tab: General -->
+            <div class="tab-pane fade show active" id="general" role="tabpanel" aria-labelledby="general-tab">
+
         <!-- Quick Reference -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">Quick Reference</h2>
@@ -673,6 +707,39 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
             </table>
         </div>
 
+        <!-- HTTP Status Codes (Moved) -->
+        <div class="section-container">
+            <h2 class="section-title" data-lang="en">HTTP Status Codes</h2>
+            <h2 class="section-title" data-lang="es">Códigos de Estado HTTP</h2>
+            
+            <table class="table table-bordered" data-lang="en">
+                <thead><tr><th>Code</th><th>Meaning</th><th>When</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="status-badge status-200">200</span></td><td>OK</td><td>Successful query, update, or idempotent retry</td></tr>
+                    <tr><td><span class="status-badge status-202">202</span></td><td>Accepted</td><td>Lead queued for async processing</td></tr>
+                    <tr><td><span class="status-badge status-400">400</span></td><td>Bad Request</td><td>Validation error, invalid transition</td></tr>
+                    <tr><td><span class="status-badge status-401">401</span></td><td>Unauthorized</td><td>Missing/invalid JWT token</td></tr>
+                    <tr><td><span class="status-badge status-403">403</span></td><td>Forbidden</td><td>Insufficient permissions or ownership</td></tr>
+                    <tr><td><span class="status-badge status-404">404</span></td><td>Not Found</td><td>Lead ID doesn't exist</td></tr>
+                </tbody>
+            </table>
+            
+            <table class="table table-bordered" data-lang="es">
+                <thead><tr><th>Código</th><th>Significado</th><th>Cuándo</th></tr></thead>
+                <tbody>
+                    <tr><td><span class="status-badge status-200">200</span></td><td>OK</td><td>Consulta exitosa, actualización o reintento idempotente</td></tr>
+                    <tr><td><span class="status-badge status-202">202</span></td><td>Aceptado</td><td>Lead encolado para procesamiento asíncrono</td></tr>
+                    <tr><td><span class="status-badge status-400">400</span></td><td>Solicitud Incorrecta</td><td>Error de validación, transición inválida</td></tr>
+                    <tr><td><span class="status-badge status-401">401</span></td><td>No Autorizado</td><td>Token JWT faltante/inválido</td></tr>
+                    <tr><td><span class="status-badge status-403">403</span></td><td>Prohibido</td><td>Permisos insuficientes o falta de propiedad</td></tr>
+                    <tr><td><span class="status-badge status-404">404</span></td><td>No Encontrado</td><td>ID de lead no existe</td></tr>
+                </tbody>
+            </table>
+        </div>
+            </div>
+
+            <!-- Tab: Provider API -->
+            <div class="tab-pane fade" id="provider" role="tabpanel" aria-labelledby="provider-tab">
         <!-- POST /api/crm/leads -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">Create Leads</h2>
@@ -758,107 +825,6 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 }</code></pre>
         </div>
 
-        <!-- POST /api/crm/leads/{id}/estado -->
-        <div class="section-container">
-            <h2 class="section-title" data-lang="en">Update Lead Status</h2>
-            <h2 class="section-title" data-lang="es">Actualizar Estado de Lead</h2>
-            
-            <p data-lang="en">Update lead state with automatic normalization. Clients have <strong>full flexibility</strong> to change to any valid state.</p>
-            <p data-lang="es">Actualiza el estado del lead con normalización automática. Clientes tienen <strong>total flexibilidad</strong> para cambiar a cualquier estado válido.</p>
-
-            <h4 data-lang="en">Endpoint</h4>
-            <h4 data-lang="es">Endpoint</h4>
-            <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/crm/leads/{id}/estado</div>
-
-            <h4 data-lang="en">Allowed Roles</h4>
-            <h4 data-lang="es">Roles Permitidos</h4>
-            <p data-lang="en"><code>Cliente</code> (owner only), <code>Administrador</code></p>
-            <p data-lang="es"><code>Cliente</code> (solo propietario), <code>Administrador</code></p>
-
-            <h4 data-lang="en">Request Body</h4>
-            <h4 data-lang="es">Cuerpo de la Petición</h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
-    "estado": "Aprovado",
-    "observaciones": "Cliente confirmó recepción"
-}</code></pre>
-
-            <h4 data-lang="en">Valid States & Aliases</h4>
-            <h4 data-lang="es">Estados Válidos y Alias</h4>
-            
-            <table class="table table-sm table-bordered" data-lang="en">
-                <thead><tr><th>Canonical State</th><th>Accepted Aliases</th></tr></thead>
-                <tbody>
-                    <tr><td><code>EN_ESPERA</code></td><td>ESPERA, PENDING, WAITING</td></tr>
-                    <tr><td><code>APROBADO</code></td><td>APROVADO, APPROVED</td></tr>
-                    <tr><td><code>CONFIRMADO</code></td><td>CONFIRMAR, CONFIRMED</td></tr>
-                    <tr><td><code>EN_TRANSITO</code></td><td>EN TRANSITO, TRANSITO, TRANSIT</td></tr>
-                    <tr><td><code>EN_BODEGA</code></td><td>EN BODEGA, BODEGA, WAREHOUSE</td></tr>
-                    <tr><td><code>CANCELADO</code></td><td>CANCELAR, CANCELLED, CANCELED</td></tr>
-                </tbody>
-            </table>
-            
-            <table class="table table-sm table-bordered" data-lang="es">
-                <thead><tr><th>Estado Canónico</th><th>Alias Aceptados</th></tr></thead>
-                <tbody>
-                    <tr><td><code>EN_ESPERA</code></td><td>ESPERA, PENDING, WAITING</td></tr>
-                    <tr><td><code>APROBADO</code></td><td>APROVADO, APPROVED</td></tr>
-                    <tr><td><code>CONFIRMADO</code></td><td>CONFIRMAR, CONFIRMED</td></tr>
-                    <tr><td><code>EN_TRANSITO</code></td><td>EN TRANSITO, TRANSITO, TRANSIT</td></tr>
-                    <tr><td><code>EN_BODEGA</code></td><td>EN BODEGA, BODEGA, WAREHOUSE</td></tr>
-                    <tr><td><code>CANCELADO</code></td><td>CANCELAR, CANCELLED, CANCELED</td></tr>
-                </tbody>
-            </table>
-
-            <h4 data-lang="en">State Descriptions</h4>
-            <h4 data-lang="es">Descripción de Estados</h4>
-            
-            <table class="table table-sm table-bordered" data-lang="en">
-                <thead><tr><th>State</th><th>Description</th><th>When to Use</th></tr></thead>
-                <tbody>
-                    <tr><td><code>EN_ESPERA</code></td><td>Waiting for approval</td><td>Initial state when order is created</td></tr>
-                    <tr><td><code>APROBADO</code></td><td>Approved and validated</td><td>After reviewing and approving the order</td></tr>
-                    <tr><td><code>CONFIRMADO</code></td><td>Confirmed with customer</td><td>Customer confirmed they want to proceed</td></tr>
-                    <tr><td><code>EN_TRANSITO</code></td><td>Package on the way</td><td>Package shipped and being transported</td></tr>
-                    <tr><td><code>EN_BODEGA</code></td><td>Package arrived at warehouse</td><td>Package received and stored</td></tr>
-                    <tr><td><code>CANCELADO</code></td><td>Order cancelled</td><td>Order will not proceed for any reason</td></tr>
-                </tbody>
-            </table>
-            
-            <table class="table table-sm table-bordered" data-lang="es">
-                <thead><tr><th>Estado</th><th>Descripción</th><th>Cuándo Usar</th></tr></thead>
-                <tbody>
-                    <tr><td><code>EN_ESPERA</code></td><td>Esperando aprobación</td><td>Estado inicial cuando se crea el pedido</td></tr>
-                    <tr><td><code>APROBADO</code></td><td>Aprobado y validado</td><td>Después de revisar y aprobar el pedido</td></tr>
-                    <tr><td><code>CONFIRMADO</code></td><td>Confirmado con cliente</td><td>Cliente confirmó que procede con el pedido</td></tr>
-                    <tr><td><code>EN_TRANSITO</code></td><td>Paquete en camino</td><td>Paquete salió y está siendo transportado</td></tr>
-                    <tr><td><code>EN_BODEGA</code></td><td>Paquete llegó a bodega</td><td>Paquete recibido y almacenado</td></tr>
-                    <tr><td><code>CANCELADO</code></td><td>Pedido cancelado</td><td>Pedido no procede por cualquier razón</td></tr>
-                </tbody>
-            </table>
-            
-            <div class="alert alert-info" data-lang="en">
-                <strong>Note:</strong> There are no transition restrictions. Clients can change from any state to any other valid state according to their business needs.
-            </div>
-            <div class="alert alert-info" data-lang="es">
-                <strong>Nota:</strong> No hay restricciones de transición. Los clientes pueden cambiar de cualquier estado a cualquier otro estado válido según sus necesidades de negocio.
-            </div>
-
-            <h4>Response — Success <span class="status-badge status-200">200</span></h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
-    "success": true,
-    "message": "Estado actualizado a APROBADO",
-    "estado_anterior": "EN_ESPERA",
-    "estado_nuevo": "APROBADO"
-}</code></pre>
-
-            <h4>Response — Invalid State <span class="status-badge status-400">400</span></h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
-    "success": false,
-    "message": "Estado inválido: INVALID_STATE",
-    "estados_validos": ["EN_ESPERA", "APROBADO", "CONFIRMADO", "EN_TRANSITO", "EN_BODEGA", "CANCELADO"]
-}</code></pre>
-        </div>
-
         <!-- POST /api/crm/leads/assign-client -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">Assign Client to Leads</h2>
@@ -924,10 +890,144 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 }</code></pre>
         </div>
 
+        <!-- Provider Metrics -->
+        <div class="section-container">
+            <h2 class="section-title" data-lang="en">Provider Metrics</h2>
+            <h2 class="section-title" data-lang="es">Métricas de Proveedor</h2>
+            
+            <p data-lang="en">Retrieve specific lead metrics for the authenticated provider (or admin view of provider data).</p>
+            <p data-lang="es">Recupera métricas específicas de leads para el proveedor autenticado (o vista de admin de datos de proveedor).</p>
+
+            <h4 data-lang="en">Endpoint</h4>
+            <h4 data-lang="es">Endpoint</h4>
+            <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/crm/provider-metrics</div>
+
+            <h4 data-lang="en">Allowed Roles</h4>
+            <h4 data-lang="es">Roles Permitidos</h4>
+            <p><code>Proveedor</code>, <code>Administrador</code></p>
+
+            <h4 data-lang="en">Response — Success 200</h4>
+            <h4 data-lang="es">Respuesta — Éxito 200</h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "data": {
+        "total": 150,
+        "procesados": 120,
+        "en_espera": 30,
+        "porcentaje_procesado": 80.0,
+        "por_estado": [
+            {"estado": "EN_ESPERA", "cantidad": 30},
+            {"estado": "APROBADO", "cantidad": 100},
+            {"estado": "CANCELADO", "cantidad": 20}
+        ]
+    }
+}</code></pre>
+        </div>
+            </div>
+         <!-- Tab: Client API -->
+            <div class="tab-pane fade" id="client" role="tabpanel" aria-labelledby="client-tab">
+        <!-- POST /api/crm/leads/{id}/estado -->
+        <div class="section-container">
+            <h2 class="section-title" data-lang="en">Update Lead Status</h2>
+            <h2 class="section-title" data-lang="es">Actualizar Estado de Lead</h2>
+            
+            <p data-lang="en">Update lead state with automatic normalization. Clients have <strong>full flexibility</strong> to change to any valid state.</p>
+            <p data-lang="es">Actualiza el estado del lead con normalización automática. Clientes tienen <strong>total flexibilidad</strong> para cambiar a cualquier estado válido.</p>
+
+            <h4 data-lang="en">Endpoint</h4>
+            <h4 data-lang="es">Endpoint</h4>
+            <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/crm/leads/{id}/estado</div>
+
+            <h4 data-lang="en">Allowed Roles</h4>
+            <h4 data-lang="es">Roles Permitidos</h4>
+            <p data-lang="en"><code>Cliente</code> (owner only), <code>Administrador</code></p>
+            <p data-lang="es"><code>Cliente</code> (solo propietario), <code>Administrador</code></p>
+
+            <h4 data-lang="en">Request Body</h4>
+            <h4 data-lang="es">Cuerpo de la Petición</h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "estado": "Aprovado",
+    "observaciones": "Cliente confirmó recepción"
+}</code></pre>
+
+            <h4 data-lang="en">Valid States & Aliases</h4>
+            <h4 data-lang="es">Estados Válidos y Alias</h4>
+            
+            <table class="table table-sm table-bordered" data-lang="en">
+                <thead><tr><th>Canonical State</th><th>Accepted Aliases</th></tr></thead>
+                <tbody>
+                    <tr><td><code>EN_ESPERA</code></td><td>ESPERA, PENDING, WAITING</td></tr>
+                    <tr><td><code>APROBADO</code></td><td>APROVADO, APPROVED</td></tr>
+                    <tr><td><code>CONFIRMADO</code></td><td>CONFIRMAR, CONFIRMED</td></tr>
+                    <tr><td><code>EN_TRANSITO</code></td><td>EN TRANSITO, TRANSITO, TRANSIT</td></tr>
+                    <tr><td><code>EN_BODEGA</code></td><td>EN BODEGA, BODEGA, WAREHOUSE</td></tr>
+                    <tr><td><code>CANCELADO</code></td><td>CANCELAR, CANCELLED, CANCELED</td></tr>
+                </tbody>
+            </table>
+            
+            <table class="table table-sm table-bordered" data-lang="es">
+                <thead><tr><th>Estado Canónico</th><th>Alias Aceptados</th></tr></thead>
+                <tbody>
+                    <tr><td><code>EN_ESPERA</code></td><td>ESPERA, PENDING, WAITING</td></tr>
+                    <tr><td><code>APROBADO</code></td><td>APROVADO, APPROVED</td></tr>
+                    <tr><td><code>CONFIRMADO</code></td><td>CONFIRMAR, CONFIRMED</td></tr>
+                    <tr><td><code>EN_TRANSITO</code></td><td>EN TRANSITO, TRANSITO, TRANSIT</td></tr>
+                    <tr><td><code>EN_BODEGA</code></td><td>EN BODEGA, BODEGA, WAREHOUSE</td></tr>
+                    <tr><td><code>CANCELADO</code></td><td>CANCELAR, CANCELLED, CANCELED</td></tr>
+                </tbody>
+            </table>
+            
+            <table class="table table-sm table-bordered" data-lang="en">
+                <thead><tr><th>State</th><th>Description</th><th>When to Use</th></tr></thead>
+                <tbody>
+                    <tr><td><code>EN_ESPERA</code></td><td>Waiting for approval</td><td>Initial state when order is created</td></tr>
+                    <tr><td><code>APROBADO</code></td><td>Approved and validated</td><td>After reviewing and approving the order</td></tr>
+                    <tr><td><code>CONFIRMADO</code></td><td>Confirmed with customer</td><td>Customer confirmed they want to proceed</td></tr>
+                    <tr><td><code>EN_TRANSITO</code></td><td>Package on the way</td><td>Package shipped and being transported</td></tr>
+                    <tr><td><code>EN_BODEGA</code></td><td>Package arrived at warehouse</td><td>Package received and stored</td></tr>
+                    <tr><td><code>CANCELADO</code></td><td>Order cancelled</td><td>Order will not proceed for any reason</td></tr>
+                </tbody>
+            </table>
+            
+            <table class="table table-sm table-bordered" data-lang="es">
+                <thead><tr><th>Estado</th><th>Descripción</th><th>Cuándo Usar</th></tr></thead>
+                <tbody>
+                    <tr><td><code>EN_ESPERA</code></td><td>Esperando aprobación</td><td>Estado inicial cuando se crea el pedido</td></tr>
+                    <tr><td><code>APROBADO</code></td><td>Aprobado y validado</td><td>Después de revisar y aprobar el pedido</td></tr>
+                    <tr><td><code>CONFIRMADO</code></td><td>Confirmado con cliente</td><td>Cliente confirmó que procede con el pedido</td></tr>
+                    <tr><td><code>EN_TRANSITO</code></td><td>Paquete en camino</td><td>Paquete salió y está siendo transportado</td></tr>
+                    <tr><td><code>EN_BODEGA</code></td><td>Paquete llegó a bodega</td><td>Paquete recibido y almacenado</td></tr>
+                    <tr><td><code>CANCELADO</code></td><td>Pedido cancelado</td><td>Pedido no procede por cualquier razón</td></tr>
+                </tbody>
+            </table>
+            
+            <div class="alert alert-info" data-lang="en">
+                <strong>Note:</strong> There are no transition restrictions. Clients can change from any state to any other valid state according to their business needs.
+            </div>
+            <div class="alert alert-info" data-lang="es">
+                <strong>Nota:</strong> No hay restricciones de transición. Los clientes pueden cambiar de cualquier estado a cualquier otro estado válido según sus necesidades de negocio.
+            </div>
+
+            <h4>Response — Success <span class="status-badge status-200">200</span></h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Estado actualizado a APROBADO",
+    "estado_anterior": "EN_ESPERA",
+    "estado_nuevo": "APROBADO"
+}</code></pre>
+
+            <h4>Response — Invalid State <span class="status-badge status-400">400</span></h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": false,
+    "message": "Estado inválido: INVALID_STATE",
+    "estados_validos": ["EN_ESPERA", "APROBADO", "CONFIRMADO", "EN_TRANSITO", "EN_BODEGA", "CANCELADO"]
+}</code></pre>
+        </div>
+
         <!-- POST /api/crm/leads/bulk-status -->
         <div class="section-container">
-            <h2 class="section-title" data-lang="en">Bulk Update Lead Status</h2>
-            <h2 class="section-title" data-lang="es">Actualización Masiva de Estado de Leads</h2>
+            <h2 class="section-title" data-lang="en">Bulk Status Update</h2>
+            <h2 class="section-title" data-lang="es">Actualización Masiva de Estado</h2>
             
             <p data-lang="en">Update the status of multiple leads simultaneously. Clients can only update leads they own (<code>cliente_id</code>), while admins can update any leads.</p>
             <p data-lang="es">Actualiza el estado de múltiples leads simultáneamente. Los clientes solo pueden actualizar leads que les pertenecen (<code>cliente_id</code>), mientras que los admins pueden actualizar cualquier lead.</p>
@@ -951,44 +1051,26 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
 
             <h4 data-lang="en">Request Fields</h4>
             <h4 data-lang="es">Campos de la Petición</h4>
-            
-            <table class="table table-sm table-bordered" data-lang="en">
-                <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
-                <tbody>
-                    <tr><td><code>lead_ids</code></td><td>array of integers</td><td>✅ Yes</td><td>Array of lead IDs to update (max 100)</td></tr>
-                    <tr><td><code>estado</code></td><td>string</td><td>✅ Yes</td><td>New status (auto-normalized)</td></tr>
-                    <tr><td><code>observaciones</code></td><td>string</td><td>No</td><td>Optional notes</td></tr>
-                </tbody>
-            </table>
-            
-            <table class="table table-sm table-bordered" data-lang="es">
-                <thead><tr><th>Campo</th><th>Tipo</th><th>Requerido</th><th>Descripción</th></tr></thead>
-                <tbody>
-                    <tr><td><code>lead_ids</code></td><td>array de enteros</td><td>✅ Sí</td><td>Array de IDs de leads a actualizar (máx 100)</td></tr>
-                    <tr><td><code>estado</code></td><td>string</td><td>✅ Sí</td><td>Nuevo estado (normalizado automáticamente)</td></tr>
-                    <tr><td><code>observaciones</code></td><td>string</td><td>No</td><td>Notas opcionales</td></tr>
-                </tbody>
-            </table>
-
-            <div class="alert alert-warning" data-lang="en">
-                <strong>Ownership Required:</strong> Clients can only update leads where <code>cliente_id</code> matches their user ID. Unauthorized leads will fail individually.
-            </div>
-            <div class="alert alert-warning" data-lang="es">
-                <strong>Propiedad Requerida:</strong> Los clientes solo pueden actualizar leads donde <code>cliente_id</code> coincida con su ID de usuario. Los leads no autorizados fallarán individualmente.
-            </div>
+            <ul data-lang="en">
+                <li><strong>lead_ids</strong>: Array of internal lead IDs.</li>
+                <li><strong>estado</strong>: New status (valid state or alias).</li>
+                <li><strong>observaciones</strong> (optional): Text note.</li>
+            </ul>
+            <ul data-lang="es">
+                <li><strong>lead_ids</strong>: Arreglo de IDs internos de leads.</li>
+                <li><strong>estado</strong>: Nuevo estado (válido o alias).</li>
+                <li><strong>observaciones</strong> (opcional): Nota de texto.</li>
+            </ul>
 
             <h4 data-lang="en">Example cURL</h4>
             <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block line-numbers"><code class="language-bash">curl -X POST "http://localhost/paqueteriacz/api/crm/leads/bulk-status" \
+            <pre class="code-block"><code class="language-bash">curl -X POST "http://localhost/paqueteriacz/api/crm/leads/bulk-status" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;TOKEN&gt;" \
-  -d '{
-    "lead_ids": [123, 124, 125],
-    "estado": "aprobado",
-    "observaciones": "Procesados el 2026-01-02"
-  }'</code></pre>
+  -d '{ "lead_ids": [123, 124, 125], "estado": "aprobado", "observaciones": "Procesados el 2026-01-02" }'</code></pre>
 
-            <h4>Response — All Success <span class="status-badge status-200">200</span></h4>
+            <h4 data-lang="en">Response — All Success 200</h4>
+            <h4 data-lang="es">Respuesta — Todo Exitoso 200</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "3 de 3 leads actualizados exitosamente",
@@ -997,28 +1079,14 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
     "total": 3,
     "estado_nuevo": "APROBADO",
     "results": [
-        {
-            "lead_id": 123,
-            "success": true,
-            "estado_anterior": "EN_ESPERA",
-            "estado_nuevo": "APROBADO"
-        },
-        {
-            "lead_id": 124,
-            "success": true,
-            "estado_anterior": "EN_PROCESO",
-            "estado_nuevo": "APROBADO"
-        },
-        {
-            "lead_id": 125,
-            "success": true,
-            "estado_anterior": "EN_ESPERA",
-            "estado_nuevo": "APROBADO"
-        }
+        { "lead_id": 123, "success": true, "estado_anterior": "EN_ESPERA", "estado_nuevo": "APROBADO" },
+        { "lead_id": 124, "success": true, "estado_anterior": "EN_PROCESO", "estado_nuevo": "APROBADO" },
+        { "lead_id": 125, "success": true, "estado_anterior": "EN_ESPERA", "estado_nuevo": "APROBADO" }
     ]
 }</code></pre>
 
-            <h4>Response — Mixed Results <span class="status-badge status-200" style="background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%); color: #92400e;">207 Multi-Status</span></h4>
+            <h4 data-lang="en">Response — Mixed Results 207 Multi-Status</h4>
+            <h4 data-lang="es">Respuesta — Resultados Mixtos 207 Multi-Status</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "2 de 3 leads actualizados exitosamente",
@@ -1027,35 +1095,23 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
     "total": 3,
     "estado_nuevo": "APROBADO",
     "results": [
-        {
-            "lead_id": 123,
-            "success": true,
-            "estado_anterior": "EN_ESPERA",
-            "estado_nuevo": "APROBADO"
-        },
-        {
-            "lead_id": 124,
-            "success": false,
-            "message": "No tienes permiso para este lead"
-        },
-        {
-            "lead_id": 125,
-            "success": true,
-            "estado_anterior": "EN_ESPERA",
-            "estado_nuevo": "APROBADO"
-        }
+        { "lead_id": 123, "success": true, "estado_anterior": "EN_ESPERA", "estado_nuevo": "APROBADO" },
+        { "lead_id": 124, "success": false, "message": "No tienes permiso para este lead" },
+        { "lead_id": 125, "success": true, "estado_anterior": "EN_ESPERA", "estado_nuevo": "APROBADO" }
     ]
 }</code></pre>
 
-            <h4>Response — Limit Exceeded <span class="status-badge status-400">400</span></h4>
+            <h4 data-lang="en">Response — Limit Exceeded 400</h4>
+            <h4 data-lang="es">Respuesta — Límite Excedido 400</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": false,
     "message": "Límite máximo de 100 leads por request",
     "received": 150
 }</code></pre>
 
-            <h4>Response — All Failed <span class="status-badge status-400">400</span></h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
+            <h4 data-lang="en">Response — All Failed 400</h4>
+            <h4 data-lang="es">Respuesta — Todos Fallaron 400</h4>
+             <pre class="code-block line-numbers"><code class="language-json">{
     "success": false,
     "message": "0 de 3 leads actualizados exitosamente",
     "updated": 0,
@@ -1063,57 +1119,20 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
     "total": 3,
     "estado_nuevo": "APROBADO",
     "results": [
-        {
-            "lead_id": 999,
-            "success": false,
-            "message": "Lead no encontrado"
-        },
-        {
-            "lead_id": 888,
-            "success": false,
-            "message": "No tienes permiso para este lead"
-        },
-        {
-            "lead_id": 777,
-            "success": false,
-            "message": "Lead no encontrado"
-        }
+        { "lead_id": 999, "success": false, "message": "Lead no encontrado" },
+        { "lead_id": 888, "success": false, "message": "No tienes permiso para este lead" },
+        { "lead_id": 777, "success": false, "message": "Lead no encontrado" }
     ]
 }</code></pre>
-
-            <h4 data-lang="en">Use Cases</h4>
-            <h4 data-lang="es">Casos de Uso</h4>
-            
-            <ul data-lang="en">
-                <li><strong>Campaign Processing:</strong> Mark multiple leads as "contacted" after a SMS/email campaign</li>
-                <li><strong>Batch Approval:</strong> Approve multiple leads at once after review</li>
-                <li><strong>Status Synchronization:</strong> Update statuses after external system integration</li>
-                <li><strong>Cleanup Operations:</strong> Mark invalid leads as "cancelled" in bulk</li>
-            </ul>
-            
-            <ul data-lang="es">
-                <li><strong>Procesamiento de Campañas:</strong> Marcar múltiples leads como "contactados" después de una campaña SMS/email</li>
-                <li><strong>Aprobación en Lote:</strong> Aprobar múltiples leads a la vez después de revisión</li>
-                <li><strong>Sincronización de Estados:</strong> Actualizar estados después de integración con sistema externo</li>
-                <li><strong>Operaciones de Limpieza:</strong> Marcar leads inválidos como "cancelados" en masa</li>
-            </ul>
         </div>
-
-
+        
         <!-- POST /api/crm/leads/bulk-status-async -->
         <div class="section-container">
-            <h2 class="section-title" data-lang="en">Bulk Update Lead Status (Async) 🚀</h2>
+            <h2 class="section-title" data-lang="en">Bulk Status Update (Async) 🚀</h2>
             <h2 class="section-title" data-lang="es">Actualización Masiva de Estado (Asíncrona) 🚀</h2>
             
-            <p data-lang="en">Update the status of thousands of leads asynchronously. No limit on the number of leads. Responds immediately (202 Accepted) and processes in background.</p>
-            <p data-lang="es">Actualiza el estado de miles de leads de forma asíncrona. Sin límite en la cantidad de leads. Responde inmediatamente (202 Accepted) y procesa en segundo plano.</p>
-
-            <div class="alert alert-success" data-lang="en">
-                <strong>✅ Recommended for:</strong> Large updates (1000+ leads), multiple concurrent clients, no timeout concerns
-            </div>
-            <div class="alert alert-success" data-lang="es">
-                <strong>✅ Recomendado para:</strong> Actualizaciones grandes (1000+ leads), múltiples clientes concurrentes, sin preocupaciones de timeout
-            </div>
+            <p data-lang="en">For processing large datasets (>100 leads). Accepts leads, creates a background job, and returns immediately.</p>
+            <p data-lang="es">Para procesar grandes conjuntos de datos (>100 leads). Acepta leads, crea un trabajo en segundo plano y retorna inmediatamente.</p>
 
             <h4 data-lang="en">Endpoint</h4>
             <h4 data-lang="es">Endpoint</h4>
@@ -1127,221 +1146,47 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
             <h4 data-lang="en">Request Body</h4>
             <h4 data-lang="es">Cuerpo de la Petición</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
-    "lead_ids": [1, 2, 3, 4, 5, ..., 5000],
-    "estado": "contactado",
-    "observaciones": "Procesamiento masivo de campaña SMS"
+    "lead_ids": [1001, 1002, ..., 5000],
+    "estado": "CANCELADO",
+    "observaciones": "Limpieza mensual automática"
 }</code></pre>
 
-            <h4 data-lang="en">Rate Limiting</h4>
-            <h4 data-lang="es">Limitación de Tasa</h4>
-            
-            <table class="table table-sm table-bordered" data-lang="en">
-                <thead><tr><th>Limit</th><th>Value</th><th>Description</th></tr></thead>
-                <tbody>
-                    <tr><td>Pending Jobs</td><td>10</td><td>Max concurrent jobs in queue per user</td></tr>
-                    <tr><td>Jobs Per Day</td><td>100</td><td>Max jobs created per day per user</td></tr>
-                    <tr><td>Job Size</td><td>10,000</td><td>Max leads per individual job</td></tr>
-                    <tr><td>Daily Leads</td><td>50,000</td><td>Max total leads processed per day</td></tr>
-                    <tr><td>Cooldown</td><td>30s</td><td>Min time between job submissions</td></tr>
-                </tbody>
-            </table>
-            
-            <table class="table table-sm table-bordered" data-lang="es">
-                <thead><tr><th>Límite</th><th>Valor</th><th>Descripción</th></tr></thead>
-                <tbody>
-                    <tr><td>Jobs Pendientes</td><td>10</td><td>Máx jobs concurrentes en cola por usuario</td></tr>
-                    <tr><td>Jobs Por Día</td><td>100</td><td>Máx jobs creados por día por usuario</td></tr>
-                    <tr><td>Tamaño de Job</td><td>10,000</td><td>Máx leads por job individual</td></tr>
-                    <tr><td>Leads Diarios</td><td>50,000</td><td>Máx leads totales procesados por día</td></tr>
-                    <tr><td>Cooldown</td><td>30s</td><td>Tiempo mín entre envío de jobs</td></tr>
-                </tbody>
-            </table>
-
-            <h4 data-lang="en">Example cURL</h4>
-            <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block line-numbers"><code class="language-bash">curl -X POST "http://localhost/paqueteriacz/api/crm/leads/bulk-status-async" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer &lt;TOKEN&gt;" \
-  -d '{
-    "lead_ids": [1, 2, 3, 4, 5, ..., 5000],
-    "estado": "aprobado",
-    "observaciones": "Procesamiento masivo"
-  }'</code></pre>
-
-            <h4>Response — Job Queued <span class="status-badge status-200" style="background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);">202 Accepted</span></h4>
+            <h4 data-lang="en">Response — Job Created 202</h4>
+            <h4 data-lang="es">Respuesta — Job Creado 202</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
-    "job_id": "bulk_6958aaf4d1477_1767418612",
-    "status": "queued",
-    "total_leads": 5000,
-    "message": "Job encolado para procesamiento",
-    "check_status_url": "/api/crm/jobs/bulk_6958aaf4d1477_1767418612"
+    "message": "Proceso de actualización masiva iniciado. Job ID: bulk_6958b3ea2e5ad_1767420906",
+    "job_id": "bulk_6958b3ea2e5ad_1767420906",
+    "status_url": "http://localhost/paqueteriacz/api/crm/jobs/bulk_6958b3ea2e5ad_1767420906"
 }</code></pre>
-
-            <h4>Response — Job Queued with Warnings <span class="status-badge status-200" style="background: linear-gradient(135deg, #6ee7b7 0%, #34d399 100%);">202 Accepted</span></h4>
-            <p data-lang="en">When some leads have validation errors but the job is still queued (pre-validation feedback):</p>
-            <p data-lang="es">Cuando algunos leads tienen errores de validación pero el job igualmente se encola (feedback de pre-validación):</p>
-            <pre class="code-block line-numbers"><code class="language-json">{
-    "success": true,
-    "job_id": "bulk_6958b182d5773_1767420290",
-    "status": "queued",
-    "total_leads": 191,
-    "message": "Job encolado. 188 leads pueden fallar.",
-    "check_status_url": "/api/crm/jobs/bulk_6958b182d5773_1767420290",
-    "valid_leads_count": 3,
-    "error_rate": "98.43%",
-    "validation_warnings": [
-        {"lead_id": 10, "error": "No tienes permiso para este lead"},
-        {"lead_id": 11, "error": "Lead no encontrado"},
-        // ... más warnings
-    ]
-}</code></pre>
-
-            <div class="alert alert-info" data-lang="en">
-                <strong>💡 Pre-Validation:</strong> The endpoint validates leads before queuing. If errors are found, they're shown in <code>validation_warnings</code> immediately, allowing you to decide whether to proceed or fix the issues.
-            </div>
-            <div class="alert alert-info" data-lang="es">
-                <strong>💡 Pre-Validación:</strong> El endpoint valida leads antes de encolar. Si encuentra errores, se muestran en <code>validation_warnings</code> inmediatamente, permitiéndote decidir si proceder o corregir los problemas.
-            </div>
-
-            <h4>Response — Rate Limit Exceeded <span class="status-badge status-400" style="background: linear-gradient(135deg, #fde68a 0%, #fbbf24 100%); color: #92400e;">429 Too Many</span></h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
-    "success": false,
-    "error": "rate_limit_exceeded",
-    "message": "Límite alcanzado: tienes 10 jobs pendientes (máximo 10)",
-    "retry_after": 60
-}</code></pre>
-
-            <h4 data-lang="en">Advantages vs Synchronous</h4>
-            <h4 data-lang="es">Ventajas vs Síncrono</h4>
-            
-            <table class="table table-sm table-bordered">
-                <thead><tr><th></th><th data-lang="en">Synchronous</th><th data-lang="es">Síncrono</th><th data-lang="en">Asynchronous</th><th data-lang="es">Asíncrono</th></tr></thead>
-                <tbody>
-                    <tr>
-                        <td><strong data-lang="en">Max Leads</strong><strong data-lang="es">Máx Leads</strong></td>
-                        <td>100</td>
-                        <td>100</td>
-                        <td>10,000+</td>
-                        <td>10,000+</td>
-                    </tr>
-                    <tr>
-                        <td><strong data-lang="en">Response Time</strong><strong data-lang="es">Tiempo Respuesta</strong></td>
-                        <td>200-500ms</td>
-                        <td>200-500ms</td>
-                        <td>~50ms</td>
-                        <td>~50ms</td>
-                    </tr>
-                    <tr>
-                        <td><strong data-lang="en">Timeout Risk</strong><strong data-lang="es">Riesgo Timeout</strong></td>
-                        <td data-lang="en">Possible</td>
-                        <td data-lang="es">Posible</td>
-                        <td data-lang="en">Never</td>
-                        <td data-lang="es">Nunca</td>
-                    </tr>
-                    <tr>
-                        <td><strong data-lang="en">Concurrent Clients</strong><strong data-lang="es">Clientes Concurrentes</strong></td>
-                        <td data-lang="en">Limited</td>
-                        <td data-lang="es">Limitado</td>
-                        <td data-lang="en">Unlimited</td>
-                        <td data-lang="es">Ilimitados</td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
-
 
         <!-- GET /api/crm/jobs/{job_id} -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">Check Job Status</h2>
             <h2 class="section-title" data-lang="es">Consultar Estado de Job</h2>
             
-            <p data-lang="en">Check the progress and status of an asynchronous bulk update job.</p>
-            <p data-lang="es">Consulta el progreso y estado de un job de actualización masiva asíncrona.</p>
+            <p data-lang="en">Poll this endpoint to track the progress of an async bulk update.</p>
+            <p data-lang="es">Consulta este endpoint para rastrear el progreso de una actualización masiva asíncrona.</p>
 
             <h4 data-lang="en">Endpoint</h4>
             <h4 data-lang="es">Endpoint</h4>
             <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/crm/jobs/{job_id}</div>
 
-            <h4 data-lang="en">Allowed Roles</h4>
-            <h4 data-lang="es">Roles Permitidos</h4>
-            <p data-lang="en"><code>Cliente</code> (own jobs only), <code>Administrador</code></p>
-            <p data-lang="es"><code>Cliente</code> (solo sus propios jobs), <code>Administrador</code></p>
-
-            <h4 data-lang="en">URL Parameters</h4>
-            <h4 data-lang="es">Parámetros de URL</h4>
-            <table class="table table-sm table-bordered">
-                <thead><tr><th data-lang="en">Parameter</th><th data-lang="es">Parámetro</th><th data-lang="en">Description</th><th data-lang="es">Descripción</th></tr></thead>
-                <tbody>
-                    <tr>
-                        <td><code>job_id</code></td>
-                        <td><code>job_id</code></td>
-                        <td data-lang="en">Job identifier returned when creating the async job</td>
-                        <td data-lang="es">Identificador del job devuelto al crear el job asíncrono</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <h4 data-lang="en">Example cURL</h4>
-            <h4 data-lang="es">Ejemplo cURL</h4>
-            <pre class="code-block line-numbers"><code class="language-bash">curl -X GET "http://localhost/paqueteriacz/api/crm/jobs/bulk_6958aaf4d1477_1767418612" \
-  -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
-
-            <h4>Response — Job Queued <span class="status-badge status-200">200 OK</span></h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
+            <h4 data-lang="en">Response — In Progress 200</h4>
+            <h4 data-lang="es">Respuesta — En Progreso 200</h4>
+             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
-    "job_id": "bulk_6958aaf4d1477_1767418612",
-    "status": "queued",
-    "total_leads": 5000,
-    "processed_leads": 0,
-    "successful_leads": 0,
-    "failed_leads": 0,
-    "estado": "APROBADO",
-    "created_at": "2026-01-02 23:30:00",
-    "started_at": null,
-    "completed_at": null,
-    "progress_percent": 0.0
-}</code></pre>
-
-            <h4>Response — Job Processing <span class="status-badge status-200">200 OK</span></h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
-    "success": true,
-    "job_id": "bulk_6958aaf4d1477_1767418612",
+    "job_id": "bulk_6958b3ea2e5ad_1767420906",
     "status": "processing",
     "total_leads": 5000,
-    "processed_leads": 2500,
-    "successful_leads": 2498,
-    "failed_leads": 2,
-    "estado": "APROBADO",
-    "created_at": "2026-01-02 23:30:00",
-    "started_at": "2026-01-02 23:30:05",
-    "completed_at": null,
-    "progress_percent": 50.0
+    "processed_leads": 2350,
+    "progress_percent": 47,
+    "created_at": "2026-01-03 00:15:06"
 }</code></pre>
 
-            <h4>Response — Job Completed <span class="status-badge status-200">200 OK</span></h4>
-            <pre class="code-block line-numbers"><code class="language-json">{
-    "success": true,
-    "job_id": "bulk_6958aaf4d1477_1767418612",
-    "status": "completed",
-    "total_leads": 5000,
-    "processed_leads": 5000,
-    "successful_leads": 4998,
-    "failed_leads": 2,
-    "estado": "APROBADO",
-    "created_at": "2026-01-02 23:30:00",
-    "started_at": "2026-01-02 23:30:05",
-    "completed_at": "2026-01-02 23:30:35",
-    "progress_percent": 100.0,
-    "failed_details": [
-        {"lead_id": 5, "error": "Sin permiso"},
-        {"lead_id": 999, "error": "Lead no encontrado"}
-    ]
-}</code></pre>
-
-            <h4>Response — Job Completed (Many Failures) <span class="status-badge status-200">200 OK</span></h4>
-            <p data-lang="en">When there are more failures than successes, <code>successful_details</code> is shown instead:</p>
-            <p data-lang="es">Cuando hay más fallos que éxitos, se muestra <code>successful_details</code> en su lugar:</p>
+            <h4 data-lang="en">Response — Completed 200</h4>
+            <h4 data-lang="es">Respuesta — Completado 200</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "job_id": "bulk_6958b3ea2e5ad_1767420906",
@@ -1359,57 +1204,17 @@ curl -X GET "http://localhost/paqueteriacz/api/crm/leads" \
         {"lead_id": 1, "estado_anterior": "EN_ESPERA", "estado_nuevo": "CANCELADO"},
         {"lead_id": 5, "estado_anterior": "EN_PROCESO", "estado_nuevo": "CANCELADO"},
         {"lead_id": 12, "estado_anterior": "APROBADO", "estado_nuevo": "CANCELADO"}
+    ],
+    "failed_details": [
+        {"lead_id": 2, "error": "No encontrado"},
+        {"lead_id": 3, "error": "Sin permiso"}
     ]
 }</code></pre>
-
-            <div class="alert alert-success" data-lang="en">
-                <strong>✅ Smart Response:</strong> The endpoint shows whichever array is smaller (<code>successful_details</code> or <code>failed_details</code>) to optimize response size and provide the most actionable information.
-            </div>
-            <div class="alert alert-success" data-lang="es">
-                <strong>✅ Respuesta Inteligente:</strong> El endpoint muestra el array más pequeño (<code>successful_details</code> o <code>failed_details</code>) para optimizar el tamaño de respuesta y dar la información más útil.
-            </div>
-
-            <h4 data-lang="en">Job Status Values</h4>
-            <h4 data-lang="es">Valores de Estado del Job</h4>
-            
-            <table class="table table-sm table-bordered">
-                <thead><tr><th data-lang="en">Status</th><th data-lang="es">Estado</th><th data-lang="en">Description</th><th data-lang="es">Descripción</th></tr></thead>
-                <tbody>
-                    <tr>
-                        <td><code>queued</code></td>
-                        <td><code>queued</code></td>
-                        <td data-lang="en">Waiting to be processed by worker</td>
-                        <td data-lang="es">Esperando ser procesado por el worker</td>
-                    </tr>
-                    <tr>
-                        <td><code>processing</code></td>
-                        <td><code>processing</code></td>
-                        <td data-lang="en">Currently being processed</td>
-                        <td data-lang="es">Actualmente siendo procesado</td>
-                    </tr>
-                    <tr>
-                        <td><code>completed</code></td>
-                        <td><code>completed</code></td>
-                        <td data-lang="en">Processing finished successfully</td>
-                        <td data-lang="es">Procesamiento terminado exitosamente</td>
-                    </tr>
-                    <tr>
-                        <td><code>failed</code></td>
-                        <td><code>failed</code></td>
-                        <td data-lang="en">Job failed due to error</td>
-                        <td data-lang="es">Job falló debido a error</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="alert alert-info" data-lang="en">
-                <strong>💡 Polling Recommendation:</strong> Poll this endpoint every 2-5 seconds to track progress. Avoid polling more frequently.
-            </div>
-            <div class="alert alert-info" data-lang="es">
-                <strong>💡 Recomendación de Polling:</strong> Consulta este endpoint cada 2-5 segundos para rastrear el progreso. Evita consultar más frecuentemente.
-            </div>
         </div>
+            </div>
 
+            <!-- Tab: Core Resources -->
+            <div class="tab-pane fade" id="core" role="tabpanel" aria-labelledby="core-tab">
         <!-- GET /api/crm/leads -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">List Leads</h2>
@@ -1494,7 +1299,44 @@ curl "http://localhost/paqueteriacz/api/crm/leads/1/timeline" \
   -H "Authorization: Bearer &lt;TOKEN&gt;"</code></pre>
         </div>
 
-        <!-- GET /api/crm/metrics -->
+        <!-- Notifications -->
+        <div class="section-container">
+            <h2 class="section-title" data-lang="en">Notifications</h2>
+            <h2 class="section-title" data-lang="es">Notificaciones</h2>
+            
+            <p data-lang="en">Manage user notifications. Notifications are generated on key events like lead assignment or status changes.</p>
+            <p data-lang="es">Gestiona las notificaciones del usuario. Las notificaciones se generan en eventos clave como asignación de leads o cambios de estado.</p>
+
+            <h4 data-lang="en">Endpoints</h4>
+            <h4 data-lang="es">Endpoints</h4>
+            
+            <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/crm/notifications</div>
+            <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/crm/notifications/{id}/read</div>
+            <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/crm/notifications/read-all</div>
+
+            <h4 data-lang="en">Allowed Roles</h4>
+            <h4 data-lang="es">Roles Permitidos</h4>
+            <p><code>Proveedor</code>, <code>Cliente</code>, <code>Administrador</code></p>
+
+            <h4 data-lang="en">Response — List Notifications</h4>
+            <h4 data-lang="es">Respuesta — Listar Notificaciones</h4>
+            <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "data": [
+        {
+            "id": 15,
+            "tipo": "nuevo_lead",
+            "mensaje": "Nuevo lead asignado: Juan Pérez",
+            "leido": 0,
+            "fecha_creacion": "2025-01-15 10:30:00",
+            "data_adicional": {"lead_id": 123}
+        }
+    ],
+    "unread_count": 1
+}</code></pre>
+        </div>
+
+        <!-- System Metrics -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">System Metrics</h2>
             <h2 class="section-title" data-lang="es">Métricas del Sistema</h2>
@@ -1516,7 +1358,12 @@ curl "http://localhost/paqueteriacz/api/crm/leads/1/timeline" \
             <pre class="code-block"><code class="language-bash">curl "http://localhost/paqueteriacz/api/crm/metrics" \
   -H "Authorization: Bearer &lt;ADMIN_TOKEN&gt;"</code></pre>
         </div>
+            </div>
 
+
+
+            <!-- Tab: Integration -->
+            <div class="tab-pane fade" id="integration" role="tabpanel" aria-labelledby="integration-tab">
         <!-- Webhooks -->
         <div class="section-container">
             <h2 class="section-title" data-lang="en">Webhooks (HMAC Signed)</h2>
@@ -1673,40 +1520,13 @@ ORDER BY created_at DESC
 LIMIT 20;</code></pre>
         </div>
 
-        <!-- HTTP Status Codes -->
-        <div class="section-container">
-            <h2 class="section-title" data-lang="en">HTTP Status Codes</h2>
-            <h2 class="section-title" data-lang="es">Códigos de Estado HTTP</h2>
-            
-            <table class="table table-bordered" data-lang="en">
-                <thead><tr><th>Code</th><th>Meaning</th><th>When</th></tr></thead>
-                <tbody>
-                    <tr><td><span class="status-badge status-200">200</span></td><td>OK</td><td>Successful query, update, or idempotent retry</td></tr>
-                    <tr><td><span class="status-badge status-202">202</span></td><td>Accepted</td><td>Lead queued for async processing</td></tr>
-                    <tr><td><span class="status-badge status-400">400</span></td><td>Bad Request</td><td>Validation error, invalid transition</td></tr>
-                    <tr><td><span class="status-badge status-401">401</span></td><td>Unauthorized</td><td>Missing/invalid JWT token</td></tr>
-                    <tr><td><span class="status-badge status-403">403</span></td><td>Forbidden</td><td>Insufficient permissions or ownership</td></tr>
-                    <tr><td><span class="status-badge status-404">404</span></td><td>Not Found</td><td>Lead ID doesn't exist</td></tr>
-                </tbody>
-            </table>
-            
-            <table class="table table-bordered" data-lang="es">
-                <thead><tr><th>Código</th><th>Significado</th><th>Cuándo</th></tr></thead>
-                <tbody>
-                    <tr><td><span class="status-badge status-200">200</span></td><td>OK</td><td>Consulta exitosa, actualización o reintento idempotente</td></tr>
-                    <tr><td><span class="status-badge status-202">202</span></td><td>Aceptado</td><td>Lead encolado para procesamiento asíncrono</td></tr>
-                    <tr><td><span class="status-badge status-400">400</span></td><td>Solicitud Incorrecta</td><td>Error de validación, transición inválida</td></tr>
-                    <tr><td><span class="status-badge status-401">401</span></td><td>No Autorizado</td><td>Token JWT faltante/inválido</td></tr>
-                    <tr><td><span class="status-badge status-403">403</span></td><td>Prohibido</td><td>Permisos insuficientes o falta de propiedad</td></tr>
-                    <tr><td><span class="status-badge status-404">404</span></td><td>No Encontrado</td><td>ID de lead no existe</td></tr>
-                </tbody>
-            </table>
+        </div>
         </div>
     </div>
 
     <footer>
-        <p data-lang="en">&copy; 2025 CRM Relay API — Built with ❤️ for developers</p>
-        <p data-lang="es">&copy; 2025 API CRM Relay — Hecho con ❤️ para desarrolladores</p>
+        <p data-lang="en">&copy; 2025 CRM Relay API — Built with for developers</p>
+        <p data-lang="es">&copy; 2025 API CRM Relay — Hecho con para desarrolladores</p>
     </footer>
 
     <!-- Bootstrap JS -->

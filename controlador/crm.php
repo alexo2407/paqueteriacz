@@ -9,14 +9,26 @@ class CrmController {
         require_once "modelo/crm_lead.php";
         require_once "modelo/crm_inbox.php";
         require_once "modelo/crm_outbox.php";
+        require_once "modelo/usuario.php";
+        
+        // Filtros
+        $proveedorId = isset($_GET['proveedor_id']) && is_numeric($_GET['proveedor_id']) ? (int)$_GET['proveedor_id'] : null;
+        $fechaDesde = $_GET['fecha_desde'] ?? null;
+        $fechaHasta = $_GET['fecha_hasta'] ?? null;
+        
+        $filters = array_filter([
+            'proveedor_id' => $proveedorId,
+            'fecha_desde' => $fechaDesde,
+            'fecha_hasta' => $fechaHasta
+        ]);
         
         // Total de leads por estado
-        $leadsPorEstado = CrmLead::contarPorEstado();
+        $leadsPorEstado = CrmLead::contarPorEstado($filters);
         
-        // Últimos 10 leads
-        $ultimosLeads = CrmLead::obtenerRecientes(10);
+        // Últimos 10 leads (filtrados)
+        $ultimosLeads = CrmLead::obtenerRecientes(10, $filters);
         
-        // Estado de las colas
+        // Estado de las colas (no filtramos colas por ahora, is global queue)
         $inboxPendientes = CrmInbox::contarPorEstado('pending');
         $inboxProcesados = CrmInbox::contarPorEstado('processed');
         $inboxFallidos = CrmInbox::contarPorEstado('failed');
@@ -25,8 +37,12 @@ class CrmController {
         $outboxEnviados = CrmOutbox::contarPorEstado('sent');
         $outboxFallidos = CrmOutbox::contarPorEstado('failed');
         
-        // Tendencia de leads (últimos 30 días)
-        $tendencia = CrmLead::obtenerTendencia(30);
+        // Tendencia de leads (últimos 30 días o rango seleccionado)
+        $tendencia = CrmLead::obtenerTendencia(30, $filters);
+        
+        // Obtener lista de proveedores para el filtro
+        $usuarioModel = new UsuarioModel();
+        $proveedores = $usuarioModel->obtenerUsuariosPorRolNombre('Proveedor');
         
         return [
             'leadsPorEstado' => $leadsPorEstado,
@@ -41,7 +57,9 @@ class CrmController {
                 'enviados' => $outboxEnviados,
                 'fallidos' => $outboxFallidos
             ],
-            'tendencia' => $tendencia
+            'tendencia' => $tendencia,
+            'proveedores' => $proveedores,
+            'filters' => $filters
         ];
     }
 
