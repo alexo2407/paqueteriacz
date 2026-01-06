@@ -2,6 +2,54 @@
 Options -Indexes
 Options -MultiViews
 
+# ============================================
+# SECURITY HEADERS
+# ============================================
+
+<IfModule mod_headers.c>
+    # HSTS (HTTP Strict Transport Security)
+    # Fuerza HTTPS por 1 año (31536000 segundos)
+    # includeSubDomains: aplica a todos los subdominios
+    # preload: permite incluir el dominio en listas de precarga de navegadores
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
+
+    # Content Security Policy (CSP)
+    # Protege contra XSS y ataques de inyección de código
+    # Ajusta según tus necesidades específicas
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdn.datatables.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self';"
+
+    # X-Frame-Options
+    # Protege contra clickjacking
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # X-Content-Type-Options
+    # Previene MIME-type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # X-XSS-Protection
+    # Habilita protección XSS del navegador (legacy, pero útil para navegadores antiguos)
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Referrer-Policy
+    # Controla cuánta información del referrer se envía
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Permissions-Policy (antes Feature-Policy)
+    # Controla qué características del navegador pueden usarse
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+
+    # Remove server signature
+    Header always unset X-Powered-By
+    Header always unset Server
+</IfModule>
+
+# Ocultar información del servidor
+ServerSignature Off
+
+# ============================================
+# REWRITE ENGINE
+# ============================================
+
 # Habilitar rewrite
 RewriteEngine On
 

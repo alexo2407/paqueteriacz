@@ -1,0 +1,18 @@
+Contact: mailto:security@cruzvalle.website
+Expires: 2027-01-06T20:25:00.000Z
+Preferred-Languages: es, en
+Canonical: https://cruzvalle.website/.well-known/security.txt
+
+# Política de Seguridad
+# Si encuentras una vulnerabilidad de seguridad, por favor repórtala a:
+# security@cruzvalle.website
+
+# Agradecemos los reportes responsables de vulnerabilidades.
+# Por favor incluye:
+# - Descripción detallada de la vulnerabilidad
+# - Pasos para reproducir el problema
+# - Impacto potencial
+# - Cualquier sugerencia de mitigación
+
+# Tiempo de respuesta esperado: 48 horas
+# Reconocimiento: Reconocemos públicamente los reportes responsables (opcional)

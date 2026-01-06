@@ -5,11 +5,13 @@ function start_secure_session()
 {
     if (session_status() === PHP_SESSION_NONE) {
         // Configurar cookie params seguros
-        $secure = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+        // Detectar si estamos en HTTPS (incluyendo detrás de proxy/CDN)
+        $secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
+                  (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
         $httponly = true;
-        $samesite = 'Lax';
+        $samesite = 'Strict'; // Cambiado de 'Lax' a 'Strict' para mayor seguridad
 
-        // PHP < 7.3 compatibility: setcookie no soporta samesite directamente
+        // Configuración de cookies de sesión con flags de seguridad
         session_set_cookie_params([
             'lifetime' => 0,
             'path' => '/',

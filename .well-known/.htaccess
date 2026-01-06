@@ -1,0 +1,8 @@
+# Configuración de seguridad adicional para el directorio .well-known
+<IfModule mod_headers.c>
+    # Permitir acceso a security.txt
+    Header set Content-Type "text/plain; charset=utf-8"
+</IfModule>
+
+# Permitir acceso público a este directorio
+Options -Indexes
