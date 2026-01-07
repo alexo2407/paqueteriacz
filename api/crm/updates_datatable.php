@@ -36,12 +36,11 @@ $searchValue = isset($_POST['search']['value']) ? trim($_POST['search']['value']
 // Usamos un límite alto porque necesitamos agrupar por lead
 $allNotifications = CrmNotificationModel::obtenerPorUsuario(
     $userId, 
-    false, // no solo no leídas
     5000,  // límite alto para obtener todas
     0,     // offset 0
     $searchValue,
-    date('Y-m-d', strtotime('-6 months')), // últimos 6 meses
-    date('Y-m-d')
+    null, // date('Y-m-d', strtotime('-6 months')),
+    null // date('Y-m-d')
 );
 
 // Filtrar solo actualizaciones (no new_lead)
