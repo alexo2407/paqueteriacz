@@ -728,6 +728,61 @@ class CrmLeadModel {
             return 0;
         }
     }
+    
+    /**
+     * Asigna un cliente a un lead.
+     * 
+     * @param int $leadId ID del lead
+     * @param int $clienteId ID del cliente a asignar
+     * @return array ['success' => bool, 'message' => string]
+     */
+    public static function asignarCliente($leadId, $clienteId) {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $stmt = $db->prepare("
+                UPDATE crm_leads 
+                SET cliente_id = :cliente_id,
+                    updated_at = NOW()
+                WHERE id = :lead_id
+            ");
+            
+            $stmt->execute([
+                ':cliente_id' => $clienteId,
+                ':lead_id' => $leadId
+            ]);
+            
+            return ['success' => true, 'message' => 'Lead asignado correctamente'];
+        } catch (Exception $e) {
+            error_log("Error asignando cliente: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al asignar cliente'];
+        }
+    }
+    
+    /**
+     * Obtiene leads sin cliente asignado de un proveedor.
+     * 
+     * @param int $proveedorId ID del proveedor
+     * @return array Lista de leads sin asignar
+     */
+    public static function obtenerSinAsignarPorProveedor($proveedorId) {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $stmt = $db->prepare("
+                SELECT * FROM crm_leads 
+                WHERE proveedor_id = :proveedor_id 
+                AND cliente_id IS NULL
+                ORDER BY created_at DESC
+            ");
+            
+            $stmt->execute([':proveedor_id' => $proveedorId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error obteniendo leads sin asignar: " . $e->getMessage());
+            return [];
+        }
+    }
 }
 
 // Alias de clase para compatibilidad con el controlador

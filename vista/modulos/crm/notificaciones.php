@@ -293,14 +293,22 @@ include("vista/includes/header.php");
     .bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
     .bg-soft-success { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
     .bg-soft-info { background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
+    
     /* DATATABLES GRID HACK: Transformar Tabla en Grid */
     #tablaHistorial thead { display: none; }
     #tablaHistorial tbody { display: flex; flex-wrap: wrap; margin-right: -15px; margin-left: -15px; }
     #tablaHistorial tr { width: 50%; padding: 0 15px; box-sizing: border-box; display: block; }
     #tablaHistorial td { display: block; width: 100%; padding: 0; border: none !important; }
     
+    /* Grid para tabla de Actualizaciones */
+    #tablaActualizaciones thead { display: none; }
+    #tablaActualizaciones tbody { display: flex; flex-wrap: wrap; margin-right: -15px; margin-left: -15px; }
+    #tablaActualizaciones tr { width: 50%; padding: 0 15px; box-sizing: border-box; display: block; }
+    #tablaActualizaciones td { display: block; width: 100%; padding: 0; border: none !important; }
+    
     @media (max-width: 992px) {
         #tablaHistorial tr { width: 100%; }
+        #tablaActualizaciones tr { width: 100%; }
     }
     
     /* Ajustes paginación DataTables */
@@ -308,11 +316,11 @@ include("vista/includes/header.php");
     .dataTables_wrapper .dataTables_filter { display: none !important; } /* Ocultar búsqueda por defecto */
     
     /* Estilo del campo de búsqueda personalizado */
-    #customSearch {
+    #customSearch, #updatesSearch {
         border: 1px solid #dee2e6;
         transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     }
-    #customSearch:focus {
+    #customSearch:focus, #updatesSearch:focus {
         border-color: #0d6efd;
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
@@ -545,6 +553,17 @@ include("vista/includes/header.php");
                 </a>
                 <?php endif; ?>
                 
+                <?php if ($esProveedor): // Solo proveedores ven "Mis Leads" 
+                    $showMisLeads = ($activeTab === 'mis-leads') ? 'active' : '';
+                    $leadsSinAsignarCount = count(CrmLeadModel::obtenerSinAsignarPorProveedor($userId));
+                ?>
+                <!-- Tab: Mis Leads (Solo Proveedores) -->
+                <a class="list-group-item list-group-item-action fw-bold <?= $showMisLeads ?> d-flex justify-content-between align-items-center" id="pills-mis-leads-tab" data-bs-toggle="pill" href="#pills-mis-leads" onclick="history.pushState(null, '', '?tab=mis-leads')">
+                    <span><i class="bi bi-person-lines-fill text-primary me-2"></i> Mis Leads</span>
+                    <?php if($leadsSinAsignarCount > 0): ?><span class="badge bg-primary rounded-pill"><?= $leadsSinAsignarCount ?></span><?php endif; ?>
+                </a>
+                <?php endif; ?>
+                
                 <!-- Tab: Actualizaciones -->
                  <a class="list-group-item list-group-item-action <?= $showUpdates ?>" id="pills-updates-tab" data-bs-toggle="pill" href="#pills-updates" onclick="history.pushState(null, '', '?tab=updates')">
                     <i class="bi bi-arrow-repeat me-2"></i> Actualizaciones
@@ -660,17 +679,102 @@ include("vista/includes/header.php");
                 </div>
                 <?php endif; ?>
 
+                
+                <!-- Tab: MIS LEADS (Solo Proveedores) -->
+                <?php if ($esProveedor): 
+                    $paneMisLeads = ($activeTab === 'mis-leads') ? 'show active' : '';
+                    $leadsSinAsignar = CrmLeadModel::obtenerSinAsignarPorProveedor($userId);
+                ?>
+                <div class="tab-pane fade <?= $paneMisLeads ?>" id="pills-mis-leads" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="mb-0">
+                                <i class="bi bi-person-lines-fill me-2"></i>Mis Leads Sin Asignar
+                            </h5>
+                            <small class="text-muted">Asigna tus leads a clientes para que puedan gestionarlos</small>
+                        </div>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCrearLead">
+                            <i class="bi bi-plus-circle me-1"></i>Crear Lead
+                        </button>
+                    </div>
+                    
+                    <?php if (empty($leadsSinAsignar)): ?>
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            No tienes leads sin asignar. Todos tus leads ya tienen un cliente asignado.
+                        </div>
+                    <?php else: ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Proveedor Lead ID</th>
+                                        <th>Nombre</th>
+                                        <th>Teléfono</th>
+                                        <th>Producto</th>
+                                        <th>Estado</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($leadsSinAsignar as $lead): 
+                                        $colores = [
+                                            'EN_ESPERA' => 'bg-warning text-dark',
+                                            'APROBADO' => 'bg-success',
+                                            'CONFIRMADO' => 'bg-primary',
+                                            'EN_TRANSITO' => 'bg-info text-dark',
+                                            'EN_BODEGA' => 'bg-secondary',
+                                            'CANCELADO' => 'bg-danger'
+                                        ];
+                                        $badgeClass = $colores[$lead['estado_actual']] ?? 'bg-secondary';
+                                    ?>
+                                    <tr>
+                                        <td><code><?= htmlspecialchars($lead['proveedor_lead_id']) ?></code></td>
+                                        <td><?= htmlspecialchars($lead['nombre'] ?? 'Sin nombre') ?></td>
+                                        <td><?= htmlspecialchars($lead['telefono'] ?? 'Sin teléfono') ?></td>
+                                        <td><?= htmlspecialchars($lead['producto'] ?? 'Sin producto') ?></td>
+                                        <td><span class="badge <?= $badgeClass ?>"><?= $lead['estado_actual'] ?></span></td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    onclick="abrirModalAsignar(<?= $lead['id'] ?>, '<?= htmlspecialchars($lead['proveedor_lead_id'], ENT_QUOTES) ?>', '<?= htmlspecialchars($lead['nombre'] ?? '', ENT_QUOTES) ?>', '<?= htmlspecialchars($lead['telefono'] ?? '', ENT_QUOTES) ?>', '<?= htmlspecialchars($lead['producto'] ?? '', ENT_QUOTES) ?>')">
+                                                <i class="bi bi-person-plus me-1"></i>Asignar Cliente
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+                
                 <!-- Tab: ACTUALIZACIONES -->
                 <div class="tab-pane fade <?= $paneUpdates ?>" id="pills-updates" role="tabpanel">
-                    <?php 
-                    if (empty($actualizaciones)) {
-                        echo '<div class="alert alert-light text-center">No hay actualizaciones recientes.</div>';
-                    } else {
-                        echo '<div class="row">';
-                        foreach ($actualizaciones as $notif) { renderNotificationCard($notif); }
-                        echo '</div>';
-                    }
-                    ?>
+                    <!-- Buscador para Actualizaciones -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="updatesSearch" class="form-control border-start-0 ps-0" placeholder="Buscar por nombre, teléfono o estado...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table id="tablaActualizaciones" class="table table-borderless" style="width:100%">
+                            <thead class="d-none">
+                                <tr>
+                                    <th>Contenido</th>
+                                    <th>FechaSort</th>
+                                    <th>SearchData</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data cargada via Server-Side AJAX -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
                 
                 <!-- Tab: HISTORIAL (DataTable Card View) -->
@@ -742,8 +846,10 @@ include("vista/includes/header.php");
 <!-- Fin container principal de notificaciones -->
 
 
-
 <script>
+// Esperar a que el DOM esté completamente cargado
+document.addEventListener('DOMContentLoaded', function() {
+
 // Función para marcar como leída
 function markAsRead(id, hideElement) {
     fetch('<?= RUTA_URL ?>api/crm/notifications/' + id + '/read', {
@@ -817,7 +923,6 @@ function quickStatusChange(leadId, nuevoEstado, notifId) {
         }
     })
     .catch(error => {
-        console.error(error);
         Swal.fire('Error', 'Hubo un problema de conexión', 'error');
     });
 }
@@ -855,13 +960,28 @@ function marcarTodasLeidas() {
 }
 
 // Inicializar DataTables PENDIENTES
-document.addEventListener("DOMContentLoaded", function() {
-    if (typeof $ !== 'undefined' && $.fn.dataTable) {
+// Ya estamos dentro del DOMContentLoaded principal
+if (typeof $ !== 'undefined' && $.fn.dataTable) {
         
         // Tabla Pendientes (Normal)
         if ($('#tablaPendientes').length) {
             var tablePendientes = $('#tablaPendientes').DataTable({
-                language: { url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json' },
+                language: {
+                    "sProcessing": "Procesando...",
+                    "sLengthMenu": "Mostrar _MENU_ registros",
+                    "sZeroRecords": "No se encontraron resultados",
+                    "sEmptyTable": "Ningún dato disponible en esta tabla",
+                    "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
+                    "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
+                    "sInfoFiltered": "(filtrado de un total de _MAX_ registros)",
+                    "sSearch": "Buscar:",
+                    "oPaginate": {
+                        "sFirst": "Primero",
+                        "sLast": "Último",
+                        "sNext": "Siguiente",
+                        "sPrevious": "Anterior"
+                    }
+                },
                 order: [[3, 'desc']],
                 pageLength: 15,
                 lengthMenu: [10, 20, 50, 100],
@@ -874,13 +994,73 @@ document.addEventListener("DOMContentLoaded", function() {
                 tablePendientes.search(this.value).draw();
             });
         }
+        
+        // Tabla Actualizaciones (Server-Side)
+        if ($('#tablaActualizaciones').length) {
+            var updatesTable = $('#tablaActualizaciones').DataTable({
+                language: { 
+                    "sProcessing": "Procesando...",
+                    "sZeroRecords": "No hay actualizaciones de estado recientes.",
+                    "sInfo": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    "sInfoEmpty": "Mostrando 0 a 0 de 0 registros",
+                    "sInfoFiltered": "(filtrado de _MAX_ registros)",
+                    "oPaginate": {
+                        "sNext": "Siguiente",
+                        "sPrevious": "Anterior"
+                    }
+                },
+                processing: true,
+                serverSide: true,
+                searching: true,
+                searchDelay: 500,
+                ajax: {
+                    url: '<?= RUTA_URL ?>api/crm/updates_datatable.php',
+                    type: 'POST'
+                },
+                order: [[1, 'desc']], // Ordenar por timestamp
+                pageLength: 20,
+                lengthMenu: [10, 20, 50, 100],
+                columns: [
+                    { 
+                        data: 0, 
+                        render: function(data, type, row) { 
+                            return '<div class="p-0 mb-3 d-block">' + data + '</div>'; 
+                        } 
+                    },
+                    { data: 1 }, // Timestamp
+                    { data: 2 }  // SearchText
+                ],
+                dom: '<"d-flex justify-content-between mb-3">rt<"d-flex justify-content-between mt-3"ip>',
+                columnDefs: [
+                    { targets: [1, 2], visible: false, searchable: true },
+                    { targets: 0, orderable: false }
+                ]
+            });
+            
+            // Conectar búsqueda personalizada
+            let updatesSearchTimeout;
+            $('#updatesSearch').on('keyup', function() {
+                clearTimeout(updatesSearchTimeout);
+                const searchValue = this.value;
+                updatesSearchTimeout = setTimeout(function() {
+                    updatesTable.search(searchValue).draw();
+                }, 500);
+            });
+        }
 
         // Tabla Historial (Server-Side)
         if ($('#tablaHistorial').length) {
             historialTable = $('#tablaHistorial').DataTable({
                 language: { 
-                    url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json',
-                    zeroRecords: "No se encontraron coincidencias en este periodo. Intenta ampliar el rango de fechas."
+                    "sProcessing": "Procesando...",
+                    "sZeroRecords": "No se encontraron coincidencias en este periodo. Intenta ampliar el rango de fechas.",
+                    "sInfo": "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    "sInfoEmpty": "Mostrando 0 a 0 de 0 registros",
+                    "sInfoFiltered": "(filtrado de _MAX_ registros)",
+                    "oPaginate": {
+                        "sNext": "Siguiente",
+                        "sPrevious": "Anterior"
+                    }
                 },
                 processing: true,
                 serverSide: true,
@@ -926,9 +1106,8 @@ document.addEventListener("DOMContentLoaded", function() {
         }
 
     } else {
-        console.warn('DataTables no está cargado o jQuery falla.');
+        // DataTables no está cargado o jQuery falla (Silencioso en producción)
     }
-});
 
 var historialTable;
 
@@ -949,8 +1128,244 @@ function descargarExcel() {
     window.location.href = url;
 }
 
+// ========== FUNCIONES PARA ASIGNACIÓN DE LEADS ==========
+
+// Esperar a que jQuery esté disponible
+    // Función reutilizable para cargar clientes
+    function cargarClientes(selectId, dropdownParentId) {
+        if ($(selectId).hasClass('select2-hidden-accessible')) return; // Ya inicializado
+        
+        $.ajax({
+            url: '<?= RUTA_URL ?>api/usuarios/listar_clientes.php',
+            dataType: 'json',
+            success: function(data) {
+                // Limpiar opciones existentes excepto la primera
+                $(selectId).find('option:not(:first)').remove();
+                
+                // Agregar opciones de clientes
+                data.forEach(function(cliente) {
+                    $(selectId).append(new Option(cliente.text, cliente.id, false, false));
+                });
+                
+                // Inicializar Select2
+                $(selectId).select2({
+                    dropdownParent: $(dropdownParentId),
+                    placeholder: '-- Seleccionar Cliente (Opcional) --',
+                    allowClear: true,
+                    width: '100%',
+                    language: {
+                        noResults: function() { return "No se encontraron clientes"; },
+                        searching: function() { return "Buscando..."; }
+                    }
+                });
+            },
+            error: function() {
+                // Silencioso en producción o alerta si es crítico
+                // Swal.fire('Error', 'No se pudo cargar la lista de clientes', 'error');
+            }
+        });
+    }
+
+    // Inicializar Select2 en Modals
+    $('#modalAsignarCliente').on('shown.bs.modal', function () {
+        cargarClientes('#clienteIdAsignar', '#modalAsignarCliente');
+    });
+
+    $('#modalCrearLead').on('shown.bs.modal', function () {
+        $('#formCrearLead')[0].reset(); // Limpiar formulario
+        $('#clienteIdCrear').val(null).trigger('change'); // Limpiar select2
+        cargarClientes('#clienteIdCrear', '#modalCrearLead');
+    });
+
+    // Abrir modal de asignación (Helper global)
+    window.abrirModalAsignar = function(leadId, proveedorLeadId, nombre, telefono, producto) {
+        $('#leadIdAsignar').val(leadId);
+        $('#proveedorLeadId').val(proveedorLeadId);
+        $('#nombreLead').val(nombre);
+        $('#telefonoLead').val(telefono);
+        $('#productoLead').val(producto);
+        $('#clienteIdAsignar').val(null).trigger('change');
+        $('#modalAsignarCliente').modal('show');
+    };
+
+    // Enviar formulario de asignación
+    $(document).on('submit', '#formAsignarCliente', function(e) {
+        e.preventDefault();
+        const leadId = $('#leadIdAsignar').val();
+        const clienteId = $('#clienteIdAsignar').val();
+        
+        if (!clienteId) {
+            Swal.fire('Error', 'Debes seleccionar un cliente', 'error');
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Asignando...',
+            text: 'Por favor espera',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        $.ajax({
+            url: '<?= RUTA_URL ?>api/crm/asignar_cliente.php',
+            method: 'POST',
+            dataType: 'json',
+            data: { lead_id: leadId, cliente_id: clienteId },
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire('¡Éxito!', 'Lead asignado', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Error', response.message || 'Error al asignar', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                Swal.fire('Error', 'Error de conexión: ' + error, 'error');
+            }
+        });
+    });
+
+    // Enviar formulario de CREAR LEAD MANUAL
+    $(document).on('submit', '#formCrearLead', function(e) {
+        e.preventDefault();
+        
+        // Obtener datos del formulario
+        const formData = {
+            nombre: $(this).find('input[name="nombre"]').val(),
+            telefono: $(this).find('input[name="telefono"]').val(),
+            producto: $(this).find('input[name="producto"]').val(),
+            cliente_id: $('#clienteIdCrear').val()
+        };
+        
+        Swal.fire({
+            title: 'Creando Lead...',
+            text: 'Por favor espera',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+        });
+        
+        $.ajax({
+            url: '<?= RUTA_URL ?>api/crm/crear_lead_manual.php',
+            method: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify(formData),
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire('¡Creado!', 'El lead se ha creado correctamente', 'success')
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Error', response.message || 'No se pudo crear el lead', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                Swal.fire('Error', 'Error de conexión: ' + error, 'error');
+            }
+        });
+    });
+});
+
 
 
 </script>
+
+<!-- Modal: Asignar Cliente -->
+<div class="modal fade" id="modalAsignarCliente" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Asignar Lead a Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formAsignarCliente">
+                <div class="modal-body">
+                    <input type="hidden" id="leadIdAsignar" name="lead_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Proveedor Lead ID</label>
+                        <input type="text" class="form-control" id="proveedorLeadId" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre</label>
+                        <input type="text" class="form-control" id="nombreLead" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Teléfono</label>
+                        <input type="text" class="form-control" id="telefonoLead" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Producto</label>
+                        <input type="text" class="form-control" id="productoLead" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cliente a Asignar <span class="text-danger">*</span></label>
+                        <select class="form-select" id="clienteIdAsignar" name="cliente_id" required style="width: 100%;">
+                            <option value="">-- Seleccionar Cliente --</option>
+                        </select>
+                        <small class="text-muted">Escribe para buscar por nombre o email</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Asignar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Crear Lead Manualmente -->
+<div class="modal fade" id="modalCrearLead" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Nuevo Lead</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCrearLead">
+                <div class="modal-body">
+                    <div class="alert alert-light border small text-muted mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        El lead se creará con estado <strong>EN_ESPERA</strong>.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre del Interesado <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="nombre" required placeholder="Ej: Juan Pérez">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Teléfono / WhatsApp</label>
+                        <input type="text" class="form-control" name="telefono" placeholder="Ej: +52 55...">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Producto de Interés <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="producto" required placeholder="Ej: iPhone 15 Pro">
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Asignar Cliente (Opcional)</label>
+                        <select class="form-select" id="clienteIdCrear" name="cliente_id" style="width: 100%;">
+                            <option value="">-- Sin Asignar (Guardar en Mis Leads) --</option>
+                        </select>
+                        <small class="text-muted">Si seleccionas un cliente, se le notificará inmediatamente.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Crear Lead</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
 
 <?php include("vista/includes/footer.php"); ?>

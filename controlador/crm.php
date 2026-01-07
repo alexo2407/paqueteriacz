@@ -165,22 +165,50 @@ class CrmController {
         // Cambiar estado
         $resultado = CrmLead::cambiarEstado($id, $nuevoEstado, $observaciones, $userId);
         
-        // Si el cambio fue exitoso Y lo hizo un cliente, crear notificación para el proveedor
-        if ($resultado['success'] && isUserCliente($userId) && !empty($lead['proveedor_id'])) {
-            CrmNotificationModel::agregar(
-                'SEND_TO_PROVIDER',
-                $id,
-                (int)$lead['proveedor_id'],
-                [
-                    'lead_id' => $id,
-                    'proveedor_lead_id' => $lead['proveedor_lead_id'],
-                    'estado_anterior' => $estadoAnterior,
-                    'estado_nuevo' => $nuevoEstado,
-                    'observaciones' => $observaciones,
-                    'updated_by' => $userId,
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]
-            );
+        // NOTIFICACIONES BIDIRECCIONALES
+        if ($resultado['success']) {
+            $payloadBase = [
+                'lead_id' => $id,
+                'proveedor_lead_id' => $lead['proveedor_lead_id'],
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => $nuevoEstado,
+                'observaciones' => $observaciones,
+                'updated_by' => $userId,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            // Caso 1: Cliente cambia estado → Notificar al Proveedor
+            if (isUserCliente($userId) && !empty($lead['proveedor_id']) && (int)$lead['proveedor_id'] !== $userId) {
+                CrmNotificationModel::agregar(
+                    'SEND_TO_PROVIDER',
+                    $id,
+                    (int)$lead['proveedor_id'],
+                    $payloadBase
+                );
+            }
+            
+            // Caso 2: Admin cambia estado → Notificar al Cliente Y al Proveedor
+            if (isUserAdmin($userId)) {
+                // Notificar al Cliente (si existe y no es el mismo admin)
+                if (!empty($lead['cliente_id']) && (int)$lead['cliente_id'] !== $userId) {
+                    CrmNotificationModel::agregar(
+                        'STATUS_UPDATE_TO_CLIENT',  // Cambiado para que se clasifique como status_updated
+                        $id,
+                        (int)$lead['cliente_id'],
+                        $payloadBase
+                    );
+                }
+                
+                // Notificar al Proveedor (si existe y no es el mismo admin)
+                if (!empty($lead['proveedor_id']) && (int)$lead['proveedor_id'] !== $userId) {
+                    CrmNotificationModel::agregar(
+                        'SEND_TO_PROVIDER',
+                        $id,
+                        (int)$lead['proveedor_id'],
+                        $payloadBase
+                    );
+                }
+            }
         }
         
         return $resultado;

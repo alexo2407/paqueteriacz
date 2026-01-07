@@ -7,9 +7,10 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../modelo/crm_notification.php';
 require_once __DIR__ . '/../../modelo/conexion.php';
+require_once __DIR__ . '/../../utils/session.php';
 
-// Simulación de sesión si no usas JWT puro aquí, o asegurar que session_start esté
-if (session_status() == PHP_SESSION_NONE) session_start();
+// Usar sesión segura para compartir contexto con la app principal
+start_secure_session();
 $userId = $_SESSION['idUsuario'] ?? 0;
 
 if ($userId <= 0) {
