@@ -15,13 +15,16 @@ require_once __DIR__ . '/../../utils/session.php';
 
 // Usar sesión segura
 start_secure_session();
-$userId = $_SESSION['idUsuario'] ?? 0;
+// Fallback para diferentes claves de sesión
+$userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
 
 // Validar permisos
 if ($userId <= 0) {
-    echo json_encode(['error' => 'Usuario no válido']);
+    echo json_encode(['error' => 'Usuario no válido. Session: ' . json_encode($_SESSION)]);
     exit;
 }
+
+try {
 
 // Parámetros de DataTables
 $draw = isset($_POST['draw']) ? (int)$_POST['draw'] : 1;
@@ -170,10 +173,22 @@ foreach ($paginatedUpdates as $notifs) {
     ];
 }
 
-// Respuesta en formato DataTables
-echo json_encode([
-    'draw' => $draw,
-    'recordsTotal' => $totalRecords,
-    'recordsFiltered' => $filteredRecords,
-    'data' => $data
-]);
+    // Respuesta en formato DataTables
+    echo json_encode([
+        'draw' => $draw,
+        'recordsTotal' => $totalRecords,
+        'recordsFiltered' => $filteredRecords,
+        'data' => $data
+    ]);
+
+} catch (Exception $e) {
+    error_log("Error in updates_datatable.php: " . $e->getMessage());
+    echo json_encode([
+        'draw' => $draw ?? 1,
+        'recordsTotal' => 0,
+        'recordsFiltered' => 0,
+        'data' => [],
+        'error' => 'Error interno: ' . $e->getMessage()
+    ]);
+}
+

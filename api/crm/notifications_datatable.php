@@ -11,7 +11,8 @@ require_once __DIR__ . '/../../utils/session.php';
 
 // Usar sesión segura para compartir contexto con la app principal
 start_secure_session();
-$userId = $_SESSION['idUsuario'] ?? 0;
+// Fallback para diferentes claves de sesión
+$userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
 
 if ($userId <= 0) {
     echo json_encode(['error' => 'No autorizado']);
