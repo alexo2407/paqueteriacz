@@ -53,9 +53,11 @@ try {
     $fechaDesde = isset($_POST['fecha_desde']) ? $_POST['fecha_desde'] : '';
     $fechaHasta = isset($_POST['fecha_hasta']) ? $_POST['fecha_hasta'] : '';
     $busqueda = isset($_POST['busqueda']) ? $_POST['busqueda'] : '';
+    $proveedorId = isset($_POST['proveedor_id']) && is_numeric($_POST['proveedor_id']) ? (int)$_POST['proveedor_id'] : 0;
+    $clienteId = isset($_POST['cliente_id']) && is_numeric($_POST['cliente_id']) ? (int)$_POST['cliente_id'] : 0;
     
     // Debug logging
-    error_log("DataTables Request - Draw: $draw, Estado: $estado, Busqueda: $busqueda, Desde: $fechaDesde, Hasta: $fechaHasta");
+    error_log("DataTables Request - Draw: $draw, Estado: $estado, Prov: $proveedorId, Cli: $clienteId");
     
     // Conexión a la base de datos
     $db = (new Conexion())->conectar();
@@ -77,6 +79,16 @@ try {
     if (!empty($fechaHasta)) {
         $where[] = 'cl.fecha_hora <= :fecha_hasta';
         $params[':fecha_hasta'] = $fechaHasta . ' 23:59:59';
+    }
+
+    if ($proveedorId > 0) {
+        $where[] = 'cl.proveedor_id = :proveedor_id';
+        $params[':proveedor_id'] = $proveedorId;
+    }
+
+    if ($clienteId > 0) {
+        $where[] = 'cl.cliente_id = :cliente_id';
+        $params[':cliente_id'] = $clienteId;
     }
     
     // Búsqueda optimizada - evitar % al inicio cuando sea posible

@@ -78,9 +78,24 @@ class CrmController {
         $fechaHasta = $_GET['fecha_hasta'] ?? null;
         $busqueda = $_GET['busqueda'] ?? null;
         
-        $filtros = compact('estado', 'proveedorId', 'clienteId', 'fechaDesde', 'fechaHasta', 'busqueda');
+        $filtros = [
+            'estado' => $estado,
+            'proveedor_id' => $proveedorId,
+            'cliente_id' => $clienteId,
+            'fecha_desde' => $fechaDesde,
+            'fecha_hasta' => $fechaHasta,
+            'busqueda' => $busqueda
+        ];
         
         $resultado = CrmLead::listarConFiltros($filtros, $page, $limit);
+        $resultado['filtros'] = $filtros; // Para la vista
+        
+        // Obtener listas para filtros
+        require_once "modelo/usuario.php";
+        $usuarioModel = new UsuarioModel();
+        
+        $resultado['proveedores'] = $usuarioModel->obtenerUsuariosPorRolNombre('Proveedor');
+        $resultado['clientes'] = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente');
         
         return $resultado;
     }

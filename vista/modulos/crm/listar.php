@@ -14,6 +14,12 @@ if (!isAdmin()) {
 }
 
 include("vista/includes/header.php");
+
+require_once __DIR__ . '/../../../controlador/crm.php';
+require_once __DIR__ . '/../../../utils/crm_status.php';
+$crmController = new CrmController();
+$resultado = $crmController->listar();
+$filtros = $resultado['filtros'] ?? [];
 ?>
 
 <div class="container-fluid py-3">
@@ -33,7 +39,7 @@ include("vista/includes/header.php");
     <div class="card mb-4">
         <div class="card-body">
             <form id="filtrosForm" class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Estado</label>
                     <select name="estado" class="form-select">
                         <option value="">Todos</option>
@@ -45,15 +51,37 @@ include("vista/includes/header.php");
                         <option value="CANCELADO">Cancelado</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label class="form-label">Proveedor</label>
+                    <select name="proveedor_id" class="form-select">
+                        <option value="">Todos</option>
+                        <?php foreach (($resultado['proveedores'] ?? []) as $prov): ?>
+                            <option value="<?= $prov['id'] ?>" <?= ($filtros['proveedor_id'] ?? '') == $prov['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($prov['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Cliente</label>
+                    <select name="cliente_id" class="form-select">
+                        <option value="">Todos</option>
+                        <?php foreach (($resultado['clientes'] ?? []) as $cli): ?>
+                            <option value="<?= $cli['id'] ?>" <?= ($filtros['cliente_id'] ?? '') == $cli['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($cli['nombre']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label">Desde</label>
                     <input type="date" name="fecha_desde" class="form-control" value="<?= date('Y-m-01') ?>">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Hasta</label>
                     <input type="date" name="fecha_hasta" class="form-control" value="<?= date('Y-m-d') ?>">
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label">Buscar</label>
                     <input type="text" name="busqueda" class="form-control" placeholder="ID, nombre...">
                 </div>
@@ -103,6 +131,8 @@ include("vista/includes/header.php");
 function exportarCSV() {
     const params = new URLSearchParams({
         estado: $('[name="estado"]').val(),
+        proveedor_id: $('[name="proveedor_id"]').val(),
+        cliente_id: $('[name="cliente_id"]').val(),
         fecha_desde: $('[name="fecha_desde"]').val(),
         fecha_hasta: $('[name="fecha_hasta"]').val(),
         busqueda: $('[name="busqueda"]').val()
@@ -122,6 +152,8 @@ $(document).ready(function() {
             type: 'POST',
             data: function(d) {
                 d.estado = $('[name="estado"]').val();
+                d.proveedor_id = $('[name="proveedor_id"]').val();
+                d.cliente_id = $('[name="cliente_id"]').val();
                 d.fecha_desde = $('[name="fecha_desde"]').val();
                 d.fecha_hasta = $('[name="fecha_hasta"]').val();
                 d.busqueda = $('[name="busqueda"]').val();
@@ -144,6 +176,12 @@ $(document).ready(function() {
             { 
                 data: 'estado_actual',
                 render: function(data) {
+                    const params = JSON.parse('<?= json_encode(getEstadoMeta('EN_ESPERA')) ?>'); // Dummy to init if needed, though getEstadoMeta is PHP
+                    // We will use the badge logic from server side or simple JS map
+                    // Since I cannot call PHP function here easily without rewriting ajax to return metadata, 
+                    // I will keep the existing JS map but add a note or try to inject canonical colors if possible.
+                    // For now, keeping existing map to avoid breaking JS is safer unless I refactor AJAX response.
+                    
                     const badges = {
                         'EN_ESPERA': 'warning',
                         'APROBADO': 'success',
@@ -184,7 +222,7 @@ $(document).ready(function() {
     });
 
     // Recargar inmediatamente cuando cambian los selectores
-    $('[name="estado"], [name="fecha_desde"], [name="fecha_hasta"]').on('change', function() {
+    $('[name="estado"], [name="proveedor_id"], [name="cliente_id"], [name="fecha_desde"], [name="fecha_hasta"]').on('change', function() {
         table.ajax.reload();
     });
 

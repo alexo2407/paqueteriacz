@@ -118,3 +118,53 @@ function getEstadosValidos() {
         'EN_ESPERA'
     ];
 }
+
+/**
+ * Obtiene metadatos de visualización para un estado.
+ * 
+ * @param string $estado Estado canónico
+ * @return array ['color' => '#hex', 'badge' => 'class_name', 'label' => 'Label']
+ */
+function getEstadoMeta($estado) {
+    // Definición centralizada de colores
+    $meta = [
+        'EN_ESPERA' => [
+            'color' => '#ffc107', // Amarillo warning
+            'badge' => 'warning',
+            'label' => 'En Espera'
+        ],
+        'APROBADO' => [
+            'color' => '#28a745', // Verde success
+            'badge' => 'success',
+            'label' => 'Aprobado'
+        ],
+        'CONFIRMADO' => [
+            'color' => '#0d6efd', // Azul primary (BS5)
+            'badge' => 'primary',
+            'label' => 'Confirmado'
+        ],
+        'EN_TRANSITO' => [
+            'color' => '#0dcaf0', // Cian info (BS5)
+            'badge' => 'info',
+            'label' => 'En Tránsito'
+        ],
+        'EN_BODEGA' => [
+            'color' => '#6c757d', // Gris secondary
+            'badge' => 'secondary',
+            'label' => 'En Bodega'
+        ],
+        'CANCELADO' => [
+            'color' => '#dc3545', // Rojo danger
+            'badge' => 'danger',
+            'label' => 'Cancelado'
+        ]
+    ];
+    
+    $estado = normalizeEstado($estado);
+    
+    return $meta[$estado] ?? [
+        'color' => '#6c757d',
+        'badge' => 'secondary',
+        'label' => $estado
+    ];
+}

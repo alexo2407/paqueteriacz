@@ -15,6 +15,7 @@ if (!isAdmin()) {
 }
 
 require_once __DIR__ . '/../../../controlador/crm.php';
+require_once __DIR__ . '/../../../utils/crm_status.php';
 
 include("vista/includes/header.php");
 
@@ -37,6 +38,12 @@ $fechaDesde = $filters['fecha_desde'] ?? '';
 $fechaHasta = $filters['fecha_hasta'] ?? '';
 $proveedorId = $filters['proveedor_id'] ?? '';
 
+// Preparar colores para el gráfico de forma consistente
+$chartColors = [];
+foreach ($leadsPorEstado as $item) {
+    $meta = getEstadoMeta($item['estado']);
+    $chartColors[] = $meta['color'];
+}
 ?>
 
 <style>
@@ -239,17 +246,9 @@ $proveedorId = $filters['proveedor_id'] ?? '';
                         <td><?= htmlspecialchars($lead['nombre'] ?? 'N/A') ?></td>
                         <td>
                             <?php
-                            $badgeClass = match($lead['estado_actual']) {
-                                'EN_ESPERA' => 'warning',
-                                'APROBADO' => 'success',
-                                'CONFIRMADO' => 'primary',
-                                'EN_TRANSITO' => 'info',
-                                'EN_BODEGA' => 'secondary',
-                                'CANCELADO' => 'danger',
-                                default => 'secondary'
-                            };
+                            $meta = getEstadoMeta($lead['estado_actual']);
                             ?>
-                            <span class="badge bg-<?= $badgeClass ?>"><?= $lead['estado_actual'] ?></span>
+                            <span class="badge bg-<?= $meta['badge'] ?>"><?= $lead['estado_actual'] ?></span>
                         </td>
                         <td><?= date('d/m/Y H:i', strtotime($lead['created_at'])) ?></td>
                         <td>
@@ -271,6 +270,7 @@ $proveedorId = $filters['proveedor_id'] ?? '';
 const estadosData = <?= json_encode($leadsPorEstado) ?>;
 const estadosLabels = estadosData.map(e => e.estado);
 const estadosValues = estadosData.map(e => parseInt(e.total));
+const estadosColors = <?= json_encode($chartColors) ?>;
 
 new Chart(document.getElementById('estadosChart'), {
     type: 'doughnut',
@@ -278,14 +278,7 @@ new Chart(document.getElementById('estadosChart'), {
         labels: estadosLabels,
         datasets: [{
             data: estadosValues,
-            backgroundColor: [
-                '#ffc107', // EN_ESPERA - amarillo
-                '#28a745', // APROBADO - verde
-                '#007bff', // CONFIRMADO - azul
-                '#17a2b8', // EN_TRANSITO - celeste
-                '#6c757d', // EN_BODEGA - gris
-                '#dc3545'  // CANCELADO - rojo
-            ]
+            backgroundColor: estadosColors
         }]
     },
     options: {

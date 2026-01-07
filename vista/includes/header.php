@@ -239,15 +239,18 @@
                     require_once "modelo/crm_lead.php"; // Asegurar modelo cargado
                     $navUserId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
                     
-                    if ($isProveedor) {
+                    // Mostrar "Leads" solo si es proveedor Y NO es administrador (prioridad admin = notificaciones)
+                    $showProviderLeads = $isProveedor && !$isAdmin;
+                    
+                    if ($showProviderLeads) {
                         $unreadCount = $navUserId > 0 ? CrmLead::contarPendientesProveedor($navUserId) : 0;
                     } else {
                         $unreadCount = $navUserId > 0 ? CrmNotificationModel::contarNoLeidas($navUserId) : 0;
                     }
                 ?>
                 <li class="nav-item">
-                    <a class="nav-link position-relative" href="<?= RUTA_URL ?>crm/notificaciones" title="<?= $isProveedor ? 'Leads' : 'Notificaciones' ?>">
-                        <?php if ($isProveedor): ?>
+                    <a class="nav-link position-relative" href="<?= RUTA_URL ?>crm/notificaciones" title="<?= $showProviderLeads ? 'Leads' : 'Notificaciones' ?>">
+                        <?php if ($showProviderLeads): ?>
                             <i class="bi bi-people-fill"></i> Leads
                         <?php else: ?>
                             <i class="bi bi-bell" style="font-size: 1.2rem;"></i>
