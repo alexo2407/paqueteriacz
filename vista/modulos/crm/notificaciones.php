@@ -847,8 +847,6 @@ include("vista/includes/header.php");
 
 
 <script>
-// Esperar a que el DOM esté completamente cargado
-document.addEventListener('DOMContentLoaded', function() {
 
 // Función para marcar como leída
 function markAsRead(id, hideElement) {
@@ -959,8 +957,11 @@ function marcarTodasLeidas() {
     })
 }
 
+// Esperar a que el DOM esté completamente cargado
+document.addEventListener('DOMContentLoaded', function() {
+
 // Inicializar DataTables PENDIENTES
-// Ya estamos dentro del DOMContentLoaded principal
+    // Ya estamos dentro del DOMContentLoaded principal
 if (typeof $ !== 'undefined' && $.fn.dataTable) {
         
         // Tabla Pendientes (Normal)
