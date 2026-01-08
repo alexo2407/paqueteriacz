@@ -85,7 +85,7 @@ class CrmNotificationModel {
                        l.nombre as lead_name_live
                 FROM crm_notifications n
                 LEFT JOIN crm_leads l ON l.id = n.related_lead_id
-                WHERE n.user_id = :user_id
+                WHERE (n.user_id = :user_id OR l.proveedor_id = :user_id)
             ";
             
             $params = [':user_id' => $userId];
@@ -153,7 +153,7 @@ class CrmNotificationModel {
                 SELECT COUNT(*) 
                 FROM crm_notifications n
                 LEFT JOIN crm_leads l ON l.id = n.related_lead_id
-                WHERE n.user_id = :user_id
+                WHERE (n.user_id = :user_id OR l.proveedor_id = :user_id)
             ";
             
             $params = [':user_id' => $userId];

@@ -957,6 +957,9 @@ function marcarTodasLeidas() {
     })
 }
 
+// ========== VARIABLES GLOBALES ==========
+var historialTable; // Tabla del historial (necesario para filtrarHistorial())
+
 // Esperar a que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -1109,8 +1112,7 @@ if (typeof $ !== 'undefined' && $.fn.dataTable) {
     } else {
         // DataTables no está cargado o jQuery falla (Silencioso en producción)
     }
-
-var historialTable;
+});
 
 function filtrarHistorial() {
     if(historialTable) {
@@ -1132,6 +1134,7 @@ function descargarExcel() {
 // ========== FUNCIONES PARA ASIGNACIÓN DE LEADS ==========
 
 // Esperar a que jQuery esté disponible
+$(document).ready(function() {
     // Función reutilizable para cargar clientes
     function cargarClientes(selectId, dropdownParentId) {
         if ($(selectId).hasClass('select2-hidden-accessible')) return; // Ya inicializado

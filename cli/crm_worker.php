@@ -30,7 +30,7 @@ function processIteration() {
     try {
         // Procesar inbox
         echo "[{$timestamp}] Processing inbox...\n";
-        $inboxStats = CrmInboxService::procesar();
+        $inboxStats = CrmInboxService::procesar(100);
         
         if ($inboxStats['processed'] > 0 || $inboxStats['failed'] > 0) {
             echo "[{$timestamp}] Inbox: processed={$inboxStats['processed']}, failed={$inboxStats['failed']}\n";
