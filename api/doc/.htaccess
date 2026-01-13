@@ -1,11 +1,15 @@
 # Documentación API - Servir archivos estáticos directamente
-# Desactivar el router API para este subdirectorio
+# Compatible con Apache 2.2 y 2.4
 
-# Permitir el acceso directo a archivos
-Options -Indexes +FollowSymLinks
-
-# Desactivar rewrites heredados del directorio padre
-RewriteEngine Off
+Options -Indexes
 
 # Servir index.php como DirectoryIndex
 DirectoryIndex index.php index.html
+
+# No aplicar rewrites del directorio padre
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # Detener cualquier rewrite heredado
+    RewriteRule .* - [L]
+</IfModule>
+
