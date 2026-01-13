@@ -1073,24 +1073,33 @@ class PedidosModel
             $stockCheckStmt = $db->prepare('SELECT COALESCE(SUM(cantidad), 0) AS stock_total FROM stock WHERE id_producto = :id_producto FOR UPDATE');
             // 1. Validar stock para todos los items antes de insertar nada
             // Esto previene insertar un pedido si falta stock de algún producto.
+            $calculatedTotalUSD = 0;
             foreach ($items as $item) {
                 $prodId = (int)$item['id_producto'];
                 $cantidadSolicitada = (int)$item['cantidad'];
                 
-                // Obtener stock actual
-                // Idealmente deberíamos hacer SELECT ... FOR UPDATE para bloquear la fila,
-                // pero ProductoModel::obtenerStockTotal usa SUM(stock) lo cual es complejo de bloquear.
-                // Por ahora confiamos en la validación inmediata.
-                $stockActual = ProductoModel::obtenerStockTotal($prodId);
+                // Obtener datos del producto (Validación y Precio)
+                $productoData = ProductoModel::obtenerPorId($prodId);
                 
-                if ($stockActual === null) {
-                    throw new Exception("Producto ID $prodId no encontrado o error de stock.");
+                if (!$productoData) {
+                    throw new Exception("Producto ID $prodId no encontrado.");
                 }
+
+                // Validar Stock
+                $stockActual = (int)($productoData['stock_total'] ?? 0);
                 
                 if ($stockActual < $cantidadSolicitada) {
-                    throw new Exception("Stock insuficiente para el producto ID $prodId. Disponible: $stockActual, Solicitado: $cantidadSolicitada.");
+                    throw new Exception("Stock insuficiente para el producto '{$productoData['nombre']}'. Disponible: $stockActual, Solicitado: $cantidadSolicitada.");
                 }
+
+                // Calcular Precio USD
+                $precioUnitarioUSD = (float)($productoData['precio_usd'] ?? 0);
+                $calculatedTotalUSD += ($precioUnitarioUSD * $cantidadSolicitada);
             }
+            
+            // Asignar Precio USD calculado si no se proporcionó uno manual (o forzarlo según preferencia)
+            // El usuario pidió "que obtenga el precio del sistema", así que priorizamos el calculado.
+            $pedido['precio_usd'] = $calculatedTotalUSD;
 
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles

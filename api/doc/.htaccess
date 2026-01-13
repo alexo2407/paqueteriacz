@@ -1,0 +1,11 @@
+# Documentación API - Servir archivos estáticos directamente
+# Desactivar el router API para este subdirectorio
+
+# Permitir el acceso directo a archivos
+Options -Indexes +FollowSymLinks
+
+# Desactivar rewrites heredados del directorio padre
+RewriteEngine Off
+
+# Servir index.php como DirectoryIndex
+DirectoryIndex index.php index.html

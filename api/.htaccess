@@ -20,5 +20,13 @@ RewriteRule .* - [E=HTTPS:on]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
-# Redirigir todas las peticiones al router API (index.php)
+# Excluir el directorio doc/ del router (es documentación estática HTML/PHP)
+RewriteCond %{REQUEST_URI} !^/[^/]+/api/doc/
+
+# Clean URLs: Si existe el archivo con .php, usarlo
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.*)$ $1.php [QSA,L]
+
+# Redirigir el resto al router API (index.php)
 RewriteRule ^(.*)$ index.php [QSA,L]

@@ -12,7 +12,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDocsDropdown">
                         <li>
-                            <a class="dropdown-item" href="<?= RUTA_URL ?>api/doc/">
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>api/doc/index.php">
                                 <i class="bi bi-book"></i> Documentación General
                             </a>
                         </li>

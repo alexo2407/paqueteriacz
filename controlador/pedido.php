@@ -65,8 +65,11 @@ class PedidosController {
      *
      * Uso: POST /api/pedidos/multiple (o la ruta que corresponda) con body JSON.
      */
-    public function createMultiple()
+    public function createMultiple($authUserId = 0, $authUserRole = '')
     {
+        // DEBUG LOGGING
+        error_log("createMultiple called with UserID: " . json_encode($authUserId) . " Role: " . json_encode($authUserRole));
+
         // Read and decode JSON payload
         $raw = file_get_contents('php://input');
         $payload = json_decode($raw, true);
@@ -90,9 +93,24 @@ class PedidosController {
             // Basic validation using existing helper
             $valid = $this->validarDatosPedido($pedido);
             if (!$valid['success']) {
-                $itemResult['error'] = is_string($valid['message']) ? $valid['message'] : json_encode($valid['data']);
+                $itemResult['message'] = $valid['message'];
+                $itemResult['details'] = $valid['details'] ?? [];
+                // Compatibilidad/Resumen en string
+                $itemResult['error'] = $valid['message']; 
                 $results[] = $itemResult;
                 continue;
+            }
+
+            // Determine Provider ID
+            $idProveedor = isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : (isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null);
+            
+            // Si el usuario autenticado es Proveedor, forzar su ID 
+            // Aceptamos tanto el string "Proveedor" como el ID 4 (ROL_PROVEEDOR)
+            $isProviderRole = (is_numeric($authUserRole) && (int)$authUserRole === 4) || 
+                              (is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0);
+
+            if ($isProviderRole && $authUserId > 0) {
+                $idProveedor = (int)$authUserId;
             }
 
             // Build payload expected by the model
@@ -104,7 +122,7 @@ class PedidosController {
                 'comentario' => $pedido['comentario'] ?? null,
                 'estado' => isset($pedido['estado']) ? (int)$pedido['estado'] : null,
                 'vendedor' => isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null,
-                'proveedor' => isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : (isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null),
+                'proveedor' => $idProveedor,
                 'moneda' => isset($pedido['moneda']) ? (int)$pedido['moneda'] : null,
                 'latitud' => isset($pedido['latitud']) ? (float)$pedido['latitud'] : (isset($pedido['latitude']) ? (float)$pedido['latitude'] : null),
                 'longitud' => isset($pedido['longitud']) ? (float)$pedido['longitud'] : (isset($pedido['longitude']) ? (float)$pedido['longitude'] : null),
@@ -147,6 +165,20 @@ class PedidosController {
                 $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items);
                 $itemResult['success'] = true;
                 $itemResult['id_pedido'] = $nuevoId;
+                
+                // Optional: Enqueue logistics job if auto_enqueue parameter is set
+                if (isset($_GET['auto_enqueue']) && $_GET['auto_enqueue'] === 'true') {
+                    try {
+                        require_once __DIR__ . '/../services/LogisticsQueueService.php';
+                        LogisticsQueueService::queue('validar_direccion', $nuevoId);
+                        $itemResult['job_queued'] = true;
+                    } catch (Exception $queueError) {
+                        // Don't fail the order creation if queueing fails
+                        $itemResult['job_queued'] = false;
+                        $itemResult['queue_error'] = $queueError->getMessage();
+                    }
+                }
+                
                 $results[] = $itemResult;
             } catch (Exception $e) {
                 $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
@@ -155,7 +187,50 @@ class PedidosController {
             }
         }
 
-        echo json_encode(['results' => $results], JSON_UNESCAPED_UNICODE);
+        // Generar Resumen Global (Informe de Errores Agrupados)
+        $summary = [
+            'total_received' => count($results),
+            'success_count' => 0,
+            'error_count' => 0,
+            'error_breakdown' => []
+        ];
+
+        foreach ($results as $res) {
+            if ($res['success']) {
+                $summary['success_count']++;
+            } else {
+                $summary['error_count']++;
+                
+                // Determinar la fuente de los errores (validación o excepción)
+                $msgs = [];
+                if (!empty($res['details'])) {
+                     $msgs = $res['details'];
+                } else {
+                     $rawError = $res['error'] ?? 'Error desconocido';
+                     $msgs[] = $rawError;
+                }
+                
+                foreach ($msgs as $m) {
+                    // Limpieza y Agrupación de Errores Técnicos
+                    $friendlyError = $m;
+
+                    if (strpos($m, 'Duplicate entry') !== false && strpos($m, 'numero_orden') !== false) {
+                        $friendlyError = 'Orden Duplicada (El número ya existe)';
+                    } elseif (stripos($m, 'Stock insuficiente') !== false) {
+                        $friendlyError = 'Stock Insuficiente';
+                    } elseif (stripos($m, 'Integrity constraint violation') !== false) {
+                        $friendlyError = 'Error de Integridad de Datos';
+                    }
+
+                    if (!isset($summary['error_breakdown'][$friendlyError])) {
+                        $summary['error_breakdown'][$friendlyError] = 0;
+                    }
+                    $summary['error_breakdown'][$friendlyError]++;
+                }
+            }
+        }
+
+        echo json_encode(['summary' => $summary, 'results' => $results], JSON_UNESCAPED_UNICODE);
         return;
     }
 
@@ -249,7 +324,8 @@ class PedidosController {
 
         // Devolver errores si los hay
         if (!empty($errores)) {
-            return ["success" => false, "message" => "Tus datos tienen errores de procedencia arreglalos.", "data" => $errores];
+            $msj = count($errores) === 1 ? $errores[0] : "Se encontraron " . count($errores) . " errores de validación.";
+            return ["success" => false, "message" => $msj, "details" => $errores];
         }
 
         return ["success" => true];

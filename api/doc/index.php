@@ -18,17 +18,38 @@
 
     <style>
         body {
-            background-color: #ffffffff;
-            font-family: 'Roboto', sans-serif;
-            color: #212529 !important; /* ensure readable dark text (Bootstrap body color) */
+            background-color: #f9fafb;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            color: #212529 !important;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
        
 
         header {
-            background: linear-gradient(to right, #007bff, #6610f2);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>');
+            opacity: 0.3;
+        }
+
+        header .container {
+            position: relative;
+            z-index: 1;
         }
 
         header h1 {
@@ -42,12 +63,80 @@
             box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
             padding: 30px;
             margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .section-container:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
         }
 
         .section-title {
-            color: #007bff;
+            color: #667eea;
             font-weight: bold;
             margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+            display: inline-block;
+        }
+
+        /* Nav tabs styling */
+        .nav-tabs {
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .nav-tabs .nav-link {
+            color: rgba(255, 255, 255, 0.75);
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            transition: all 0.3s ease;
+            position: relative;
+            font-size: 0.95rem;
+        }
+
+        .nav-tabs .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: white;
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-tabs .nav-link.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            font-weight: 700;
+        }
+
+        .nav-tabs .nav-link.active::after {
+            transform: scaleX(1);
+        }
+
+        .navbar-brand {
+            color: white !important;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            transition: all  0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
         }
 
         .code-block {
@@ -88,6 +177,61 @@
             }
         }
 
+        /* Language Toggle Button */
+        .lang-toggle {
+            position: relative;
+            display: inline-flex;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 2rem;
+            padding: 0.25rem;
+            gap: 0.25rem;
+        }
+
+        .lang-toggle button {
+            padding: 0.4rem 1rem;
+            border: none;
+            background: transparent;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+            border-radius: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+
+        .lang-toggle button.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .lang-toggle button:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Hide inactive language content */
+        [data-lang]:not([data-lang="en"]) {
+            display: none;
+        }
+
+        body.lang-es [data-lang="en"] {
+            display: none;
+        }
+
+        body.lang-es [data-lang="es"] {
+            display: block;
+        }
+
+        body.lang-es [data-lang="es"].d-inline {
+            display: inline !important;
+        }
+
+        body.lang-es [data-lang="es"].table {
+            display: table !important;
+        }
+
         footer {
             background-color: #343a40;
             color: white;
@@ -108,48 +252,100 @@
 
 <body>
     <header>
-        <div class="container">
-            <a class="navbar-brand" href="/">Home</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
+        <div class="container d-flex justify-content-between align-items-center">
+            <a class="navbar-brand" href="#">← <span data-lang="en">Home</span><span data-lang="es">Inicio</span></a>
+            
+            <!-- Language Toggle -->
+            <div class="lang-toggle">
+                <button id="lang-en" class="active" onclick="setLanguage('en')">🇬🇧 English</button>
+                <button id="lang-es" onclick="setLanguage('es')">🇪🇸 Español</button>
+            </div>
         </div>
         <div class="container text-center">
-            <h1>Logistics API Documentation</h1>
-            <p class="lead">Guía práctica para consumir la API local del sistema de paquetería</p>
+            <h1 data-lang="en">Logistics API Documentation</h1>
+            <h1 data-lang="es">Documentación API de Logística</h1>
+            <p class="lead" data-lang="en">Practical guide to consume the local API of the package delivery system</p>
+            <p class="lead" data-lang="es">Guía práctica para consumir la API local del sistema de paquetería</p>
             <p>
-                <a class="btn btn-outline-primary btn-sm" href="./App_api.yaml" target="_blank">Ver OpenAPI (YAML)</a>
+                <a class="btn btn-outline-primary btn-sm" href="./crmdoc.php" target="_blank" data-lang="en">📋 CRM API Docs</a>
+                <a class="btn btn-outline-primary btn-sm" href="./crmdoc.php" target="_blank" data-lang="es">📋 Docs API CRM</a>
             </p>
         </div>
         <div>
             
         </div>
     <div class="container mt-5" style="color: #212529;">
-        <!-- Section: Documentation Overview -->
+        <!-- Nav tabs -->
+        <ul class="nav nav-tabs mb-4" id="apiTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+                    🚀 General
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="auth-tab" data-bs-toggle="tab" data-bs-target="#auth" type="button" role="tab">
+                    🔐 Authentication
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="geo-tab" data-bs-toggle="tab" data-bs-target="#geo" type="button" role="tab">
+                    🌍 Geographic Data
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="products-tab" data-bs-toggle="tab" data-bs-target="#products" type="button" role="tab">
+                    🏷️ Products
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="orders-tab" data-bs-toggle="tab" data-bs-target="#orders" type="button" role="tab">
+                    📦 Orders
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="workers-tab" data-bs-toggle="tab" data-bs-target="#workers" type="button" role="tab">
+                    🤖 Workers
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab content -->
+        <div class="tab-content" id="apiTabsContent">
+            <!-- Tab: General -->
+            <div class="tab-pane fade show active" id="general" role="tabpanel">
         <div class="section-container" style="color: #212529;">
-            <h2 class="section-title">Quick Reference</h2>
-            <p>This documentation describes the most used endpoints for integration: <strong>Authentication</strong>, <strong>Products</strong> and <strong>Orders (Pedidos)</strong>. Examples show request shape, response shape and common errors.</p>
-            <p>OpenAPI (machine-readable): <a href="./App_api.yaml" target="_blank">App_api.yaml</a>.</p>
+            <h2 class="section-title" data-lang="en">Quick Reference</h2>
+            <h2 class="section-title" data-lang="es">Referencia Rápida</h2>
+            <p data-lang="en">This documentation describes the most used endpoints for integration: <strong>Authentication</strong>, <strong>Products</strong>, <strong>Orders (Pedidos)</strong>, and <strong>Logistics Workers</strong>. Examples show request shape, response shape and common errors.</p>
+            <p data-lang="es">Esta documentación describe los endpoints más utilizados para integración: <strong>Autenticación</strong>, <strong>Productos</strong>, <strong>Órdenes (Pedidos)</strong> y <strong>Workers de Logística</strong>. Los ejemplos muestran formato de petición, respuesta y errores comunes.</p>
         </div>
 
-        <!-- Table of contents / Quickstart -->
         <div class="section-container" id="quickstart">
-            <h2 class="section-title">Quickstart</h2>
-            <p>Minimal steps to call the API successfully:</p>
-            <ol style="color: #212529;">
+            <h2 class="section-title" data-lang="en">Quickstart</h2>
+            <h2 class="section-title" data-lang="es">Inicio Rápido</h2>
+            <p data-lang="en">Minimal steps to call the API successfully:</p>
+            <p data-lang="es">Pasos mínimos para llamar la API exitosamente:</p>
+            <ol style="color: #212529;" data-lang="en">
                 <li>Obtain a JWT token: <code>POST /api/auth/login</code> with <code>{ "email", "password" }</code>.</li>
                 <li>Take the token from the login response at <code>response.data.token</code> (important: the token is inside <code>data.token</code>, not at the top level).</li>
                 <li>Call protected endpoints adding header: <code>Authorization: Bearer &lt;token&gt;</code>.</li>
                 <li>When creating orders, provide required address fields and a unique <code>numero_orden</code>, and ensure the product has enough stock.</li>
             </ol>
+            <ol style="color: #212529;" data-lang="es">
+                <li>Obtener un token JWT: <code>POST /api/auth/login</code> con <code>{ "email", "password" }</code>.</li>
+                <li>Tomar el token de la respuesta en <code>response.data.token</code> (importante: el token está dentro de <code>data.token</code>, no en el nivel superior).</li>
+                <li>Llamar endpoints protegidos agregando el header: <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+                <li>Al crear órdenes, proporcionar los campos de dirección requeridos y un <code>numero_orden</code> único, y asegurar que el producto tenga stock suficiente.</li>
+            </ol>
 
-            <h4>Example: get token (curl)</h4>
+            <h4 data-lang="en">Example: get token (curl)</h4>
+            <h4 data-lang="es">Ejemplo: obtener token (curl)</h4>
             <div class="code-block">curl -s -X POST "{API_BASE_URL}/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"user@example.com","password":"<REPLACE_WITH_PASSWORD>"}'</div>
 
-            <h4>Login response (important)</h4>
+            <h4 data-lang="en">Login response (important)</h4>
+            <h4 data-lang="es">Respuesta login (importante)</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Login exitoso",
@@ -157,55 +353,82 @@
 }
 </code></pre>
 
-            <p>Note: always use the token value located at <code>data.token</code> when setting the <code>Authorization</code> header.</p>
+            <p data-lang="en">Note: always use the token value located at <code>data.token</code> when setting the <code>Authorization</code> header.</p>
+            <p data-lang="es">Nota: siempre usa el valor del token ubicado en <code>data.token</code> al configurar el header <code>Authorization</code>.</p>
         </div>
+            </div>
+            <!-- End Tab: General -->
 
-        <!-- Authentication (detailed table + examples) -->
+            <!-- Tab: Authentication -->
+            <div class="tab-pane fade" id="auth" role="tabpanel">
         <div class="section-container" style="color: #212529;">
-            <h2 class="section-title">Authentication (Login)</h2>
-            <p>Obtain a JWT token. NOTE: the HTTP response envelope is <code>{ success, message, data: { token } }</code>.</p>
+            <h2 class="section-title" data-lang="en">Authentication (Login)</h2>
+            <h2 class="section-title" data-lang="es">Autenticación (Login)</h2>
+            <p data-lang="en">Obtain a JWT token. NOTE: the HTTP response envelope is <code>{ success, message, data: { token } }</code>.</p>
+            <p data-lang="es">Obtener un token JWT. NOTA: el sobre de respuesta HTTP es <code>{ success, message, data: { token } }</code>.</p>
 
-            <h4>Endpoint</h4>
+            <h4 data-lang="en">Endpoint</h4>
+            <h4 data-lang="es">Endpoint</h4>
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/auth/login</div>
 
-            <h4>Request body (JSON)</h4>
-            <table class="table table-sm table-bordered">
+            <h4 data-lang="en">Request body (JSON)</h4>
+            <h4 data-lang="es">Cuerpo de la petición (JSON)</h4>
+            <table class="table table-sm table-bordered" data-lang="en">
                 <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
                 <tbody>
                     <tr><td><code>email</code></td><td>string (email)</td><td>yes</td><td>User email</td></tr>
                     <tr><td><code>password</code></td><td>string</td><td>yes</td><td>User password</td></tr>
                 </tbody>
             </table>
+            <table class="table table-sm table-bordered" data-lang="es">
+                <thead class="table-light"><tr><th>Campo</th><th>Tipo</th><th>Requerido</th><th>Descripción</th></tr></thead>
+                <tbody>
+                    <tr><td><code>email</code></td><td>string (email)</td><td>sí</td><td>Email del usuario</td></tr>
+                    <tr><td><code>password</code></td><td>string</td><td>sí</td><td>Contraseña del usuario</td></tr>
+                </tbody>
+            </table>
 
-            <h4>Example request</h4>
+            <h4 data-lang="en">Example request</h4>
+            <h4 data-lang="es">Petición de ejemplo</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "email": "admin@example.com",
     "password": "123456"
 }</code></pre>
 
-            <h4>Success response (200)</h4>
+            <h4 data-lang="en">Success response (200)</h4>
+            <h4 data-lang="es">Respuesta exitosa (200)</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Login exitoso",
     "data": { "token": "&lt;JWT_TOKEN&gt;" }
 }</code></pre>
 
-            <h4>Usage</h4>
+            <h4 data-lang="en">Usage</h4>
+            <h4 data-lang="es">Uso</h4>
             <div class="code-block">Authorization: Bearer &lt;JWT_TOKEN from response.data.token&gt;</div>
-            <p style="color:#6c757d;font-size:0.9rem;">Security note: never embed real credentials or long-lived tokens in public documentation or examples. Use placeholders and environment variables when running commands.</p>
+            <p style="color:#6c757d;font-size:0.9rem;" data-lang="en">Security note: never embed real credentials or long-lived tokens in public documentation or examples. Use placeholders and environment variables when running commands.</p>
+            <p style="color:#6c757d;font-size:0.9rem;" data-lang="es">Nota de seguridad: nunca incluyas credenciales reales o tokens de larga duración en documentación pública o ejemplos. Usa placeholders y variables de entorno al ejecutar comandos.</p>
         </div>
+            </div>
+            <!-- End Tab: Authentication -->
 
-        <!-- Geographic & Reference Data (GeoInfo) -->
+            <!-- Tab: Geographic Data -->
+            <div class="tab-pane fade" id="geo" role="tabpanel">
         <div class="section-container">
-            <h2 class="section-title">Geographic & Reference Data (GeoInfo)</h2>
-            <p>Endpoint to retrieve reference lists used by the front-end selects: countries, departments, municipalities, neighborhoods and currencies.</p>
+            <h2 class="section-title" data-lang="en">Geographic & Reference Data (GeoInfo)</h2>
+            <h2 class="section-title" data-lang="es">Datos Geográficos y de Referencia (GeoInfo)</h2>
+            <p data-lang="en">Endpoint to retrieve reference lists used by the front-end selects: countries, departments, municipalities, neighborhoods and currencies.</p>
+            <p data-lang="es">Endpoint para obtener listas de referencia usadas por los selectores del front-end: países, departamentos, municipios, barrios y monedas.</p>
 
-            <h4>Endpoint</h4>
+            <h4 data-lang="en">Endpoint</h4>
+            <h4 data-lang="es">Endpoint</h4>
             <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/listar</div>
 
-            <p>Returns an object <code>data</code> containing arrays for <code>paises</code> (countries), <code>departamentos</code> (departments), <code>municipios</code> (municipalities), <code>barrios</code> (neighborhoods) and <code>monedas</code> (currencies). Useful to initialize forms and dependent selects.</p>
+            <p data-lang="en">Returns an object <code>data</code> containing arrays for <code>paises</code> (countries), <code>departamentos</code> (departments), <code>municipios</code> (municipalities), <code>barrios</code> (neighborhoods) and <code>monedas</code> (currencies). Useful to initialize forms and dependent selects.</p>
+            <p data-lang="es">Retorna un objeto <code>data</code> con arrays para <code>paises</code> (países), <code>departamentos</code>, <code>municipios</code>, <code>barrios</code> y <code>monedas</code>. Útil para inicializar formularios y selectores dependientes.</p>
 
-            <h4>Response example</h4>
+            <h4 data-lang="en">Response example</h4>
+            <h4 data-lang="es">Ejemplo de respuesta</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "GeoInfo listed",
@@ -222,10 +445,13 @@
 
         <!-- Geographic Data Management (CRUD) -->
         <div class="section-container">
-            <h2 class="section-title">Geographic Data Management (CRUD)</h2>
-            <p>Endpoints to manage Paises, Departamentos, Municipios, and Barrios. All endpoints support GET, POST, PUT, DELETE.</p>
+            <h2 class="section-title" data-lang="en">Geographic Data Management (CRUD)</h2>
+            <h2 class="section-title" data-lang="es">Gestión de Datos Geográficos (CRUD)</h2>
+            <p data-lang="en">Endpoints to manage Paises, Departamentos, Municipios, and Barrios. All endpoints support GET, POST, PUT, DELETE.</p>
+            <p data-lang="es">Endpoints para gestionar Países, Departamentos, Municipios y Barrios. Todos soportan GET, POST, PUT, DELETE.</p>
 
-            <h4>Paises</h4>
+            <h4 data-lang="en">Countries (Paises)</h4>
+            <h4 data-lang="es">Países</h4>
             <div class="code-block"><span class="badge-endpoint">GET</span> /api/geoinfo/paises?id={id} (optional)</div>
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/geoinfo/paises</div>
             <div class="code-block"><span class="badge-endpoint">PUT</span> /api/geoinfo/paises?id={id}</div>
@@ -295,17 +521,26 @@
     "tasa_usd": 1.0
 }</code></pre>
         </div>
+            </div>
+            <!-- End Tab: Geographic Data -->
 
-        <!-- Products: detailed -->
+            <!-- Tab: Products -->
+            <div class="tab-pane fade" id="products" role="tabpanel">
         <div class="section-container">
-            <h2 class="section-title">Products (CRUD)</h2>
-            <p>Manage products. Mutating endpoints require a valid <code>Authorization</code> header.</p>
+            <h2 class="section-title" data-lang="en">Products (CRUD)</h2>
+            <h2 class="section-title" data-lang="es">Productos (CRUD)</h2>
+            <p data-lang="en">Manage products. Mutating endpoints require a valid <code>Authorization</code> header.</p>
+            <p data-lang="es">Gestionar productos. Los endpoints de modificación requieren un header <code>Authorization</code> válido.</p>
 
-            <h4>List products</h4>
+            <h4 data-lang="en">List products</h4>
+            <h4 data-lang="es">Listar productos</h4>
             <div class="code-block"><span class="badge-endpoint">GET</span> /api/productos/listar</div>
-            <p>Returns a list of products with aggregated stock (field <code>stock_total</code>).</p>
-            <p>Optional query parameter: <code>include_stock=1</code> — when set, the response includes a <code>stock_entries</code> array for each product with recent stock movements (fields: <code>id</code>, <code>id_producto</code>, <code>id_usuario</code>, <code>cantidad</code>, <code>updated_at</code>).</p>
-            <h4>Response (200)</h4>
+            <p data-lang="en">Returns a list of products with aggregated stock (field <code>stock_total</code>).</p>
+            <p data-lang="es">Retorna una lista de productos con stock agregado (campo <code>stock_total</code>).</p>
+            <p data-lang="en">Optional query parameter: <code>include_stock=1</code> — when set, the response includes a <code>stock_entries</code> array for each product with recent stock movements (fields: <code>id</code>, <code>id_producto</code>, <code>id_usuario</code>, <code>cantidad</code>, <code>updated_at</code>).</p>
+            <p data-lang="es">Parámetro opcional: <code>include_stock=1</code> — cuando se activa, la respuesta incluye un array <code>stock_entries</code> por producto con movimientos recientes (campos: <code>id</code>, <code>id_producto</code>, <code>id_usuario</code>, <code>cantidad</code>, <code>updated_at</code>).</p>
+            <h4 data-lang="en">Response (200)</h4>
+            <h4 data-lang="es">Respuesta (200)</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "data": [
@@ -314,7 +549,8 @@
     ]
 }</code></pre>
 
-            <h5>Response with include_stock=1 (example)</h5>
+            <h5 data-lang="en">Response with include_stock=1 (example)</h5>
+            <h5 data-lang="es">Respuesta con include_stock=1 (ejemplo)</h5>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "data": [
@@ -332,7 +568,8 @@
 }
 </code></pre>
 
-            <h4>Create product</h4>
+            <h4 data-lang="en">Create product</h4>
+            <h4 data-lang="es">Crear producto</h4>
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/productos/crear</div>
             <table class="table table-sm table-bordered">
                 <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr></thead>
@@ -343,33 +580,44 @@
                     <tr><td><code>stock</code></td><td>integer</td><td>no</td><td>Optional initial stock quantity — when provided the API inserts a stock movement for the authenticated user (or uses FALLBACK_USER_FOR_STOCK if configured).</td></tr>
                 </tbody>
             </table>
-            <h4>Example create request</h4>
+            <h4 data-lang="en">Example create request</h4>
+            <h4 data-lang="es">Petición de creación ejemplo</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "nombre": "Producto X",
     "descripcion": "Descripción opcional",
     "precio_usd": 9.5,
     "stock": 12
 }</code></pre>
-            <h4>Success response</h4>
+            <h4 data-lang="en">Success response</h4>
+            <h4 data-lang="es">Respuesta exitosa</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Producto creado correctamente.",
     "data": { "id": 42, "stock_inserted": 99 }
 }</code></pre>
         </div>
+            </div>
+            <!-- End Tab: Products -->
 
-        <!-- Orders: detailed -->
+            <!-- Tab: Orders -->
+            <div class="tab-pane fade" id="orders" role="tabpanel">
         <div class="section-container">
-            <h2 class="section-title">Orders</h2>
-            <p>Endpoints to create, search and list orders. The server stores coordinates as a POINT; for API requests provide coordinates as <code>"lat,long"</code> or as numeric <code>latitud</code> and <code>longitud</code> fields.</p>
+            <h2 class="section-title" data-lang="en">Orders</h2>
+            <h2 class="section-title" data-lang="es">Órdenes (Pedidos)</h2>
+            <p data-lang="en">Endpoints to create, search and list orders. The server stores coordinates as a POINT; for API requests provide coordinates as <code>"lat,long"</code> or as numeric <code>latitud</code> and <code>longitud</code> fields.</p>
+            <p data-lang="es">Endpoints para crear, buscar y listar órdenes. El servidor guarda coordenadas como POINT; en peticiones API proporciona coordenadas como <code>"lat,long"</code> o como campos numéricos <code>latitud</code> y <code>longitud</code>.</p>
 
-            <h4>Search order by numero_orden</h4>
+            <h4 data-lang="en">Search order by numero_orden</h4>
+            <h4 data-lang="es">Buscar orden por numero_orden</h4>
             <div class="code-block"><span class="badge-endpoint">GET</span> /api/pedidos/buscar?numero_orden=&lt;NUMBER&gt;</div>
-            <p>Requires Authorization header: <code>Authorization: Bearer &lt;token&gt;</code>. Returns the order data (latitud/longitud as numbers) when found.</p>
-            <h5>Example (curl)</h5>
+            <p data-lang="en">Requires Authorization header: <code>Authorization: Bearer &lt;token&gt;</code>. Returns the order data (latitud/longitud as numbers) when found.</p>
+            <p data-lang="es">Requiere header de autorización: <code>Authorization: Bearer &lt;token&gt;</code>. Retorna los datos de la orden (latitud/longitud como números) cuando se encuentra.</p>
+            <h5 data-lang="en">Example (curl)</h5>
+            <h5 data-lang="es">Ejemplo (curl)</h5>
             <div class="code-block">curl -s "{API_BASE_URL}/api/pedidos/buscar?numero_orden=90001" \
   -H "Authorization: Bearer &lt;JWT_TOKEN&gt;"</div>
-                        <h5>Success response (200)</h5>
+                        <h5 data-lang="en">Success response (200)</h5>
+                        <h5 data-lang="es">Respuesta exitosa (200)</h5>
                         <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "message": "Order found",
@@ -386,10 +634,12 @@
 
             <hr />
 
-            <h4>Create order</h4>
+            <h4 data-lang="en">Create order</h4>
+            <h4 data-lang="es">Crear orden</h4>
             <div class="code-block"><span class="badge-endpoint">POST</span> /api/pedidos/crear</div>
 
-            <h4>Important notes</h4>
+            <h4 data-lang="en">Important notes</h4>
+            <h4 data-lang="es">Notas importantes</h4>
             <ul style="color: #212529;">
                 <li>The API response envelope is <code>{ success, message, data }</code>.</li>
                 <li>Fields <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> are stored in <code>pedidos</code> and have foreign key constraints — they must reference existing rows.</li>
@@ -397,7 +647,8 @@
                 <li>Stock validation: the system checks stock (via DB triggers and application checks). If stock is insufficient the request will fail with an error message.</li>
             </ul>
 
-            <h4>Request fields (common)</h4>
+            <h4 data-lang="en">Request fields (common)</h4>
+            <h4 data-lang="es">Campos de petición (comunes)</h4>
             <p>Below are the main fields related to the <code>pedidos</code> table and how to pass them in the JSON payload when creating an order. Fields generated by the server (like <code>id</code> and <code>fecha_ingreso</code>) should not be supplied.</p>
             <table class="table table-sm table-bordered">
                 <thead class="table-light"><tr><th>Field</th><th>Type</th><th>Required</th><th>Description / how to provide it</th></tr></thead>
@@ -425,7 +676,8 @@
                 </tbody>
             </table>
 
-                        <h4>Example create request (single product)</h4>
+                        <h4 data-lang="en">Example create request (single product)</h4>
+                        <h4 data-lang="es">Petición de creación ejemplo (un producto)</h4>
                         <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 90001,
     "destinatario": "Cliente Prueba",
@@ -447,7 +699,8 @@
     "comentario": "Entrega en horario de oficina"
 }</code></pre>
 
-            <h4>Example create request (multiple products)</h4>
+            <h4 data-lang="en">Example create request (multiple products)</h4>
+            <h4 data-lang="es">Petición de creación ejemplo (múltiples productos)</h4>
             <p>Provide product IDs in the <code>productos</code> array. Each item must include <code>producto_id</code> (integer) and <code>cantidad</code> (int).</p>
         <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 90002,
@@ -522,27 +775,82 @@
 }</code></pre>
         </div>
 
-        <!-- Bulk orders documentation (ENGLISH) -->
         <div class="section-container">
-            <h2 class="section-title">Bulk Orders (Import multiple orders)</h2>
-            <p>Creates multiple orders in a single request from a JSON payload. This endpoint is intended for integrations and batch imports (for example, converting CSV to JSON before sending). The endpoint accepts a top-level JSON object with a <code>pedidos</code> array. Each element must follow the same order structure used by <code>/api/pedidos/crear</code>.</p>
+            <h2 class="section-title" data-lang="en">Troubleshooting & tips</h2>
+            <h2 class="section-title" data-lang="es">Solución de problemas y consejos</h2>
+            <ul style="color: #212529;">
+                <li>If you get FK errors when creating orders, check that <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> exist in their respective tables.</li>
+                <li>To create a product and give it stock (dev): create product via <code>/api/productos/crear</code>, then use the stock UI or insert into <code>stock</code> table.</li>
+                <li>Coordinates must be provided; the API will reject requests missing valid coordinates.</li>
+                <li>Address fields required: the API validates <code>pais</code>, <code>departamento</code> and <code>municipio</code>. If any are missing you will receive a validation error listing the missing fields.</li>
+                <li><strong>numero_orden</strong> must be unique. If you get <em>"El número de orden ya existe"</em>, use a different number.</li>
+                <li>If you receive <em>"Stock insuficiente"</em> for a product, either increase stock for that product (via stock creation) or reduce the requested <code>cantidad</code>.</li>
+            </ul>
+        </div>
+            </div>
+            <!-- End Tab: Orders -->
 
-            <h4>Endpoint</h4>
-            <div class="code-block"><span class="badge-endpoint">POST</span> /api/pedidos/multiple</div>
+            <!-- Tab: Workers -->
+            <div class="tab-pane fade" id="workers" role="tabpanel">
+        <div class="section-container">
+            <h2 class="section-title" data-lang="en">🤖 Automated Background Processing</h2>
+            <h2 class="section-title" data-lang="es">🤖 Procesamiento Automático en Segundo Plano</h2>
+            <p data-lang="en">When you create orders, certain tasks are automatically processed in the background to improve data quality and streamline operations. These tasks run asynchronously without blocking your API requests.</p>
+            <p data-lang="es">Cuando creas órdenes, ciertas tareas se procesan automáticamente en segundo plano para mejorar la calidad de los datos y optimizar operaciones. Estas tareas se ejecutan asíncronamente sin bloquear tus peticiones API.</p>
 
-            <h4>Request body (JSON)</h4>
-            <p>Send a JSON object with a <code>pedidos</code> array. Each order must include <code>numero_orden</code>, recipient details and at least one product in the <code>productos</code> array. Coordinates may be provided as a string <code>"lat,long"</code> or as numeric fields <code>latitud</code> and <code>longitud</code>.</p>
+            <h4 data-lang="en">✨ What Happens Automatically</h4>
+            <h4 data-lang="es">✨ Qué Sucede Automáticamente</h4>
+            <ul style="color: #212529;" data-lang="en">
+                <li><strong>Address Validation</strong> — Delivery addresses are validated and normalized for accuracy</li>
+                <li><strong>Automatic Retries</strong> — Failed validations are retried automatically (up to 5 attempts)</li>
+                <li><strong>Non-blocking</strong> — Your API calls return immediately; processing happens in background</li>
+            </ul>
+            <ul style="color: #212529;" data-lang="es">
+                <li><strong>Validación de Direcciones</strong> — Las direcciones de entrega se validan y normalizan para mayor precisión</li>
+                <li><strong>Reintentos Automáticos</strong> — Las validaciones fallidas se reintentan automáticamente (hasta 5 intentos)</li>
+                <li><strong>No Bloqueante</strong> — Tus llamadas API retornan inmediatamente; el procesamiento ocurre en segundo plano</li>
+            </ul>
+        </div>
 
-            <h4>Example request (batch of 5 orders)</h4>
+        <!-- Bulk Orders with Auto-Enqueue -->
+        <div class="section-container">
+            <h2 class="section-title" data-lang="en">📦 Bulk Import with Automatic Validation</h2>
+            <h2 class="section-title" data-lang="es">📦 Importación Masiva con Validación Automática</h2>
+            <p data-lang="en">Import multiple orders in a single request and automatically validate all addresses. Perfect for CSV/Excel imports.</p>
+            <p data-lang="es">Importa múltiples órdenes en una sola petición y valida automáticamente todas las direcciones. Perfecto para importaciones CSV/Excel.</p>
+
+            <div class="alert alert-info mt-3" role="alert">
+                <strong data-lang="en">Permissions:</strong> <span data-lang="en">Administrators and Providers.</span>
+                <strong data-lang="es">Permisos:</strong> <span data-lang="es">Administradores y Proveedores.</span>
+            </div>
+
+            <ul class="mb-3" data-lang="en">
+                <li><strong>Auto-Provider ID:</strong> Authentication token automatically determines the provider (works if Role is "Proveedor" or ID 4).</li>
+                <li><strong>Auto-Pricing (USD):</strong> The system looks up product list prices and calculates the total automatically (`precio_usd`).</li>
+            </ul>
+            <ul class="mb-3" data-lang="es">
+                <li><strong>Auto-ID Proveedor:</strong> El token de autenticación determina automáticamente al proveedor (funciona si el Rol es "Proveedor" o ID 4).</li>
+                <li><strong>Auto-Precio (USD):</strong> El sistema busca los precios de lista y calcula el total automáticamente (`precio_usd`).</li>
+            </ul>
+
+            <h4 data-lang="en">Endpoint</h4>
+            <h4 data-lang="es">Endpoint</h4>
+            <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/pedidos/multiple?auto_enqueue=true</div>
+            
+            <h5 data-lang="en">Parameter: <code>auto_enqueue=true</code></h5>
+            <h5 data-lang="es">Parámetro: <code>auto_enqueue=true</code></h5>
+            <p data-lang="en">Enables automatic address validation for all successfully created orders.</p>
+            <p data-lang="es">Habilita la validación automática de dirección para todas las órdenes creadas exitosamente.</p>
+
+            <h4 data-lang="en">Request Example</h4>
+            <h4 data-lang="es">Ejemplo de Petición</h4>
             <pre class="code-block line-numbers"><code class="language-json">{
     "pedidos": [
         {
             "numero_orden": 1001,
             "destinatario": "Customer One",
             "telefono": "12345678",
-            "productos": [
-                { "producto_id": 1, "cantidad": 2 }
-            ],
+            "productos": [{ "producto_id": 1, "cantidad": 2 }],
             "coordenadas": "-34.500000,-58.400000",
             "direccion": "Street 1 #123",
             "id_pais": 1,
@@ -561,81 +869,119 @@
             "direccion": "Evergreen Ave 742",
             "id_pais": 1,
             "id_departamento": 2
-        },
-        {
-            "numero_orden": 1003,
-            "destinatario": "Customer Three",
-            "telefono": "55512345",
-            "productos": [
-                { "producto_id": 1, "cantidad": 1 }
-            ],
-            "coordenadas": "-34.510000,-58.410000",
-            "direccion": "Street 3 #45",
-            "id_pais": 1,
-            "id_departamento": 2
-        },
-        {
-            "numero_orden": 1004,
-            "destinatario": "Customer Four",
-            "telefono": "60070080",
-            "productos": [
-                { "producto_id": 4, "cantidad": 1 }
-            ],
-            "latitud": -34.520000,
-            "longitud": -58.420000,
-            "direccion": "Boulevard 9",
-            "id_pais": 1,
-            "id_departamento": 2
-        },
-        {
-            "numero_orden": 1005,
-            "destinatario": "Customer Five",
-            "telefono": "70080090",
-            "productos": [
-                { "producto_id": 2, "cantidad": 2 }
-            ],
-            "coordenadas": "-34.530000,-58.430000",
-            "direccion": "Route 5",
-            "id_pais": 1,
-            "id_departamento": 2
         }
     ]
 }</code></pre>
 
-            <h4>Response format</h4>
-            <p>The endpoint returns a JSON object with a <code>results</code> array. Each item corresponds to one submitted order and contains <code>numero_orden</code>, <code>success</code> (boolean) and either <code>id_pedido</code> when the insertion succeeded or <code>error</code> with a message describing why that particular order failed. Processing continues for remaining orders even if some fail.</p>
-
-            <h4>Example response (success + errors)</h4>
+            <h4 data-lang="en">Response Format</h4>
+            <h4 data-lang="es">Formato de Respuesta</h4>
+            <p data-lang="en">Each successful order includes <code>job_queued: true</code> indicating the validation was scheduled.</p>
+            <p data-lang="es">Cada orden exitosa incluye <code>job_queued: true</code> indicando que la validación fue programada.</p>
             <pre class="code-block line-numbers"><code class="language-json">{
     "results": [
-        { "numero_orden": 1001, "success": true, "id_pedido": 201 },
-        { "numero_orden": 1002, "success": false, "error": "Insufficient stock for product ID 2" },
-        { "numero_orden": 1003, "success": true, "id_pedido": 203 },
-        { "numero_orden": 1004, "success": true, "id_pedido": 204 },
-        { "numero_orden": 1005, "success": true, "id_pedido": 205 }
+        { 
+            "numero_orden": 1001, 
+            "success": true, 
+            "id_pedido": 201, 
+            "job_queued": true 
+        },
+        { 
+            "numero_orden": 1002, 
+            "success": true, 
+            "id_pedido": 202, 
+            "job_queued": true 
+        }
     ]
 }</code></pre>
 
-            <h4>Example (curl)</h4>
-            <div class="code-block">curl -s -X POST "{API_BASE_URL}/api/pedidos/multiple" \
+            <h4 data-lang="en">cURL Example</h4>
+            <h4 data-lang="es">Ejemplo cURL</h4>
+            <div class="code-block">curl -X POST "{API_BASE_URL}/api/pedidos/multiple?auto_enqueue=true" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer &lt;JWT_TOKEN&gt;" \
-  -d '@pedidos_batch.json'
+  -d @pedidos_batch.json</div>
+
+            <!-- Check Job Status Section -->
+            <div style="margin-top: 3rem;">
+                <h4 data-lang="en">Check Job Status</h4>
+                <h4 data-lang="es">Verificar Estado de Trabajos</h4>
+                <p data-lang="en">Query the current processing status of background jobs. Provide an order number for details, or leave empty for a <strong>Dashboard Summary</strong>.</p>
+                <p data-lang="es">Consulta el estado actual de procesamiento. Proporciona un número de orden para detalles, o deja vacío para obtener un <strong>Resumen General</strong>.</p>
+
+                <h5 data-lang="en">Endpoint</h5>
+                <h5 data-lang="es">Endpoint</h5>
+                <div class="code-block"><span class="badge-endpoint">GET</span> /api/pedidos/status <span class="badge-tag">Dashboard Mode</span></div>
+                <div class="code-block"><span class="badge-endpoint">GET</span> /api/pedidos/status?numero_orden={number}</div>
+                <div class="code-block"><span class="badge-endpoint">GET</span> /api/pedidos/status?numeros_orden={1001,1002,1003}</div>
+
+                <h5 data-lang="en">Response Example (Dashboard Summary)</h5>
+                <h5 data-lang="es">Ejemplo de Respuesta (Resumen General)</h5>
+                <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "mode": "provider_dashboard",
+    "summary": {
+        "total": 100,
+        "pending": 0,
+        "processing": 5,
+        "completed": 90,
+        "failed": 5
+    },
+    "recent_failures": [
+        {
+            "numero_orden": 1005,
+            "job_type": "validar_direccion",
+            "last_error": "Address not found",
+            "updated_at": "2023-10-27 10:35:00"
+        }
+    ]
+}</code></pre>
+
+                <h5 data-lang="en">Response Example (Single)</h5>
+                <h5 data-lang="es">Ejemplo de Respuesta (Individual)</h5>
+                <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "numero_orden": "1001",
+    "has_jobs": true,
+    "jobs": [
+        {
+            "job_type": "validar_direccion",
+            "status": "completed",
+            "attempts": 1,
+            "created_at": "2023-10-27 10:30:00",
+            "updated_at": "2023-10-27 10:30:05",
+            "error": null
+        }
+    ]
+}</code></pre>
+
+                <h5 data-lang="en">Response Example (Batch)</h5>
+                <h5 data-lang="es">Ejemplo de Respuesta (Lote)</h5>
+                <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "results": [
+        {
+            "numero_orden": "1001",
+            "found": true,
+            "jobs": [{ "job_type": "validar_direccion", "status": "completed" }]
+        },
+        {
+            "numero_orden": "1002",
+            "found": true,
+            "jobs": [{ "job_type": "validar_direccion", "status": "processing" }]
+        }
+    ]
+}</code></pre>
             </div>
 
-            <p>Save the example payload to <code>pedidos_batch.json</code> locally and use the curl command above. The server returns HTTP 200 with the per-order <code>results</code> array when the top-level JSON is valid. If the JSON is malformed the API returns HTTP 400.</p>
+            <div style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-left: 4px solid #667eea; border-radius: 4px;">
+                <p style="margin: 0; color: #212529;" data-lang="en"><strong>💡 For System Administrators:</strong> Advanced worker configuration (CLI, cron, systemd, monitoring) is available in <code>cli/README_LOGISTICS_WORKER.md</code></p>
+                <p style="margin: 0; color: #212529;" data-lang="es"><strong>💡 Para Administradores del Sistema:</strong> La configuración avanzada del worker (CLI, cron, systemd, monitoreo) está disponible en <code>cli/README_LOGISTICS_WORKER.md</code></p>
+            </div>
         </div>
-        <div class="section-container">
-            <h2 class="section-title">Troubleshooting & tips</h2>
-            <ul style="color: #212529;">
-                <li>If you get FK errors when creating orders, check that <code>id_moneda</code>, <code>id_vendedor</code> and <code>id_proveedor</code> exist in their respective tables.</li>
-                <li>To create a product and give it stock (dev): create product via <code>/api/productos/crear</code>, then use the stock UI or insert into <code>stock</code> table.</li>
-                <li>Coordinates must be provided; the API will reject requests missing valid coordinates.</li>
-                <li>Address fields required: the API validates <code>pais</code>, <code>departamento</code> and <code>municipio</code>. If any are missing you will receive a validation error listing the missing fields.</li>
-                <li><strong>numero_orden</strong> must be unique. If you get <em>"El número de orden ya existe"</em>, use a different number.</li>
-                <li>If you receive <em>"Stock insuficiente"</em> for a product, either increase stock for that product (via stock creation) or reduce the requested <code>cantidad</code>.</li>
-            </ul>
+            </div>
+            <!-- End Tab: Workers -->
         </div>
+        <!-- End Tab Content -->
     </div>
 
     <footer>
@@ -652,8 +998,30 @@
     <!-- Prism.js for JSON syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
     <!-- Prism line numbers plugin -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/line-numbers/prism-line-numbers.min.js"></script>
+
+    <!-- Language Toggle Script -->
+    <script>
+        function setLanguage(lang) {
+            // Update body class
+            document.body.className = 'lang-' + lang;
+            
+            // Update button states
+            document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+            document.getElementById('lang-es').classList.toggle('active', lang === 'es');
+            
+            // Save preference
+            localStorage.setItem('logistics-docs-lang', lang);
+        }
+
+        // Load saved language preference on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedLang = localStorage.getItem('logistics-docs-lang') || 'en';
+            setLanguage(savedLang);
+        });
+    </script>
 </body>
 
 </html>
