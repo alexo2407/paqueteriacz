@@ -85,6 +85,10 @@ if (preg_match('/\/api\/pedidos\/multiple$/', $path) && $method === 'POST') {
     require_once __DIR__ . '/pedidos/multiple.php';
     exit;
 }
+if (preg_match('/\/api\/pedidos\/status$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/pedidos/status.php';
+    exit;
+}
 
 // Rutas de Geoinfo
 if (preg_match('/\/api\/geoinfo\/paises$/', $path)) {

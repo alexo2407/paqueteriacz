@@ -267,12 +267,18 @@ if ($producto) {
                                     $isEntrada = $cantidad > 0;
                                     $tipoClass = $isEntrada ? 'badge-entrada' : 'badge-salida';
                                     if ($mov['tipo_movimiento'] === 'ajuste') $tipoClass = 'badge-ajuste';
+                                    
+                                    // Corregir etiqueta visual si la base de datos dice ENTRADA pero es negativo
+                                    $textoMostrar = $mov['tipo_movimiento'];
+                                    if (!$isEntrada && strtoupper($textoMostrar) === 'ENTRADA') {
+                                        $textoMostrar = 'SALIDA';
+                                    }
                                 ?>
                                 <tr>
                                     <td class="ps-4 text-nowrap"><?php echo date('d/m/Y H:i', strtotime($mov['fecha'])); ?></td>
                                     <td>
                                         <span class="badge-mov <?php echo $tipoClass; ?> text-uppercase">
-                                            <?php echo htmlspecialchars($mov['tipo_movimiento']); ?>
+                                            <?php echo htmlspecialchars($textoMostrar); ?>
                                         </span>
                                     </td>
                                     <td>

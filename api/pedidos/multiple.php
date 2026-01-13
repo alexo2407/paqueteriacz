@@ -37,7 +37,10 @@ if (!$validacion['success']) {
 }
 
 // Delegar todo el trabajo de lectura/validación/inserción al controlador
+$userId = $validacion['data']['id'] ?? 0;
+$userRole = $validacion['data']['rol'] ?? '';
+
 $controller = new PedidosController();
-$controller->createMultiple();
+$controller->createMultiple($userId, $userRole);
 
 ?>
