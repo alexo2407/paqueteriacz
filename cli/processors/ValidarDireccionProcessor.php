@@ -41,7 +41,7 @@ class ValidarDireccionProcessor extends BaseProcessor {
         
         try {
             // Obtener dirección del pedido
-            $direccion = $pedido['direccion'] ?? null;
+            $direccion = isset($pedido['direccion']) ? $pedido['direccion'] : null;
             if (empty($direccion)) {
                 return [
                     'success' => false,

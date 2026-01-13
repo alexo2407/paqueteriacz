@@ -41,7 +41,7 @@ class NotificarEstadoProcessor extends BaseProcessor {
         
         try {
             $estadoNuevo = $payload['estado_nuevo'];
-           $estadoAnterior = $payload['estado_anterior'] ?? null;
+           $estadoAnterior = isset($payload['estado_anterior']) ? $payload['estado_anterior'] : null;
             
             $this->log($job['id'], "Cambio de estado: {$estadoAnterior} -> {$estadoNuevo}");
             

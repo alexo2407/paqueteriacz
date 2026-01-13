@@ -33,7 +33,7 @@ abstract class BaseProcessor {
         }
         
         // Decodificar payload
-        $payload = json_decode($job['payload'] ?? '{}', true);
+        $payload = json_decode(isset($job['payload']) ? $job['payload'] : '{}', true);
         if (!is_array($payload)) {
             return [
                 'valid' => false,

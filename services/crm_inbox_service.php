@@ -82,7 +82,7 @@ class CrmInboxService {
     private static function procesarLeadDeProveedor($mensaje, $payload) {
         try {
             // Extraer proveedor_id del payload
-            $proveedorId = $payload['proveedor_id'] ?? null;
+            $proveedorId = isset($payload['proveedor_id']) ? $payload['proveedor_id'] : null;
             if (!$proveedorId) {
                 return ['success' => false, 'message' => 'proveedor_id faltante en payload'];
             }
@@ -119,7 +119,7 @@ class CrmInboxService {
         }
         
         // Crear notificación interna para el cliente (si está asignado)
-        $clienteId = $leadData['cliente_id'] ?? null;
+        $clienteId = isset($leadData['cliente_id']) ? $leadData['cliente_id'] : null;
         if ($clienteId) {
             // Notificar al cliente sobre el nuevo lead
             CrmNotificationModel::agregar(
@@ -129,10 +129,10 @@ class CrmInboxService {
                 [
                     'lead_id' => $resultado['lead_id'],
                     'proveedor_lead_id' => $leadData['proveedor_lead_id'],
-                    'nombre' => $leadData['nombre'] ?? null,
-                    'telefono' => $leadData['telefono'] ?? null,
-                    'producto' => $leadData['producto'] ?? null,
-                    'precio' => $leadData['precio'] ?? null,
+                    'nombre' => isset($leadData['nombre']) ? $leadData['nombre'] : null,
+                    'telefono' => isset($leadData['telefono']) ? $leadData['telefono'] : null,
+                    'producto' => isset($leadData['producto']) ? $leadData['producto'] : null,
+                    'precio' => isset($leadData['precio']) ? $leadData['precio'] : null,
                     'fecha_hora' => $leadData['fecha_hora']
                 ]
             );

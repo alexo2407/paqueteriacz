@@ -19,7 +19,7 @@ require_once __DIR__ . '/../services/crm_inbox_service.php';
 
 // Configuración
 $pollInterval = 3; // Segundos entre polls
-$mode = $argv[1] ?? '--loop';
+$mode = isset($argv[1]) ? $argv[1] : '--loop';
 
 /**
  * Procesa una iteración del worker.

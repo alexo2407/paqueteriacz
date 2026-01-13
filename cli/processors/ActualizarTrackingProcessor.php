@@ -117,7 +117,7 @@ class ActualizarTrackingProcessor extends BaseProcessor {
         // Por ahora, simulamos una respuesta
         // En producción, aquí se haría la llamada real a la API
         
-        $paqueteria = $payload['paqueteria'] ?? 'generic';
+        $paqueteria = isset($payload['paqueteria']) ? $payload['paqueteria'] : 'generic';
         
         // Simular diferentes estados basados en el número de guía
         $estados = ['en_transito', 'en_distribucion', 'entregado', 'pendiente'];
