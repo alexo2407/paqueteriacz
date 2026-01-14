@@ -16,6 +16,13 @@ echo "[" . date('Y-m-d H:i:s') . "] CRM Bulk Jobs Worker iniciado\n";
 
 // Loop infinito para procesar jobs
 while (true) {
+    // Update heartbeat
+    $heartbeatFile = __DIR__ . '/../logs/crm_bulk_worker.heartbeat';
+    if (!file_exists(dirname($heartbeatFile))) {
+        mkdir(dirname($heartbeatFile), 0755, true);
+    }
+    touch($heartbeatFile);
+
     try {
         processPendingJobs();
         sleep(2); // Esperar 2 segundos antes de verificar nuevos jobs

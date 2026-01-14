@@ -21,6 +21,33 @@ include("vista/includes/header.php");
         </a>
     </div>
 
+    <!-- Estado de Workers -->
+    <div class="row g-3 mb-4">
+        <?php foreach ($datos['worker_status'] as $name => $status): ?>
+        <div class="col-md-4">
+            <div class="card <?= $status['status'] === 'running' ? 'border-success' : 'border-danger' ?> shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1 text-uppercase fw-bold"><?= str_replace(['_', 'worker'], [' ', ''], $name) ?> WORKER</h6>
+                        <small class="text-muted">
+                            <?php if ($status['last_beat']): ?>
+                                <i class="bi bi-clock"></i> <?= date('H:i:s', strtotime($status['last_beat'])) ?>
+                            <?php else: ?>
+                                <i class="bi bi-exclamation-circle"></i> Inactivo
+                            <?php endif; ?>
+                        </small>
+                    </div>
+                    <?php if ($status['status'] === 'running'): ?>
+                        <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle"></i> RUNNING</span>
+                    <?php else: ?>
+                        <span class="badge bg-danger rounded-pill"><i class="bi bi-x-circle"></i> STOPPED</span>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
     <!-- Estadísticas -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">

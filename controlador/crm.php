@@ -265,6 +265,27 @@ class CrmController {
             'outbox_failed' => CrmOutbox::contarPorEstado('failed')
         ];
         
+        // Check workers status
+        $workerStatus = [];
+        $workers = ['logistics_worker', 'crm_worker', 'crm_bulk_worker'];
+        foreach ($workers as $w) {
+            $file = __DIR__ . "/../logs/{$w}.heartbeat";
+            $status = 'stopped';
+            $lastBeat = null;
+            if (file_exists($file)) {
+                $mtime = filemtime($file);
+                $diff = time() - $mtime;
+                if ($diff < 120) { // 2 minutes tolerance
+                    $status = 'running';
+                }
+                $lastBeat = date('Y-m-d H:i:s', $mtime);
+            }
+            $workerStatus[$w] = [
+                'status' => $status,
+                'last_beat' => $lastBeat
+            ];
+        }
+
         return [
             'inbox' => [
                 'pendientes' => $inboxPendientes,
@@ -274,7 +295,8 @@ class CrmController {
                 'pendientes' => $outboxPendientes,
                 'fallidos' => $outboxFallidos
             ],
-            'stats' => $stats
+            'stats' => $stats,
+            'worker_status' => $workerStatus
         ];
     }
 

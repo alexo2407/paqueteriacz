@@ -79,6 +79,13 @@ if ($mode === '--loop') {
     }
     
     while (true) {
+        // Update heartbeat
+        $heartbeatFile = __DIR__ . '/../logs/crm_worker.heartbeat';
+        if (!file_exists(dirname($heartbeatFile))) {
+            mkdir(dirname($heartbeatFile), 0755, true);
+        }
+        touch($heartbeatFile);
+
         processIteration();
         
         // Procesar señales si está disponible
