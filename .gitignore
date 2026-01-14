@@ -87,3 +87,5 @@ package-lock.json
 # Archivos Sensibles Adicionales
 # =====================================================
 utils/email_config.php
+install-workers-production.sh
+
