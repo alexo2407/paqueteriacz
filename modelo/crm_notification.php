@@ -23,8 +23,11 @@ class CrmNotificationModel {
         try {
             $db = (new Conexion())->conectar();
             
-            // Determinar el tipo basado en event_type
-            $type = ($eventType === 'SEND_TO_CLIENT') ? 'new_lead' : 'status_updated';
+            // Determinar el tipo basado en el payload
+            // Si tiene estado_anterior/estado_nuevo, es una actualización
+            // Si no, es un nuevo lead
+            $hasStateChange = isset($payload['estado_anterior']) && isset($payload['estado_nuevo']);
+            $type = $hasStateChange ? 'status_updated' : 'new_lead';
             
             $stmt = $db->prepare("
                 INSERT INTO crm_notifications (

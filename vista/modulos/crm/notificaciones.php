@@ -2,6 +2,7 @@
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 
+require_once __DIR__ . '/../../../config/config.php';  // Cargar constantes de roles
 require_once __DIR__ . '/../../../controlador/crm.php';
 require_once __DIR__ . '/../../../utils/crm_roles.php';
 
@@ -20,15 +21,21 @@ if ($userId <= 0) {
     exit;
 }
 
-// Permitir Clientes, Proveedores y Admins
-$esCliente = isUserCliente($userId) && !isUserAdmin($userId);
-$esProveedor = isUserProveedor($userId) && !isUserAdmin($userId);
+// Validar roles - determinar si es Cliente CRM o Proveedor CRM
+$esCliente = isClienteCRM($userId) && !isUserAdmin($userId);
+$esProveedor = isProveedorCRM($userId) && !isUserAdmin($userId);
 
 // Validar que el usuario tenga al menos uno de estos roles
 if (!$esCliente && !$esProveedor && !isUserAdmin($userId)) {
-    header("Location: ".RUTA_URL."acceso-denegado");
+    set_flash('error', 'Acceso denegado: necesitas un rol CRM válido.');
+    header("Location: ".RUTA_URL."dashboard");
     exit;
 }
+
+// Variables disponibles para el resto del archivo
+// $esCliente y $esProveedor ya están definidas arriba
+
+
 
 // =========================================================================
 // FUNCIÓN HELPER DE RENDERIZADO (MOVIDA AL INICIO PARA USO AJAX Y NORMAL)
@@ -618,6 +625,7 @@ include("vista/includes/header.php");
                                         <th>Producto de Interés</th>
                                         <th style="min-width: 130px;">Contacto</th>
                                         <th>Fecha</th>
+                                        <!-- COLUMNA DE ACCIONES CON DROPDOWN - v2.0 -->
                                         <th class="text-end">Acciones</th>
                                     </tr>
                                 </thead>
@@ -841,17 +849,23 @@ include("vista/includes/header.php");
 
             </div>
         </div>
-    </div>
+</div>
 </div>
 <!-- Fin container principal de notificaciones -->
 
+<!-- Librerías necesarias (jQuery, DataTables, SweetAlert2) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">
+<script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
 
 // Función para marcar como leída
 function markAsRead(id, hideElement) {
-    fetch('<?= RUTA_URL ?>api/crm/notifications/' + id + '/read', {
+    fetch('<?= RUTA_URL ?>api/crm/notification_read.php?id=' + id, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.json())
@@ -894,12 +908,14 @@ function confirmarCambioEstado(selectElem, leadId, notifId) {
 
 // Función AJAX cambio de estado
 function quickStatusChange(leadId, nuevoEstado, notifId) {
-    fetch('<?= RUTA_URL ?>api/crm/leads/' + leadId + '/estado', {
+    fetch('<?= RUTA_URL ?>api/crm/quick_status_change.php', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+            lead_id: leadId,
             estado: nuevoEstado,
             observaciones: 'Cambio rápido desde notificaciones'
         })
@@ -913,9 +929,10 @@ function quickStatusChange(leadId, nuevoEstado, notifId) {
                 text: 'Estado cambiado correctamente',
                 timer: 1500,
                 showConfirmButton: false
+            }).then(() => {
+                // Recargar página para reflejar cambios
+                window.location.reload();
             });
-            // Al tener éxito, el lead sale de la lista de pendientes
-            markAsRead(notifId, true); 
         } else {
             Swal.fire('Error', data.message || 'No se pudo actualizar', 'error');
         }
@@ -938,8 +955,9 @@ function marcarTodasLeidas() {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('<?= RUTA_URL ?>api/crm/notifications/read-all', {
-                method: 'POST'
+            fetch('<?= RUTA_URL ?>api/crm/notifications_read_all.php', {
+                method: 'POST',
+                credentials: 'same-origin'
             })
             .then(response => response.json())
             .then(data => {

@@ -16,12 +16,18 @@ RewriteCond %{HTTP:X-Forwarded-Proto} =https [OR]
 RewriteCond %{HTTP:X-Forwarded-Ssl} =on
 RewriteRule .* - [E=HTTPS:on]
 
+# Excluir el directorio doc/ del router (es documentación estática HTML/PHP)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/doc/
+RewriteRule ^ - [L]
+
+# Permitir acceso directo a archivos .php en crm/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/crm/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
 # No reescribir si es un archivo o directorio que existe físicamente
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-
-# Excluir el directorio doc/ del router (es documentación estática HTML/PHP)
-RewriteCond %{REQUEST_URI} !^/[^/]+/api/doc/
 
 # Clean URLs: Si existe el archivo con .php, usarlo
 RewriteCond %{REQUEST_FILENAME} !-d
