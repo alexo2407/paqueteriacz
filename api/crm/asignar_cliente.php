@@ -15,7 +15,7 @@ require_once __DIR__ . '/../../utils/crm_roles.php';
 $userId = $_SESSION['idUsuario'] ?? 0;
 
 // Validar que sea proveedor
-if (!isUserProveedor($userId)) {
+if (!isProveedorCRM($userId)) {
     echo json_encode(['success' => false, 'message' => 'Acceso denegado']);
     exit;
 }

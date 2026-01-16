@@ -41,7 +41,7 @@ try {
     
     // 2. Verificar que el Usuario es Admin o Proveedor
     // (Un cliente no puede asignarse leads a sí mismo ni a otros)
-    if (isUserCliente($globalUserId) && !isUserAdmin($globalUserId)) {
+    if (isClienteCRM($globalUserId) && !isUserAdmin($globalUserId)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Permiso denegado: Los clientes no pueden asignar leads']);
         exit;

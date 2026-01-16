@@ -16,7 +16,8 @@ else
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
 $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
 $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
-$isCliente = in_array('Cliente', $rolesNombres, true);
+$isClienteCRM = in_array(ROL_NOMBRE_CLIENTE_CRM, $rolesNombres, true);  // CRM
+$isProveedorCRM = in_array(ROL_NOMBRE_PROVEEDOR_CRM, $rolesNombres, true);  // CRM
 
 // Repartidores van a seguimiento
 if ($isRepartidor && !$isAdmin) {
@@ -24,8 +25,8 @@ if ($isRepartidor && !$isAdmin) {
     exit;
 }
 
-// Clientes van a sus notificaciones (su página principal)
-if ($isCliente && !$isAdmin) {
+// Usuarios CRM van a notificaciones (su página principal)
+if (($isClienteCRM || $isProveedorCRM) && !$isAdmin) {
     header('Location: ' . RUTA_URL . 'crm/notificaciones');
     exit;
 }

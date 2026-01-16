@@ -254,7 +254,8 @@ class UsuariosController
             $rolesNombres = $_SESSION['roles_nombres'] ?? [];
             $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
             $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
-            $isCliente = in_array('Cliente', $rolesNombres, true);
+            $isClienteCRM = in_array(ROL_NOMBRE_CLIENTE_CRM, $rolesNombres, true);  // CRM
+            $isProveedorCRM = in_array(ROL_NOMBRE_PROVEEDOR_CRM, $rolesNombres, true);  // CRM
             
             // Si es repartidor (y no es admin), redirigir a su página de seguimiento
             if ($isRepartidor && !$isAdmin) {
@@ -264,8 +265,8 @@ class UsuariosController
                 exit;
             }
             
-            // Si es cliente (y no es admin), redirigir a su página de notificaciones
-            if ($isCliente && !$isAdmin) {
+            // Si es usuario CRM (cliente o proveedor) y no es admin, redirigir a notificaciones CRM
+            if (($isClienteCRM || $isProveedorCRM) && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'crm/notificaciones' : 'index.php?enlace=crm/notificaciones';
                 header('Location: ' . $redirectUrl);

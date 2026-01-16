@@ -50,7 +50,7 @@ try {
     $userId = (int)$userData['id'];
     
     // Verificar que sea proveedor o admin
-    if (!isUserProveedor($userId) && !isUserAdmin($userId)) {
+    if (!isProveedorCRM($userId) && !isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode([
             'success' => false,

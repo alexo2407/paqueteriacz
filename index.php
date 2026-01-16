@@ -8,13 +8,20 @@ if ($ruta[0] === "api") {
     // Incluir el archivo API correspondiente sin cargar el template
     // Reconstruir la ruta completa después de 'api/'
     $rutaApi = array_slice($ruta, 1); // Quitar 'api' del inicio
-    $archivoAPI = "api/" . implode("/", $rutaApi) . ".php";
+    $pathApi = implode("/", $rutaApi);
+    
+    // Solo añadir .php si no lo tiene ya
+    $archivoAPI = "api/" . $pathApi;
+    if (!str_ends_with($archivoAPI, '.php')) {
+        $archivoAPI .= '.php';
+    }
     
     if (file_exists($archivoAPI)) {
         include $archivoAPI;
     } else {
         // Manejar error si el archivo API no existe
         header("HTTP/1.0 404 Not Found");
+        header("Content-Type: application/json");
         echo json_encode(["error" => "Endpoint not found", "path" => $archivoAPI]);
     }
     exit; // Detener la ejecución
@@ -61,9 +68,9 @@ if ($enlaceSolicitado === null || $enlaceSolicitado === '') {
         require_once __DIR__ . '/utils/crm_roles.php';
         $userId = (int)$_SESSION['idUsuario'];
         
-        if (isUserCliente($userId) && !isUserAdmin($userId)) {
-            // Los clientes van a su página de notificaciones
-            header('Location: ' . RUTA_URL . 'crm/notificaciones');
+        // Usuarios CRM (proveedor o cliente) van a notificaciones
+        if ((isClienteCRM($userId) || isProveedorCRM($userId)) && !isUserAdmin($userId)) {
+           header('Location: ' . RUTA_URL . 'crm/notificaciones');
         } else {
             // Otros roles van al dashboard
             header('Location: ' . RUTA_URL . 'dashboard');
@@ -79,8 +86,8 @@ if ($primerSegmento === 'inicio' && !empty($_SESSION['registrado'])) {
     require_once __DIR__ . '/utils/crm_roles.php';
     $userId = (int)$_SESSION['idUsuario'];
     
-    if (isUserCliente($userId) && !isUserAdmin($userId)) {
-        // Los clientes van a su página de notificaciones
+    // Usuarios CRM (proveedor o cliente) van a notificaciones
+    if ((isClienteCRM($userId) || isProveedorCRM($userId)) && !isUserAdmin($userId)) {
         header('Location: ' . RUTA_URL . 'crm/notificaciones');
     } else {
         // Otros roles van al dashboard

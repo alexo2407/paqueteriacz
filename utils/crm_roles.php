@@ -103,6 +103,28 @@ function isUserCliente($userId) {
 }
 
 /**
+ * Verifica si un usuario es proveedor CRM.
+ * NUEVO: Específico para el módulo CRM, separado de Logística.
+ * 
+ * @param int $userId ID del usuario
+ * @return bool True si tiene rol Proveedor CRM
+ */
+function isProveedorCRM($userId) {
+    return userHasRole($userId, ROL_NOMBRE_PROVEEDOR_CRM);
+}
+
+/**
+ * Verifica si un usuario es cliente CRM.
+ * NUEVO: Específico para el módulo CRM, separado de Logística.
+ * 
+ * @param int $userId ID del usuario
+ * @return bool True si tiene rol Cliente CRM
+ */
+function isClienteCRM($userId) {
+    return userHasRole($userId, ROL_NOMBRE_CLIENTE_CRM);
+}
+
+/**
  * Limpia el cache de roles (útil para testing).
  * 
  * @return void

@@ -46,7 +46,7 @@ try {
     
     // Verificar que es Cliente o Admin
     $isAdmin = isUserAdmin($userId);
-    $isCliente = isUserCliente($userId);
+    $isCliente = isClienteCRM($userId);
     
     if (!$isCliente && !$isAdmin) {
         http_response_code(403);

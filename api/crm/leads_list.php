@@ -45,9 +45,9 @@ try {
     // Construir filtros según rol
     $filters = [];
     
-    if (isUserProveedor($userId) && !isUserAdmin($userId)) {
+    if (isProveedorCRM($userId) && !isUserAdmin($userId)) {
         $filters['proveedor_id'] = $userId;
-    } elseif (isUserCliente($userId) && !isUserAdmin($userId)) {
+    } elseif (isClienteCRM($userId) && !isUserAdmin($userId)) {
         $filters['cliente_id'] = $userId;
     }
     // Admin no tiene filtro, ve todos

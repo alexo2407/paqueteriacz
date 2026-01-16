@@ -22,7 +22,7 @@ include("vista/includes/header.php");
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-primary text-white">
                     <h3 class="mb-0">
-                        <i class="bi bi-database"></i> Documentación Base de Datos CRM
+                        <i class="bi bi-database"></i> Documentación Base de Datos CRM y Logística
                     </h3>
                 </div>
                 <div class="card-body">
@@ -61,6 +61,7 @@ include("vista/includes/header.php");
                                 <li><a href="#flujo-datos" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 6. Flujo de Datos</a></li>
                                 <li><a href="#relaciones" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 7. Relaciones</a></li>
                                 <li><a href="#consultas" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 8. Consultas Comunes</a></li>
+                                <li><a href="#tablas-logistica" class="text-decoration-none"><i class="bi bi-chevron-right"></i> 9. Tablas de Logística</a></li>
                             </ul>
                         </div>
                     </div>
@@ -79,8 +80,8 @@ include("vista/includes/header.php");
                 <div class="card-body">
                     <h5><i class="bi bi-info-circle"></i> Arquitectura de Base de Datos</h5>
                     <p class="lead">
-                        El sistema CRM utiliza 7 tablas especializadas para gestionar el flujo completo de leads,
-                        desde su recepción hasta su procesamiento y notificación.
+                        El sistema utiliza 8 tablas especializadas: 7 tablas CRM para gestionar el flujo completo de leads
+                        y 1 tabla de logística para gestionar trabajos asíncronos de validación y tracking.
                     </p>
 
                     <div class="alert alert-info">
@@ -91,8 +92,8 @@ include("vista/includes/header.php");
 
                     <h5 class="mt-4"><i class="bi bi-check2-circle"></i> Estado de las Tablas</h5>
                     <div class="alert alert-success">
-                        <strong>✓ Todas las 7 tablas están en uso activo</strong><br>
-                        Cada tabla cumple una función específica en el flujo de datos del CRM.
+                        <strong>✓ Todas las 8 tablas están en uso activo</strong><br>
+                        Cada tabla cumple una función específica: 7 para CRM y 1 para procesamiento logístico asíncrono.
                     </div>
                 </div>
             </div>
@@ -157,6 +158,12 @@ include("vista/includes/header.php");
                                 <td><code>crm_notifications</code></td>
                                 <td>Notificaciones para usuarios</td>
                                 <td>Notificaciones</td>
+                                <td><span class="badge bg-success">Activa</span></td>
+                            </tr>
+                            <tr>
+                                <td><code>logistics_queue</code></td>
+                                <td>Cola de trabajos asíncronos de logística</td>
+                                <td>Logística</td>
                                 <td><span class="badge bg-success">Activa</span></td>
                             </tr>
                         </tbody>
@@ -1045,6 +1052,167 @@ ORDER BY cantidad DESC;</code></pre>
             </div>
         </div>
     </div>
+
+    <!-- 9. Tablas de Logística -->
+    <div class="row mb-4" id="tablas-logistica">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">9. Tablas de Logística</h4>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- logistics_queue -->
+                    <h5><i class="bi bi-gear-wide-connected"></i> 9.1. logistics_queue</h5>
+                    <p><strong>Propósito:</strong> Cola de trabajos asíncronos para procesamiento de tareas logísticas (validación de direcciones, generación de guías, tracking, etc.).</p>
+                    
+                    <h6>Estructura:</h6>
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Campo</th>
+                                <th>Tipo</th>
+                                <th>Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>id</code></td>
+                                <td>BIGINT (PK)</td>
+                                <td>Identificador único del trabajo</td>
+                            </tr>
+                            <tr>
+                                <td><code>job_type</code></td>
+                                <td>VARCHAR(50)</td>
+                                <td>Tipo de trabajo: generar_guia, actualizar_tracking, validar_direccion, notificar_estado</td>
+                            </tr>
+                            <tr>
+                                <td><code>pedido_id</code></td>
+                                <td>INT (FK)</td>
+                                <td>Referencia al pedido asociado</td>
+                            </tr>
+                            <tr>
+                                <td><code>payload</code></td>
+                                <td>JSON</td>
+                                <td>Datos adicionales necesarios para procesar el trabajo</td>
+                            </tr>
+                            <tr>
+                                <td><code>status</code></td>
+                                <td>ENUM</td>
+                                <td>Estado: pending, processing, completed, failed</td>
+                            </tr>
+                            <tr>
+                                <td><code>attempts</code></td>
+                                <td>INT</td>
+                                <td>Número de intentos realizados</td>
+                            </tr>
+                            <tr>
+                                <td><code>max_intentos</code></td>
+                                <td>INT</td>
+                                <td>Máximo de intentos permitidos (default: 5)</td>
+                            </tr>
+                            <tr>
+                                <td><code>next_retry_at</code></td>
+                                <td>TIMESTAMP</td>
+                                <td>Fecha/hora del próximo reintento programado</td>
+                            </tr>
+                            <tr>
+                                <td><code>last_error</code></td>
+                                <td>TEXT</td>
+                                <td>Último mensaje de error capturado</td>
+                            </tr>
+                            <tr>
+                                <td><code>created_at</code></td>
+                                <td>TIMESTAMP</td>
+                                <td>Fecha de creación del trabajo</td>
+                            </tr>
+                            <tr>
+                                <td><code>updated_at</code></td>
+                                <td>TIMESTAMP</td>
+                                <td>Última actualización</td>
+                            </tr>
+                            <tr>
+                                <td><code>processed_at</code></td>
+                                <td>TIMESTAMP</td>
+                                <td>Fecha/hora de procesamiento exitoso</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-database"></i> <strong>Índices:</strong>
+                        <ul class="mb-0">
+                            <li><code>idx_status</code> - Para filtrar por estado</li>
+                            <li><code>idx_job_type</code> - Para filtrar por tipo de trabajo</li>
+                            <li><code>idx_pedido</code> - Para buscar trabajos de un pedido</li>
+                            <li><code>idx_retry</code> - Para consultas de reintentos (status, next_retry_at)</li>
+                            <li><code>idx_composite_processing</code> - Optimizado para workers con SKIP LOCKED</li>
+                        </ul>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-arrow-repeat"></i> <strong>Mecanismo de Reintentos (Backoff Exponencial):</strong><br>
+                        El sistema calcula <code>next_retry_at</code> con backoff incremental:
+                        <ul class="mb-0 mt-2">
+                            <li>Intento 1: 1 minuto después</li>
+                            <li>Intento 2: 5 minutos después</li>
+                            <li>Intento 3: 15 minutos después</li>
+                            <li>Intento 4: 1 hora después</li>
+                            <li>Intento 5+: 6 horas después</li>
+                        </ul>
+                    </div>
+
+                    <h6 class="mt-4">Tipos de Trabajos (Job Types):</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>job_type</th>
+                                    <th>Descripción</th>
+                                    <th>Payload Ejemplo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>generar_guia</code></td>
+                                    <td>Generar guía de envío con proveedor logístico</td>
+                                    <td><code>{"proveedor": "DHL", "peso_kg": 2.5}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>actualizar_tracking</code></td>
+                                    <td>Actualizar estado de tracking desde API externa</td>
+                                    <td><code>{"tracking_number": "ABC123456"}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>validar_direccion</code></td>
+                                    <td>Validar y normalizar dirección de entrega</td>
+                                    <td><code>{"direccion_id": 123, "servicio": "google_maps"}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>notificar_estado</code></td>
+                                    <td>Enviar notificación de cambio de estado</td>
+                                    <td><code>{"tipo": "email", "destinatario": "cliente@example.com"}</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-success mt-3">
+                        <i class="bi bi-speedometer"></i> <strong>Procesamiento Concurrente:</strong><br>
+                        El worker <code>logistics_worker.php</code> procesa trabajos usando <code>SELECT ... FOR UPDATE SKIP LOCKED</code>,
+                        permitiendo múltiples instancias del worker ejecutarse simultáneamente sin colisiones.
+                    </div>
+
+                    <div class="alert alert-primary mt-3">
+                        <i class="bi bi-link-45deg"></i> <strong>Relación con pedidos:</strong><br>
+                        La constraint <code>fk_logistics_queue_pedido</code> con <code>ON DELETE CASCADE</code> garantiza que
+                        si se elimina un pedido, todos sus trabajos pendientes se eliminan automáticamente.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Botones de navegación -->
     <div class="row mb-4">

@@ -3,10 +3,24 @@
     $rolesNombres = $_SESSION['roles_nombres'] ?? [];
     $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
     $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
-    $isProveedor = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true);
+    $isProveedor = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true);  // Logística
     
-    // Si es repartidor (y no es admin), ir a seguimiento; caso contrario, ir a dashboard
-    $homeUrl = ($isRepartidor && !$isAdmin) ? RUTA_URL . 'seguimiento/listar' : RUTA_URL . 'dashboard';
+    // CRM roles - usar constantes si están definidas, sino usar strings directos
+    $rolProveedorCRM = defined('ROL_NOMBRE_PROVEEDOR_CRM') ? ROL_NOMBRE_PROVEEDOR_CRM : 'Proveedor CRM';
+    $rolClienteCRM = defined('ROL_NOMBRE_CLIENTE_CRM') ? ROL_NOMBRE_CLIENTE_CRM : 'Cliente CRM';
+    $isProveedorCRM = in_array($rolProveedorCRM, $rolesNombres, true);
+    $isClienteCRM = in_array($rolClienteCRM, $rolesNombres, true);
+    
+    // Si es repartidor (y no es admin), ir a seguimiento; 
+    // Si es CRM (proveedor o cliente), ir a notificaciones; 
+    // Caso contrario, ir a dashboard
+    if ($isRepartidor && !$isAdmin) {
+        $homeUrl = RUTA_URL . 'seguimiento/listar';
+    } elseif (($isProveedorCRM || $isClienteCRM) && !$isAdmin) {
+        $homeUrl = RUTA_URL . 'crm/notificaciones';
+    } else {
+        $homeUrl = RUTA_URL . 'dashboard';
+    }
 ?>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
@@ -130,14 +144,15 @@
                 <?php endif; ?>
 
                 <!-- ========================================== -->
-                <!-- 6. CRM - Solo Admin (Nuevo Módulo) -->
+                <!-- 6. CRM - Admin y Roles CRM -->
                 <!-- ========================================== -->
-                <?php if ($isAdmin): ?>
+                <?php if ($isAdmin || $isProveedorCRM || $isClienteCRM): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarCRM" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-diagram-3"></i> CRM Relay
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarCRM">
+                        <?php if ($isAdmin || $isProveedorCRM): ?>
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>crm/dashboard">
                                 <i class="bi bi-speedometer2"></i> Dashboard
@@ -148,6 +163,7 @@
                                 <i class="bi bi-people-fill"></i> Leads
                             </a>
                         </li>
+                        <?php endif; ?>
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>crm/notificaciones">
                                 <i class="bi bi-bell"></i> Notificaciones
@@ -161,6 +177,9 @@
                                 <?php endif; ?>
                             </a>
                         </li>
+                        <?php if ($isAdmin): ?>
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-header">Configuración</li>
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>crm/integraciones">
                                 <i class="bi bi-plug"></i> Integraciones
@@ -171,12 +190,12 @@
                                 <i class="bi bi-activity"></i> Monitor Worker
                             </a>
                         </li>
-                        <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>crm/reportes">
                                 <i class="bi bi-graph-up"></i> Reportes
                             </a>
                         </li>
+                        <?php endif; ?>
                     </ul>
                 </li>
                 <?php endif; ?>
@@ -226,6 +245,11 @@
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>crm/database_doc">
                                 <i class="bi bi-database"></i> CRM Database Doc
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>crm/logistics_worker_doc">
+                                <i class="bi bi-gear-wide-connected"></i> Logistics Worker Doc
                             </a>
                         </li>
                     </ul>

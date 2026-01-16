@@ -60,7 +60,7 @@ try {
     }
     
     // Verificar que es Cliente o Admin
-    if (!isUserCliente($userId) && !isUserAdmin($userId)) {
+    if (!isClienteCRM($userId) && !isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Acceso denegado: solo clientes']);
         exit;
@@ -164,6 +164,7 @@ try {
     ]);
     
 } catch (Throwable $e) {
+    error_log("Error in lead_status.php: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
         'success' => false,
@@ -171,3 +172,4 @@ try {
         'error' => $e->getMessage()
     ]);
 }
+

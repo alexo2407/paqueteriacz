@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../../utils/crm_roles.php';
 $userId = (int)$_SESSION['idUsuario'];
 
 // Si no es admin y no es cliente, fuera
-if (!isUserAdmin($userId) && !isUserCliente($userId)) { header('Location: ' . RUTA_URL . 'dashboard'); exit; }
+if (!isUserAdmin($userId) && !isClienteCRM($userId)) { header('Location: ' . RUTA_URL . 'dashboard'); exit; }
 
 require_once __DIR__ . '/../../../controlador/crm.php';
 $crmController = new CrmController();
@@ -28,7 +28,7 @@ if (!$lead) {
 
 // Validar Ownership
 if (!isUserAdmin($userId)) {
-    if (isUserCliente($userId) && $lead['cliente_id'] != $userId) {
+    if (isClienteCRM($userId) && $lead['cliente_id'] != $userId) {
          header('Location: ' . RUTA_URL . 'crm/listar');
          exit;
     }
@@ -48,7 +48,7 @@ include("vista/includes/header.php");
                             <i class="bi bi-eye"></i> Ver Detalle
                         </a>
                         <!-- Volver condicional -->
-                        <?php $backLink = isUserCliente($userId) && !isUserAdmin($userId) ? RUTA_URL.'crm/notificaciones' : RUTA_URL.'crm/listar'; ?>
+                        <?php $backLink = isClienteCRM($userId) && !isUserAdmin($userId) ? RUTA_URL.'crm/notificaciones' : RUTA_URL.'crm/listar'; ?>
                         <a href="<?= $backLink ?>" class="btn btn-sm btn-light text-primary">
                             <i class="bi bi-arrow-left"></i> Volver
                         </a>

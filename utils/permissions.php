@@ -4,13 +4,20 @@
 if (!defined('ROL_ADMIN')) define('ROL_ADMIN', 1);
 if (!defined('ROL_VENDEDOR')) define('ROL_VENDEDOR', 2);
 if (!defined('ROL_REPARTIDOR')) define('ROL_REPARTIDOR', 3);
-if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 4);
+if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 4);  // Logística
+if (!defined('ROL_PROVEEDOR_CRM')) define('ROL_PROVEEDOR_CRM', 6);  // CRM (verificado en BD)
+if (!defined('ROL_CLIENTE_CRM')) define('ROL_CLIENTE_CRM', 7);      // CRM (verificado en BD)
+
+
 
 // Definición de constantes de Nombres de Roles
 if (!defined('ROL_NOMBRE_ADMIN')) define('ROL_NOMBRE_ADMIN', 'Administrador');
 if (!defined('ROL_NOMBRE_VENDEDOR')) define('ROL_NOMBRE_VENDEDOR', 'Vendedor');
 if (!defined('ROL_NOMBRE_REPARTIDOR')) define('ROL_NOMBRE_REPARTIDOR', 'Repartidor');
-if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Proveedor');
+if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Proveedor');  // Logística
+if (!defined('ROL_NOMBRE_PROVEEDOR_CRM')) define('ROL_NOMBRE_PROVEEDOR_CRM', 'Proveedor CRM');  // CRM
+if (!defined('ROL_NOMBRE_CLIENTE_CRM')) define('ROL_NOMBRE_CLIENTE_CRM', 'Cliente CRM');      // CRM
+
 /**
  * Permissions Helper
  * 

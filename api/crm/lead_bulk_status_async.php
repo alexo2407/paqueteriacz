@@ -46,7 +46,7 @@ try {
     $userId = (int)$userData['id'];
     
     // Verificar que es Cliente o Admin
-    if (!isUserCliente($userId) && !isUserAdmin($userId)) {
+    if (!isClienteCRM($userId) && !isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Acceso denegado: solo clientes o administradores']);
         exit;

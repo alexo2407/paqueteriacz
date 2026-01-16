@@ -118,8 +118,8 @@ class CrmController {
         
         // Si no es admin, verificar propiedad
         if (!isUserAdmin($userId)) {
-            $esCliente = isUserCliente($userId);
-            $esProveedor = isUserProveedor($userId); // Asumiendo que existe esta función en crm_roles
+            $esCliente = isClienteCRM($userId);
+            $esProveedor = isProveedorCRM($userId); // CRM specific
             
             if ($esCliente && (int)$lead['cliente_id'] !== $userId) {
                 return null; // Acceso denegado, lead de otro cliente
@@ -166,13 +166,13 @@ class CrmController {
         
         // Validar Ownership
         if (!isUserAdmin($userId)) {
-            // Proveedores NO pueden cambiar estado
-            if (isUserProveedor($userId)) {
+            // Proveedores CRM NO pueden cambiar estado
+            if (isProveedorCRM($userId)) {
                 return ['success' => false, 'message' => 'Acceso denegado: los proveedores no pueden cambiar estados.'];
             }
 
-            // Cliente solo puede cambiar su lead
-            if (isUserCliente($userId) && (int)$lead['cliente_id'] !== $userId) {
+            // Cliente CRM solo puede cambiar su lead
+            if (isClienteCRM($userId) && (int)$lead['cliente_id'] !== $userId) {
                 return ['success' => false, 'message' => 'Acceso denegado: este lead no te pertenece'];
             }
         }
@@ -192,8 +192,8 @@ class CrmController {
                 'updated_at' => date('Y-m-d H:i:s')
             ];
             
-            // Caso 1: Cliente cambia estado → Notificar al Proveedor
-            if (isUserCliente($userId) && !empty($lead['proveedor_id']) && (int)$lead['proveedor_id'] !== $userId) {
+            // Caso 1: Cliente CRM cambia estado → Notificar al Proveedor CRM
+            if (isClienteCRM($userId) && !empty($lead['proveedor_id']) && (int)$lead['proveedor_id'] !== $userId) {
                 CrmNotificationModel::agregar(
                     'SEND_TO_PROVIDER',
                     $id,
@@ -395,12 +395,12 @@ class CrmController {
         if ($id > 0 && !isUserAdmin($userId)) {
              $lead = CrmLead::obtenerPorId($id);
              
-             // Proveedores NO pueden editar
-             if (isUserProveedor($userId)) {
+             // Proveedores CRM NO pueden editar
+             if (isProveedorCRM($userId)) {
                  return ['success' => false, 'message' => 'Acceso denegado: los proveedores no pueden editar leads.'];
              }
 
-             if (isUserCliente($userId) && (int)$lead['cliente_id'] !== $userId) {
+             if (isClienteCRM($userId) && (int)$lead['cliente_id'] !== $userId) {
                   return ['success' => false, 'message' => 'No puedes editar un lead que no es tuyo'];
              }
         }
@@ -511,7 +511,7 @@ class CrmController {
         
         // Obtener clientes asociados (para el dropdown de filtros del proveedor)
         $clientesAsociados = [];
-        if (isUserProveedor($userId)) {
+        if (isProveedorCRM($userId)) {
              require_once "modelo/crm_lead.php";
              $clientesAsociados = CrmLead::obtenerClientesAsociados($userId);
              

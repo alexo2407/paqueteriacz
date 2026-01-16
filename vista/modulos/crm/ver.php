@@ -13,7 +13,7 @@ require_once __DIR__ . '/../../../utils/crm_roles.php';
 
 // Verificar permisos: Admin, Cliente o Proveedor
 $userId = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
-if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+if (!isUserAdmin($userId) && !isClienteCRM($userId) && !isProveedorCRM($userId)) {
     header('Location: ' . RUTA_URL . 'dashboard');
     exit;
 }
@@ -44,7 +44,7 @@ include("vista/includes/header.php");
 <div class="container-fluid py-3">
 <?php
 // Roles Checks
-$esProveedor = isUserProveedor($userId) && !isUserAdmin($userId);
+$esProveedor = isProveedorCRM($userId) && !isUserAdmin($userId);
 
 
 ?>

@@ -103,7 +103,7 @@ class EnlacesController
                 'barrios' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'seguimiento' => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN],
                 'auditoria' => [ROL_NOMBRE_ADMIN],
-                'crm' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, 'Cliente'], // Clientes y Proveedores tienen acceso
+                'crm' => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'], // CRM-specific roles
             ];
 
             $userRoleNames = $_SESSION['roles_nombres'] ?? [];
