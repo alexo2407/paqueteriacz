@@ -15,12 +15,19 @@ require_once __DIR__ . '/../../utils/session.php';
 
 // Usar sesión segura
 start_secure_session();
+
 // Fallback para diferentes claves de sesión
-$userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
+$userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? $_SESSION['id'] ?? 0;
+
+// Verificar también si el usuario está registrado
+$isLoggedIn = !empty($_SESSION['registrado']);
 
 // Validar permisos
-if ($userId <= 0) {
-    echo json_encode(['error' => 'Usuario no válido. Session: ' . json_encode($_SESSION)]);
+if ($userId <= 0 || !$isLoggedIn) {
+    echo json_encode([
+        'error' => 'No autorizado',
+        'message' => 'Sesión no válida. Por favor, inicia sesión nuevamente.'
+    ]);
     exit;
 }
 

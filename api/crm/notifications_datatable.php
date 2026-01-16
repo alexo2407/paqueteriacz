@@ -11,11 +11,34 @@ require_once __DIR__ . '/../../utils/session.php';
 
 // Usar sesión segura para compartir contexto con la app principal
 start_secure_session();
-// Fallback para diferentes claves de sesión
-$userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
 
-if ($userId <= 0) {
-    echo json_encode(['error' => 'No autorizado']);
+// Fallback para diferentes claves de sesión
+$userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? $_SESSION['id'] ?? 0;
+
+// Verificar también si el usuario está registrado
+$isLoggedIn = !empty($_SESSION['registrado']);
+
+if ($userId <= 0 || !$isLoggedIn) {
+    // Modo debug: proporcionar más información
+    $debugMode = isset($_GET['debug']) && $_GET['debug'] === '1';
+    
+    if ($debugMode) {
+        echo json_encode([
+            'error' => 'No autorizado',
+            'debug' => [
+                'session_status' => session_status(),
+                'session_id' => session_id() ? 'exists' : 'none',
+                'user_id_found' => $userId,
+                'is_logged_in' => $isLoggedIn,
+                'session_keys' => array_keys($_SESSION)
+            ]
+        ]);
+    } else {
+        echo json_encode([
+            'error' => 'No autorizado',
+            'message' => 'Sesión no válida. Por favor, inicia sesión nuevamente.'
+        ]);
+    }
     exit;
 }
 

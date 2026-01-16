@@ -9,7 +9,7 @@ function start_secure_session()
         $secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || 
                   (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
         $httponly = true;
-        $samesite = 'Strict'; // Cambiado de 'Lax' a 'Strict' para mayor seguridad
+        $samesite = 'Lax'; // 'Lax' permite cookies en requests AJAX del mismo sitio
 
         // Configuración de cookies de sesión con flags de seguridad
         session_set_cookie_params([
