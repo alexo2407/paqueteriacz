@@ -6,6 +6,14 @@
 
 // Silenciar output de errores HTML que rompen el JSON
 ini_set('display_errors', 0);
+error_reporting(0);
+
+// Limpiar cualquier output buffer previo
+while (ob_get_level()) {
+    ob_end_clean();
+}
+ob_start();
+
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../config/config.php';
