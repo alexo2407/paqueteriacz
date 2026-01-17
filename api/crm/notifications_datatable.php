@@ -74,7 +74,21 @@ foreach ($notificaciones as $notif) {
     // Datos auxiliares para columnas ocultas
     $payload = is_array($notif['payload']) ? $notif['payload'] : json_decode($notif['payload'], true);
     $rawDate = $notif['created_at'];
-    $searchText = strtolower(($payload['nombre'] ?? '') . ' ' . ($payload['telefono'] ?? '') . ' ' . ($notif['lead_status_live'] ?? ''));
+    
+    // Obtener lead_id según el tipo de notificación
+    $leadId = $notif['type'] === 'new_lead' 
+        ? ($payload['lead_id'] ?? 0) 
+        : ($notif['related_lead_id'] ?? 0);
+    
+    // Incluir lead_id en el texto de búsqueda para que se pueda buscar por "340" o "Lead 340"
+    $searchText = strtolower(
+        ($payload['nombre'] ?? '') . ' ' . 
+        ($payload['telefono'] ?? '') . ' ' . 
+        ($notif['lead_status_live'] ?? '') . ' ' . 
+        ($payload['producto'] ?? '') . ' ' .
+        'lead ' . $leadId . ' ' .
+        '#' . $leadId
+    );
 
     $data[] = [
         $html,       // Columna 0: Visible (HTML Card)

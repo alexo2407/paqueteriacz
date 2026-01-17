@@ -143,10 +143,21 @@
                 </li>
                 <?php endif; ?>
 
+
                 <!-- ========================================== -->
                 <!-- 6. CRM - Admin y Roles CRM -->
                 <!-- ========================================== -->
-                <?php if ($isAdmin || $isProveedorCRM || $isClienteCRM): ?>
+                <?php 
+                // Verificar si hay leads en el sistema antes de mostrar el menú
+                $showCRMMenu = false;
+                if ($isAdmin || $isProveedorCRM || $isClienteCRM) {
+                    require_once "modelo/crm_lead.php";
+                    $totalLeadsInSystem = CrmLead::contarTotalLeads();
+                    $showCRMMenu = ($totalLeadsInSystem > 0);
+                }
+                
+                if ($showCRMMenu): 
+                ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarCRM" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-diagram-3"></i> CRM Relay
@@ -199,6 +210,7 @@
                     </ul>
                 </li>
                 <?php endif; ?>
+
 
             </ul>
 

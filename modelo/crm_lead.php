@@ -730,6 +730,23 @@ class CrmLeadModel {
     }
     
     /**
+     * Cuenta el total de leads en el sistema (todos los proveedores y estados).
+     * Usado para verificar si mostrar el menú CRM.
+     * 
+     * @return int
+     */
+    public static function contarTotalLeads() {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->query("SELECT COUNT(*) FROM crm_leads");
+            return (int) $stmt->fetchColumn();
+        } catch (Exception $e) {
+            error_log("Error counting total leads: " . $e->getMessage());
+            return 0;
+        }
+    }
+    
+    /**
      * Asigna un cliente a un lead.
      * 
      * @param int $leadId ID del lead

@@ -249,16 +249,106 @@ include("vista/includes/header.php");
         margin-top: -1.5rem;
     }
     
+    
+    /* ==================== MODERN TABS STYLING ==================== */
+    
+    /* Contenedor de tabs con gradiente sutil */
+    #pills-tab {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+        padding: 0.5rem !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(0,0,0,0.08) !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        gap: 0.5rem;
+    }
+    
+    /* Tabs individuales - Estado normal */
     .nav-pills .nav-link {
         color: #495057;
-        padding: 0.5rem 1rem;
+        padding: 0.75rem 1.25rem;
         font-size: 0.9rem;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        background: transparent;
+        border: 1px solid transparent;
     }
+    
+    /* Efecto hover suave */
+    .nav-pills .nav-link:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.8);
+        color: #0d6efd;
+        border-color: rgba(13, 110, 253, 0.1);
+        box-shadow: 0 2px 8px rgba(13, 110, 253, 0.1);
+        transform: translateY(-1px);
+    }
+    
+    /* Tab activo con gradiente y sombra */
     .nav-pills .nav-link.active {
-        background-color: #0d6efd;
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
         color: white;
         font-weight: 600;
+        border-color: #0d6efd;
+        box-shadow: 
+            0 4px 12px rgba(13, 110, 253, 0.3),
+            0 2px 4px rgba(13, 110, 253, 0.2);
+        transform: translateY(-2px);
     }
+    
+    /* Efecto ripple sutil al hacer click */
+    .nav-pills .nav-link:active {
+        transform: scale(0.98);
+    }
+    
+    /* Iconos dentro de tabs */
+    .nav-pills .nav-link i {
+        transition: transform 0.3s ease;
+        font-size: 1.1rem;
+    }
+    
+    .nav-pills .nav-link:hover i,
+    .nav-pills .nav-link.active i {
+        transform: scale(1.1);
+    }
+    
+    /* Badges dentro de tabs - más modernos */
+    .nav-pills .nav-link .badge {
+        transition: all 0.3s ease;
+        font-weight: 600;
+        padding: 0.35em 0.65em;
+        font-size: 0.75rem;
+    }
+    
+    .nav-pills .nav-link.active .badge {
+        animation: pulse-badge 2s ease-in-out infinite;
+    }
+    
+    /* Animación sutil para badges */
+    @keyframes pulse-badge {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+    
+    /* Responsive: tabs en móvil */
+    @media (max-width: 768px) {
+        #pills-tab {
+            flex-direction: column;
+            padding: 0.75rem !important;
+        }
+        
+        .nav-pills .nav-link {
+            width: 100%;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+    }
+    
     
     /* Estilos para cards de notificación */
     .notif-card {
@@ -531,7 +621,7 @@ include("vista/includes/header.php");
 </div>
 <?php endif; ?>
 
-<div class="container mb-5">
+<div class="container-fluid mb-5">
     
     <?php
     // Determinar Tab Activa (Persistencia tras recarga)
@@ -548,53 +638,90 @@ include("vista/includes/header.php");
     $paneAll = ($activeTab === 'all') ? 'show active' : '';
     ?>
 
-    <div class="row">
-        <div class="col-lg-3 mb-4">
-             <!-- Filtros Verticales -->
-            <div class="list-group list-group-flush border rounded shadow-sm">
-                <?php if (!$esProveedor): // Solo clientes y admins ven "Por Atender" ?>
-                <!-- Tab: Pendientes (Prioridad) -->
-                <a class="list-group-item list-group-item-action fw-bold <?= $showLeads ?> d-flex justify-content-between align-items-center" id="pills-leads-tab" data-bs-toggle="pill" href="#pills-leads" onclick="history.pushState(null, '', '?tab=leads')">
-                    <span><i class="bi bi-star-fill text-warning me-2"></i> Por Atender</span>
-                    <?php if($countPendientes > 0): ?><span class="badge bg-danger rounded-pill"><?= $countPendientes ?></span><?php endif; ?>
-                </a>
+    <!-- Tabs Horizontales con Pills -->
+    <ul class="nav nav-pills mb-4 bg-light p-2 rounded border" id="pills-tab" role="tablist">
+        <?php if (!$esProveedor): // Solo clientes y admins ven "Por Atender" ?>
+        <!-- Tab: Pendientes (Prioridad) -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $showLeads ?> d-flex align-items-center gap-2" 
+                    id="pills-leads-tab" 
+                    data-bs-toggle="pill" 
+                    data-bs-target="#pills-leads" 
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=leads')">
+                <i class="bi bi-star-fill text-warning"></i>
+                <span>Por Atender</span>
+                <?php if($countPendientes > 0): ?>
+                    <span class="badge bg-danger rounded-pill"><?= $countPendientes ?></span>
                 <?php endif; ?>
-                
-                <?php if ($esProveedor): // Solo proveedores ven "Mis Leads" 
-                    $showMisLeads = ($activeTab === 'mis-leads') ? 'active' : '';
-                    $leadsSinAsignarCount = count(CrmLeadModel::obtenerSinAsignarPorProveedor($userId));
-                ?>
-                <!-- Tab: Mis Leads (Solo Proveedores) -->
-                <a class="list-group-item list-group-item-action fw-bold <?= $showMisLeads ?> d-flex justify-content-between align-items-center" id="pills-mis-leads-tab" data-bs-toggle="pill" href="#pills-mis-leads" onclick="history.pushState(null, '', '?tab=mis-leads')">
-                    <span><i class="bi bi-person-lines-fill text-primary me-2"></i> Mis Leads</span>
-                    <?php if($leadsSinAsignarCount > 0): ?><span class="badge bg-primary rounded-pill"><?= $leadsSinAsignarCount ?></span><?php endif; ?>
-                </a>
+            </button>
+        </li>
+        <?php endif; ?>
+        
+        <?php if ($esProveedor): // Solo proveedores ven "Mis Leads" 
+            $showMisLeads = ($activeTab === 'mis-leads') ? 'active' : '';
+            $leadsSinAsignarCount = count(CrmLeadModel::obtenerSinAsignarPorProveedor($userId));
+        ?>
+        <!-- Tab: Mis Leads (Solo Proveedores) -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $showMisLeads ?> d-flex align-items-center gap-2" 
+                    id="pills-mis-leads-tab" 
+                    data-bs-toggle="pill" 
+                    data-bs-target="#pills-mis-leads" 
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=mis-leads')">
+                <i class="bi bi-person-lines-fill"></i>
+                <span>Mis Leads</span>
+                <?php if($leadsSinAsignarCount > 0): ?>
+                    <span class="badge bg-primary rounded-pill"><?= $leadsSinAsignarCount ?></span>
                 <?php endif; ?>
-                
-                <!-- Tab: Actualizaciones -->
-                 <a class="list-group-item list-group-item-action <?= $showUpdates ?>" id="pills-updates-tab" data-bs-toggle="pill" href="#pills-updates" onclick="history.pushState(null, '', '?tab=updates')">
-                    <i class="bi bi-arrow-repeat me-2"></i> Actualizaciones
-                </a>
+            </button>
+        </li>
+        <?php endif; ?>
+        
+        <!-- Tab: Actualizaciones -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $showUpdates ?> d-flex align-items-center gap-2" 
+                    id="pills-updates-tab" 
+                    data-bs-toggle="pill" 
+                    data-bs-target="#pills-updates" 
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=updates')">
+                <i class="bi bi-arrow-repeat"></i>
+                <span>Actualizaciones</span>
+            </button>
+        </li>
 
-                <!-- Tab: Historial -->
-                <a class="list-group-item list-group-item-action <?= $showAll ?>" id="pills-all-tab" data-bs-toggle="pill" href="#pills-all" onclick="history.pushState(null, '', '?tab=all')">
-                    <i class="bi bi-archive me-2"></i> Historial Completo
-                </a>
+        <!-- Tab: Historial -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $showAll ?> d-flex align-items-center gap-2" 
+                    id="pills-all-tab" 
+                    data-bs-toggle="pill" 
+                    data-bs-target="#pills-all" 
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=all')">
+                <i class="bi bi-archive"></i>
+                <span>Historial Completo</span>
+            </button>
+        </li>
+    </ul>
+    
+    <!-- Info Paginación (movida arriba) -->
+    <?php if($activeTab === 'all'): ?>
+    <div class="alert mb-3" style="background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border: 1px solid rgba(13, 110, 253, 0.15); border-radius: 10px; padding: 0.875rem 1.25rem;">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-info-circle text-primary me-2" style="font-size: 1.25rem;"></i>
+            <div class="small">
+                <strong class="text-primary">Paginación:</strong> 
+                <span class="text-muted">Página <strong class="text-dark"><?= $currentPage ?></strong> de <strong class="text-dark"><?= $totalPages ?></strong></span>
+                <span class="badge bg-primary bg-opacity-10 text-primary ms-2"><?= $pagination['total_items'] ?? 0 ?> registros</span>
             </div>
-        
-            <!-- Info Paginación -->
-            <?php if($activeTab === 'all'): ?>
-            <div class="mt-3 text-center text-muted small fade show">
-                Mostrando pág. <?= $currentPage ?> de <?= $totalPages ?>
-                <br>
-                (Total: <?= $pagination['total_items'] ?? 0 ?>)
-            </div>
-            <?php endif; ?>
         </div>
+    </div>
+    <?php endif; ?>
         
-        <div class="col-lg-9">
-            <!-- Contenido -->
-            <div class="tab-content" id="pills-tabContent">
+    <!-- Contenido (ahora ocupa todo el ancho) -->
+    <div class="tab-content" id="pills-tabContent">
                 
                 <!-- Tab: PENDIENTES -->
                 <?php if (!$esProveedor): ?>
@@ -612,7 +739,7 @@ include("vista/includes/header.php");
                             <div class="col-md-6">
                                 <div class="input-group">
                                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                    <input type="text" id="pendientesSearch" class="form-control border-start-0 ps-0" placeholder="Buscar lead, producto o teléfono...">
+                                    <input type="text" id="pendientesSearch" class="form-control border-start-0 ps-0" placeholder="Buscar por nombre, producto, teléfono o ID (#340)...">
                                 </div>
                             </div>
                         </div>
@@ -764,7 +891,7 @@ include("vista/includes/header.php");
                         <div class="col-md-6">
                             <div class="input-group">
                                 <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                                <input type="text" id="updatesSearch" class="form-control border-start-0 ps-0" placeholder="Buscar por nombre, teléfono o estado...">
+                                <input type="text" id="updatesSearch" class="form-control border-start-0 ps-0" placeholder="Buscar por nombre, teléfono, estado o ID (#340)...">
                             </div>
                         </div>
                     </div>
@@ -792,7 +919,7 @@ include("vista/includes/header.php");
                     <div class="mb-3">
                         <div class="input-group">
                             <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                            <input type="text" id="customSearch" class="form-control" placeholder="Buscar por nombre, teléfono o estado...">
+                            <input type="text" id="customSearch" class="form-control" placeholder="Buscar por nombre, teléfono, estado o ID (#340)...">
                         </div>
                     </div>
                     
@@ -845,11 +972,9 @@ include("vista/includes/header.php");
                     </div>
                 </div>
             
-                </div>
-
             </div>
-        </div>
-</div>
+
+    </div>
 </div>
 <!-- Fin container principal de notificaciones -->
 
@@ -1007,9 +1132,17 @@ if (typeof $ !== 'undefined' && $.fn.dataTable) {
                 order: [[3, 'desc']],
                 pageLength: 15,
                 lengthMenu: [10, 20, 50, 100],
-                responsive: true,
+                autoWidth: false,
+                scrollX: false,
                 dom: 'lrtip',
-                columnDefs: [{ orderable: false, targets: 4 }]
+                columnDefs: [
+                    { orderable: false, targets: 4 },
+                    { width: "25%", targets: 0 },  // Lead / Interesado
+                    { width: "20%", targets: 1 },  // Producto
+                    { width: "25%", targets: 2 },  // Contacto
+                    { width: "10%", targets: 3 },  // Fecha
+                    { width: "20%", targets: 4 }   // Acciones
+                ]
             });
 
             $('#pendientesSearch').on('keyup', function() {

@@ -171,12 +171,39 @@ foreach ($paginatedUpdates as $notifs) {
         </div>
     ";
     
+    
+    // Generar texto de búsqueda para DataTables
+    // Incluir: lead_id, nombre del lead, teléfono, estados, producto
+    $searchElements = [];
+    
+    // Lead ID en múltiples formatos
+    $searchElements[] = 'lead ' . $leadId;
+    $searchElements[] = '#' . $leadId;
+    $searchElements[] = (string)$leadId;
+    
+    // Estados de todos los cambios del grupo
+    foreach ($notifs as $n) {
+        $p = is_array($n['payload']) ? $n['payload'] : json_decode($n['payload'], true);
+        if (isset($p['estado_anterior'])) $searchElements[] = $p['estado_anterior'];
+        if (isset($p['estado_nuevo'])) $searchElements[] = $p['estado_nuevo'];
+        if (isset($p['nombre'])) $searchElements[] = $p['nombre'];
+        if (isset($p['telefono'])) $searchElements[] = $p['telefono'];
+        if (isset($p['producto'])) $searchElements[] = $p['producto'];
+    }
+    
+    // Estado actual del lead
+    if ($leadStatusLive) {
+        $searchElements[] = $leadStatusLive;
+    }
+    
+    $searchText = strtolower(implode(' ', array_filter($searchElements)));
+    
     // DataTables espera un array de columnas
     // Usamos una sola columna que contiene todo el card
     $data[] = [
         $cardHtml,
         strtotime($firstNotif['created_at']), // Para ordenamiento
-        '' // Columna de búsqueda (ya filtrado en server)
+        $searchText // Columna de búsqueda
     ];
 }
 

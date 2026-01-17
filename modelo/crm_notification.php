@@ -102,14 +102,27 @@ class CrmNotificationModel {
                 $searchLower = strtolower($search);
                 $searchUnicode = substr(json_encode($search), 1, -1);
                 
+                // Remover caracteres especiales para búsqueda numérica
+                $searchNumeric = preg_replace('/[^0-9]/', '', $search);
+                
                 // Usar COLLATE utf8mb4_unicode_ci para búsqueda insensible a acentos y mayúsculas
                 $sql .= " AND (
                     COALESCE(l.nombre, '') COLLATE utf8mb4_unicode_ci LIKE :search 
                     OR COALESCE(l.telefono, '') LIKE :search 
                     OR COALESCE(l.estado_actual, '') COLLATE utf8mb4_unicode_ci LIKE :search
                     OR n.payload COLLATE utf8mb4_unicode_ci LIKE :search 
-                    OR n.payload LIKE :searchUnicode
-                )";
+                    OR n.payload LIKE :searchUnicode";
+                
+                // Agregar búsqueda numérica por ID si hay dígitos en la búsqueda
+                if (!empty($searchNumeric)) {
+                    $sql .= " OR n.related_lead_id = :searchNumeric 
+                              OR CAST(n.related_lead_id AS CHAR) LIKE :searchNumericLike";
+                    $params[':searchNumeric'] = (int)$searchNumeric;
+                    $params[':searchNumericLike'] = "%$searchNumeric%";
+                }
+                
+                $sql .= " )";
+                
                 $params[':search'] = "%$searchLower%";
                 $params[':searchUnicode'] = "%$searchUnicode%";
             }
@@ -170,14 +183,27 @@ class CrmNotificationModel {
                 $searchLower = strtolower($search);
                 $searchUnicode = substr(json_encode($search), 1, -1);
                 
+                // Remover caracteres especiales para búsqueda numérica
+                $searchNumeric = preg_replace('/[^0-9]/', '', $search);
+                
                 // Usar COLLATE utf8mb4_unicode_ci para búsqueda insensible a acentos y mayúsculas
                 $sql .= " AND (
                     COALESCE(l.nombre, '') COLLATE utf8mb4_unicode_ci LIKE :search 
                     OR COALESCE(l.telefono, '') LIKE :search 
                     OR COALESCE(l.estado_actual, '') COLLATE utf8mb4_unicode_ci LIKE :search
                     OR n.payload COLLATE utf8mb4_unicode_ci LIKE :search 
-                    OR n.payload LIKE :searchUnicode
-                )";
+                    OR n.payload LIKE :searchUnicode";
+                
+                // Agregar búsqueda numérica por ID si hay dígitos en la búsqueda
+                if (!empty($searchNumeric)) {
+                    $sql .= " OR n.related_lead_id = :searchNumeric 
+                              OR CAST(n.related_lead_id AS CHAR) LIKE :searchNumericLike";
+                    $params[':searchNumeric'] = (int)$searchNumeric;
+                    $params[':searchNumericLike'] = "%$searchNumeric%";
+                }
+                
+                $sql .= " )";
+                
                 $params[':search'] = "%$searchLower%";
                 $params[':searchUnicode'] = "%$searchUnicode%";
             }
