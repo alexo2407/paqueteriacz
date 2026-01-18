@@ -141,7 +141,7 @@ class CrmNotificationModel {
             
             // Filtrar por cliente asignado (solo para proveedores)
             if (!empty($clientId)) {
-                $sql .= " AND l.client_id = :clientId";
+                $sql .= " AND l.cliente_id = :clientId";
                 $params[':clientId'] = $clientId;
             }
             
@@ -228,7 +228,7 @@ class CrmNotificationModel {
             
             // Filtrar por cliente asignado (solo para proveedores)
             if (!empty($clientId)) {
-                $sql .= " AND l.client_id = :clientId";
+                $sql .= " AND l.cliente_id = :clientId";
                 $params[':clientId'] = $clientId;
             }
             
