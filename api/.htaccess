@@ -25,6 +25,11 @@ RewriteCond %{REQUEST_URI} ^/[^/]+/api/crm/.*\.php$
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
+# Permitir acceso directo a archivos .php en usuarios/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/usuarios/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
 # No reescribir si es un archivo o directorio que existe físicamente
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
