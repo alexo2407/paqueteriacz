@@ -72,9 +72,10 @@ class CrmNotificationModel {
      * @param string $startDate Fecha de inicio para filtrar
      * @param string $endDate Fecha de fin para filtrar
      * @param string $leadStatus Estado del lead para filtrar
+     * @param int $clientId ID del cliente para filtrar (solo proveedores)
      * @return array Lista de notificaciones
      */
-    public static function obtenerPorUsuario($userId, $onlyUnread = false, $limit = 500, $offset = 0, $search = '', $startDate = null, $endDate = null, $leadStatus = null) {
+    public static function obtenerPorUsuario($userId, $onlyUnread = false, $limit = 500, $offset = 0, $search = '', $startDate = null, $endDate = null, $leadStatus = null, $clientId = null) {
         try {
             $db = (new Conexion())->conectar();
             
@@ -138,6 +139,12 @@ class CrmNotificationModel {
                 $params[':leadStatus'] = $leadStatus;
             }
             
+            // Filtrar por cliente asignado (solo para proveedores)
+            if (!empty($clientId)) {
+                $sql .= " AND l.client_id = :clientId";
+                $params[':clientId'] = $clientId;
+            }
+            
             // Inject LIMIT and OFFSET directly (safe because cast to int)
             $sql .= " ORDER BY n.created_at DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
             
@@ -158,7 +165,7 @@ class CrmNotificationModel {
     /**
      * Cuenta el total de notificaciones para paginación.
      */
-    public static function contarTotalPorUsuario($userId, $onlyUnread = false, $search = '', $startDate = null, $endDate = null, $leadStatus = null) {
+    public static function contarTotalPorUsuario($userId, $onlyUnread = false, $search = '', $startDate = null, $endDate = null, $leadStatus = null, $clientId = null) {
         try {
             $db = (new Conexion())->conectar();
             
@@ -217,6 +224,12 @@ class CrmNotificationModel {
             if (!empty($leadStatus)) {
                 $sql .= " AND l.estado_actual = :leadStatus";
                 $params[':leadStatus'] = $leadStatus;
+            }
+            
+            // Filtrar por cliente asignado (solo para proveedores)
+            if (!empty($clientId)) {
+                $sql .= " AND l.client_id = :clientId";
+                $params[':clientId'] = $clientId;
             }
             
             $stmt = $db->prepare($sql);

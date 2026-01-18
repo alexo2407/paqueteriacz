@@ -57,22 +57,24 @@ $start = $_REQUEST['start'] ?? $_POST['start'] ?? $_GET['start'] ?? 0;
 $length = $_REQUEST['length'] ?? $_POST['length'] ?? $_GET['length'] ?? 10;
 $searchValue = $_REQUEST['search']['value'] ?? $_POST['search']['value'] ?? $_GET['search']['value'] ?? '';
 
-// 2. Parámetros Custom (Filtros Fecha)
+// 2. Parámetros Custom (Filtros Fecha y Cliente)
 $startDate = $_REQUEST['start_date'] ?? $_POST['start_date'] ?? $_GET['start_date'] ?? null;
 $endDate = $_REQUEST['end_date'] ?? $_POST['end_date'] ?? $_GET['end_date'] ?? null;
 $leadStatus = $_REQUEST['lead_status'] ?? $_POST['lead_status'] ?? $_GET['lead_status'] ?? null;
+$clientId = $_REQUEST['client_id'] ?? $_POST['client_id'] ?? $_GET['client_id'] ?? null;
 $tab = $_REQUEST['tab'] ?? $_POST['tab'] ?? $_GET['tab'] ?? 'all';
 
-// Validar fechas vacías
+// Validar fechas y filtros vacíos
 if (empty($startDate) || $startDate == 'null') $startDate = null;
 if (empty($endDate) || $endDate == 'null') $endDate = null;
 if (empty($leadStatus) || $leadStatus == 'null') $leadStatus = null;
+if (empty($clientId) || $clientId == 'null' || $clientId == '') $clientId = null;
 
 
 // 3. Consultar Datos
-$notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, false, $length, $start, $searchValue, $startDate, $endDate, $leadStatus);
-$totalRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, '', $startDate, $endDate, $leadStatus);
-$filteredRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, $searchValue, $startDate, $endDate, $leadStatus);
+$notificaciones = CrmNotificationModel::obtenerPorUsuario($userId, false, $length, $start, $searchValue, $startDate, $endDate, $leadStatus, $clientId);
+$totalRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, '', $startDate, $endDate, $leadStatus, $clientId);
+$filteredRecords = CrmNotificationModel::contarTotalPorUsuario($userId, false, $searchValue, $startDate, $endDate, $leadStatus, $clientId);
 
 // 4. Construir Array DataTables
 $data = [];

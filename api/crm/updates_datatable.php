@@ -47,6 +47,16 @@ $start = isset($_POST['start']) ? (int)$_POST['start'] : 0;
 $length = isset($_POST['length']) ? (int)$_POST['length'] : 20;
 $searchValue = isset($_POST['search']['value']) ? trim($_POST['search']['value']) : '';
 
+// Parámetros de Filtros (Fecha y Cliente)
+$startDate = $_POST['start_date'] ?? $_REQUEST['start_date'] ?? null;
+$endDate = $_POST['end_date'] ?? $_REQUEST['end_date'] ?? null;
+$clientId = $_POST['client_id'] ?? $_REQUEST['client_id'] ?? null;
+
+// Validar filtros vacíos
+if (empty($startDate) || $startDate == 'null') $startDate = null;
+if (empty($endDate) || $endDate == 'null') $endDate = null;
+if (empty($clientId) || $clientId == 'null' || $clientId == '') $clientId = null;
+
 // Obtener todas las notificaciones de tipo status_updated del usuario
 // Usamos un límite alto porque necesitamos agrupar por lead
 $allNotifications = CrmNotificationModel::obtenerPorUsuario(
@@ -55,8 +65,10 @@ $allNotifications = CrmNotificationModel::obtenerPorUsuario(
     5000,  // límite alto para obtener todas
     0,     // offset 0
     $searchValue,
-    null, // date('Y-m-d', strtotime('-6 months')),
-    null // date('Y-m-d')
+    $startDate,
+    $endDate,
+    null, // leadStatus
+    $clientId
 );
 
 // Filtrar solo actualizaciones (no new_lead)

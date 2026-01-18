@@ -1170,7 +1170,18 @@ if (typeof $ !== 'undefined' && $.fn.dataTable) {
                 searchDelay: 500,
                 ajax: {
                     url: '<?= RUTA_URL ?>api/crm/updates_datatable.php',
-                    type: 'POST'
+                    type: 'POST',
+                    data: function(d) {
+                        // Enviar filtros del dashboard si existen
+                        var startDateInput = document.querySelector('input[name="start_date"]');
+                        var endDateInput = document.querySelector('input[name="end_date"]');
+                        var clientInput = document.querySelector('select[name="client_id"]');
+                        
+                        if (startDateInput) d.start_date = startDateInput.value;
+                        if (endDateInput) d.end_date = endDateInput.value;
+                        if (clientInput) d.client_id = clientInput.value;
+                        d.tab = 'updates';
+                    }
                 },
                 order: [[1, 'desc']], // Ordenar por timestamp
                 pageLength: 20,
@@ -1227,6 +1238,13 @@ if (typeof $ !== 'undefined' && $.fn.dataTable) {
                         d.start_date = document.getElementById('filterStartDate').value;
                         d.end_date = document.getElementById('filterEndDate').value;
                         d.lead_status = document.getElementById('filterLeadStatus').value;
+                        
+                        // Agregar filtro de cliente si existe (solo para proveedores)
+                        var clientInput = document.querySelector('select[name="client_id"]');
+                        if (clientInput) {
+                            d.client_id = clientInput.value;
+                        }
+                        
                         d.tab = 'all';
                     }
                 },
