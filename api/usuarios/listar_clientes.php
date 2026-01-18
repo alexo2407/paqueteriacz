@@ -4,13 +4,17 @@
  */
 
 header('Content-Type: application/json');
-if (session_status() == PHP_SESSION_NONE) session_start();
 
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../modelo/usuario.php';
 require_once __DIR__ . '/../../utils/crm_roles.php';
+require_once __DIR__ . '/../../utils/session.php';
 
-$userId = $_SESSION['idUsuario'] ?? 0;
+// Usar sesión segura
+start_secure_session();
+
+// Fallback para diferentes claves de sesión
+$userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? $_SESSION['ID_Usuario'] ?? 0;
 
 if ($userId <= 0) {
     echo json_encode([]);
