@@ -4,6 +4,9 @@
 
 start_secure_session();
 
+// Cargar constantes de roles antes de usarlas
+require_once __DIR__ . '/../../utils/permissions.php';
+
 if(!isset($_SESSION['registrado']))
 {
     header('location:'.RUTA_URL.'login');
@@ -32,7 +35,6 @@ if (($isClienteCRM || $isProveedorCRM) && !$isAdmin) {
 }
 
 require_once __DIR__ . '/../../controlador/dashboard.php';
-require_once __DIR__ . '/../../utils/permissions.php';
 
 include("vista/includes/header.php");
 
