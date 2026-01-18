@@ -225,14 +225,14 @@ if (preg_match('/\/api\/crm\/provider-metrics$/', $path) && $method === 'GET') {
     exit;
 }
 
-// POST /api/crm/notifications_datatable.php - DataTable de notificaciones
-if (preg_match('/\/api\/crm\/notifications_datatable\.php$/', $path) && $method === 'POST') {
+// POST/GET /api/crm/notifications_datatable.php - DataTable de notificaciones
+if (preg_match('/\/api\/crm\/notifications_datatable\.php$/', $path) && ($method === 'POST' || $method === 'GET')) {
     require_once __DIR__ . '/crm/notifications_datatable.php';
     exit;
 }
 
-// POST /api/crm/updates_datatable.php - DataTable de actualizaciones
-if (preg_match('/\/api\/crm\/updates_datatable\.php$/', $path) && $method === 'POST') {
+// POST/GET /api/crm/updates_datatable.php - DataTable de actualizaciones
+if (preg_match('/\/api\/crm\/updates_datatable\.php$/', $path) && ($method === 'POST' || $method === 'GET')) {
     require_once __DIR__ . '/crm/updates_datatable.php';
     exit;
 }
