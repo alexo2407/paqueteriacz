@@ -16,8 +16,15 @@ start_secure_session();
 // Fallback para diferentes claves de sesión
 $userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? $_SESSION['ID_Usuario'] ?? 0;
 
+// Modo debug
+$debug = isset($_GET['debug']) && $_GET['debug'] === '1';
+
 if ($userId <= 0) {
-    echo json_encode([]);
+    if ($debug) {
+        echo json_encode(['error' => 'No authenticated', 'session' => array_keys($_SESSION)]);
+    } else {
+        echo json_encode([]);
+    }
     exit;
 }
 
@@ -26,7 +33,29 @@ $search = $_GET['q'] ?? '';
 
 try {
     $usuarioModel = new UsuarioModel();
-    $clientes = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente');
+    
+    if ($debug) {
+        // Listar todos los roles disponibles
+        $rolesDisponibles = $usuarioModel->listarRoles();
+        
+        // Intentar obtener usuarios para varios nombres de rol posibles
+        $intentos = [
+            'Cliente' => $usuarioModel->obtenerUsuariosPorRolNombre('Cliente'),
+            'CLIENTE' => $usuarioModel->obtenerUsuariosPorRolNombre('CLIENTE'),
+            'Cliente CRM' => $usuarioModel->obtenerUsuariosPorRolNombre('Cliente CRM'),
+            'cliente' => $usuarioModel->obtenerUsuariosPorRolNombre('cliente')
+        ];
+        
+        echo json_encode([
+            'roles_disponibles' => $rolesDisponibles,
+            'intentos' => array_map(fn($arr) => count($arr), $intentos),
+            'search' => $search
+        ]);
+        exit;
+    }
+    
+    $clientes = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente CRM');
+
     
     // Filtrar por búsqueda si existe
     if (!empty($search)) {
@@ -50,5 +79,9 @@ try {
     
 } catch (Exception $e) {
     error_log("Error listando clientes: " . $e->getMessage());
-    echo json_encode([]);
+    if ($debug) {
+        echo json_encode(['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    } else {
+        echo json_encode([]);
+    }
 }
