@@ -30,6 +30,36 @@ RewriteCond %{REQUEST_URI} ^/[^/]+/api/usuarios/.*\.php$
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
+# Permitir acceso directo a archivos .php en geoinfo/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/geoinfo/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Permitir acceso directo a archivos .php en auth/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/auth/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Permitir acceso directo a archivos .php en monedas/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/monedas/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Permitir acceso directo a archivos .php en pedidos/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/pedidos/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Permitir acceso directo a archivos .php en productos/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/productos/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Permitir acceso directo a archivos .php en utils/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/[^/]+/api/utils/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
 # No reescribir si es un archivo o directorio que existe físicamente
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

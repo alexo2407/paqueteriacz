@@ -1,7 +1,7 @@
 <?php
 include_once __DIR__ . '/../../config/config.php';
 include_once __DIR__ . '/../../controlador/geoinfo.php';
-include_once __DIR__ . '/../autenticacion.php'; // Ensure auth if needed, or remove if public
+include_once __DIR__ . '/../utils/autenticacion.php'; // Ensure auth if needed, or remove if public
 
 // Optional: Validate Auth
 // $usuario = Autenticacion::verificar();

@@ -1,6 +1,9 @@
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <?php
+// Incluir el modelo de categorías
+require_once __DIR__ . '/../../../modelo/categoria.php';
+
 // Obtener categorías padre para el select
 $categoriasDisponibles = CategoriaModel::listar();
 ?>

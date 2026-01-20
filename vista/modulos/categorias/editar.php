@@ -1,6 +1,9 @@
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <?php
+// Incluir el modelo de categorías
+require_once __DIR__ . '/../../../modelo/categoria.php';
+
 // Obtener ID de la categoría
 $id = isset($_GET['id']) ? (int)$_GET['id'] : (isset($parametros[0]) ? (int)$parametros[0] : 0);
 
