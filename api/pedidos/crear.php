@@ -17,6 +17,9 @@
  *  - coordenadas ("lat,long")
  *  - pais, departamento, municipio (address fields required by validation)
  *  - id_moneda, id_vendedor, id_proveedor (FKs recommended)
+ *  - precio_total_local (decimal, optional) - Total price in provider's local currency
+ *  - precio_total_usd (decimal, optional) - Total price in USD
+ *  - tasa_conversion_usd (decimal, optional) - Exchange rate used for conversion
  *
  * Responses are emitted using the standard envelope: { success, message, data }
  * Common errors:

@@ -33,6 +33,43 @@ try {
     $proveedores = [];
 }
 
+// Detectar moneda local del usuario basado en su país
+$monedaLocalUsuario = null;
+$idPaisUsuario = null;
+
+// Intentar obtener id_pais de múltiples fuentes
+if (isset($_SESSION['id_pais']) && $_SESSION['id_pais']) {
+    $idPaisUsuario = $_SESSION['id_pais'];
+} elseif (isset($_SESSION['user_id'])) {
+    // Si no está en sesión, obtener del usuario en BD
+    try {
+        require_once __DIR__ . '/../../../modelo/usuario.php';
+        $db = (new Conexion())->conectar();
+        $stmt = $db->prepare('SELECT id_pais FROM usuarios WHERE id = :user_id');
+        $stmt->execute([':user_id' => $_SESSION['user_id']]);
+        $idPaisUsuario = $stmt->fetchColumn();
+    } catch (Exception $e) {
+        error_log('Error al obtener país del usuario: ' . $e->getMessage());
+    }
+}
+
+if ($idPaisUsuario) {
+    try {
+        require_once __DIR__ . '/../../../modelo/moneda.php';
+        $db = (new Conexion())->conectar();
+        $stmt = $db->prepare('SELECT id_moneda_local FROM paises WHERE id = :id_pais');
+        $stmt->execute([':id_pais' => $idPaisUsuario]);
+        $monedaLocalUsuario = $stmt->fetchColumn();
+        
+        // Log para debugging (solo en desarrollo)
+        if (defined('DEBUG_MODE') && DEBUG_MODE) {
+            error_log("Auto-detección de moneda: País ID={$idPaisUsuario}, Moneda ID={$monedaLocalUsuario}");
+        }
+    } catch (Exception $e) {
+        error_log('Error al obtener moneda local del usuario: ' . $e->getMessage());
+    }
+}
+
 require_once __DIR__ . '/../../../modelo/pais.php';
 require_once __DIR__ . '/../../../modelo/departamento.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -194,15 +231,27 @@ try {
                         <div class="mb-3">
                             <label for="moneda" class="form-label">Moneda 💱</label>
                             <select class="form-select select2-searchable" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda...">
-                                <option value="" disabled selected>Selecciona una moneda</option>
-                                <?php foreach ($monedas as $moneda): ?>
-                                    <option value="<?= $moneda['id']; ?>" data-tasa="<?= htmlspecialchars($moneda['tasa_usd']); ?>" <?= (isset($old_posted['moneda']) && (int)$old_posted['moneda'] === (int)$moneda['id']) ? 'selected' : '' ?> >
+                                <option value="" disabled <?= !$monedaLocalUsuario && !isset($old_posted['moneda']) ? 'selected' : '' ?>>Selecciona una moneda</option>
+                                <?php foreach ($monedas as $moneda): 
+                                    // Pre-seleccionar la moneda local del usuario si existe
+                                    $selected = false;
+                                    if (isset($old_posted['moneda']) && (int)$old_posted['moneda'] === (int)$moneda['id']) {
+                                        $selected = true;
+                                    } elseif (!isset($old_posted['moneda']) && $monedaLocalUsuario && (int)$monedaLocalUsuario === (int)$moneda['id']) {
+                                        $selected = true;
+                                    }
+                                ?>
+                                    <option value="<?= $moneda['id']; ?>" data-tasa="<?= htmlspecialchars($moneda['tasa_usd']); ?>" <?= $selected ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($moneda['nombre']); ?> (<?= htmlspecialchars($moneda['codigo']); ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                             <div class="invalid-feedback">Por favor, selecciona una moneda.</div>
-                            <small class="form-text text-muted" id="tasaInfo">Tasa de cambio seleccionada</small>
+                            <?php if ($monedaLocalUsuario): ?>
+                                <small class="form-text text-success"><i class="bi bi-check-circle"></i> Moneda local pre-seleccionada según tu país</small>
+                            <?php else: ?>
+                                <small class="form-text text-muted" id="tasaInfo">Tasa de cambio seleccionada</small>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -227,18 +276,33 @@ try {
                 </div>
 
                 <div class="row mt-4">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="precio_usd" class="form-label">Precio Total USD 💵</label>
-                            <input type="number" step="0.01" class="form-control bg-light" id="precio_usd" name="precio_usd" readonly value="<?= htmlspecialchars($old_posted['precio_usd'] ?? '') ?>">
-                            <div class="form-text">Se calcula automáticamente con la tasa de cambio registrada.</div>
+                    <div class="col-12">
+                        <div class="alert alert-info" role="alert">
+                            <i class="bi bi-info-circle"></i> <strong>Precio Total del Combo:</strong> Ingresa el precio total que cobrarás por todos los productos del pedido. No necesitas ingresar precios individuales por producto.
                         </div>
                     </div>
-                    <div class="col-md-6">
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="precio_local" class="form-label">Precio Total Local 💰</label>
-                            <input type="number" step="0.01" class="form-control bg-light" id="precio_local" name="precio_local" min="0" readonly value="<?= htmlspecialchars($old_posted['precio_local'] ?? '') ?>">
-                            <div class="form-text">Ingresa el valor en la moneda seleccionada para calcular el equivalente en USD.</div>
+                            <label for="precio_total_local" class="form-label">Precio Total (Moneda Local) 💰</label>
+                            <input type="number" step="0.01" class="form-control" id="precio_total_local" name="precio_total_local" min="0" value="<?= htmlspecialchars($old_posted['precio_total_local'] ?? '') ?>">
+                            <div class="form-text">Precio total del combo en la moneda seleccionada</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="precio_total_usd" class="form-label">Precio Total USD 💵</label>
+                            <input type="number" step="0.01" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" readonly value="<?= htmlspecialchars($old_posted['precio_total_usd'] ?? '') ?>">
+                            <div class="form-text">Se calcula automáticamente con la tasa de cambio</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="tasa_conversion_usd" class="form-label">Tasa de Conversión</label>
+                            <input type="number" step="0.000001" class="form-control bg-light" id="tasa_conversion_usd" name="tasa_conversion_usd" readonly value="<?= htmlspecialchars($old_posted['tasa_conversion_usd'] ?? '') ?>">
+                            <div class="form-text" id="tasaInfo">Tasa de la moneda seleccionada</div>
                         </div>
                     </div>
                 </div>
@@ -473,7 +537,8 @@ try {
             'id' => (int)$p['id'],
             'nombre' => $p['nombre'],
             'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0,
-            'precio_usd' => isset($p['precio_usd']) ? $p['precio_usd'] : null
+            'precio_usd' => isset($p['precio_usd']) ? $p['precio_usd'] : null,
+            'id_usuario_creador' => isset($p['id_usuario_creador']) ? (int)$p['id_usuario_creador'] : null
         ];
     }, $productos)); ?>;
     const oldPosted = <?php echo json_encode($old_posted ?? null); ?>;
@@ -484,6 +549,7 @@ try {
     const precioLocalInput = document.getElementById('precio_local');
     const monedaSelect = document.getElementById('moneda');
     const tasaInfo = document.getElementById('tasaInfo');
+    const proveedorSelect = document.getElementById('proveedor');
 
     function escapeHtml(s) {
         if (!s) return '';
@@ -492,10 +558,30 @@ try {
 
     function makeProductOptions(selectedId) {
         let opts = '<option value="">Selecciona un producto</option>';
-        productos.forEach(p => {
-            const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
-            opts += `<option value="${p.id}" data-stock="${p.stock}" data-precio-usd="${p.precio_usd ?? ''}"${sel}>${escapeHtml(p.nombre)}${p.stock !== null ? ' — Stock: ' + p.stock : ''}${p.precio_usd ? ' — USD $' + p.precio_usd : ''}</option>`;
+        
+        // Obtener el proveedor seleccionado o el del usuario logueado
+        const proveedorId = proveedorSelect ? parseInt(proveedorSelect.value) : null;
+        
+        // Filtrar productos SOLO del proveedor seleccionado
+        const productosDelProveedor = productos.filter(p => {
+            // Si no hay proveedor seleccionado, no mostrar nada (requerir selección)
+            if (!proveedorId) return false;
+            // SOLO mostrar productos donde id_usuario_creador coincide con el proveedor
+            return p.id_usuario_creador && p.id_usuario_creador === proveedorId;
         });
+        
+        productosDelProveedor.forEach(p => {
+            const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
+            // Solo mostrar nombre y stock, NO precio individual (usamos precio total del combo)
+            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${p.stock !== null ? ' — Stock: ' + p.stock : ''}</option>`;
+        });
+        
+        if (productosDelProveedor.length === 0 && proveedorId) {
+            opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
+        } else if (!proveedorId) {
+            opts += '<option value="" disabled>Primero selecciona un proveedor</option>';
+        }
+        
         return opts;
     }
 
@@ -508,49 +594,45 @@ try {
         return isNaN(tasa) || tasa <= 0 ? 1 : tasa;
     }
 
-    // Función para calcular el precio total en USD sumando todos los productos
-    function calcularPrecioTotalUSD() {
-        let totalUSD = 0;
-        const rows = productosContainer.querySelectorAll('.producto-row');
-        
-        rows.forEach(row => {
-            const sel = row.querySelector('.producto-select');
-            const qty = row.querySelector('.producto-cantidad');
-            
-            if (sel && qty && sel.value) {
-                const selectedOption = sel.options[sel.selectedIndex];
-                if (selectedOption) {
-                    const precioUnitario = parseFloat(selectedOption.getAttribute('data-precio-usd')) || 0;
-                    const cantidad = parseInt(qty.value) || 0;
-                    totalUSD += precioUnitario * cantidad;
-                }
-            }
-        });
-        
-        return totalUSD;
-    }
-
-    // Función para actualizar los campos de precio
-    function actualizarPrecios() {
-        const totalUSD = calcularPrecioTotalUSD();
+    // Función para actualizar el campo de tasa de conversión cuando cambia la moneda
+    function actualizarTasaConversion() {
         const tasa = getTasaMoneda();
+        const tasaInput = document.getElementById('tasa_conversion_usd');
         
-        // Actualizar precio USD
-        if (precioUsdInput) {
-            precioUsdInput.value = totalUSD.toFixed(2);
+        if (tasaInput) {
+            tasaInput.value = tasa.toFixed(6);
         }
         
-        // Calcular y actualizar precio local
-        if (precioLocalInput && tasa > 0) {
-            const totalLocal = totalUSD * tasa;
-            precioLocalInput.value = totalLocal.toFixed(2);
-        }
-
         // Actualizar información de tasa
         if (tasaInfo) {
             const monedaNombre = monedaSelect ? monedaSelect.options[monedaSelect.selectedIndex]?.text : '';
-            tasaInfo.textContent = `Tasa actual: ${tasa} | Total USD: $${totalUSD.toFixed(2)}`;
+            tasaInfo.textContent = `Tasa actual: ${tasa.toFixed(4)} ${monedaNombre}`;
         }
+        
+        // Recalcular precio USD si ya hay un precio local
+        const precioTotalLocal = document.getElementById('precio_total_local');
+        if (precioTotalLocal && precioTotalLocal.value) {
+            calcularPrecioUSD();
+        }
+    }
+
+    // Función para calcular el precio total en USD basado en precio local y tasa
+    function calcularPrecioUSD() {
+        const precioTotalLocal = document.getElementById('precio_total_local');
+        const precioTotalUSD = document.getElementById('precio_total_usd');
+        const tasa = getTasaMoneda();
+        
+        if (precioTotalLocal && precioTotalUSD && precioTotalLocal.value) {
+            const valorLocal = parseFloat(precioTotalLocal.value) || 0;
+            const valorUSD = valorLocal / tasa;
+            precioTotalUSD.value = valorUSD.toFixed(2);
+        }
+    }
+
+    // Función para actualizar los precios (mantener compatibilidad con código existente)
+    function actualizarPrecios() {
+        actualizarTasaConversion();
+        calcularPrecioUSD();
     }
 
     // Función para actualizar la disponibilidad de opciones en los selects
@@ -664,6 +746,12 @@ try {
 
     // Initialize rows from previous failed submit (if any) or with one empty row
     document.addEventListener('DOMContentLoaded', function(){
+        // Inicializar tasa de conversión PRIMERO si hay moneda pre-seleccionada
+        if (monedaSelect && monedaSelect.value) {
+            actualizarTasaConversion();
+        }
+        
+        // Luego agregar filas de productos
         if (oldPosted && Array.isArray(oldPosted.productos) && oldPosted.productos.length > 0) {
             oldPosted.productos.forEach(function(it){
                 const pid = it.producto_id ?? it.producto ?? '';
@@ -684,9 +772,47 @@ try {
 
     btnAdd.addEventListener('click', function(){ addProductRow('', 1); });
     
+    // Recargar productos cuando cambie el proveedor
+    if (proveedorSelect) {
+        proveedorSelect.addEventListener('change', function() {
+            // Actualizar todas las filas de productos existentes
+            const allRows = productosContainer.querySelectorAll('.producto-row');
+            allRows.forEach(row => {
+                const select = row.querySelector('.producto-select');
+                if (select) {
+                    const currentValue = select.value;
+                    // Regenerar opciones
+                    select.innerHTML = makeProductOptions(currentValue);
+                    
+                    // Reinicializar Select2 si está disponible
+                    if (typeof $ !== 'undefined' && $.fn.select2 && $(select).hasClass('select2-hidden-accessible')) {
+                        $(select).select2('destroy');
+                        $(select).select2({
+                            theme: 'bootstrap-5',
+                            placeholder: 'Escribe para buscar un producto...',
+                            allowClear: true,
+                            width: '100%'
+                        });
+                    }
+                }
+            });
+        });
+    }
+    
     // Recalcular cuando cambie la moneda
     if (monedaSelect) {
-        monedaSelect.addEventListener('change', actualizarPrecios);
+        monedaSelect.addEventListener('change', actualizarTasaConversion);
+    }
+    
+    // Recalcular cuando cambie la moneda
+    if (monedaSelect) {
+        monedaSelect.addEventListener('change', actualizarTasaConversion);
+    }
+    
+    // Recalcular cuando cambie el precio total local
+    const precioTotalLocalInput = document.getElementById('precio_total_local');
+    if (precioTotalLocalInput) {
+        precioTotalLocalInput.addEventListener('input', calcularPrecioUSD);
     }
 })();
 // Expose previously submitted values to the following scripts

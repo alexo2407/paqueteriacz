@@ -123,7 +123,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local','precio_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -209,6 +209,18 @@ class PedidosModel
                                 break;
                             case 'precio_usd':
                                 $params[':precio_usd'] = $precio_usd;
+                                break;
+                            case 'precio_total_local':
+                                $val = $row['precio_total_local'] ?? null;
+                                $params[':precio_total_local'] = ($val === '') ? null : $val;
+                                break;
+                            case 'precio_total_usd':
+                                $val = $row['precio_total_usd'] ?? null;
+                                $params[':precio_total_usd'] = ($val === '') ? null : $val;
+                                break;
+                            case 'tasa_conversion_usd':
+                                $val = $row['tasa_conversion_usd'] ?? null;
+                                $params[':tasa_conversion_usd'] = ($val === '') ? null : $val;
                                 break;
                             case 'id_pais':
                                 // accept numeric id or try to resolve by name/code
@@ -375,7 +387,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local','precio_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -400,6 +412,9 @@ class PedidosModel
 
             $precio_local = $data['precio'] ?? $data['precio_local'] ?? null;
             $precio_usd = $data['precio_usd'] ?? null;
+            $precio_total_local = $data['precio_total_local'] ?? null;
+            $precio_total_usd = $data['precio_total_usd'] ?? null;
+            $tasa_conversion = $data['tasa_conversion_usd'] ?? null;
 
             // Preparar parámetros según columnas
             $params = [];
@@ -422,6 +437,15 @@ class PedidosModel
                         break;
                     case 'precio_usd':
                         $params[':precio_usd'] = $precio_usd;
+                        break;
+                    case 'precio_total_local':
+                        $params[':precio_total_local'] = $precio_total_local;
+                        break;
+                    case 'precio_total_usd':
+                        $params[':precio_total_usd'] = $precio_total_usd;
+                        break;
+                    case 'tasa_conversion_usd':
+                        $params[':tasa_conversion_usd'] = $tasa_conversion;
                         break;
                     case 'id_pais':
                         // accept numeric id or try to resolve by name/code

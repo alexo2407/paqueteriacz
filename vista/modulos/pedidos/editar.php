@@ -67,6 +67,7 @@ require_once __DIR__ . '/../../../modelo/pais.php';
 require_once __DIR__ . '/../../../modelo/departamento.php';
 require_once __DIR__ . '/../../../modelo/municipio.php';
 require_once __DIR__ . '/../../../modelo/barrio.php';
+require_once __DIR__ . '/../../../modelo/moneda.php';
 try { $paises = PaisModel::listar(); } catch (Exception $e) { $paises = []; }
 try { $departamentosAll = DepartamentoModel::listarPorPais(null); } catch (Exception $e) { $departamentosAll = []; }
 try { $municipiosAll = MunicipioModel::listarPorDepartamento(null); } catch (Exception $e) { $municipiosAll = []; }
@@ -81,13 +82,38 @@ if (!$pedido) {
     exit;
 }
 
-// If the previous non-AJAX edit submit failed, repopulate fields from session
+// Detect user's local currency based on their country
 require_once __DIR__ . '/../../../utils/session.php'; start_secure_session();
+$monedaLocalUsuario = null;
+$id_pais_usuario = $_SESSION['id_pais'] ?? $_SESSION['pais_id'] ?? null;
+if (!$id_pais_usuario && isset($_SESSION['usuario_id'])) {
+    require_once __DIR__ . '/../../../modelo/usuario.php';
+    try {
+        $usuarioData = UsuarioModel::obtenerPorId($_SESSION['usuario_id']);
+        if ($usuarioData && isset($usuarioData['id_pais'])) {
+            $id_pais_usuario = $usuarioData['id_pais'];
+        }
+    } catch (Exception $e) {
+        // Silently fail, will use default currency
+    }
+}
+if ($id_pais_usuario) {
+    try {
+        $paisData = PaisModel::obtenerPorId($id_pais_usuario);
+        if ($paisData && isset($paisData['id_moneda_local'])) {
+            $monedaLocalUsuario = $paisData['id_moneda_local'];
+        }
+    } catch (Exception $e) {
+        // Silently fail
+    }
+}
+
+// If the previous non-AJAX edit submit failed, repopulate fields from session
 $old_edit = $_SESSION['old_pedido_edit_' . $id_pedido] ?? null;
 if (isset($_SESSION['old_pedido_edit_' . $id_pedido])) unset($_SESSION['old_pedido_edit_' . $id_pedido]);
 if ($old_edit) {
     // override scalar values present in old edit
-    $fieldsToCopy = ['numero_orden','destinatario','telefono','direccion','comentario','latitud','longitud','precio_local','precio_usd','id_pais','id_departamento','id_municipio','id_barrio','proveedor','moneda','vendedor','estado'];
+    $fieldsToCopy = ['numero_orden','destinatario','telefono','direccion','comentario','latitud','longitud','precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','proveedor','moneda','vendedor','estado'];
     foreach ($fieldsToCopy as $f) {
         if (isset($old_edit[$f])) $pedido[$f] = $old_edit[$f];
     }
@@ -97,12 +123,17 @@ if ($old_edit) {
     }
 }
 
-// Si no tiene proveedor o moneda, asignar el primero por defecto para que se seleccione
+// Si no tiene proveedor, asignar el primero por defecto para que se seleccione
 if (empty($pedido['id_proveedor']) && !empty($proveedores)) {
     $pedido['id_proveedor'] = $proveedores[0]['id'];
 }
-if (empty($pedido['id_moneda']) && !empty($monedas)) {
-    $pedido['id_moneda'] = $monedas[0]['id'];
+// Si no tiene moneda, preferir la moneda local del usuario, o el primero por defecto
+if (empty($pedido['id_moneda'])) {
+    if ($monedaLocalUsuario) {
+        $pedido['id_moneda'] = $monedaLocalUsuario;
+    } elseif (!empty($monedas)) {
+        $pedido['id_moneda'] = $monedas[0]['id'];
+    }
 }
 ?>
 <style>
@@ -275,19 +306,32 @@ if (empty($pedido['id_moneda']) && !empty($monedas)) {
                     </button>
                 </div>
                 
-                <div class="row mt-4">
-                    <div class="col-md-6">
+                <!-- Precio Total del Combo -->
+                <div class="alert alert-info mt-4">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Precio del Combo:</strong> Ingresa el precio total que te cobró el proveedor en su moneda local. El precio en USD se calculará automáticamente.
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="precio_usd" class="form-label">Precio Total USD 💵</label>
-                            <input type="number" class="form-control bg-light" id="precio_usd" name="precio_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_usd'] ?? '') ?>">
+                            <label for="precio_total_local" class="form-label">Precio Total (Moneda Local) 💰</label>
+                            <input type="number" class="form-control" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>" required>
+                            <small class="form-text text-muted">Precio total que cobró el proveedor</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="precio_total_usd" class="form-label">Precio Total (USD) 💵</label>
+                            <input type="number" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_total_usd'] ?? $pedido['precio_usd'] ?? '') ?>">
                             <small class="form-text text-muted">Calculado automáticamente</small>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="mb-3">
-                            <label for="precio_local" class="form-label">Precio Total Local 💰</label>
-                            <input type="number" class="form-control bg-light" id="precio_local" name="precio_local" step="0.01" min="0" readonly value="<?= htmlspecialchars($pedido['precio_local'] ?? '') ?>" required>
-                            <small class="form-text text-muted">Calculado automáticamente según tasa de cambio</small>
+                            <label for="tasa_conversion_usd" class="form-label">Tasa de Conversión 📊</label>
+                            <input type="number" class="form-control bg-light" id="tasa_conversion_usd" name="tasa_conversion_usd" step="0.000001" readonly value="<?= htmlspecialchars($pedido['tasa_conversion_usd'] ?? '') ?>">
+                            <small class="form-text text-muted">Tasa al momento de crear el pedido</small>
                         </div>
                     </div>
                 </div>
@@ -576,80 +620,78 @@ document.addEventListener('DOMContentLoaded', function() {
 // Dynamic products rows for editar.php
 (function(){
     const productos = <?php echo json_encode(array_map(function($p){
-        return [ 'id' => (int)$p['id'], 'nombre' => $p['nombre'], 'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0, 'precio_usd' => isset($p['precio_usd']) ? $p['precio_usd'] : null ];
+        return [ 'id' => (int)$p['id'], 'nombre' => $p['nombre'], 'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0, 'id_usuario_creador' => $p['id_usuario_creador'] ?? null ];
     }, $productos)); ?>;
 
     const existingItems = <?php echo json_encode($pedido['productos'] ?? []); ?>;
     const productosContainer = document.getElementById('productosContainer');
     const btnAdd = document.getElementById('btnAddProducto');
-    const precioUsdInput = document.getElementById('precio_usd');
-    const precioLocalInput = document.getElementById('precio_local');
+    const precioTotalLocalInput = document.getElementById('precio_total_local');
+    const precioTotalUsdInput = document.getElementById('precio_total_usd');
+    const tasaConversionInput = document.getElementById('tasa_conversion_usd');
     const monedaSelect = document.getElementById('moneda');
-    const tasaInfo = document.getElementById('tasaInfo');
+    const proveedorSelect = document.getElementById('proveedor');
 
     function escapeHtml(s) { if (!s) return ''; return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
     function makeProductOptions(selectedId) {
         let opts = '<option value="">Selecciona un producto</option>';
-        productos.forEach(p => {
+        const idProveedorSeleccionado = proveedorSelect ? parseInt(proveedorSelect.value) : null;
+
+        // En modo de edición, si no hay proveedor seleccionado AÚN, mostrar todos los productos
+        // Esto permite que los productos existentes se carguen correctamente
+        if (!idProveedorSeleccionado) {
+            // Mostrar todos los productos si estamos en el estado inicial de carga
+            productos.forEach(p => {
+                const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
+                opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)} — Stock: ${p.stock}</option>`;
+            });
+            return opts;
+        }
+
+        // Si hay un proveedor seleccionado, aplicar el filtro estricto
+        const productosFiltrados = productos.filter(p => {
+            const idCreador = p.id_usuario_creador;
+            // Permitir el producto si:
+            // 1. Pertenece al proveedor seleccionado, O
+            // 2. Es el producto que está siendo pre-seleccionado (para edición)
+            return (idCreador !== null && parseInt(idCreador) === idProveedorSeleccionado) ||
+                   (selectedId && parseInt(p.id) === parseInt(selectedId));
+        });
+
+        if (productosFiltrados.length === 0) {
+            opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
+            return opts;
+        }
+
+        productosFiltrados.forEach(p => {
             const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
-            opts += `<option value="${p.id}" data-stock="${p.stock}" data-precio-usd="${p.precio_usd ?? ''}"${sel}>${escapeHtml(p.nombre)}${p.stock !== null ? ' — Stock: ' + p.stock : ''}${p.precio_usd ? ' — USD $' + p.precio_usd : ''}</option>`;
+            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)} — Stock: ${p.stock}</option>`;
         });
         return opts;
     }
 
-    // Función para obtener la tasa de cambio actual
-    function getTasaMoneda() {
-        if (!monedaSelect) return 1;
+    // Función para actualizar la tasa de conversión
+    function actualizarTasaConversion() {
+        if (!monedaSelect || !tasaConversionInput) return;
         const selectedOption = monedaSelect.options[monedaSelect.selectedIndex];
-        if (!selectedOption) return 1;
+        if (!selectedOption) return;
         const tasa = parseFloat(selectedOption.getAttribute('data-tasa'));
-        return isNaN(tasa) || tasa <= 0 ? 1 : tasa;
+        if (!isNaN(tasa) && tasa > 0) {
+            tasaConversionInput.value = tasa.toFixed(6);
+        }
     }
 
-    // Función para calcular el precio total en USD sumando todos los productos
-    function calcularPrecioTotalUSD() {
-        let totalUSD = 0;
-        const rows = productosContainer.querySelectorAll('.producto-row');
+    // Función para calcular precio USD basado en el precio total local
+    function calcularPrecioUSD() {
+        if (!precioTotalLocalInput || !precioTotalUsdInput || !tasaConversionInput) return;
         
-        rows.forEach(row => {
-            const sel = row.querySelector('.producto-select');
-            const qty = row.querySelector('.producto-cantidad');
-            
-            if (sel && qty && sel.value) {
-                const selectedOption = sel.options[sel.selectedIndex];
-                if (selectedOption) {
-                    const precioUnitario = parseFloat(selectedOption.getAttribute('data-precio-usd')) || 0;
-                    const cantidad = parseInt(qty.value) || 0;
-                    totalUSD += precioUnitario * cantidad;
-                }
-            }
-        });
+        const precioLocal = parseFloat(precioTotalLocalInput.value) || 0;
+        const tasa = parseFloat(tasaConversionInput.value) || 1;
         
-        return totalUSD;
-    }
-
-    // Función para actualizar los campos de precio
-    function actualizarPrecios() {
-        const totalUSD = calcularPrecioTotalUSD();
-        const tasa = getTasaMoneda();
-        
-        // Actualizar precio USD
-        if (precioUsdInput) {
-            precioUsdInput.value = totalUSD.toFixed(2);
-        }
-        
-        // Calcular y actualizar precio local
-        // Si la tasa es 36.82 (córdobas por dólar), entonces: USD × tasa = Córdobas
-        if (precioLocalInput && tasa > 0) {
-            const totalLocal = totalUSD * tasa;  // CORRECTO: multiplicar, no dividir
-            precioLocalInput.value = totalLocal.toFixed(2);
-        }
-
-        // Actualizar información de tasa
-        if (tasaInfo) {
-            const monedaNombre = monedaSelect ? monedaSelect.options[monedaSelect.selectedIndex]?.text : '';
-            tasaInfo.textContent = `Tasa actual: ${tasa} | Total USD: $${totalUSD.toFixed(2)}`;
+        if (tasa > 0) {
+            const precioUsd = precioLocal / tasa;
+            precioTotalUsdInput.value = precioUsd.toFixed(2);
         }
     }
 
@@ -698,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         productosContainer.appendChild(row);
         
-        // Event listeners para recalcular precios
+        // Event listeners - NO calculamos precios automáticamente en el modo combo
         const select = row.querySelector('.producto-select');
         const cantidad = row.querySelector('.producto-cantidad');
         
@@ -719,20 +761,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Evento change de Select2
+            // Evento change de Select2 - solo para disponibilidad
             $(select).on('change.select2', function() {
-                actualizarPrecios();
                 updateProductOptionsAvailability();
             });
         } else {
             // Fallback si Select2 no está disponible
             select.addEventListener('change', () => {
-                actualizarPrecios();
                 updateProductOptionsAvailability();
             });
         }
-        
-        cantidad.addEventListener('input', actualizarPrecios);
         
         row.querySelector('.btnRemove').addEventListener('click', () => {
             // Destruir Select2 antes de eliminar el elemento
@@ -740,7 +778,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 $(select).select2('destroy');
             }
             row.remove();
-            actualizarPrecios();
             updateProductOptionsAvailability();
         });
         
@@ -750,6 +787,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // initialize rows from existingItems, or create one if empty
     document.addEventListener('DOMContentLoaded', function(){
+        // Inicializar tasa de conversión al cargar
+        actualizarTasaConversion();
+
         if (existingItems && existingItems.length > 0) {
             existingItems.forEach(it => {
                 // Handle both DB key (id_producto) and Session key (producto_id)
@@ -767,8 +807,7 @@ document.addEventListener('DOMContentLoaded', function() {
             addProductRow('', 1);
         }
         
-        // Calcular precios iniciales
-        actualizarPrecios();
+        // NO calculamos precios iniciales - el usuario debe ingresar el precio total manualmente
         updateProductOptionsAvailability();
     });
     
@@ -776,9 +815,41 @@ document.addEventListener('DOMContentLoaded', function() {
         addProductRow('', 1); 
     });
 
-    // Recalcular cuando cambie la moneda
+    // Actualizar tasa cuando cambie la moneda y recalcular precio USD
     if (monedaSelect) {
-        monedaSelect.addEventListener('change', actualizarPrecios);
+        monedaSelect.addEventListener('change', function() {
+            actualizarTasaConversion();
+            calcularPrecioUSD();
+        });
+    }
+
+    // Recalcular precio USD cuando cambie el precio total local
+    if (precioTotalLocalInput) {
+        precioTotalLocalInput.addEventListener('input', calcularPrecioUSD);
+    }
+
+    // Actualizar opciones de productos cuando cambie el proveedor
+    if (proveedorSelect) {
+        proveedorSelect.addEventListener('change', function() {
+            // Recargar opciones en todos los selects de productos existentes
+            const allSelects = productosContainer.querySelectorAll('.producto-select');
+            allSelects.forEach(select => {
+                const currentVal = select.value;
+                select.innerHTML = makeProductOptions(currentVal);
+                
+                // Reinicializar Select2 si está disponible
+                if (typeof $ !== 'undefined' && $.fn.select2) {
+                    $(select).select2('destroy');
+                    $(select).select2({
+                        theme: 'bootstrap-5',
+                        placeholder: 'Escribe para buscar un producto...',
+                        allowClear: true,
+                        width: '100%'
+                    });
+                }
+            });
+            updateProductOptionsAvailability();
+        });
     }
 })();
 
