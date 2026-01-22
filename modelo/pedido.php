@@ -821,7 +821,7 @@ class PedidosModel
                 );
             }
 
-            // Prices
+            // Prices (legacy fields)
             if (isset($data['precio_local'])) {
                 $fields[] = 'precio_local = :precio_local';
                 $params[':precio_local'] = $data['precio_local'] !== '' ? (float)$data['precio_local'] : null;
@@ -829,6 +829,20 @@ class PedidosModel
             if (isset($data['precio_usd'])) {
                 $fields[] = 'precio_usd = :precio_usd';
                 $params[':precio_usd'] = $data['precio_usd'] !== '' ? (float)$data['precio_usd'] : null;
+            }
+            
+            // New combo pricing fields
+            if (isset($data['precio_total_local'])) {
+                $fields[] = 'precio_total_local = :precio_total_local';
+                $params[':precio_total_local'] = $data['precio_total_local'] !== '' ? (float)$data['precio_total_local'] : null;
+            }
+            if (isset($data['precio_total_usd'])) {
+                $fields[] = 'precio_total_usd = :precio_total_usd';
+                $params[':precio_total_usd'] = $data['precio_total_usd'] !== '' ? (float)$data['precio_total_usd'] : null;
+            }
+            if (isset($data['tasa_conversion_usd'])) {
+                $fields[] = 'tasa_conversion_usd = :tasa_conversion_usd';
+                $params[':tasa_conversion_usd'] = $data['tasa_conversion_usd'] !== '' ? (float)$data['tasa_conversion_usd'] : null;
             }
 
             // Foreign keys - only update if value is provided and not empty
@@ -1128,7 +1142,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1166,6 +1180,9 @@ class PedidosModel
             $map = [
                 'precio_local' => 'precio_local',
                 'precio_usd' => 'precio_usd',
+                'precio_total_local' => 'precio_total_local',
+                'precio_total_usd' => 'precio_total_usd',
+                'tasa_conversion_usd' => 'tasa_conversion_usd',
                 'id_pais' => 'id_pais',
                 'id_departamento' => 'id_departamento',
                 'municipio' => 'municipio',

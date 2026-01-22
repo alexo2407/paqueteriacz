@@ -263,7 +263,7 @@ if (empty($pedido['id_moneda'])) {
                                 <?php endif; ?>
                             <?php else: ?>
                                 <!-- Usuario Proveedor: auto-asignado, no editable -->
-                                <input type="hidden" name="proveedor" value="<?= $pedido['id_proveedor'] ?>">
+                                <input type="hidden" id="proveedor" name="proveedor" value="<?= $pedido['id_proveedor'] ?>">
                                 <input type="text" class="form-control" value="<?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'Mi usuario') ?>" disabled>
                                 <div class="form-text">Los proveedores no pueden cambiar el proveedor asignado.</div>
                             <?php endif; ?>
@@ -423,32 +423,7 @@ if (empty($pedido['id_moneda'])) {
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="proveedor" class="form-label">Proveedor</label>
-                            <?php
-                            require_once __DIR__ . '/../../../utils/permissions.php';
-                            if (canSelectAnyProveedor()): ?>
-                                <select class="form-control select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar proveedor...">
-                                    <option value="">Selecciona un proveedor</option>
-                                    <?php foreach ($proveedores as $prov): ?>
-                                        <option value="<?= $prov['id'] ?>" <?= $pedido['id_proveedor'] == $prov['id'] ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($prov['nombre']) ?><?= isset($prov['email']) && $prov['email'] ? ' — ' . htmlspecialchars($prov['email']) : '' ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <?php if (empty($proveedores)): ?>
-                                    <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <!-- Usuario Proveedor: auto-asignado, no editable -->
-                                <input type="hidden" name="proveedor" value="<?= $pedido['id_proveedor'] ?>">
-                                <input type="text" class="form-control" value="<?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'Mi usuario') ?>" disabled>
-                                <div class="form-text">Los proveedores no pueden cambiar el proveedor asignado.</div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="mb-3">
                             <label for="vendedor" class="form-label">Repartidor Asignado</label>
                             <select class="form-control select2-searchable" id="vendedor" name="vendedor" data-placeholder="Buscar repartidor...">
@@ -464,7 +439,9 @@ if (empty($pedido['id_moneda'])) {
                             <?php endif; ?>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-12">
                         <div class="mb-3">
                             <label for="comentario" class="form-label">Comentarios</label>
                             <textarea class="form-control" id="comentario" name="comentario" maxlength="500" rows="3"><?= htmlspecialchars($pedido['comentario']) ?></textarea>
@@ -620,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Dynamic products rows for editar.php
 (function(){
     const productos = <?php echo json_encode(array_map(function($p){
-        return [ 'id' => (int)$p['id'], 'nombre' => $p['nombre'], 'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0, 'id_usuario_creador' => $p['id_usuario_creador'] ?? null ];
+        return [ 'id' => (int)$p['id'], 'nombre' => $p['nombre'], 'marca' => $p['marca'] ?? '', 'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0, 'id_usuario_creador' => $p['id_usuario_creador'] ?? null ];
     }, $productos)); ?>;
 
     const existingItems = <?php echo json_encode($pedido['productos'] ?? []); ?>;
@@ -638,23 +615,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let opts = '<option value="">Selecciona un producto</option>';
         const idProveedorSeleccionado = proveedorSelect ? parseInt(proveedorSelect.value) : null;
 
-        // En modo de edición, si no hay proveedor seleccionado AÚN, mostrar todos los productos
-        // Esto permite que los productos existentes se carguen correctamente
         if (!idProveedorSeleccionado) {
-            // Mostrar todos los productos si estamos en el estado inicial de carga
-            productos.forEach(p => {
-                const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
-                opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)} — Stock: ${p.stock}</option>`;
-            });
+            opts += '<option value="" disabled>Selecciona un proveedor primero</option>';
             return opts;
         }
 
-        // Si hay un proveedor seleccionado, aplicar el filtro estricto
+        // Aplicar filtro estricto - solo productos del proveedor
         const productosFiltrados = productos.filter(p => {
             const idCreador = p.id_usuario_creador;
-            // Permitir el producto si:
-            // 1. Pertenece al proveedor seleccionado, O
-            // 2. Es el producto que está siendo pre-seleccionado (para edición)
+            // Permitir el producto si pertenece al proveedor seleccionado
+            // O si es el producto que está siendo pre-seleccionado (para edición de pedidos antiguos)
             return (idCreador !== null && parseInt(idCreador) === idProveedorSeleccionado) ||
                    (selectedId && parseInt(p.id) === parseInt(selectedId));
         });
@@ -666,7 +636,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         productosFiltrados.forEach(p => {
             const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
-            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)} — Stock: ${p.stock}</option>`;
+            const marcaText = p.marca ? ` (${escapeHtml(p.marca)})` : '';
+            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${marcaText} — Stock: ${p.stock}</option>`;
         });
         return opts;
     }

@@ -535,13 +535,29 @@ class PedidosController {
 
         $precioLocal = null;
         $precioUsdEntrada = null;
+        
+        // Nuevos campos de pricing de combo
+        $precioTotalLocal = null;
+        $precioTotalUsd = null;
+        $tasaConversionUsd = null;
 
-        // Precios (opcionales)
+        // Precios legacy (opcionales, para compatibilidad)
         if (isset($data['precio_local']) && $data['precio_local'] !== '') {
             $precioLocal = (float)str_replace(',', '.', (string)$data['precio_local']);
         }
         if (isset($data['precio_usd']) && $data['precio_usd'] !== '') {
             $precioUsdEntrada = (float)str_replace(',', '.', (string)$data['precio_usd']);
+        }
+        
+        // Nuevos campos de combo pricing
+        if (isset($data['precio_total_local']) && $data['precio_total_local'] !== '') {
+            $precioTotalLocal = (float)str_replace(',', '.', (string)$data['precio_total_local']);
+        }
+        if (isset($data['precio_total_usd']) && $data['precio_total_usd'] !== '') {
+            $precioTotalUsd = (float)str_replace(',', '.', (string)$data['precio_total_usd']);
+        }
+        if (isset($data['tasa_conversion_usd']) && $data['tasa_conversion_usd'] !== '') {
+            $tasaConversionUsd = (float)str_replace(',', '.', (string)$data['tasa_conversion_usd']);
         }
 
         // Validaciones de campos REQUERIDOS
@@ -664,6 +680,10 @@ class PedidosController {
             'zona' => $data['zona'] ?? null,
             'precio_local' => $precioLocal,
             'precio_usd' => $precioUsd,
+            // Nuevos campos de combo pricing
+            'precio_total_local' => $precioTotalLocal,
+            'precio_total_usd' => $precioTotalUsd,
+            'tasa_conversion_usd' => $tasaConversionUsd,
         ];
 
         // Support multiple products from the form: productos is an array of { producto_id, cantidad }
@@ -785,11 +805,33 @@ class PedidosController {
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad'); exit;
             }
+            
+            // Validaciones de precios legacy
             if (isset($data['precio_local']) && $data['precio_local'] !== '' && !is_numeric($data['precio_local'])) {
                 $resp = ['success' => false, 'message' => 'El precio local debe ser un valor numérico.'];
                 if ($isAjax) { $sendJson($resp); }
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio'); exit;
+            }
+            
+            // Validaciones de nuevos campos de combo pricing
+            if (isset($data['precio_total_local']) && $data['precio_total_local'] !== '' && !is_numeric($data['precio_total_local'])) {
+                $resp = ['success' => false, 'message' => 'El precio total local debe ser un valor numérico.'];
+                if ($isAjax) { $sendJson($resp); }
+                $persistOldEdit($data);
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecioTotalLocal'); exit;
+            }
+            if (isset($data['precio_total_usd']) && $data['precio_total_usd'] !== '' && !is_numeric($data['precio_total_usd'])) {
+                $resp = ['success' => false, 'message' => 'El precio total USD debe ser un valor numérico.'];
+                if ($isAjax) { $sendJson($resp); }
+                $persistOldEdit($data);
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecioTotalUsd'); exit;
+            }
+            if (isset($data['tasa_conversion_usd']) && $data['tasa_conversion_usd'] !== '' && !is_numeric($data['tasa_conversion_usd'])) {
+                $resp = ['success' => false, 'message' => 'La tasa de conversión debe ser un valor numérico.'];
+                if ($isAjax) { $sendJson($resp); }
+                $persistOldEdit($data);
+                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorTasaConversion'); exit;
             }
 
             // Llama al modelo para actualizar el pedido

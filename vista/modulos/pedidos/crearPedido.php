@@ -536,6 +536,7 @@ try {
         return [
             'id' => (int)$p['id'],
             'nombre' => $p['nombre'],
+            'marca' => $p['marca'] ?? '',
             'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0,
             'precio_usd' => isset($p['precio_usd']) ? $p['precio_usd'] : null,
             'id_usuario_creador' => isset($p['id_usuario_creador']) ? (int)$p['id_usuario_creador'] : null
@@ -572,8 +573,9 @@ try {
         
         productosDelProveedor.forEach(p => {
             const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
-            // Solo mostrar nombre y stock, NO precio individual (usamos precio total del combo)
-            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${p.stock !== null ? ' — Stock: ' + p.stock : ''}</option>`;
+            // Mostrar nombre, marca/modelo y stock
+            const marcaText = p.marca ? ` (${escapeHtml(p.marca)})` : '';
+            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${marcaText}${p.stock !== null ? ' — Stock: ' + p.stock : ''}</option>`;
         });
         
         if (productosDelProveedor.length === 0 && proveedorId) {
