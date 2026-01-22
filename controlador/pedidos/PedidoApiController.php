@@ -308,6 +308,21 @@ class PedidoApiController
         $municipioId = isset($data['id_municipio']) && is_numeric($data['id_municipio']) ? (int)$data['id_municipio'] : null;
         $barrioId = isset($data['id_barrio']) && is_numeric($data['id_barrio']) ? (int)$data['id_barrio'] : null;
 
+        // Combo pricing fields
+        $precioTotalLocal = isset($data['precio_total_local']) && $data['precio_total_local'] !== '' ? (float)$data['precio_total_local'] : null;
+        $precioTotalUsd = isset($data['precio_total_usd']) && $data['precio_total_usd'] !== '' ? (float)$data['precio_total_usd'] : null;
+        $tasaConversionUsd = isset($data['tasa_conversion_usd']) && $data['tasa_conversion_usd'] !== '' ? (float)$data['tasa_conversion_usd'] : null;
+        
+        // Auto-calculate precio_total_usd if only local price is provided
+        if ($precioTotalLocal !== null && $precioTotalUsd === null && $monedaId !== null) {
+            $moneda = PedidosModel::obtenerMonedaPorId($monedaId);
+            if ($moneda && isset($moneda['tasa_usd'])) {
+                $tasa = (float)$moneda['tasa_usd'];
+                $precioTotalUsd = round($precioTotalLocal / $tasa, 2);
+                $tasaConversionUsd = $tasa;
+            }
+        }
+
         $payload = [
             'numero_orden' => $data['numero_orden'],
             'destinatario' => $data['destinatario'],
@@ -327,6 +342,10 @@ class PedidoApiController
             'zona' => $data['zona'] ?? null,
             'precio_local' => $precioLocal,
             'precio_usd' => $precioUsd,
+            // Combo pricing fields
+            'precio_total_local' => $precioTotalLocal,
+            'precio_total_usd' => $precioTotalUsd,
+            'tasa_conversion_usd' => $tasaConversionUsd,
         ];
 
         // Normalizar valores 0 a null
@@ -358,6 +377,10 @@ class PedidoApiController
             'zona' => $pedido['zona'] ?? null,
             'precio_local' => $pedido['precio_local'] ?? $pedido['precio'] ?? null,
             'precio_usd' => $pedido['precio_usd'] ?? null,
+            // Combo pricing fields
+            'precio_total_local' => $pedido['precio_total_local'] ?? null,
+            'precio_total_usd' => $pedido['precio_total_usd'] ?? null,
+            'tasa_conversion_usd' => $pedido['tasa_conversion_usd'] ?? null,
         ];
     }
 

@@ -325,12 +325,23 @@ class CSVPedidoValidator
             }
         }
         
-        // Validar precios si vienen
+        // Validar precios legacy si vienen
         if (isset($row['precio_local']) && $row['precio_local'] !== '' && !is_numeric($row['precio_local'])) {
             $errores[] = "precio_local no es numérico";
         }
         if (isset($row['precio_usd']) && $row['precio_usd'] !== '' && !is_numeric($row['precio_usd'])) {
             $errores[] = "precio_usd no es numérico";
+        }
+        
+        // Validar campos de combo pricing (nuevos)
+        if (isset($row['precio_total_local']) && $row['precio_total_local'] !== '' && !is_numeric($row['precio_total_local'])) {
+            $errores[] = "precio_total_local no es numérico";
+        }
+        if (isset($row['precio_total_usd']) && $row['precio_total_usd'] !== '' && !is_numeric($row['precio_total_usd'])) {
+            $errores[] = "precio_total_usd no es numérico";
+        }
+        if (isset($row['tasa_conversion_usd']) && $row['tasa_conversion_usd'] !== '' && !is_numeric($row['tasa_conversion_usd'])) {
+            $errores[] = "tasa_conversion_usd no es numérico";
         }
     }
     
