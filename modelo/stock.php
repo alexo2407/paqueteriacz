@@ -181,7 +181,7 @@ class StockModel
      * @return bool
      * @throws Exception si ninguna estrategia funciona
      */
-    public static function registrarSalida($idProducto, $cantidad, $idVendedor = null, $pdo = null)
+    public static function registrarSalida($idProducto, $cantidad, $idVendedor = null, $pdo = null, $referenciaTipo = null, $referenciaId = null)
     {
         try {
             $db = $pdo ? $pdo : (new Conexion())->conectar();
@@ -196,15 +196,18 @@ class StockModel
                 }
             }
 
-            // Insertar movimiento negativo
+            // Insertar movimiento negativo con referencia
             // Asumimos que la cantidad recibida es positiva (cantidad a descontar),
             // por lo que la guardamos como negativa en la tabla.
             $cantidadNegativa = -abs($cantidad);
             
-            $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, NOW())');
+            $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, tipo_movimiento, referencia_tipo, referencia_id, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, :tipo_movimiento, :referencia_tipo, :referencia_id, NOW())');
             $stmt->bindValue(':id_producto', $idProducto, PDO::PARAM_INT);
             $stmt->bindValue(':id_usuario', $idUsuarioFinal, PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $cantidadNegativa, PDO::PARAM_INT);
+            $stmt->bindValue(':tipo_movimiento', 'salida', PDO::PARAM_STR);
+            $stmt->bindValue(':referencia_tipo', $referenciaTipo, PDO::PARAM_STR);
+            $stmt->bindValue(':referencia_id', $referenciaId, PDO::PARAM_INT);
             
             return $stmt->execute();
         } catch (PDOException $e) {
@@ -428,26 +431,51 @@ class StockModel
      * @param string $fechaFin Fecha fin
      * @return array Kardex con movimientos y saldos
      */
-    public static function generarReporteKardex($idProducto, $fechaInicio, $fechaFin)
+    public static function generarReporteKardex($idProducto = null, $fechaInicio, $fechaFin, $numeroOrden = null)
     {
         try {
             $db = (new Conexion())->conectar();
             
-            // Obtener saldo inicial
-            $stmtInicial = $db->prepare('
-                SELECT COALESCE(SUM(cantidad), 0) as saldo_inicial
-                FROM stock
-                WHERE id_producto = :id_producto
-                AND created_at < :fecha_inicio
-            ');
-            $stmtInicial->execute([
-                ':id_producto' => $idProducto,
-                ':fecha_inicio' => $fechaInicio . ' 00:00:00'
-            ]);
-            $saldoInicial = (int)$stmtInicial->fetchColumn();
+            // Si hay número de orden, primero obtener IDs asociados para stats si es necesario, 
+            // o simplemente adaptar la query principal.
             
-            // Obtener movimientos del período
-            $stmt = $db->prepare('
+            // 1. Saldo inicial (solo tiene sentido si filtramos por PRODUCTO único)
+            $saldoInicial = 0;
+            if ($idProducto) {
+                $stmtInicial = $db->prepare('
+                    SELECT COALESCE(SUM(cantidad), 0) as saldo_inicial
+                    FROM stock
+                    WHERE id_producto = :id_producto
+                    AND created_at < :fecha_inicio
+                ');
+                $stmtInicial->execute([
+                    ':id_producto' => $idProducto,
+                    ':fecha_inicio' => $fechaInicio . ' 00:00:00'
+                ]);
+                $saldoInicial = (int)$stmtInicial->fetchColumn();
+            }
+            
+            // 2. Query Principal
+            // Construcción dinámica de condiciones
+            $conditions = ['s.created_at >= :fecha_inicio', 's.created_at <= :fecha_fin'];
+            $params = [
+                ':fecha_inicio' => $fechaInicio . ' 00:00:00',
+                ':fecha_fin' => $fechaFin . ' 23:59:59'
+            ];
+
+            if ($idProducto) {
+                $conditions[] = 's.id_producto = :id_producto';
+                $params[':id_producto'] = $idProducto;
+            }
+
+            if ($numeroOrden) {
+                // Buscamos por número de orden en la tabla pedidos
+                // OJO: La relación es stock -> pedido
+                $conditions[] = 'p.numero_orden = :numero_orden';
+                $params[':numero_orden'] = $numeroOrden;
+            }
+
+            $sql = '
                 SELECT 
                     s.id,
                     s.created_at as fecha,
@@ -457,21 +485,43 @@ class StockModel
                     s.motivo,
                     s.cantidad,
                     s.costo_unitario,
-                    u.nombre as usuario
+                    u.nombre as usuario,
+                    p.es_combo,
+                    p.numero_orden,
+                    p.id as pedido_id,
+                    u_prod.nombre as producto_nombre,
+                    u_prod.sku as producto_sku
                 FROM stock s
                 LEFT JOIN usuarios u ON u.id = s.id_usuario
-                WHERE s.id_producto = :id_producto
-                AND s.created_at >= :fecha_inicio
-                AND s.created_at <= :fecha_fin
+                LEFT JOIN pedidos p ON s.referencia_tipo = \'pedido\' AND p.id = s.referencia_id
+                LEFT JOIN productos u_prod ON s.id_producto = u_prod.id
+                WHERE ' . implode(' AND ', $conditions) . '
                 ORDER BY s.created_at ASC, s.id ASC
-            ');
-            $stmt->execute([
-                ':id_producto' => $idProducto,
-                ':fecha_inicio' => $fechaInicio . ' 00:00:00',
-                ':fecha_fin' => $fechaFin . ' 23:59:59'
-            ]);
-            
+            ';
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+
             $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Para each movimiento que es de un combo, obtener los productos del combo
+            foreach ($movimientos as &$mov) {
+                if ($mov['es_combo'] == 1 && $mov['pedido_id']) {
+                    // Obtener todos los productos de este pedido combo
+                    $stmtComboProds = $db->prepare('
+                        SELECT 
+                            pp.id_producto,
+                            pp.cantidad,
+                            prod.nombre as producto_nombre,
+                            prod.sku
+                        FROM pedidos_productos pp
+                        LEFT JOIN productos prod ON prod.id = pp.id_producto
+                        WHERE pp.id_pedido = :pedido_id
+                    ');
+                    $stmtComboProds->execute([':pedido_id' => $mov['pedido_id']]);
+                    $mov['productos_combo'] = $stmtComboProds->fetchAll(PDO::FETCH_ASSOC);
+                }
+            }
             
             // Calcular saldo acumulado
             $saldo = $saldoInicial;

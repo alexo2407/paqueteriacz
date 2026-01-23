@@ -274,15 +274,21 @@ if (empty($pedido['id_moneda'])) {
                             <label for="moneda" class="form-label">Moneda 💱</label>
                             <select class="form-control select2-searchable" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda...">
                                 <option value="">Selecciona una moneda</option>
-                                <?php foreach ($monedas as $moneda): ?>
+                                <?php foreach ($monedas as $moneda): 
+                                    $isSelected = ((int)$pedido['id_moneda'] === (int)$moneda['id']);
+                                ?>
                                     <option value="<?= $moneda['id'] ?>"
                                             data-tasa="<?= htmlspecialchars($moneda['tasa_usd']) ?>"
-                                            <?= ((int)$pedido['id_moneda'] === (int)$moneda['id']) ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($moneda['nombre']) ?> (Tasa: <?= htmlspecialchars($moneda['tasa_usd']) ?>)
+                                            <?= $isSelected ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($moneda['nombre']) ?> (<?= htmlspecialchars($moneda['codigo']) ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <small class="form-text text-muted" id="tasaInfo">Tasa de cambio seleccionada</small>
+                            <?php if ($monedaLocalUsuario && (int)$pedido['id_moneda'] === (int)$monedaLocalUsuario): ?>
+                                <small class="form-text text-success"><i class="bi bi-check-circle"></i> Moneda local pre-seleccionada según tu país</small>
+                            <?php else: ?>
+                                <small class="form-text text-muted" id="tasaInfo">Tasa de cambio seleccionada</small>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -306,32 +312,46 @@ if (empty($pedido['id_moneda'])) {
                     </button>
                 </div>
                 
-                <!-- Precio Total del Combo -->
-                <div class="alert alert-info mt-4">
-                    <i class="bi bi-info-circle me-2"></i>
-                    <strong>Precio del Combo:</strong> Ingresa el precio total que te cobró el proveedor en su moneda local. El precio en USD se calculará automáticamente.
+                <!-- Toggle para activar modo combo -->
+                <div class="alert alert-secondary mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" <?= (empty($pedido['es_combo']) || $pedido['es_combo'] == 1) ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="es_combo">
+                            <strong>📦 Marcar como Pedido Combo</strong>
+                        </label>
+                        <br>
+                        <small class="text-muted">Activa esta opción si el proveedor te cobró un precio total único por todos los productos (en lugar de precio individual)</small>
+                    </div>
                 </div>
 
-                <div class="row mt-3">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="precio_total_local" class="form-label">Precio Total (Moneda Local) 💰</label>
-                            <input type="number" class="form-control" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>" required>
-                            <small class="form-text text-muted">Precio total que cobró el proveedor</small>
-                        </div>
+                <!-- Precio Total del Combo -->
+                <div id="combo-pricing-section" style="display: <?= (empty($pedido['es_combo']) || $pedido['es_combo'] == 1) ? 'block' : 'none' ?>;">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Precio del Combo:</strong> Ingresa el precio total que te cobró el proveedor en su moneda local. El precio en USD se calculará automáticamente.
                     </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="precio_total_usd" class="form-label">Precio Total (USD) 💵</label>
-                            <input type="number" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_total_usd'] ?? $pedido['precio_usd'] ?? '') ?>">
-                            <small class="form-text text-muted">Calculado automáticamente</small>
+
+                    <div class="row mt-3">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="precio_total_local" class="form-label">Precio Total (Moneda Local) 💰</label>
+                                <input type="number" class="form-control" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>">
+                                <small class="form-text text-muted">Precio total que cobró el proveedor</small>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="tasa_conversion_usd" class="form-label">Tasa de Conversión 📊</label>
-                            <input type="number" class="form-control bg-light" id="tasa_conversion_usd" name="tasa_conversion_usd" step="0.000001" readonly value="<?= htmlspecialchars($pedido['tasa_conversion_usd'] ?? '') ?>">
-                            <small class="form-text text-muted">Tasa al momento de crear el pedido</small>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="precio_total_usd" class="form-label">Precio Total (USD) 💵</label>
+                                <input type="number" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_total_usd'] ?? $pedido['precio_usd'] ?? '') ?>">
+                                <small class="form-text text-muted">Calculado automáticamente</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="tasa_conversion_usd" class="form-label">Tasa de Conversión 📊</label>
+                                <input type="number" class="form-control bg-light" id="tasa_conversion_usd" name="tasa_conversion_usd" step="0.000001" readonly value="<?= htmlspecialchars($pedido['tasa_conversion_usd'] ?? '') ?>">
+                                <small class="form-text text-muted">Tasa al momento de crear el pedido</small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -939,7 +959,20 @@ document.addEventListener('DOMContentLoaded', function() {
 })();
 </script>
 
-
-
+<script>
+// Toggle combo pricing section
+document.getElementById('es_combo').addEventListener('change', function() {
+    const comboPricingSection = document.getElementById('combo-pricing-section');
+    if (this.checked) {
+        comboPricingSection.style.display = 'block';
+    } else {
+        comboPricingSection.style.display = 'none';
+        // Limpiar campos si se desactiva
+        document.getElementById('precio_total_local').value = '';
+        document.getElementById('precio_total_usd').value = '';
+        document.getElementById('tasa_conversion_usd').value = '';
+    }
+});
+</script>
 
 <?php include("vista/includes/footer.php"); ?>

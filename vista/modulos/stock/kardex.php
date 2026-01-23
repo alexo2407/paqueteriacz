@@ -35,10 +35,24 @@ $kardexData = [
     'saldo_final' => 0
 ];
 
-if ($producto) {
-    // Si hay producto, obtener reporte kardex
+// Obtener ID de orden si existe
+$numeroOrden = $_GET['numero_orden'] ?? null;
+
+if ($producto || $numeroOrden) {
+    // Si hay producto o número de orden, obtener reporte kardex
     require_once __DIR__ . '/../../../modelo/stock.php';
-    $kardexData = StockModel::generarReporteKardex($producto['id'], $fechaInicio, $fechaFin);
+    $prodId = $producto ? $producto['id'] : null;
+    $kardexData = StockModel::generarReporteKardex($prodId, $fechaInicio, $fechaFin, $numeroOrden);
+
+    // Si buscamos por orden y no hay producto seleccionado, no mostramos info específica de un solo producto
+    if (!$producto && $numeroOrden) {
+        $producto = [
+            'nombre' => 'Resultados para Orden #' . htmlspecialchars($numeroOrden),
+            'sku' => 'Varios',
+            'stock_total' => '-',
+            'precio_usd' => '-' 
+        ];
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -146,9 +160,9 @@ if ($producto) {
     <div class="card search-card mb-4 no-print">
         <div class="card-body p-4">
             <form method="GET" class="row g-3 align-items-end">
-                <div class="col-md-5">
-                    <label class="form-label fw-bold text-muted small"><i class="bi bi-search me-1"></i> PRODUCTO</label>
-                    <select class="form-select select2-searchable" name="producto" required data-placeholder="Selecciona un producto...">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted small"><i class="bi bi-search me-1"></i> PRODUCTO (Opcional si usas Orden)</label>
+                    <select class="form-select select2-searchable" name="producto" data-placeholder="Selecciona un producto...">
                         <option value="">Selecciona un producto...</option>
                         <?php foreach ($productos as $p): ?>
                             <option value="<?php echo $p['id']; ?>" <?php echo ($productoId == $p['id']) ? 'selected' : ''; ?>>
@@ -158,11 +172,16 @@ if ($producto) {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <!-- Nuevo filtro por Orden -->
+                <div class="col-md-2">
+                     <label class="form-label fw-bold text-muted small"><i class="bi bi-hash me-1"></i> No. ORDEN</label>
+                     <input type="text" class="form-control" name="numero_orden" value="<?php echo htmlspecialchars($numeroOrden ?? ''); ?>" placeholder="Ej: 79989888">
+                </div>
+                <div class="col-md-2">
                     <label class="form-label fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> DESDE</label>
                     <input type="date" class="form-control" name="fecha_inicio" value="<?php echo $fechaInicio; ?>" required>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-bold text-muted small"><i class="bi bi-calendar-event me-1"></i> HASTA</label>
                     <input type="date" class="form-control" name="fecha_fin" value="<?php echo $fechaFin; ?>" required>
                 </div>
@@ -193,6 +212,7 @@ if ($producto) {
             </div>
             <div class="card-body p-4">
                 <div class="row g-4">
+                    <?php if ($producto && (!isset($numeroOrden) || !$numeroOrden || isset($_GET['producto']) && $_GET['producto'])): ?>
                     <div class="col-md-3 col-sm-6">
                         <div class="info-box">
                             <div class="info-label">Código SKU</div>
@@ -205,6 +225,8 @@ if ($producto) {
                             <div class="info-value text-success">$<?php echo number_format($producto['precio_usd'] ?? 0, 2); ?></div>
                         </div>
                     </div>
+                    <?php endif; ?>
+                    
                     <div class="col-md-3 col-sm-6">
                         <div class="info-box" style="border-left-color: #ffc107;">
                             <div class="info-label">Saldo Inicial Período</div>
@@ -213,6 +235,8 @@ if ($producto) {
                             </div>
                         </div>
                     </div>
+                    
+                    <?php if ($producto && (!isset($numeroOrden) || !$numeroOrden || isset($_GET['producto']) && $_GET['producto'])): ?>
                     <div class="col-md-3 col-sm-6">
                         <div class="info-box" style="border-left-color: #0dcaf0;">
                             <div class="info-label">Stock Actual</div>
@@ -221,6 +245,7 @@ if ($producto) {
                             </div>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -238,6 +263,8 @@ if ($producto) {
                             <tr>
                                 <th class="ps-4">Fecha</th>
                                 <th>Tipo</th>
+                                <th>Producto</th> <!-- Nueva Columna -->
+                                <th>Origen</th>
                                 <th>Referencia</th>
                                 <th>Motivo / Descripción</th>
                                 <th class="text-center">Entrada</th>
@@ -249,20 +276,20 @@ if ($producto) {
                         <tbody>
                             <!-- Saldo Inicial Row -->
                             <tr class="table-light">
-                                <td colspan="6" class="ps-4 text-end fw-bold text-muted fst-italic">Saldo al iniciar el período:</td>
+                                <td colspan="8" class="ps-4 text-end fw-bold text-muted fst-italic">Saldo al iniciar el período:</td>
                                 <td class="text-end pe-4 fw-bold"><?php echo number_format($kardexData['saldo_inicial']); ?></td>
                                 <td></td>
                             </tr>
 
                             <?php if (empty($kardexData['movimientos'])): ?>
                                 <tr>
-                                    <td colspan="8" class="text-center py-5 text-muted">
+                                    <td colspan="10" class="text-center py-5 text-muted">
                                         <i class="bi bi-calendar-x fs-1 d-block mb-2 text-secondary opacity-25"></i>
                                         No hay movimientos registrados en este rango de fechas.
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php foreach ($kardexData['movimientos'] as $mov): 
+                                <?php foreach ($kardexData['movimientos'] as $index => $mov): 
                                     $cantidad = (int)$mov['cantidad'];
                                     $isEntrada = $cantidad > 0;
                                     $tipoClass = $isEntrada ? 'badge-entrada' : 'badge-salida';
@@ -273,8 +300,15 @@ if ($producto) {
                                     if (!$isEntrada && strtoupper($textoMostrar) === 'ENTRADA') {
                                         $textoMostrar = 'SALIDA';
                                     }
+                                    
+                                    // Determinar si es combo
+                                    $esCombo = isset($mov['es_combo']) && $mov['es_combo'] == 1;
+                                    // Restaurado: Mostrar siempre el desglose si es combo, sin importar el filtro
+                                    $tieneProductosCombo = $esCombo && isset($mov['productos_combo']) && count($mov['productos_combo']) > 0;
+                                    $rowId = 'mov-' . $mov['id'];
+                                    $detailRowId = 'detail-' . $mov['id'];
                                 ?>
-                                <tr>
+                                <tr id="<?php echo $rowId; ?>" <?php echo $tieneProductosCombo ? 'style="cursor: pointer;"' : ''; ?>>
                                     <td class="ps-4 text-nowrap"><?php echo date('d/m/Y H:i', strtotime($mov['fecha'])); ?></td>
                                     <td>
                                         <span class="badge-mov <?php echo $tipoClass; ?> text-uppercase">
@@ -282,9 +316,33 @@ if ($producto) {
                                         </span>
                                     </td>
                                     <td>
+                                        <div class="fw-bold text-dark"><?php echo htmlspecialchars($mov['producto_nombre'] ?? $producto['nombre']); ?></div>
+                                        <small class="text-muted"><?php echo htmlspecialchars($mov['producto_sku'] ?? ($producto['sku'] ?? '')); ?></small>
+                                    </td>
+                                    <td>
+                                        <?php if ($esCombo): ?>
+                                            <span class="badge bg-info text-white" title="Este producto fue parte de un combo">
+                                                <i class="bi bi-boxes"></i> COMBO
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge bg-secondary text-white">
+                                                <i class="bi bi-box"></i> INDIVIDUAL
+                                            </span>
+                                        <?php endif; ?>
+                                        <?php if ($tieneProductosCombo): ?>
+                                            <i class="bi bi-chevron-down ms-1 expand-icon" id="icon-<?php echo $mov['id']; ?>"></i>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td>
                                         <?php if (!empty($mov['referencia_tipo'])): ?>
                                             <small class="d-block fw-bold text-secondary"><?php echo htmlspecialchars(ucfirst($mov['referencia_tipo'])); ?></small>
-                                            <small class="text-muted">#<?php echo htmlspecialchars($mov['referencia_id'] ?? '-'); ?></small>
+                                            <?php if ($mov['numero_orden']): ?>
+                                                <a href="<?php echo RUTA_URL; ?>pedidos/ver/<?php echo $mov['referencia_id']; ?>" class="text-decoration-none">
+                                                    <small class="text-primary">#<?php echo htmlspecialchars($mov['numero_orden']); ?></small>
+                                                </a>
+                                            <?php else: ?>
+                                                <small class="text-muted">#<?php echo htmlspecialchars($mov['referencia_id'] ?? '-'); ?></small>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="text-muted small">-</span>
                                         <?php endif; ?>
@@ -313,13 +371,52 @@ if ($producto) {
                                         </div>
                                     </td>
                                 </tr>
+                                
+                                <!-- Fila expandible con productos del combo -->
+                                <?php if ($tieneProductosCombo): ?>
+                                <tr id="<?php echo $detailRowId; ?>" class="combo-detail-row" style="display: none;">
+                                    <td colspan="9" class="bg-light">
+                                        <div class="p-3">
+                                            <h6 class="mb-2 text-muted">
+                                                <i class="bi bi-boxes me-1"></i> 
+                                                Productos incluidos en el combo <strong>#<?php echo htmlspecialchars($mov['numero_orden']); ?></strong>:
+                                            </h6>
+                                            <table class="table table-sm table-borderless mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Producto</th>
+                                                        <th>SKU</th>
+                                                        <th class="text-center">Cantidad</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php foreach ($mov['productos_combo'] as $prod): ?>
+                                                    <tr>
+                                                        <td>
+                                                            <i class="bi bi-box-seam text-muted me-1"></i>
+                                                            <?php echo htmlspecialchars($prod['producto_nombre']); ?>
+                                                        </td>
+                                                        <td>
+                                                            <code class="text-secondary"><?php echo htmlspecialchars($prod['sku'] ?? 'N/A'); ?></code>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <span class="badge bg-secondary"><?php echo (int)$prod['cantidad']; ?></span>
+                                                        </td>
+                                                    </tr>
+                                                    <?php endforeach; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
                         <?php if (!empty($kardexData['movimientos'])): ?>
                         <tfoot>
                             <tr class="table-light border-top">
-                                <td colspan="6" class="ps-4 text-end fw-bold text-dark">Saldo Final del período:</td>
+                                <td colspan="7" class="ps-4 text-end fw-bold text-dark">Saldo Final del período:</td>
                                 <td class="text-end pe-4 fw-bold fs-6 text-primary"><?php echo number_format($kardexData['saldo_final']); ?></td>
                                 <td></td>
                             </tr>
@@ -353,12 +450,33 @@ if ($producto) {
         $('.select2-searchable').select2({
             theme: "bootstrap-5",
             width: '100%',
+            allowClear: true,
+            placeholder: "Selecciona un producto...",
             language: {
                 noResults: function() {
                     return "No se encontraron resultados";
                 },
                 searching: function() {
                     return "Buscando...";
+                }
+            }
+        });
+        
+        // Expand/Collapse combo products
+        $('tr[id^="mov-"]').on('click', function() {
+            const movId = $(this).attr('id').replace('mov-', '');
+            const detailRow = $('#detail-' + movId);
+            const icon = $('#icon-' + movId);
+            
+            // Solo expandir si tiene productos combo
+            if (detailRow.length > 0) {
+                detailRow.slideToggle(200);
+                
+                // Rotar icono
+                if (icon.hasClass('bi-chevron-down')) {
+                    icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+                } else {
+                    icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
                 }
             }
         });

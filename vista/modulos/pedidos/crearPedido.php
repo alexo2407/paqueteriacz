@@ -275,7 +275,19 @@ try {
                     <div class="form-text" id="productoAyuda">Puedes agregar múltiples productos.</div>
                 </div>
 
-                <div class="row mt-4">
+                <!-- Toggle para activar modo combo -->
+                <div class="alert alert-secondary mb-3 mt-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" checked>
+                        <label class="form-check-label" for="es_combo">
+                            <strong>📦 Marcar como Pedido Combo</strong>
+                        </label>
+                        <br>
+                        <small class="text-muted">Activa esta opción si el proveedor te cobró un precio total único</small>
+                    </div>
+                </div>
+
+                <div class="row mt-4" id="combo-pricing-section" style="display: block;">
                     <div class="col-12">
                         <div class="alert alert-info" role="alert">
                             <i class="bi bi-info-circle"></i> <strong>Precio Total del Combo:</strong> Ingresa el precio total que cobrarás por todos los productos del pedido. No necesitas ingresar precios individuales por producto.
@@ -980,6 +992,18 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
         hidQty.value = qty ? qty.value : '';
     });
 })();
+</script>
+
+<script>
+// Toggle combo pricing section
+document.getElementById('es_combo').addEventListener('change', function() {
+    const comboPricingSection = document.getElementById('combo-pricing-section');
+    if (this.checked) {
+        comboPricingSection.style.display = 'block';
+    } else {
+        comboPricingSection.style.display = 'none';
+    }
+});
 </script>
 
         </div><!-- card-body -->

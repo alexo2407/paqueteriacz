@@ -52,6 +52,7 @@ class ProductoModel
                         p.stock_maximo,
                         p.activo,
                         p.imagen_url,
+                        p.es_combo,
                         p.id_usuario_creador,
                         COALESCE(SUM(s.cantidad), 0) AS stock_total
                     FROM productos p
@@ -59,7 +60,7 @@ class ProductoModel
                     {$whereClause}
                     GROUP BY p.id, p.sku, p.nombre, p.descripcion, p.precio_usd, 
                              p.categoria_id, p.marca, p.unidad_medida, p.stock_minimo, 
-                             p.stock_maximo, p.activo, p.imagen_url, p.id_usuario_creador
+                             p.stock_maximo, p.activo, p.imagen_url, p.es_combo, p.id_usuario_creador
                     ORDER BY p.nombre ASC";
             
             $stmt = $db->prepare($sql);
@@ -94,6 +95,7 @@ class ProductoModel
                     p.stock_maximo,
                     p.activo,
                     p.imagen_url,
+                    p.es_combo,
                     p.id_usuario_creador,
                     p.created_at,
                     p.updated_at,
@@ -418,6 +420,7 @@ class ProductoModel
                         p.stock_minimo,
                         p.stock_maximo,
                         p.activo,
+                        p.es_combo,
                         COALESCE(SUM(s.cantidad), 0) AS stock_total
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
@@ -486,6 +489,7 @@ class ProductoModel
                         p.stock_minimo,
                         p.stock_maximo,
                         p.activo,
+                        p.es_combo,
                         COALESCE(SUM(s.cantidad), 0) AS stock_total
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
@@ -560,7 +564,7 @@ class ProductoModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT id, sku, nombre, descripcion, precio_usd, categoria_id, marca, activo FROM productos WHERE sku = :sku');
+            $stmt = $db->prepare('SELECT id, sku, nombre, descripcion, precio_usd, categoria_id, marca, activo, es_combo FROM productos WHERE sku = :sku');
             $stmt->bindValue(':sku', $sku, PDO::PARAM_STR);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;

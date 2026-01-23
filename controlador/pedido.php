@@ -540,6 +540,7 @@ class PedidosController {
         $precioTotalLocal = null;
         $precioTotalUsd = null;
         $tasaConversionUsd = null;
+        $esCombo = false;
 
         // Precios legacy (opcionales, para compatibilidad)
         if (isset($data['precio_local']) && $data['precio_local'] !== '') {
@@ -558,6 +559,9 @@ class PedidosController {
         }
         if (isset($data['tasa_conversion_usd']) && $data['tasa_conversion_usd'] !== '') {
             $tasaConversionUsd = (float)str_replace(',', '.', (string)$data['tasa_conversion_usd']);
+        }
+        if (isset($data['es_combo'])) {
+            $esCombo = (bool)$data['es_combo'];
         }
 
         // Validaciones de campos REQUERIDOS
@@ -684,6 +688,7 @@ class PedidosController {
             'precio_total_local' => $precioTotalLocal,
             'precio_total_usd' => $precioTotalUsd,
             'tasa_conversion_usd' => $tasaConversionUsd,
+            'es_combo' => $esCombo ? 1 : 0,
         ];
 
         // Support multiple products from the form: productos is an array of { producto_id, cantidad }
@@ -833,6 +838,10 @@ class PedidosController {
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorTasaConversion'); exit;
             }
+
+            // Asegurar que es_combo se actualice correctamente (si no está en POST es 0)
+            // Esto es necesario para permitir desmarcar el checkbox
+            $data['es_combo'] = isset($data['es_combo']) ? 1 : 0;
 
             // Llama al modelo para actualizar el pedido
             $resultado = PedidosModel::actualizarPedido($data);

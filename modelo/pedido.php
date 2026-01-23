@@ -844,6 +844,10 @@ class PedidosModel
                 $fields[] = 'tasa_conversion_usd = :tasa_conversion_usd';
                 $params[':tasa_conversion_usd'] = $data['tasa_conversion_usd'] !== '' ? (float)$data['tasa_conversion_usd'] : null;
             }
+            if (isset($data['es_combo'])) {
+                $fields[] = 'es_combo = :es_combo';
+                $params[':es_combo'] = !empty($data['es_combo']) ? 1 : 0;
+            }
 
             // Foreign keys - only update if value is provided and not empty
             if (isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0') {
@@ -1142,7 +1146,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1183,6 +1187,7 @@ class PedidosModel
                 'precio_total_local' => 'precio_total_local',
                 'precio_total_usd' => 'precio_total_usd',
                 'tasa_conversion_usd' => 'tasa_conversion_usd',
+                'es_combo' => 'es_combo',
                 'id_pais' => 'id_pais',
                 'id_departamento' => 'id_departamento',
                 'municipio' => 'municipio',
@@ -1232,7 +1237,7 @@ class PedidosModel
                 // Descontar stock (PHP logic)
                 // Usamos el id_vendedor del pedido como responsable del movimiento, si existe
                 $vendedorId = isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null;
-                StockModel::registrarSalida($prodId, $cant, $vendedorId, $db);
+                StockModel::registrarSalida($prodId, $cant, $vendedorId, $db, 'pedido', $pedidoId);
             }
 
             $db->commit();

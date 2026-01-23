@@ -323,6 +323,29 @@ class PedidoApiController
             }
         }
 
+        // Logic to auto-detect combo if not provided
+        $esCombo = isset($data['es_combo']) ? (int)$data['es_combo'] : 0;
+        
+        // If not explicitly set to 1, check the product definition
+        // This handles both "single product" (top-level id) and "product list" (first item)
+        if ($esCombo === 0) {
+            $prodId = $data['producto_id'] ?? $data['id_producto'] ?? null;
+            
+            // If top-level id missing, check first item in productos array
+            if (!$prodId && !empty($data['productos']) && is_array($data['productos'])) {
+                $firstItem = reset($data['productos']);
+                $prodId = $firstItem['producto_id'] ?? $firstItem['id_producto'] ?? $firstItem['id'] ?? null;
+            }
+
+            if ($prodId) {
+                 require_once __DIR__ . '/../../modelo/producto.php';
+                 $prodData = ProductoModel::obtenerPorId($prodId);
+                 if ($prodData && isset($prodData['es_combo']) && $prodData['es_combo'] == 1) {
+                     $esCombo = 1;
+                 }
+            }
+        }
+
         $payload = [
             'numero_orden' => $data['numero_orden'],
             'destinatario' => $data['destinatario'],
@@ -346,6 +369,7 @@ class PedidoApiController
             'precio_total_local' => $precioTotalLocal,
             'precio_total_usd' => $precioTotalUsd,
             'tasa_conversion_usd' => $tasaConversionUsd,
+            'es_combo' => $esCombo,
         ];
 
         // Normalizar valores 0 a null
@@ -358,6 +382,27 @@ class PedidoApiController
 
     private function construirPayloadMultiple(array $pedido): array
     {
+        // Logic to auto-detect combo if not provided
+        $esCombo = isset($pedido['es_combo']) ? (int)$pedido['es_combo'] : 0;
+        
+        if ($esCombo === 0) {
+            $prodId = $pedido['producto_id'] ?? $pedido['id_producto'] ?? null;
+            
+            // If top-level id missing, check first item in productos array
+            if (!$prodId && !empty($pedido['productos']) && is_array($pedido['productos'])) {
+                $firstItem = reset($pedido['productos']);
+                $prodId = $firstItem['producto_id'] ?? $firstItem['id_producto'] ?? $firstItem['id'] ?? null;
+            }
+
+            if ($prodId) {
+                 require_once __DIR__ . '/../../modelo/producto.php';
+                 $prodData = ProductoModel::obtenerPorId($prodId);
+                 if ($prodData && isset($prodData['es_combo']) && $prodData['es_combo'] == 1) {
+                     $esCombo = 1;
+                 }
+            }
+        }
+
         return [
             'numero_orden' => isset($pedido['numero_orden']) ? (int)$pedido['numero_orden'] : null,
             'destinatario' => $pedido['destinatario'] ?? null,
@@ -381,6 +426,7 @@ class PedidoApiController
             'precio_total_local' => $pedido['precio_total_local'] ?? null,
             'precio_total_usd' => $pedido['precio_total_usd'] ?? null,
             'tasa_conversion_usd' => $pedido['tasa_conversion_usd'] ?? null,
+            'es_combo' => $esCombo,
         ];
     }
 

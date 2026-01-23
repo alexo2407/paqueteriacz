@@ -660,6 +660,7 @@
                     <tr><td><code>telefono</code></td><td>string</td><td>yes</td><td>Phone number for the recipient.</td></tr>
                     <tr><td><code>precio_local</code></td><td>number</td><td>no</td><td>Local currency price (optional). If provided, include as decimal (e.g., 120.50).</td></tr>
                     <tr><td><code>precio_usd</code></td><td>number</td><td>no</td><td>Price in USD (optional).</td></tr>
+                    <tr><td><code>es_combo</code></td><td>integer</td><td>no</td><td><strong>Optional.</strong> Set to <code>1</code> to force combo status. If omitted (or 0), the system <strong>automatically detects</strong> it from the product configuration.</td></tr>
                     <tr><td><code>id_pais</code></td><td>integer</td><td>recommended</td><td>Country id — use the numeric <code>id</code> from <code>/api/geoinfo/listar</code> → <code>paises</code>.</td></tr>
                     <tr><td><code>id_departamento</code></td><td>integer</td><td>recommended</td><td>Department id — use the numeric <code>id</code> from <code>/api/geoinfo/listar</code> → <code>departamentos</code>.</td></tr>
                     <tr><td><code>id_municipio</code></td><td>integer</td><td>recommended</td><td>Municipality id — use the numeric <code>id</code> from <code>/api/geoinfo/listar</code> → <code>municipios</code>.</td></tr>
@@ -702,6 +703,7 @@
             <h4 data-lang="en">Example create request (multiple products)</h4>
             <h4 data-lang="es">Petición de creación ejemplo (múltiples productos)</h4>
             <p>Provide product IDs in the <code>productos</code> array. Each item must include <code>producto_id</code> (integer) and <code>cantidad</code> (int).</p>
+            <p><strong>Note:</strong> Auto-detection for <code>es_combo</code> works here too. If you omit the flag, the system checks the first product in the list.</p>
         <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 90002,
     "destinatario": "Cliente Prueba",

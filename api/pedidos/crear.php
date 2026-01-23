@@ -20,6 +20,7 @@
  *  - precio_total_local (decimal, optional) - Total price in provider's local currency
  *  - precio_total_usd (decimal, optional) - Total price in USD
  *  - tasa_conversion_usd (decimal, optional) - Exchange rate used for conversion
+ *  - es_combo (boolean, optional) - Whether this is a combo order (default: false)
  *
  * Responses are emitted using the standard envelope: { success, message, data }
  * Common errors:
