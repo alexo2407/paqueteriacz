@@ -387,7 +387,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -455,6 +455,14 @@ class PedidosModel
                         // try to resolve departamento, optionally using provided pais hint
                         $params[':id_departamento'] = self::resolveDepartamentoId($data['departamento'] ?? null, $data['pais'] ?? null);
                         break;
+                    case 'id_proveedor':
+                        $params[':id_proveedor'] = !empty($data['id_proveedor']) ? $data['id_proveedor'] : null;
+                        break;
+                    case 'id_cliente':
+                        $params[':id_cliente'] = !empty($data['id_cliente']) ? $data['id_cliente'] : null;
+                        break;
+                    case 'id_vendedor':
+                        $params[':id_vendedor'] = !empty($data['id_vendedor']) ? $data['id_vendedor'] : null;
                         break;
                     case 'municipio':
                         $params[':municipio'] = $data['municipio'] ?? null;
@@ -536,6 +544,7 @@ class PedidosModel
                         p.precio_usd,
                         p.id_pais,
                         p.id_departamento,
+                        p.id_cliente,
                         ST_Y(p.coordenadas) AS latitud,
                         ST_X(p.coordenadas) AS longitud,
                         ep.nombre_estado AS nombre_estado
@@ -652,6 +661,7 @@ class PedidosModel
                     p.id_estado,
                     p.id_moneda,
                     p.id_proveedor,
+                    p.id_cliente,
                     p.id_vendedor,
                     p.precio_local,
                     p.precio_usd,
@@ -786,6 +796,13 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
+            // [Historial] Obtener estado y proveedor anterior (para logs)
+            $stmtAnt = $db->prepare("SELECT id_estado, id_proveedor FROM pedidos WHERE id = :id");
+            $stmtAnt->execute([':id' => (int)$data['id_pedido']]);
+            $datosAnteriores = $stmtAnt->fetch(PDO::FETCH_ASSOC);
+            $estadoAnterior = $datosAnteriores['id_estado'] ?? null;
+            $proveedorAnterior = $datosAnteriores['id_proveedor'] ?? null;
+
             // Build UPDATE query dynamically based on provided fields
             $fields = [];
             $params = [':id' => (int)$data['id_pedido']];
@@ -888,6 +905,62 @@ class PedidosModel
                 $sql = 'UPDATE pedidos SET ' . implode(', ', $fields) . ' WHERE id = :id';
                 $stmt = $db->prepare($sql);
                 $stmt->execute($params);
+
+                // [Historial] Registrar cambio si hubo modificación de estado
+                // [Historial] Registrar cambio si hubo modificación de estado O proveedor
+                $nuevoEstado = isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0' ? (int)$data['estado'] : ($estadoAnterior ?? 1); // Default to 1 (Solicitado) if null
+                $nuevoProveedor = isset($data['proveedor']) && $data['proveedor'] !== '' ? (int)$data['proveedor'] : $proveedorAnterior;
+                
+                $huboCambioEstado = ($estadoAnterior && $nuevoEstado != $estadoAnterior);
+                // Cambio de proveedor: verificamos si cambió el ID
+                $huboCambioProveedor = ($proveedorAnterior !== null && $nuevoProveedor != $proveedorAnterior);
+
+                if ($huboCambioEstado || $huboCambioProveedor) {
+                    try {
+                        $userId = self::resolveCurrentUserId();
+                        $observaciones = null;
+                        
+                        // Si cambia proveedor, agregar nota
+                        if ($huboCambioProveedor) {
+                            $stmtNombres = $db->prepare("SELECT nombre FROM usuarios WHERE id = :id");
+                            
+                            $stmtNombres->execute([':id' => $proveedorAnterior]);
+                            $nomAnt = $stmtNombres->fetchColumn() ?: 'Sin asignar';
+                            
+                            $stmtNombres->execute([':id' => $nuevoProveedor]);
+                            $nomNuevo = $stmtNombres->fetchColumn() ?: 'Sin asignar';
+                            
+                            $obs = "Asignación cambiada: $nomAnt ➝ $nomNuevo";
+                            $observaciones = $observaciones ? $observaciones . ". " . $obs : $obs;
+                        }
+
+                        // Reutilizamos el estado actual si no cambió, para cumplir FK
+                        $histQuery = "INSERT INTO pedidos_historial_estados 
+                                    (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at) 
+                                    VALUES (:id_pedido, :ant, :nuevo, :user, :obs, NOW())";
+                        $histStmt = $db->prepare($histQuery);
+                        $histStmt->execute([
+                            ':id_pedido' => (int)$data['id_pedido'],
+                            ':ant' => $estadoAnterior, 
+                            ':nuevo' => $nuevoEstado, 
+                            ':user' => $userId,
+                            ':obs' => $observaciones
+                        ]);
+
+                        if ($huboCambioEstado) {
+                            AuditoriaModel::registrar(
+                                'pedidos',
+                                (int)$data['id_pedido'],
+                                'actualizar',
+                                $userId,
+                                ['id_estado' => $estadoAnterior],
+                                ['id_estado' => $nuevoEstado]
+                            );
+                        }
+                    } catch (Exception $e) {
+                        error_log("Error logs historial: " . $e->getMessage());
+                    }
+                }
 
                 // Si es repartidor actualizando estado, marcar timestamp para bloquear futuras actualizaciones
                 if (isset($data['estado']) && !empty($data['is_repartidor'])) {
@@ -1139,9 +1212,33 @@ class PedidosModel
                 $calculatedTotalUSD += ($precioUnitarioUSD * $cantidadSolicitada);
             }
             
-            // Asignar Precio USD calculado si no se proporcionó uno manual (o forzarlo según preferencia)
-            // El usuario pidió "que obtenga el precio del sistema", así que priorizamos el calculado.
-            $pedido['precio_usd'] = $calculatedTotalUSD;
+            // Lógica de precios:
+            // Si es COMBO, usar los precios totales proporcionados en el payload
+            // Si NO es combo (o es null), usar el cálculo automático basado en productos
+            $esCombo = !empty($pedido['es_combo']);
+            
+            if (!$esCombo) {
+                // Si NO es combo, forzamos el precio calculado
+                $pedido['precio_usd'] = $calculatedTotalUSD; // legacy
+                $pedido['precio_total_usd'] = $calculatedTotalUSD; // new field
+                
+                // Si tenemos tasa y no tenemos precio local total, calcularlo
+                if (empty($pedido['precio_total_local']) && !empty($pedido['tasa_conversion_usd'])) {
+                    $pedido['precio_total_local'] = $calculatedTotalUSD * (float)$pedido['tasa_conversion_usd'];
+                }
+                // Legacy support
+                if (empty($pedido['precio_local']) && !empty($pedido['tasa_conversion_usd'])) {
+                    $pedido['precio_local'] = $calculatedTotalUSD * (float)$pedido['tasa_conversion_usd'];
+                }
+            } else {
+                 // Si ES COMBO, respetamos lo que viene en el payload, pero aseguramos legacy fields
+                 if (empty($pedido['precio_usd']) && !empty($pedido['precio_total_usd'])) {
+                     $pedido['precio_usd'] = $pedido['precio_total_usd'];
+                 }
+                 if (empty($pedido['precio_local']) && !empty($pedido['precio_total_local'])) {
+                     $pedido['precio_local'] = $pedido['precio_total_local'];
+                 }
+            }
 
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
@@ -1293,7 +1390,13 @@ class PedidosModel
     public static function obtenerProductos()
     {
         try {
-            return ProductoModel::listarConInventario();
+            // Obtener filtro de usuario según permisos
+            require_once __DIR__ . '/../utils/permissions.php';
+            $filtroUsuario = getIdUsuarioCreadorFilter();
+            
+            // Admin (filtro = null) ve todos los productos
+            // Proveedor (filtro = su ID) ve solo sus productos
+            return ProductoModel::listarConInventario($filtroUsuario, false); // false = incluir inactivos también
         } catch (Exception $e) {
             throw new Exception("Error al obtener los productos: " . $e->getMessage());
         }
@@ -1303,9 +1406,23 @@ class PedidosModel
     {
         try {
             $usuarioModel = new UsuarioModel();
+            // Obtener Solamente Proveedores (Logística)
+            // Se eliminó la mezcla con clientes para mantener inputs separados en la UI
             return $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
         } catch (Exception $e) {
             throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
+        }
+    }
+
+    public static function obtenerClientes()
+    {
+        try {
+            $usuarioModel = new UsuarioModel();
+            // Obtener Clientes (Rol 5)
+            // 'Cliente' es el nombre del rol según verificación previa
+            return $usuarioModel->obtenerUsuariosPorRolNombre('Cliente');
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los clientes: " . $e->getMessage());
         }
     }
 
@@ -1363,10 +1480,15 @@ class PedidosModel
             $stmtAnterior = $db->prepare("SELECT id_estado FROM pedidos WHERE id = :id");
             $stmtAnterior->execute([':id' => $id_pedido]);
             $estadoAnterior = $stmtAnterior->fetchColumn();
-    
+
+            // Si el estado es el mismo, no hacer nada (opcional)
+            if ($estadoAnterior == $estado) {
+                // return true; 
+            }
+
             $query = "UPDATE pedidos SET id_estado = :estado WHERE id = :id_pedido";
             $stmt = $db->prepare($query);
-    
+
             $stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
             $stmt->bindParam(":id_pedido", $id_pedido, PDO::PARAM_INT);
             
@@ -1375,12 +1497,26 @@ class PedidosModel
                 $resultado = $stmt->rowCount() > 0;
                 
                 if ($resultado) {
-                    // Registrar auditoría
+                    $userId = self::resolveCurrentUserId();
+                    
+                    // 1. Insertar en historial específico de estados (Visible para clientes)
+                    $histQuery = "INSERT INTO pedidos_historial_estados 
+                                 (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, created_at) 
+                                 VALUES (:id_pedido, :ant, :nuevo, :user, NOW())";
+                    $histStmt = $db->prepare($histQuery);
+                    $histStmt->execute([
+                        ':id_pedido' => $id_pedido,
+                        ':ant' => $estadoAnterior ?: null, 
+                        ':nuevo' => $estado, 
+                        ':user' => $userId
+                    ]);
+
+                    // 2. Registrar auditoría interna (Sistema legacy)
                     AuditoriaModel::registrar(
                         'pedidos',
                         $id_pedido,
                         'actualizar',
-                        AuditoriaModel::getIdUsuarioActual(),
+                        $userId,
                         ['id_estado' => $estadoAnterior],
                         ['id_estado' => $estado]
                     );
@@ -1395,7 +1531,51 @@ class PedidosModel
         } catch (PDOException $e) {
             return ["success" => false, "message" => "Error SQL: " . $e->getMessage()];
         }
+    }
+
+    /**
+     * Obtener el historial de cambios de estado de un pedido
+     * @param int $id_pedido
+     * @return array
+     */
+    public static function obtenerHistorialEstados($id_pedido) {
+        $db = (new Conexion())->conectar();
+        $query = "SELECT h.*, 
+                         u.nombre as usuario_nombre, 
+                         e.nombre_estado as estado_nombre,
+                         e_ant.nombre_estado as estado_anterior_nombre
+                  FROM pedidos_historial_estados h
+                  LEFT JOIN usuarios u ON h.id_usuario = u.id
+                  LEFT JOIN estados_pedidos e ON h.id_estado_nuevo = e.id
+                  LEFT JOIN estados_pedidos e_ant ON h.id_estado_anterior = e_ant.id
+                  WHERE h.id_pedido = :id_pedido
+                  ORDER BY h.created_at DESC";
         
+        $stmt = $db->prepare($query);
+        $stmt->execute([':id_pedido' => $id_pedido]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Helper para resolver el ID de usuario actual desde sesión o API global
+     */
+    public static function resolveCurrentUserId() {
+        if (isset($GLOBALS['API_USER_ID']) && is_numeric($GLOBALS['API_USER_ID'])) {
+            return (int)$GLOBALS['API_USER_ID'];
+        }
+        
+        if (session_status() === PHP_SESSION_NONE) {
+            // Intentar iniciar sesión si no está iniciada, pero con cuidado de no romper headers
+            // @ es para silenciar warning si ya se enviaron headers
+            @session_start();
+        }
+
+        if (isset($_SESSION['user_id'])) return (int)$_SESSION['user_id'];
+        if (isset($_SESSION['ID_Usuario'])) return (int)$_SESSION['ID_Usuario'];
+        
+        // Fallback: si no hay usuario, retornar 1 (Admin) o 0 (Sistema)
+        // Retornar 1 es arriesgado si no es Admin. Mejor intentar obtener de global
+        return 1; 
     }
 
     /**
@@ -1785,38 +1965,7 @@ class PedidosModel
         }
     }
 
-    /**
-     * Obtener historial de cambios de estado de un pedido
-     * 
-     * @param int $idPedido ID del pedido
-     * @return array Historial de estados
-     */
-    public static function obtenerHistorialEstados($idPedido)
-    {
-        try {
-            $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('
-                SELECT 
-                    h.id,
-                    h.created_at as fecha,
-                    eAnt.nombre_estado as estado_anterior,
-                    eNue.nombre_estado as estado_nuevo,
-                    u.nombre as usuario,
-                    h.observaciones
-                FROM pedidos_historial_estados h
-                LEFT JOIN estados_pedidos eAnt ON eAnt.id = h.id_estado_anterior
-                INNER JOIN estados_pedidos eNue ON eNue.id = h.id_estado_nuevo
-                INNER JOIN usuarios u ON u.id = h.id_usuario
-                WHERE h.id_pedido = :id_pedido
-                ORDER BY h.created_at ASC
-            ');
-            $stmt->execute([':id_pedido' => $idPedido]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            error_log('Error al obtener historial de estados: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
-            return [];
-        }
-    }
+
 
     /**
      * Cambiar estado de un pedido con registro en historial

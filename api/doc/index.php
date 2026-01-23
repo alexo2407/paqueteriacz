@@ -658,9 +658,14 @@
                     <tr><td><code>numero_orden</code></td><td>integer</td><td>yes</td><td>Unique order number (your system should ensure uniqueness).</td></tr>
                     <tr><td><code>destinatario</code></td><td>string</td><td>yes</td><td>Recipient name.</td></tr>
                     <tr><td><code>telefono</code></td><td>string</td><td>yes</td><td>Phone number for the recipient.</td></tr>
-                    <tr><td><code>precio_local</code></td><td>number</td><td>no</td><td>Local currency price (optional). If provided, include as decimal (e.g., 120.50).</td></tr>
-                    <tr><td><code>precio_usd</code></td><td>number</td><td>no</td><td>Price in USD (optional).</td></tr>
-                    <tr><td><code>es_combo</code></td><td>integer</td><td>no</td><td><strong>Optional.</strong> Set to <code>1</code> to force combo status. If omitted (or 0), the system <strong>automatically detects</strong> it from the product configuration.</td></tr>
+                    
+                    <!-- Pricing Fields -->
+                    <tr><td><code>precio_total_local</code></td><td>number</td><td>no</td><td><strong>New.</strong> Total price in local currency. Required if <code>es_combo=1</code>.</td></tr>
+                    <tr><td><code>precio_total_usd</code></td><td>number</td><td>no</td><td><strong>New.</strong> Total price in USD. Required if <code>es_combo=1</code>.</td></tr>
+                    <tr><td><code>es_combo</code></td><td>integer</td><td>no</td><td><strong>1</strong> = Combo (fixed price), <strong>0</strong> = Unitary (calculated). <br>If <strong>0</strong> (or omitted), the system <strong>calculates totals automatically</strong> by summing <code>product price × quantity</code>.</td></tr>
+                    <tr><td><code>precio_local</code></td><td>number</td><td>no</td><td>(Legacy) Local currency price.</td></tr>
+                    <tr><td><code>precio_usd</code></td><td>number</td><td>no</td><td>(Legacy) Price in USD.</td></tr>
+
                     <tr><td><code>id_pais</code></td><td>integer</td><td>recommended</td><td>Country id — use the numeric <code>id</code> from <code>/api/geoinfo/listar</code> → <code>paises</code>.</td></tr>
                     <tr><td><code>id_departamento</code></td><td>integer</td><td>recommended</td><td>Department id — use the numeric <code>id</code> from <code>/api/geoinfo/listar</code> → <code>departamentos</code>.</td></tr>
                     <tr><td><code>id_municipio</code></td><td>integer</td><td>recommended</td><td>Municipality id — use the numeric <code>id</code> from <code>/api/geoinfo/listar</code> → <code>municipios</code>.</td></tr>
@@ -714,6 +719,28 @@
     ],
     "coordenadas": "-0.180653,-78.467838",
     "direccion": "Calle Falsa 123",
+    "id_moneda": 1,
+    "id_pais": 3,
+    "id_departamento": 5,
+    "id_municipio": 12
+}</code></pre>
+
+            <h4 data-lang="en">Example create request (Combo Order)</h4>
+            <h4 data-lang="es">Petición de creación ejemplo (Pedido Combo)</h4>
+            <p>For combos, set <code>es_combo: 1</code> and provide the <strong>total price</strong>. The system will respect this price instead of summing product prices.</p>
+        <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 90003,
+    "destinatario": "Cliente Combo",
+    "telefono": "0999999999",
+    "productos": [
+        { "producto_id": 12, "cantidad": 1 },
+        { "producto_id": 13, "cantidad": 1 }
+    ],
+    "es_combo": 1,
+    "precio_total_local": 500.00,
+    "precio_total_usd": 13.50,
+    "tasa_conversion_usd": 37.00,
+    "coordenadas": "-0.180653,-78.467838",
     "id_moneda": 1,
     "id_pais": 3,
     "id_departamento": 5,
@@ -828,11 +855,11 @@
 
             <ul class="mb-3" data-lang="en">
                 <li><strong>Auto-Provider ID:</strong> Authentication token automatically determines the provider (works if Role is "Proveedor" or ID 4).</li>
-                <li><strong>Auto-Pricing (USD):</strong> The system looks up product list prices and calculates the total automatically (`precio_usd`).</li>
+                <li><strong>Auto-Pricing (USD):</strong> The system calculates totals automatically based on products (Unitary logic) or respects provided totals if <code>es_combo=1</code>.</li>
             </ul>
             <ul class="mb-3" data-lang="es">
                 <li><strong>Auto-ID Proveedor:</strong> El token de autenticación determina automáticamente al proveedor (funciona si el Rol es "Proveedor" o ID 4).</li>
-                <li><strong>Auto-Precio (USD):</strong> El sistema busca los precios de lista y calcula el total automáticamente (`precio_usd`).</li>
+                <li><strong>Auto-Precio (USD):</strong> El sistema calcula totales automáticamente basado en productos (lógica Unitaria) o respeta totales provistos si <code>es_combo=1</code>.</li>
             </ul>
 
             <h4 data-lang="en">Endpoint</h4>

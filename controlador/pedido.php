@@ -425,6 +425,14 @@ class PedidosController {
     }
 
     /**
+     * Obtener clientes registrados.
+     * @return array
+     */
+    public function obtenerClientes() {
+        return PedidosModel::obtenerClientes();
+    }
+
+    /**
      * Obtener monedas existentes (incluye tasa_usd si aplica).
      * @return array
      */
@@ -1333,5 +1341,40 @@ class PedidosController {
     
     
     
+    /**
+     * Endpoint API para obtener el historial de estados de un pedido
+     * GET /pedidos/historial/<id> o ?id=<id>
+     */
+    public function historial($id = null) {
+        // Soporte para llamar historial($id) desde router o historial() con $_GET
+        if ($id === null && isset($_GET['id'])) {
+            $id = $_GET['id'];
+        }
+
+        require_once __DIR__ . '/../utils/session.php';
+        // start_secure_session(); 
+
+        header('Content-Type: application/json');
+
+        if (!$id || !is_numeric($id)) {
+            echo json_encode(['success' => false, 'message' => 'ID de pedido inválido']);
+            exit;
+        }
+
+        try {
+            $historial = PedidosModel::obtenerHistorialEstados((int)$id);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $historial
+            ]);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Error al obtener historial: ' . $e->getMessage()
+            ]);
+        }
+        exit;
+    }
 }
 

@@ -139,6 +139,21 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
     }
 }
 
+// Handler para pedidos GET (API endpoints/AJAX)
+if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    
+    if ($accion === 'historial') {
+        require_once __DIR__ . '/../modelo/pedido.php';
+        require_once __DIR__ . '/../controlador/pedido.php';
+        
+        $ctrl = new PedidosController();
+        $id = isset($ruta[2]) ? (int) $ruta[2] : null;
+        $ctrl->historial($id);
+        exit;
+    }
+}
+
 // -----------------------
 // Manejo de monedas (POST a ?enlace=monedas/<accion>)
 // -----------------------

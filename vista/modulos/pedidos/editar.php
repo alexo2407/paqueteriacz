@@ -62,6 +62,12 @@ try {
     $proveedores = [];
 }
 
+try {
+    $clientes = $pedidoController->obtenerClientes();
+} catch (Exception $e) {
+    $clientes = [];
+}
+
 // Cargar países, departamentos, municipios y barrios para selects de dirección
 require_once __DIR__ . '/../../../modelo/pais.php';
 require_once __DIR__ . '/../../../modelo/departamento.php';
@@ -135,6 +141,63 @@ if (empty($pedido['id_moneda'])) {
         $pedido['id_moneda'] = $monedas[0]['id'];
     }
 }
+
+// CALCULAR PRECIOS TOTALES SI NO ES COMBO
+// Si el pedido NO es combo, calcular el total desde los productos
+if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
+    $totalUsd = 0;
+    
+    // Sumar precio de cada producto
+    if (!empty($pedido['productos']) && is_array($pedido['productos'])) {
+        foreach ($pedido['productos'] as $item) {
+            if (isset($item['id_producto']) && isset($item['cantidad'])) {
+                // Buscar el producto para obtener su precio
+                $productoEncontrado = null;
+                foreach ($productos as $prod) {
+                    if ((int)$prod['id'] === (int)$item['id_producto']) {
+                        $productoEncontrado = $prod;
+                        break;
+                    }
+                }
+                
+                if ($productoEncontrado && isset($productoEncontrado['precio_usd'])) {
+                    $precioUnitario = (float)$productoEncontrado['precio_usd'];
+                    $cantidad = (int)$item['cantidad'];
+                    $totalUsd += $precioUnitario * $cantidad;
+                }
+            }
+        }
+    }
+    
+    // Si calculamos un total, actualizar los campos
+    if ($totalUsd > 0) {
+        // Obtener la tasa de la moneda seleccionada
+        $tasaMoneda = 1;
+        if (!empty($pedido['id_moneda'])) {
+            foreach ($monedas as $mon) {
+                if ((int)$mon['id'] === (int)$pedido['id_moneda']) {
+                    $tasaMoneda = (float)($mon['tasa_usd'] ?? 1);
+                    break;
+                }
+            }
+        }
+        
+        // Calcular precio total local
+        $totalLocal = $totalUsd * $tasaMoneda;
+        
+        // Actualizar los campos del pedido para mostrar en el formulario
+        if (empty($pedido['precio_total_usd'])) {
+            $pedido['precio_total_usd'] = number_format($totalUsd, 2, '.', '');
+        }
+        if (empty($pedido['precio_total_local'])) {
+            $pedido['precio_total_local'] = number_format($totalLocal, 2, '.', '');
+        }
+        if (empty($pedido['tasa_conversion_usd'])) {
+            $pedido['tasa_conversion_usd'] = number_format($tasaMoneda, 6, '.', '');
+        }
+    }
+}
+
 ?>
 <style>
 .editar-pedido-card {
@@ -195,6 +258,42 @@ if (empty($pedido['id_moneda'])) {
     border-radius: 50px;
     font-size: 0.85rem;
 }
+
+/* ==================== MODERN TABS STYLING ==================== */
+#pills-tab {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    padding: 0.5rem !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(0,0,0,0.08) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+.nav-pills .nav-link {
+    color: #495057;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    background: transparent;
+    border: 1px solid transparent;
+}
+.nav-pills .nav-link:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.8);
+    color: #0d6efd;
+    transform: translateY(-1px);
+}
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);
+    transform: translateY(-2px);
+}
+.nav-pills .nav-link i { margin-right: 0.5rem; }
 </style>
 
 <div class="container-fluid py-4">
@@ -218,264 +317,357 @@ if (empty($pedido['id_moneda'])) {
         
         <div class="card-body p-4">
 
-    <?= $mensaje ?? '' ?>
-
-    <div id="formErrors" class="alert alert-danger d-none" role="alert" tabindex="-1" style="display:block">
-        <ul id="formErrorsList" class="mb-0"></ul>
-    </div>
-
-    <form id="formEditarPedido" method="POST" action="">
-        <?php 
-        require_once __DIR__ . '/../../../utils/csrf.php';
-        echo csrf_field(); 
-        ?>
-        <input type="hidden" name="id_pedido" value="<?= htmlspecialchars($pedido['id']) ?>">
-
-        <!-- Sección 1: Información Básica de la Orden -->
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">📋 Información Básica</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="numero_orden" class="form-label">Número de Orden</label>
-                            <input type="number" class="form-control" id="numero_orden" name="numero_orden" value="<?= htmlspecialchars($pedido['numero_orden']) ?>" required>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="proveedor" class="form-label">Proveedor</label>
-                            <?php
-                            require_once __DIR__ . '/../../../utils/permissions.php';
-                            if (canSelectAnyProveedor()): ?>
-                                <select class="form-control select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar proveedor...">
-                                    <option value="">Selecciona un proveedor</option>
-                                    <?php foreach ($proveedores as $proveedor): ?>
-                                        <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
-                                            <?= htmlspecialchars($proveedor['nombre']) ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <?php if (empty($proveedores)): ?>
-                                    <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <!-- Usuario Proveedor: auto-asignado, no editable -->
-                                <input type="hidden" id="proveedor" name="proveedor" value="<?= $pedido['id_proveedor'] ?>">
-                                <input type="text" class="form-control" value="<?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'Mi usuario') ?>" disabled>
-                                <div class="form-text">Los proveedores no pueden cambiar el proveedor asignado.</div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="moneda" class="form-label">Moneda 💱</label>
-                            <select class="form-control select2-searchable" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda...">
-                                <option value="">Selecciona una moneda</option>
-                                <?php foreach ($monedas as $moneda): 
-                                    $isSelected = ((int)$pedido['id_moneda'] === (int)$moneda['id']);
-                                ?>
-                                    <option value="<?= $moneda['id'] ?>"
-                                            data-tasa="<?= htmlspecialchars($moneda['tasa_usd']) ?>"
-                                            <?= $isSelected ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($moneda['nombre']) ?> (<?= htmlspecialchars($moneda['codigo']) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if ($monedaLocalUsuario && (int)$pedido['id_moneda'] === (int)$monedaLocalUsuario): ?>
-                                <small class="form-text text-success"><i class="bi bi-check-circle"></i> Moneda local pre-seleccionada según tu país</small>
-                            <?php else: ?>
-                                <small class="form-text text-muted" id="tasaInfo">Tasa de cambio seleccionada</small>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Sección 2: Productos y Precios -->
-        <div class="card mb-4">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">🛍️ Productos y Precios</h5>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Productos</label>
-                    <div id="productosContainer">
-                        <!-- product rows will be injected here -->
-                         
-                    </div>
-                    <button type="button" id="btnAddProducto" class="btn btn-sm btn-outline-success mt-2">
-                        <i class="bi bi-plus-circle"></i> Agregar producto
+            <!-- TABS NAVIGATION -->
+            <ul class="nav nav-pills mb-4" id="pills-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pills-info-tab" data-bs-toggle="pill" data-bs-target="#pills-info" type="button" role="tab">
+                        <i class="bi bi-clipboard-data"></i> Información Básica
                     </button>
-                </div>
-                
-                <!-- Toggle para activar modo combo -->
-                <div class="alert alert-secondary mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" <?= (empty($pedido['es_combo']) || $pedido['es_combo'] == 1) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="es_combo">
-                            <strong>📦 Marcar como Pedido Combo</strong>
-                        </label>
-                        <br>
-                        <small class="text-muted">Activa esta opción si el proveedor te cobró un precio total único por todos los productos (en lugar de precio individual)</small>
-                    </div>
-                </div>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pills-asignacion-tab" data-bs-toggle="pill" data-bs-target="#pills-asignacion" type="button" role="tab">
+                        <i class="bi bi-gear"></i> Asignación y Estado
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pills-productos-tab" data-bs-toggle="pill" data-bs-target="#pills-productos" type="button" role="tab">
+                        <i class="bi bi-bag"></i> Productos y Precios
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pills-destinatario-tab" data-bs-toggle="pill" data-bs-target="#pills-destinatario" type="button" role="tab">
+                        <i class="bi bi-person-badge"></i> Destinatario
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pills-tracking-tab" data-bs-toggle="pill" data-bs-target="#pills-tracking" type="button" role="tab">
+                        <i class="bi bi-clock-history"></i> Tracking
+                    </button>
+                </li>
+            </ul>
 
-                <!-- Precio Total del Combo -->
-                <div id="combo-pricing-section" style="display: <?= (empty($pedido['es_combo']) || $pedido['es_combo'] == 1) ? 'block' : 'none' ?>;">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>Precio del Combo:</strong> Ingresa el precio total que te cobró el proveedor en su moneda local. El precio en USD se calculará automáticamente.
-                    </div>
+            <?= $mensaje ?? '' ?>
 
-                    <div class="row mt-3">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="precio_total_local" class="form-label">Precio Total (Moneda Local) 💰</label>
-                                <input type="number" class="form-control" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>">
-                                <small class="form-text text-muted">Precio total que cobró el proveedor</small>
+            <div id="formErrors" class="alert alert-danger d-none" role="alert" tabindex="-1" style="display:block">
+                <ul id="formErrorsList" class="mb-0"></ul>
+            </div>
+
+            <!-- FORM START (Wraps all tabs) -->
+            <form id="formEditarPedido" method="POST" action="">
+                <?php 
+                require_once __DIR__ . '/../../../utils/csrf.php';
+                echo csrf_field(); 
+                ?>
+                <input type="hidden" name="id_pedido" value="<?= htmlspecialchars($pedido['id']) ?>">
+
+                <div class="tab-content" id="pills-tabContent">
+                    
+                    <!-- TAB 1: INFORMACIÓN BÁSICA -->
+                    <div class="tab-pane fade show active" id="pills-info" role="tabpanel">
+                        <div class="card mb-4 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="mb-4 text-primary"><i class="bi bi-clipboard-data me-2"></i>Información General</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="numero_orden" class="form-label">Número de Orden</label>
+                                            <input type="number" class="form-control form-control-lg" id="numero_orden" name="numero_orden" value="<?= htmlspecialchars($pedido['numero_orden']) ?>" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="moneda" class="form-label">Moneda del Pedido</label>
+                                            <select class="form-control select2-searchable form-select-lg" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda...">
+                                                <option value="">Selecciona una moneda</option>
+                                                <?php foreach ($monedas as $moneda): 
+                                                    $isSelected = ((int)$pedido['id_moneda'] === (int)$moneda['id']);
+                                                ?>
+                                                    <option value="<?= $moneda['id'] ?>" data-tasa="<?= htmlspecialchars($moneda['tasa_usd']) ?>" <?= $isSelected ? 'selected' : '' ?>>
+                                                        <?= htmlspecialchars($moneda['nombre']) ?> (<?= htmlspecialchars($moneda['codigo']) ?>)
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <?php if ($monedaLocalUsuario && (int)$pedido['id_moneda'] === (int)$monedaLocalUsuario): ?>
+                                                <small class="form-text text-success"><i class="bi bi-check-circle"></i> Moneda local</small>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="comentario" class="form-label">Comentarios / Notas Internas</label>
+                                    <textarea class="form-control" id="comentario" name="comentario" maxlength="500" rows="4"><?= htmlspecialchars($pedido['comentario']) ?></textarea>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="precio_total_usd" class="form-label">Precio Total (USD) 💵</label>
-                                <input type="number" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_total_usd'] ?? $pedido['precio_usd'] ?? '') ?>">
-                                <small class="form-text text-muted">Calculado automáticamente</small>
+                        <!-- Botones de Acción Globales (visible en cada tab o al final) -->
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-asignacion-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 2: ASIGNACIÓN Y ESTADO -->
+                    <div class="tab-pane fade" id="pills-asignacion" role="tabpanel">
+                        <div class="card mb-4 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="mb-4 text-warning"><i class="bi bi-gear me-2"></i>Configuración de Asignación</h5>
+                                <div class="row">
+                                    <div class="col-md-6 mb-4">
+                                        <label for="estado" class="form-label fw-bold">Estado Actual</label>
+                                        <select class="form-control select2-searchable form-select-lg" id="estado" name="estado">
+                                            <option value="">Selecciona un estado</option>
+                                            <?php foreach ($estados as $estado): ?>
+                                                <option value="<?= $estado['id'] ?>" <?= $pedido['id_estado'] == $estado['id'] ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($estado['nombre_estado']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-4">
+                                        <label for="proveedor" class="form-label fw-bold">Proveedor (Logística)</label>
+                                        <?php if (canSelectAnyProveedor()): ?>
+                                            <select class="form-control select2-searchable" id="proveedor" name="proveedor" required>
+                                                <option value="">Selecciona un proveedor</option>
+                                                <?php foreach ($proveedores as $proveedor): ?>
+                                                    <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
+                                                        <?= htmlspecialchars($proveedor['nombre']) ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        <?php else: ?>
+                                            <input type="hidden" id="proveedor" name="proveedor" value="<?= $pedido['id_proveedor'] ?>">
+                                            <input type="text" class="form-control" value="<?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'Mi usuario') ?>" disabled>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <div class="col-md-6 mb-4">
+                                        <label for="cliente" class="form-label fw-bold">Cliente (Opcional)</label>
+                                        <select class="form-control select2-searchable" id="cliente" name="cliente">
+                                            <option value="">Sin Cliente asignado</option>
+                                            <?php foreach ($clientes as $cli): ?>
+                                                <option value="<?= $cli['id'] ?>" <?= ((int)($pedido['id_cliente'] ?? 0) === (int)$cli['id']) ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($cli['nombre']) ?><?= isset($cli['email']) && $cli['email'] ? ' — ' . htmlspecialchars($cli['email']) : '' ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6 mb-4">
+                                        <label for="vendedor" class="form-label fw-bold">Repartidor / Operador Asignado</label>
+                                        <select class="form-control select2-searchable" id="vendedor" name="vendedor">
+                                            <option value="">Sin Asignar</option>
+                                            <?php foreach ($vendedores as $vendedor): ?>
+                                                <option value="<?= $vendedor['id'] ?>" <?= $pedido['id_vendedor'] == $vendedor['id'] ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($vendedor['nombre']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="tasa_conversion_usd" class="form-label">Tasa de Conversión 📊</label>
-                                <input type="number" class="form-control bg-light" id="tasa_conversion_usd" name="tasa_conversion_usd" step="0.000001" readonly value="<?= htmlspecialchars($pedido['tasa_conversion_usd'] ?? '') ?>">
-                                <small class="form-text text-muted">Tasa al momento de crear el pedido</small>
+                        <div class="d-flex justify-content-between">
+                             <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-info-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
+                             <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-productos-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: PRODUCTOS Y PRECIOS -->
+                    <div class="tab-pane fade" id="pills-productos" role="tabpanel">
+                        <div class="card mb-4 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 class="mb-0 text-success"><i class="bi bi-bag me-2"></i>Detalle de Productos</h5>
+                                    <div>
+                                         <button type="button" id="btnAddProducto" class="btn btn-success btn-sm"><i class="bi bi-plus-lg"></i> Agregar Item</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="productosContainer" class="mb-4"></div>
+                                
+                                <hr class="my-4">
+                                
+                                <h5 class="mb-3 text-success"><i class="bi bi-cash-coin me-2"></i>Resumen Financiero</h5>
+                                
+                                <div class="alert alert-light border mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" <?= (!empty($pedido['es_combo']) && $pedido['es_combo'] == 1) ? 'checked' : '' ?>>
+                                        <label class="form-check-label user-select-none" for="es_combo">
+                                            <strong>Modo Combo / Precio Cerrado</strong>
+                                            <div class="text-muted small">Activar si se cobra un precio total único en lugar de por producto.</div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Total (Moneda Local)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-cash"></i></span>
+                                            <input type="number" class="form-control fw-bold" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Total (USD)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="bi bi-currency-dollar"></i></span>
+                                            <input type="number" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_total_usd'] ?? $pedido['precio_usd'] ?? '') ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Tasa Cambio</label>
+                                        <input type="number" class="form-control bg-light text-muted" id="tasa_conversion_usd" name="tasa_conversion_usd" step="0.000001" readonly value="<?= htmlspecialchars($pedido['tasa_conversion_usd'] ?? '') ?>">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                             <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-asignacion-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
+                             <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-destinatario-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: DESTINATARIO -->
+                    <div class="tab-pane fade" id="pills-destinatario" role="tabpanel">
+                        <div class="card mb-4 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="mb-4 text-info"><i class="bi bi-geo-alt me-2"></i>Datos de Entrega</h5>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="destinatario" class="form-label">Nombre Contacto</label>
+                                        <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="telefono" class="form-label">Teléfono</label>
+                                        <input type="tel" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($pedido['telefono']) ?>" required>
+                                    </div>
+                                    <div class="col-12 mb-3">
+                                        <label for="direccion" class="form-label">Dirección Exacta</label>
+                                        <textarea class="form-control" id="direccion" name="direccion" rows="2" required><?= htmlspecialchars($pedido['direccion']) ?></textarea>
+                                    </div>
+                                    
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">País</label>
+                                        <select class="form-select select2-searchable" id="id_pais" name="id_pais">
+                                            <option value="">Selecciona</option>
+                                            <?php foreach ($paises as $p): ?>
+                                                <option value="<?= (int)$p['id'] ?>" <?= (!empty($pedido['id_pais']) && (int)$pedido['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Departamento</label>
+                                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento">
+                                            <option value="">Selecciona</option>
+                                            <?php foreach ($departamentosAll as $d): ?>
+                                                <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 mt-3">
+                                        <label class="form-label">Geolocalización</label>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="latitud" name="latitud" placeholder="Lat" value="<?= htmlspecialchars($pedido['latitud']) ?>"></div>
+                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="longitud" name="longitud" placeholder="Lng" value="<?= htmlspecialchars($pedido['longitud']) ?>"></div>
+                                        </div>
+                                        <div id="map" style="width: 100%; height: 350px; border-radius: 8px;" class="border"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Submit Section -->
+                        <div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded border">
+                             <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-productos-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
+                             <div>
+                                 <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-link text-decoration-none me-3">Cancelar</a>
+                                 <button type="submit" class="btn btn-primary btn-lg px-5 shadow"><i class="bi bi-check-lg"></i> Guardar Cambios</button>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 5: TRACKING -->
+                    <div class="tab-pane fade" id="pills-tracking" role="tabpanel">
+                        <div class="p-4 border rounded bg-white shadow-sm">
+                            <h5 class="mb-4 text-primary"><i class="bi bi-clock-history me-2"></i>Timeline de Actividad</h5>
+                            <div id="historial-container">
+                                <!-- Ajax content -->
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Sección 3: Información del Destinatario -->
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">👤 Destinatario</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="destinatario" class="form-label">Nombre del Destinatario</label>
-                            <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="telefono" class="form-label">Teléfono</label>
-                            <input type="tel" class="form-control" id="telefono" name="telefono" pattern="\d{8,15}" value="<?= htmlspecialchars($pedido['telefono']) ?>">
-                            <div class="invalid-feedback">Teléfono inválido (8-15 dígitos).</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label for="direccion" class="form-label">Dirección de Entrega</label>
-                    <textarea class="form-control" id="direccion" name="direccion" rows="2" required><?= htmlspecialchars($pedido['direccion']) ?></textarea>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <label for="id_pais" class="form-label">País</label>
-                        <select class="form-select select2-searchable" id="id_pais" name="id_pais" data-placeholder="Buscar país...">
-                            <option value="" selected>Selecciona un país</option>
-                            <?php foreach ($paises as $p): ?>
-                                <option value="<?= (int)$p['id'] ?>" <?= (!empty($pedido['id_pais']) && (int)$pedido['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="id_departamento" class="form-label">Departamento</label>
-                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento" data-placeholder="Buscar departamento...">
-                            <option value="" selected>Selecciona un departamento</option>
-                            <?php foreach ($departamentosAll as $d): ?>
-                                <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-md-6">
-                        <label for="latitud" class="form-label">Latitud</label>
-                        <input type="text" class="form-control" id="latitud" name="latitud" pattern="-?\d{1,3}\.\d+" value="<?= htmlspecialchars($pedido['latitud']) ?>" required>
-                        <div class="invalid-feedback">Ingresa una latitud válida (número decimal).</div>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="longitud" class="form-label">Longitud</label>
-                        <input type="text" class="form-control" id="longitud" name="longitud" pattern="-?\d{1,3}\.\d+" value="<?= htmlspecialchars($pedido['longitud']) ?>" required>
-                        <div class="invalid-feedback">Ingresa una longitud válida (número decimal).</div>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <label for="map" class="form-label">Ubicación en el Mapa</label>
-                    <div id="map" style="width: 100%; height: 350px; border: 1px solid #ccc; border-radius: 8px;"></div>
-                    <small class="form-text text-muted">Arrastra el marcador para ajustar la ubicación</small>
-                </div>
-            </div>
-        </div>
+                </div> <!-- End Tab Content -->
+            </form>
 
-        <!-- Sección 4: Asignación y Estado -->
-        <div class="card mb-4">
-            <div class="card-header bg-warning">
-                <h5 class="mb-0">⚙️ Asignación y Estado</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="estado" class="form-label">Estado del Pedido</label>
-                            <select class="form-control select2-searchable" id="estado" name="estado" data-placeholder="Seleccionar estado...">
-                                <option value="">Selecciona un estado</option>
-                                <?php foreach ($estados as $estado): ?>
-                                    <option value="<?= $estado['id'] ?>" <?= $pedido['id_estado'] == $estado['id'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($estado['nombre_estado']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="vendedor" class="form-label">Repartidor Asignado</label>
-                            <select class="form-control select2-searchable" id="vendedor" name="vendedor" data-placeholder="Buscar repartidor...">
-                                <option value="">Selecciona un repartidor</option>
-                                <?php foreach ($vendedores as $vendedor): ?>
-                                    <option value="<?= $vendedor['id'] ?>" <?= $pedido['id_vendedor'] == $vendedor['id'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($vendedor['nombre']) ?><?= isset($vendedor['email']) && $vendedor['email'] ? ' — ' . htmlspecialchars($vendedor['email']) : '' ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <?php if (empty($vendedores)): ?>
-                                <div class="form-text text-warning">No hay usuarios con rol Repartidor activos.</div>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-md-12">
-                        <div class="mb-3">
-                            <label for="comentario" class="form-label">Comentarios</label>
-                            <textarea class="form-control" id="comentario" name="comentario" maxlength="500" rows="3"><?= htmlspecialchars($pedido['comentario']) ?></textarea>
-                            <small class="form-text text-muted">Máximo 500 caracteres</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab persistence logic
+    const tabKey = 'activeTab_editar_pedido';
+    const tabs = document.querySelectorAll('button[data-bs-toggle="pill"]');
+    
+    // Check local storage or URL hash
+    const savedTab = localStorage.getItem(tabKey) || (window.location.hash ? window.location.hash.replace('#', '') : null);
+    
+    if (savedTab) {
+        // Compatibility: map old 'historial' to new 'tracking'
+        const targetTab = (savedTab === 'historial') ? 'tracking' : savedTab;
+        const triggerEl = document.querySelector(`#pills-${targetTab}-tab`);
+        
+        if (triggerEl) {
+            const tab = new bootstrap.Tab(triggerEl);
+            tab.show();
+        }
+    }
 
-        <button type="submit" class="btn btn-primary mt-3">Guardar Cambios</button>
-        <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-secondary mt-3">Cancelar</a>
-    </form>
-</div>
+    tabs.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', event => {
+            const targetId = event.target.getAttribute('data-bs-target').replace('#pills-', '');
+            localStorage.setItem(tabKey, targetId);
+            // Optional: update URL hash without scrolling
+            history.replaceState(null, null, `#${targetId}`);
+        });
+    });
+
+    // History loading logic
+    const ordenId = <?= json_encode($id_pedido) ?>;
+    const container = document.getElementById('historial-container');
+    
+    fetch('<?= RUTA_URL ?>pedidos/historial/' + ordenId)
+        .then(response => response.json())
+        .then(res => {
+            if(res.success && res.data && res.data.length > 0) {
+                let html = '<ul class="list-group list-group-flush">';
+                res.data.forEach(item => {
+                    const fecha = new Date(item.created_at).toLocaleString();
+                    const usuario = item.usuario_nombre || 'Sistema';
+                    const estadoAnt = item.estado_anterior_nombre ? `<span class="badge bg-secondary">${item.estado_anterior_nombre}</span> <i class="bi bi-arrow-right"></i> ` : '';
+                    const estadoNuevo = `<span class="badge bg-success">${item.estado_nombre}</span>`;
+                    const obs = item.observaciones ? `<div class="mt-1 text-muted small"><i class="bi bi-info-circle"></i> ${item.observaciones}</div>` : '';
+                    
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-start bg-transparent">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-bold">${estadoAnt}${estadoNuevo}</div>
+                                <small class="text-muted"><i class="bi bi-person"></i> ${usuario}</small>
+                                ${obs}
+                            </div>
+                            <span class="badge bg-white text-dark rounded-pill border shadow-sm">${fecha}</span>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<div class="alert alert-light text-center border">No hay cambios de estado registrados en el historial detallado.</div>';
+            }
+        })
+        .catch(err => {
+             console.error(err);
+             container.innerHTML = '<div class="alert alert-warning text-center">No se pudo cargar el historial.</div>';
+        });
+});
+</script>
+
 <script>
 // Sync first product row into legacy hidden inputs for compatibility (editar)
 (function(){
@@ -617,10 +809,24 @@ document.addEventListener('DOMContentLoaded', function() {
 // Dynamic products rows for editar.php
 (function(){
     const productos = <?php echo json_encode(array_map(function($p){
-        return [ 'id' => (int)$p['id'], 'nombre' => $p['nombre'], 'marca' => $p['marca'] ?? '', 'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0, 'id_usuario_creador' => $p['id_usuario_creador'] ?? null ];
+        return [ 
+            'id' => (int)$p['id'], 
+            'nombre' => $p['nombre'], 
+            'marca' => $p['marca'] ?? '', 
+            'stock' => isset($p['stock_total']) ? (int)$p['stock_total'] : 0, 
+            'precio_usd' => isset($p['precio_usd']) ? $p['precio_usd'] : null,
+            'id_usuario_creador' => $p['id_usuario_creador'] ?? null 
+        ];
     }, $productos)); ?>;
 
     const existingItems = <?php echo json_encode($pedido['productos'] ?? []); ?>;
+    
+    // Detectar si el usuario actual es Admin
+    const esAdmin = <?php 
+        require_once __DIR__ . '/../../../utils/permissions.php';
+        echo isSuperAdmin() ? 'true' : 'false'; 
+    ?>;
+    
     const productosContainer = document.getElementById('productosContainer');
     const btnAdd = document.getElementById('btnAddProducto');
     const precioTotalLocalInput = document.getElementById('precio_total_local');
@@ -640,14 +846,24 @@ document.addEventListener('DOMContentLoaded', function() {
             return opts;
         }
 
-        // Aplicar filtro estricto - solo productos del proveedor
-        const productosFiltrados = productos.filter(p => {
-            const idCreador = p.id_usuario_creador;
-            // Permitir el producto si pertenece al proveedor seleccionado
-            // O si es el producto que está siendo pre-seleccionado (para edición de pedidos antiguos)
-            return (idCreador !== null && parseInt(idCreador) === idProveedorSeleccionado) ||
-                   (selectedId && parseInt(p.id) === parseInt(selectedId));
-        });
+        // ADMIN ve TODOS los productos, Proveedor solo los suyos
+        let productosFiltrados;
+        if (esAdmin) {
+            // Admin: mostrar todos los productos
+            productosFiltrados = productos;
+        } else {
+            // Proveedor: Aplicar filtro - solo productos del proveedor y legacy sin creador
+            productosFiltrados = productos.filter(p => {
+                const idCreador = p.id_usuario_creador;
+                // Permitir el producto si:
+                // 1. Pertenece al proveedor seleccionado, O
+                // 2. No tiene creador (legacy), O
+                // 3. Es el producto que está siendo pre-seleccionado (para edición de pedidos antiguos)
+                return (idCreador !== null && parseInt(idCreador) === idProveedorSeleccionado) ||
+                       (idCreador === null) ||
+                       (selectedId && parseInt(p.id) === parseInt(selectedId));
+            });
+        }
 
         if (productosFiltrados.length === 0) {
             opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
@@ -683,6 +899,65 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tasa > 0) {
             const precioUsd = precioLocal / tasa;
             precioTotalUsdInput.value = precioUsd.toFixed(2);
+        }
+    }
+
+    // Función para recalcular totales automáticamente cuando NO es combo
+    function recalcularTotalesNoCombo() {
+        // Solo recalcular si NO es combo
+        const esComboCheckbox = document.getElementById('es_combo');
+        if (esComboCheckbox && esComboCheckbox.checked) {
+            return; // Es combo, no recalcular
+        }
+        
+        console.log("Recalculando totales...");
+        let totalUsd = 0;
+        let itemsFound = 0;
+        
+        // Sumar precio de cada fila de producto
+        const allRows = productosContainer.querySelectorAll('.producto-row');
+        allRows.forEach(row => {
+            const select = row.querySelector('.producto-select');
+            const cantidadInput = row.querySelector('.producto-cantidad');
+            
+            if (select && cantidadInput && select.value) {
+                const productoId = parseInt(select.value);
+                const cantidad = parseFloat(cantidadInput.value) || 0; // Usar parseFloat para cantidad
+                
+                // Buscar el producto en el array para obtener su precio
+                const producto = productos.find(p => parseInt(p.id) === productoId);
+                
+                if (producto) {
+                    // Asegurar que el precio sea número 
+                    const precioUnitario = parseFloat(producto.precio_usd);
+                    
+                    if (!isNaN(precioUnitario)) {
+                        const subtotal = precioUnitario * cantidad;
+                        totalUsd += subtotal;
+                        itemsFound++;
+                        console.log(`Producto: ${producto.nombre}, Precio: ${precioUnitario}, Cantidad: ${cantidad}, Subtotal: ${subtotal}`);
+                    } else {
+                        console.warn(`Producto ${producto.nombre} tiene precio inválido:`, producto.precio_usd);
+                    }
+                } else {
+                    console.warn(`Producto ID ${productoId} no encontrado en array de productos`);
+                }
+            }
+        });
+        
+        console.log(`Total calculado: ${totalUsd} (${itemsFound} items)`);
+
+        // Actualizar los campos
+        if (totalUsd > 0) {
+            const tasa = parseFloat(tasaConversionInput.value) || 1;
+            const totalLocal = totalUsd * tasa;
+            
+            precioTotalUsdInput.value = totalUsd.toFixed(2);
+            precioTotalLocalInput.value = totalLocal.toFixed(2);
+        } else if (itemsFound === 0) {
+            // Si no hay productos válidos seleccionados
+            precioTotalUsdInput.value = '0.00';
+            precioTotalLocalInput.value = '0.00';
         }
     }
 
@@ -731,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
         productosContainer.appendChild(row);
         
-        // Event listeners - NO calculamos precios automáticamente en el modo combo
+        // Event listeners - Calcular precios automáticamente cuando NO es combo
         const select = row.querySelector('.producto-select');
         const cantidad = row.querySelector('.producto-cantidad');
         
@@ -752,16 +1027,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Evento change de Select2 - solo para disponibilidad
+            // Evento change de Select2
             $(select).on('change.select2', function() {
                 updateProductOptionsAvailability();
+                recalcularTotalesNoCombo(); // Recalcular cuando cambia el producto
             });
         } else {
             // Fallback si Select2 no está disponible
             select.addEventListener('change', () => {
                 updateProductOptionsAvailability();
+                recalcularTotalesNoCombo(); // Recalcular cuando cambia el producto
             });
         }
+        
+        // Recalcular cuando cambia la cantidad
+        cantidad.addEventListener('input', () => {
+            recalcularTotalesNoCombo();
+        });
         
         row.querySelector('.btnRemove').addEventListener('click', () => {
             // Destruir Select2 antes de eliminar el elemento
@@ -770,10 +1052,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             row.remove();
             updateProductOptionsAvailability();
+            recalcularTotalesNoCombo(); // Recalcular después de eliminar
         });
         
         // Actualizar opciones al agregar nueva fila
         updateProductOptionsAvailability();
+        recalcularTotalesNoCombo(); // Recalcular al agregar nueva fila
     }
 
     // initialize rows from existingItems, or create one if empty
@@ -811,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', function() {
         monedaSelect.addEventListener('change', function() {
             actualizarTasaConversion();
             calcularPrecioUSD();
+            recalcularTotalesNoCombo(); // Recalcular con la nueva tasa
         });
     }
 
@@ -960,17 +1245,43 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script>
-// Toggle combo pricing section
+// Toggle combo pricing behavior
 document.getElementById('es_combo').addEventListener('change', function() {
-    const comboPricingSection = document.getElementById('combo-pricing-section');
+    const precioTotalLocalInput = document.getElementById('precio_total_local');
+    const precioInfoTexto = document.getElementById('precio-info-texto');
+    const precioDescripcion = document.getElementById('precio-descripcion');
+    
     if (this.checked) {
-        comboPricingSection.style.display = 'block';
+        // ES COMBO: El usuario puede editar el precio total
+        precioTotalLocalInput.removeAttribute('readonly');
+        precioTotalLocalInput.classList.remove('bg-light');
+        
+        // Actualizar textos
+        if (precioInfoTexto) {
+            precioInfoTexto.textContent = 'Precio del Combo:';
+        }
+        if (precioDescripcion) {
+            precioDescripcion.textContent = 'Ingresa el precio total que te cobró el proveedor en su moneda local. El precio en USD se calculará automáticamente.';
+        }
+        
+        // NO BORRAR los valores - el usuario puede querer mantenerlos como base
+        // Si quiere cambiar los precios, puede hacerlo manualmente
+        
     } else {
-        comboPricingSection.style.display = 'none';
-        // Limpiar campos si se desactiva
-        document.getElementById('precio_total_local').value = '';
-        document.getElementById('precio_total_usd').value = '';
-        document.getElementById('tasa_conversion_usd').value = '';
+        // NO ES COMBO: El precio se calcula automáticamente
+        precioTotalLocalInput.setAttribute('readonly', 'readonly');
+        precioTotalLocalInput.classList.add('bg-light');
+        
+        // Actualizar textos
+        if (precioInfoTexto) {
+            precioInfoTexto.textContent = 'Total del Pedido:';
+        }
+        if (precioDescripcion) {
+            precioDescripcion.textContent = 'El precio total se calcula automáticamente sumando el precio de cada producto multiplicado por su cantidad.';
+        }
+        
+        // NO BORRAR los valores - el backend recalculará si es necesario
+        // Esto previene pérdida de datos si el usuario activa/desactiva accidentalmente
     }
 });
 </script>
