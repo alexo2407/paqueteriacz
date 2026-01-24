@@ -47,9 +47,20 @@
                 <?php endif; ?>
 
                 <!-- ========================================== -->
+                <!-- 1.1 INICIO - Dashboard LOGISTICA (Rol Cliente Logística) -->
+                <!-- ========================================== -->
+                <?php if ($isCliente): ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= RUTA_URL ?>logistica/dashboard">
+                        <i class="bi bi-truck"></i> Mis Pedidos
+                    </a>
+                </li>
+                <?php endif; ?>
+
+                <!-- ========================================== -->
                 <!-- 2. OPERACIONES - Pedidos y Seguimiento -->
                 <!-- ========================================== -->
-                <?php if ($isAdmin || $isProveedor || $isCliente): ?>
+                <?php if ($isAdmin || $isProveedor): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarPedidos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-clipboard-check"></i> <?= $isCliente ? 'Procesar mis Pedidos' : 'Pedidos' ?>

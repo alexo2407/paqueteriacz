@@ -166,6 +166,9 @@ if (isset($ruta[0]) && $ruta[0] === 'monedas' && $_SERVER['REQUEST_METHOD'] === 
     $ctrl = new MonedasController();
 
     if ($accion === 'guardar' || $accion === 'crear') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         $payload = [
             'codigo' => $_POST['codigo'] ?? '',
             'nombre' => $_POST['nombre'] ?? '',
@@ -178,6 +181,9 @@ if (isset($ruta[0]) && $ruta[0] === 'monedas' && $_SERVER['REQUEST_METHOD'] === 
     }
 
     if ($accion === 'actualizar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         if ($id <= 0) { set_flash('error', 'Moneda inválida.'); header('Location: ' . RUTA_URL . 'monedas/listar'); exit; }
         $payload = [
@@ -192,6 +198,9 @@ if (isset($ruta[0]) && $ruta[0] === 'monedas' && $_SERVER['REQUEST_METHOD'] === 
     }
 
     if ($accion === 'eliminar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador']); // Deletion usually strictly Admin
+
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         $response = $ctrl->eliminar($id);
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
@@ -212,6 +221,9 @@ if (isset($ruta[0]) && $ruta[0] === 'paises' && $_SERVER['REQUEST_METHOD'] === '
     $ctrl = new PaisesController();
 
     if ($accion === 'guardar' || $accion === 'crear') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']); 
+        
         $payload = ['nombre' => $_POST['nombre'] ?? '', 'codigo_iso' => $_POST['codigo_iso'] ?? null];
         $response = $ctrl->crear($payload);
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
@@ -219,6 +231,9 @@ if (isset($ruta[0]) && $ruta[0] === 'paises' && $_SERVER['REQUEST_METHOD'] === '
     }
 
     if ($accion === 'actualizar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']); 
+
         $id = isset($ruta[2]) ? (int)$ruta[2] : 0; if ($id <= 0) { set_flash('error','País inválido'); header('Location: '.RUTA_URL.'paises/listar'); exit; }
         $payload = ['nombre'=> $_POST['nombre'] ?? '', 'codigo_iso' => $_POST['codigo_iso'] ?? null];
         $response = $ctrl->actualizar($id, $payload);
@@ -227,6 +242,9 @@ if (isset($ruta[0]) && $ruta[0] === 'paises' && $_SERVER['REQUEST_METHOD'] === '
     }
 
     if ($accion === 'eliminar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador']); 
+
         $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'paises/listar'); exit;
     }
 }
@@ -327,6 +345,9 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
     $ctrl = new ProductosController();
 
     if ($accion === 'guardar' || $accion === 'crear') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         require_once __DIR__ . '/../utils/image_upload.php';
         
         // Procesar imagen
@@ -368,6 +389,9 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
     }
 
     if ($accion === 'actualizar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         require_once __DIR__ . '/../utils/image_upload.php';
         
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
@@ -473,6 +497,9 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
     }
 
     if ($accion === 'eliminar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         $response = $ctrl->eliminar($id);
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
@@ -511,6 +538,9 @@ if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] =
     $ctrl = new CategoriaController();
 
     if ($accion === 'guardar' || $accion === 'crear') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         $payload = [
             'nombre' => $_POST['nombre'] ?? '',
             'descripcion' => $_POST['descripcion'] ?? null,
@@ -534,6 +564,9 @@ if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] =
     }
 
     if ($accion === 'actualizar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         if ($id <= 0) {
             $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
@@ -573,6 +606,9 @@ if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] =
     }
 
     if ($accion === 'eliminar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador', 'Proveedor']);
+
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         $response = $ctrl->eliminar($id);
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
@@ -628,6 +664,9 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
     $ctrl = new UsuariosController();
 
     if ($accion === 'actualizar') {
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador']); // Only admins can update other users
+
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         if ($id <= 0) {
             set_flash('error', 'Usuario no válido.');

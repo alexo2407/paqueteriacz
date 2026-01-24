@@ -44,13 +44,15 @@ $leadData = [
     'nombre' => $nombre,
     'telefono' => $telefono,
     'producto' => $producto,
-    'estado_actual' => 'EN_ESPERA' // Estado por defecto
+    'estado_actual' => 'EN_ESPERA', // Estado por defecto
+    'fecha_hora' => date('Y-m-d H:i:s')
 ];
 
 // Crear el lead
-$nuevoLeadId = CrmLead::crear($leadData);
+$resultado = CrmLeadModel::crearLead($leadData, $userId);
+$nuevoLeadId = $resultado['lead_id'] ?? 0;
 
-if ($nuevoLeadId) {
+if ($resultado['success'] && $nuevoLeadId) {
     // Si se asignó un cliente, crear notificación para él
     if (!empty($clienteId)) {
         CrmNotificationModel::agregar(
@@ -74,5 +76,6 @@ if ($nuevoLeadId) {
         'lead_id' => $nuevoLeadId
     ]);
 } else {
-    echo json_encode(['success' => false, 'message' => 'Error al crear el lead']);
+    $mensajeError = $resultado['message'] ?? 'Error al crear el lead';
+    echo json_encode(['success' => false, 'message' => $mensajeError]);
 }

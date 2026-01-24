@@ -53,6 +53,7 @@ class EnlacesModel
             "reset-password",
             "auditoria",
             "crm",
+            "logistica",
             "salir"
         ];
 

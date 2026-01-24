@@ -675,6 +675,16 @@ class ProductoModel
                         break;
                 }
             }
+
+            $limitClause = '';
+            if (isset($filtros['limit']) && isset($filtros['offset'])) {
+                $limitClause = ' LIMIT :offset, :limit';
+                $params[':offset'] = (int)$filtros['offset'];
+                $params[':limit'] = (int)$filtros['limit'];
+            } elseif (isset($filtros['limit'])) {
+                $limitClause = ' LIMIT :limit';
+                $params[':limit'] = (int)$filtros['limit'];
+            }
             
             $sql = "SELECT 
                         p.id,
@@ -696,17 +706,111 @@ class ProductoModel
                     {$whereClause}
                     GROUP BY p.id
                     {$havingClause}
-                    ORDER BY p.nombre ASC";
+                    ORDER BY p.nombre ASC
+                    {$limitClause}";
             
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
+                // Bind int
+                if ($key === ':limit' || $key === ':offset') {
+                     $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                     $stmt->bindValue($key, $value);
+                }
             }
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log('Error al listar productos con filtros: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return [];
+        }
+    }
+
+    /**
+     * Contar productos con filtros
+     * @param array $filtros
+     * @return int
+     */
+    public static function contarConFiltros($filtros = [])
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $where = [];
+            $params = [];
+            
+            // Replicar lógica de filtros (simplificada, sin HAVING si es posible, pero STOCK requiere HAVING)
+            // Para contar exacto con HAVING, es mejor hacer SELECT COUNT(*) FROM (SELECT ... GROUP BY HAVING ...) as T
+            
+             // Filtro por categoría
+            if (!empty($filtros['categoria_id'])) {
+                $where[] = 'p.categoria_id = :categoria_id';
+                $params[':categoria_id'] = $filtros['categoria_id'];
+            }
+            if (!empty($filtros['marca'])) {
+                $where[] = 'p.marca = :marca';
+                $params[':marca'] = $filtros['marca'];
+            }
+            if (isset($filtros['precio_min'])) {
+                $where[] = 'p.precio_usd >= :precio_min';
+                $params[':precio_min'] = $filtros['precio_min'];
+            }
+            if (isset($filtros['precio_max'])) {
+                $where[] = 'p.precio_usd <= :precio_max';
+                $params[':precio_max'] = $filtros['precio_max'];
+            }
+            
+            // Stock logic handling for COUNT
+            $havingClause = '';
+             // Filter active status
+             if (isset($filtros['activo'])) {
+                $where[] = 'p.activo = :activo';
+                $params[':activo'] = $filtros['activo'] ? 1 : 0;
+            } else {
+                 // Default only active? Mirroring listarConFiltros default
+                 $where[] = 'p.activo = TRUE';
+            }
+
+             if (!empty($filtros['nivel_stock'])) {
+                 // Si hay filtro de stock, necesitamos la subquery completa casi o calcularlo
+                 switch ($filtros['nivel_stock']) {
+                    case 'agotado':
+                        $havingClause = 'HAVING stock_total <= 0';
+                        break;
+                    case 'bajo':
+                        $havingClause = 'HAVING stock_total > 0 AND stock_total < p.stock_minimo';
+                        break;
+                    case 'alto':
+                        $havingClause = 'HAVING stock_total > p.stock_maximo';
+                        break;
+                }
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            // Si hay HAVING, count over subquery
+            if ($havingClause) {
+                $sql = "SELECT COUNT(*) FROM (
+                            SELECT p.id, COALESCE(SUM(s.cantidad), 0) AS stock_total
+                            FROM productos p
+                            LEFT JOIN stock s ON s.id_producto = p.id
+                            {$whereClause}
+                            GROUP BY p.id
+                            {$havingClause}
+                        ) as temp_table";
+            } else {
+                // Simple count
+                $sql = "SELECT COUNT(DISTINCT p.id) FROM productos p {$whereClause}";
+            }
+            
+            $stmt = $db->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
+            return (int)$stmt->fetchColumn();
+            
+        } catch (PDOException $e) {
+            return 0;
         }
     }
 

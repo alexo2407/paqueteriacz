@@ -237,6 +237,22 @@ if (preg_match('/\/api\/crm\/updates_datatable\.php$/', $path) && ($method === '
     exit;
 }
 
+// -----------------------
+// Rutas Cliente (App/Web)
+// -----------------------
+
+// GET /api/cliente/pedidos - Listar pedidos del cliente
+if (preg_match('/\/api\/cliente\/pedidos$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/cliente/pedidos.php';
+    exit;
+}
+
+// POST /api/cliente/cambiar_estado - Actualizar estado
+if (preg_match('/\/api\/cliente\/cambiar_estado$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/cliente/cambiar_estado.php';
+    exit;
+}
+
 
 // Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
 if (strpos($path, '/api/') === 0) {

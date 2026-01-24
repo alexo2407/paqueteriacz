@@ -12,13 +12,6 @@ if (!$id_pedido) {
 // Instanciar el controlador
 $pedidoController = new PedidosController();
 
-// Redireccionar a vista restringida si es Proveedor de Logística (y no Admin)
-require_once __DIR__ . '/../../../utils/permissions.php';
-if (isProveedor() && !isSuperAdmin()) {
-    require __DIR__ . '/editar_proveedor.php';
-    exit;
-}
-
 // Si el formulario fue enviado, procesa la actualización
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Clean any output generated so far (whitespace, includes, etc.)
@@ -312,7 +305,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                         <i class="bi bi-pencil-square fs-3"></i>
                     </div>
                     <div>
-                        <h3>Editar Pedido</h3>
+                        <h3>Gestionar Pedido (Logística)</h3>
                         <p class="mb-0 opacity-75">Modifica los datos del pedido #<?= htmlspecialchars($pedido['numero_orden'] ?? $id_pedido) ?></p>
                     </div>
                 </div>
@@ -378,13 +371,13 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="numero_orden" class="form-label">Número de Orden</label>
-                                            <input type="number" class="form-control form-control-lg" id="numero_orden" name="numero_orden" value="<?= htmlspecialchars($pedido['numero_orden']) ?>" required>
+                                            <input type="number" class="form-control form-control-lg" id="numero_orden" name="numero_orden" value="<?= htmlspecialchars($pedido['numero_orden']) ?>" required readonly>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="moneda" class="form-label">Moneda del Pedido</label>
-                                            <select class="form-control select2-searchable form-select-lg" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda...">
+                                            <select class="form-control select2-searchable form-select-lg" id="moneda" name="moneda" required data-placeholder="Seleccionar moneda..." style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">
                                                 <option value="">Selecciona una moneda</option>
                                                 <?php foreach ($monedas as $moneda): 
                                                     $isSelected = ((int)$pedido['id_moneda'] === (int)$moneda['id']);
@@ -402,7 +395,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                 </div>
                                 <div class="mb-3">
                                     <label for="comentario" class="form-label">Comentarios / Notas Internas</label>
-                                    <textarea class="form-control" id="comentario" name="comentario" maxlength="500" rows="4"><?= htmlspecialchars($pedido['comentario']) ?></textarea>
+                                    <textarea class="form-control" id="comentario" name="comentario" maxlength="500" rows="4" readonly><?= htmlspecialchars($pedido['comentario']) ?></textarea>
                                 </div>
                             </div>
                         </div>
@@ -449,7 +442,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
 
                                     <div class="col-md-6 mb-4">
                                         <label for="cliente" class="form-label fw-bold">Cliente (Opcional)</label>
-                                        <select class="form-control select2-searchable" id="cliente" name="id_cliente">
+                                        <select class="form-control select2-searchable" id="cliente" name="id_cliente" style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">
                                             <option value="">Sin Cliente asignado</option>
                                             <?php foreach ($clientes as $cli): ?>
                                                 <option value="<?= $cli['id'] ?>" <?= ((int)($pedido['id_cliente'] ?? 0) === (int)$cli['id']) ? 'selected' : '' ?>>
@@ -486,7 +479,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                 <div class="d-flex justify-content-between align-items-center mb-4">
                                     <h5 class="mb-0 text-success"><i class="bi bi-bag me-2"></i>Detalle de Productos</h5>
                                     <div>
-                                         <button type="button" id="btnAddProducto" class="btn btn-success btn-sm"><i class="bi bi-plus-lg"></i> Agregar Item</button>
+                                         <button type="button" id="btnAddProducto" class="btn btn-success btn-sm" style="display:none;"><i class="bi bi-plus-lg"></i> Agregar Item</button>
                                     </div>
                                 </div>
                                 
@@ -498,7 +491,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                 
                                 <div class="alert alert-light border mb-3">
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" <?= (!empty($pedido['es_combo']) && $pedido['es_combo'] == 1) ? 'checked' : '' ?>>
+                                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" <?= (!empty($pedido['es_combo']) && $pedido['es_combo'] == 1) ? 'checked' : '' ?> onclick="return false;">
                                         <label class="form-check-label user-select-none" for="es_combo">
                                             <strong>Modo Combo / Precio Cerrado</strong>
                                             <div class="text-muted small">Activar si se cobra un precio total único en lugar de por producto.</div>
@@ -511,7 +504,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                         <label class="form-label">Total (Moneda Local)</label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-white"><i class="bi bi-cash"></i></span>
-                                            <input type="number" class="form-control fw-bold" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>">
+                                            <input type="number" class="form-control fw-bold" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>" readonly>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
@@ -542,20 +535,20 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
                                         <label for="destinatario" class="form-label">Nombre Contacto</label>
-                                        <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required>
+                                        <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required readonly>
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label for="telefono" class="form-label">Teléfono</label>
-                                        <input type="tel" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($pedido['telefono']) ?>" required>
+                                        <input type="tel" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($pedido['telefono']) ?>" required readonly>
                                     </div>
                                     <div class="col-12 mb-3">
                                         <label for="direccion" class="form-label">Dirección Exacta</label>
-                                        <textarea class="form-control" id="direccion" name="direccion" rows="2" required><?= htmlspecialchars($pedido['direccion']) ?></textarea>
+                                        <textarea class="form-control" id="direccion" name="direccion" rows="2" required readonly><?= htmlspecialchars($pedido['direccion']) ?></textarea>
                                     </div>
                                     
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">País</label>
-                                        <select class="form-select select2-searchable" id="id_pais" name="id_pais">
+                                        <select class="form-select select2-searchable" id="id_pais" name="id_pais" style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">
                                             <option value="">Selecciona</option>
                                             <?php foreach ($paises as $p): ?>
                                                 <option value="<?= (int)$p['id'] ?>" <?= (!empty($pedido['id_pais']) && (int)$pedido['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
@@ -564,7 +557,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                     </div>
                                     <div class="col-md-6 mb-3">
                                         <label class="form-label">Departamento</label>
-                                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento">
+                                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento" style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">
                                             <option value="">Selecciona</option>
                                             <?php foreach ($departamentosAll as $d): ?>
                                                 <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
@@ -575,8 +568,8 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                     <div class="col-12 mt-3">
                                         <label class="form-label">Geolocalización</label>
                                         <div class="row g-2 mb-2">
-                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="latitud" name="latitud" placeholder="Lat" value="<?= htmlspecialchars($pedido['latitud']) ?>"></div>
-                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="longitud" name="longitud" placeholder="Lng" value="<?= htmlspecialchars($pedido['longitud']) ?>"></div>
+                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="latitud" name="latitud" placeholder="Lat" value="<?= htmlspecialchars($pedido['latitud']) ?>" readonly></div>
+                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="longitud" name="longitud" placeholder="Lng" value="<?= htmlspecialchars($pedido['longitud']) ?>" readonly></div>
                                         </div>
                                         <div id="map" style="width: 100%; height: 350px; border-radius: 8px;" class="border"></div>
                                     </div>
@@ -998,14 +991,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const index = Date.now() + Math.floor(Math.random() * 1000); // Unique index
         row.innerHTML = `
             <div class="col-md-7">
-                <select name="productos[${index}][producto_id]" class="form-select producto-select" required>
+                <select name="productos[${index}][producto_id]" class="form-select producto-select" required style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">
                     ${makeProductOptions(selectedId)}
                 </select>
             </div>
             <div class="col-md-2">
-                <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cantidad" required>
+                <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cantidad" required readonly>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3" style="visibility: hidden;">
                 <button type="button" class="btn btn-outline-danger btnRemove w-100">
                     <i class="bi bi-trash"></i> Eliminar
                 </button>
@@ -1150,14 +1143,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!munSelect) {
         const munWrapper = document.createElement('div');
         munWrapper.className = 'col-md-6 mb-3';
-        munWrapper.innerHTML = `\n            <label for="id_municipio" class="form-label">Municipio</label>\n            <select class="form-select select2-searchable" id="id_municipio" name="id_municipio" data-placeholder="Buscar municipio...">\n                <option value="" selected>Selecciona un municipio</option>\n            </select>`;
+        munWrapper.innerHTML = `\n            <label for="id_municipio" class="form-label">Municipio</label>\n            <select class="form-select select2-searchable" id="id_municipio" name="id_municipio" data-placeholder="Buscar municipio..." style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">\n                <option value="" selected>Selecciona un municipio</option>\n            </select>`;
         deptSelect.parentElement.parentElement.insertBefore(munWrapper, deptSelect.parentElement.nextSibling);
         munSelect = document.getElementById('id_municipio');
     }
     if (!barrioSelect) {
         const barrioWrapper = document.createElement('div');
         barrioWrapper.className = 'col-md-6 mb-3';
-        barrioWrapper.innerHTML = `\n            <label for="id_barrio" class="form-label">Barrio</label>\n            <select class="form-select select2-searchable" id="id_barrio" name="id_barrio" data-placeholder="Buscar barrio...">\n                <option value="" selected>Selecciona un barrio</option>\n            </select>`;
+        barrioWrapper.innerHTML = `\n            <label for="id_barrio" class="form-label">Barrio</label>\n            <select class="form-select select2-searchable" id="id_barrio" name="id_barrio" data-placeholder="Buscar barrio..." style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">\n                <option value="" selected>Selecciona un barrio</option>\n            </select>`;
         munSelect.parentElement.insertBefore(barrioWrapper, munSelect.nextSibling);
         barrioSelect = document.getElementById('id_barrio');
     }

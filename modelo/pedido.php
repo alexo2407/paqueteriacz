@@ -1890,6 +1890,11 @@ class PedidosModel
                 $where[] = 'p.prioridad = :prioridad';
                 $params[':prioridad'] = $filtros['prioridad'];
             }
+
+            if (!empty($filtros['id_cliente'])) {
+                $where[] = 'p.id_cliente = :id_cliente';
+                $params[':id_cliente'] = $filtros['id_cliente'];
+            }
             
             if (!empty($filtros['fecha_desde'])) {
                 $where[] = 'p.fecha_ingreso >= :fecha_desde';
@@ -1908,6 +1913,16 @@ class PedidosModel
             
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
             
+            $limitClause = '';
+            if (isset($filtros['limit']) && isset($filtros['offset'])) {
+                $limitClause = ' LIMIT :offset, :limit';
+                $params[':offset'] = (int)$filtros['offset'];
+                $params[':limit'] = (int)$filtros['limit'];
+            } elseif (isset($filtros['limit'])) {
+                $limitClause = ' LIMIT :limit';
+                $params[':limit'] = (int)$filtros['limit'];
+            }
+
             $sql = "SELECT 
                         p.id,
                         p.numero_orden,
@@ -1926,17 +1941,84 @@ class PedidosModel
                     LEFT JOIN usuarios uP ON uP.id = p.id_proveedor
                     LEFT JOIN usuarios uV ON uV.id = p.id_vendedor
                     {$whereClause}
-                    ORDER BY p.prioridad DESC, p.fecha_ingreso DESC";
+                    ORDER BY p.prioridad DESC, p.fecha_ingreso DESC
+                    {$limitClause}";
             
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
+                // Bind int for limit/offset strictly
+                if ($key === ':limit' || $key === ':offset') {
+                     $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                     $stmt->bindValue($key, $value);
+                }
             }
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log('Error al obtener pedidos con filtros: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             return [];
+        }
+    }
+
+    /**
+     * Contar pedidos con filtros (para paginación)
+     * 
+     * @param array $filtros
+     * @return int Total de registros
+     */
+    public static function contarConFiltros($filtros = [])
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $where = [];
+            $params = [];
+            
+            if (!empty($filtros['id_estado'])) {
+                $where[] = 'p.id_estado = :id_estado';
+                $params[':id_estado'] = $filtros['id_estado'];
+            }
+            if (!empty($filtros['id_proveedor'])) {
+                $where[] = 'p.id_proveedor = :id_proveedor';
+                $params[':id_proveedor'] = $filtros['id_proveedor'];
+            }
+            if (!empty($filtros['id_vendedor'])) {
+                $where[] = 'p.id_vendedor = :id_vendedor';
+                $params[':id_vendedor'] = $filtros['id_vendedor'];
+            }
+            if (!empty($filtros['prioridad'])) {
+                $where[] = 'p.prioridad = :prioridad';
+                $params[':prioridad'] = $filtros['prioridad'];
+            }
+            if (!empty($filtros['id_cliente'])) {
+                $where[] = 'p.id_cliente = :id_cliente';
+                $params[':id_cliente'] = $filtros['id_cliente'];
+            }
+            if (!empty($filtros['fecha_desde'])) {
+                $where[] = 'p.fecha_ingreso >= :fecha_desde';
+                $params[':fecha_desde'] = $filtros['fecha_desde'];
+            }
+            if (!empty($filtros['fecha_hasta'])) {
+                $where[] = 'p.fecha_ingreso <= :fecha_hasta';
+                $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
+            }
+            if (!empty($filtros['numero_orden'])) {
+                $where[] = 'p.numero_orden LIKE :numero_orden';
+                $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $sql = "SELECT COUNT(*) FROM pedidos p {$whereClause}";
+            
+            $stmt = $db->prepare($sql);
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->execute();
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
         }
     }
 

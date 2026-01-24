@@ -4,6 +4,24 @@ require_once __DIR__ . '/../utils/responder.php';
 
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../utils/autenticacion.php';
+$auth = new AuthMiddleware();
+$token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION'] ?? '');
+$check = $auth->validarToken($token);
+
+if (!$check['success']) {
+    responder(false, 'No autorizado', null, 401);
+    exit;
+}
+
+require_once __DIR__ . '/../../utils/crm_roles.php';
+$userId = $check['data']['id'] ?? 0;
+// Allow Admin or Proveedor
+if (!userHasAnyRole($userId, ['Administrador', 'Proveedor'])) {
+    responder(false, 'Acceso denegado', null, 403);
+    exit;
+}
+
 $id = $_GET['id'] ?? null;
 $input = json_decode(file_get_contents('php://input'), true);
 

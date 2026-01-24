@@ -349,6 +349,42 @@ class PedidosController {
     }
 
     /**
+     * Listar pedidos paginados (para API).
+     * @param int $page Página actual (1-indexed)
+     * @param int $limit Registros por página
+     * @return array Estructura de paginación
+     */
+    public function listarPedidosPaginados($page = 1, $limit = 20)
+    {
+        $page = max(1, (int)$page);
+        $limit = max(1, min(100, (int)$limit));
+        $offset = ($page - 1) * $limit;
+
+        $filtros = [
+            'limit' => $limit,
+            'offset' => $offset
+        ];
+        
+        // Add support for filters from GET if needed
+        if (isset($_GET['estado'])) $filtros['id_estado'] = (int)$_GET['estado'];
+        if (isset($_GET['destinatario'])) $filtros['destinatario'] = $_GET['destinatario']; // Not yet implemented in model but good practice
+        
+        $data = PedidosModel::obtenerConFiltros($filtros);
+        $total = PedidosModel::contarConFiltros($filtros);
+        $totalPages = ceil($total / $limit);
+
+        return [
+            'data' => $data,
+            'pagination' => [
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit,
+                'total_pages' => (int)$totalPages
+            ]
+        ];
+    }
+
+    /**
      * Obtener un pedido por su id (uso en vistas y controladores internos).
      *
      * @param int $id_pedido
