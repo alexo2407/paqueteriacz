@@ -92,7 +92,7 @@ class EnlacesController
 
             // Políticas de acceso por módulo basadas en nombre de rol
             $allowedByModule = [
-                'pedidos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'pedidos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'usuarios' => [ROL_NOMBRE_ADMIN],
                 'stock' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'productos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
