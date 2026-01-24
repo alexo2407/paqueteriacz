@@ -439,9 +439,15 @@ foreach ($pedidos as $p) {
                     $estados = $listarPedidos->obtenerEstados(); // Obtener lista de estados
                     $pedidos = $listarPedidos->listarPedidosExtendidos();
 
-                    // Determinar si el usuario es proveedor (y no admin) para deshabilitar cambios
+                    // Determinar si el usuario tiene permiso para cambiar el estado.
+                    // Los Proveedores solo lectura, pero Repartidores y Clientes (Logística) pueden cambiarlo.
                     $rolesNombres = $_SESSION['roles_nombres'] ?? [];
-                    $isProveedorOnly = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) && !in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+                    $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+                    $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
+                    $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true);
+                    
+                    // Solo deshabilitar si es Proveedor y NO es nada más (ni Admin ni Cliente ni Repartidor)
+                    $isProveedorOnly = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) && !$isAdmin && !$isRepartidor && !$isCliente;
                     $disabledAttr = $isProveedorOnly ? 'disabled' : '';
 
                     foreach ($pedidos as $pedido): ?>

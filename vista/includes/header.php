@@ -10,14 +10,18 @@
     $rolClienteCRM = defined('ROL_NOMBRE_CLIENTE_CRM') ? ROL_NOMBRE_CLIENTE_CRM : 'Cliente CRM';
     $isProveedorCRM = in_array($rolProveedorCRM, $rolesNombres, true);
     $isClienteCRM = in_array($rolClienteCRM, $rolesNombres, true);
+    $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true); // Logística
     
     // Si es repartidor (y no es admin), ir a seguimiento; 
     // Si es CRM (proveedor o cliente), ir a notificaciones; 
+    // Si es Cliente (Logística), ir a lista de pedidos directamente
     // Caso contrario, ir a dashboard
     if ($isRepartidor && !$isAdmin) {
         $homeUrl = RUTA_URL . 'seguimiento/listar';
     } elseif (($isProveedorCRM || $isClienteCRM) && !$isAdmin) {
         $homeUrl = RUTA_URL . 'crm/notificaciones';
+    } elseif ($isCliente && !$isAdmin) {
+        $homeUrl = RUTA_URL . 'pedidos/listar';
     } else {
         $homeUrl = RUTA_URL . 'dashboard';
     }
@@ -47,7 +51,7 @@
                 <!-- ========================================== -->
                 <!-- 2. OPERACIONES - Pedidos y Seguimiento -->
                 <!-- ========================================== -->
-                <?php if ($isAdmin || $isProveedor): ?>
+                <?php if ($isAdmin || $isProveedor || $isCliente): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarPedidos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-clipboard-check"></i> Pedidos

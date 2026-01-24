@@ -5,6 +5,7 @@ if (!defined('ROL_ADMIN')) define('ROL_ADMIN', 1);
 if (!defined('ROL_VENDEDOR')) define('ROL_VENDEDOR', 2);
 if (!defined('ROL_REPARTIDOR')) define('ROL_REPARTIDOR', 3);
 if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 4);  // Logística
+if (!defined('ROL_CLIENTE')) define('ROL_CLIENTE', 5);      // Logística
 if (!defined('ROL_PROVEEDOR_CRM')) define('ROL_PROVEEDOR_CRM', 6);  // CRM (verificado en BD)
 if (!defined('ROL_CLIENTE_CRM')) define('ROL_CLIENTE_CRM', 7);      // CRM (verificado en BD)
 
@@ -15,6 +16,7 @@ if (!defined('ROL_NOMBRE_ADMIN')) define('ROL_NOMBRE_ADMIN', 'Administrador');
 if (!defined('ROL_NOMBRE_VENDEDOR')) define('ROL_NOMBRE_VENDEDOR', 'Vendedor');
 if (!defined('ROL_NOMBRE_REPARTIDOR')) define('ROL_NOMBRE_REPARTIDOR', 'Repartidor');
 if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Proveedor');  // Logística
+if (!defined('ROL_NOMBRE_CLIENTE')) define('ROL_NOMBRE_CLIENTE', 'Cliente');               // Logística
 if (!defined('ROL_NOMBRE_PROVEEDOR_CRM')) define('ROL_NOMBRE_PROVEEDOR_CRM', 'Proveedor CRM');  // CRM
 if (!defined('ROL_NOMBRE_CLIENTE_CRM')) define('ROL_NOMBRE_CLIENTE_CRM', 'Cliente CRM');      // CRM
 
@@ -47,6 +49,12 @@ function canViewOrder($pedido) {
     if ($_SESSION['rol'] == ROL_PROVEEDOR) {
         return isset($pedido['id_proveedor']) && 
                $pedido['id_proveedor'] == $_SESSION['user_id'];
+    }
+
+    // Cliente solo puede ver sus propios pedidos
+    if ($_SESSION['rol'] == ROL_CLIENTE) {
+        return isset($pedido['id_cliente']) && 
+               $pedido['id_cliente'] == $_SESSION['user_id'];
     }
     
     // Otros roles (Vendedor, Repartidor) pueden ver todos
@@ -138,6 +146,29 @@ function isRepartidor() {
         $hasAdmin = in_array(ROL_NOMBRE_ADMIN, $_SESSION['roles_nombres'], true);
         
         return $hasRepartidor && !$hasAdmin;
+    }
+    
+    return false;
+}
+
+/**
+ * Verifica si el usuario actual es Cliente de Logística.
+ * 
+ * @return bool
+ */
+function isCliente() {
+    // Verificar en el rol principal
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] == ROL_CLIENTE) {
+        return true;
+    }
+    
+    // Verificar en el array de roles (multi-rol)
+    if (isset($_SESSION['roles']) && is_array($_SESSION['roles'])) {
+        return in_array(ROL_CLIENTE, $_SESSION['roles']);
+    }
+
+    if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
+        return in_array(ROL_NOMBRE_CLIENTE, $_SESSION['roles_nombres'], true);
     }
     
     return false;

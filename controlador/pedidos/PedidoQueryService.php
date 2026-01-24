@@ -35,6 +35,15 @@ class PedidoQueryService
                 return $pedidoProveedor === $userId;
             });
         }
+
+        // Si es cliente, filtrar solo sus pedidos
+        if (isCliente()) {
+            $userId = (int)$_SESSION['user_id'];
+            return array_filter($pedidos, function($pedido) use ($userId) {
+                $pedidoCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;
+                return $pedidoCliente === $userId;
+            });
+        }
         
         return [];
     }

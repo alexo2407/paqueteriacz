@@ -256,6 +256,7 @@ class UsuariosController
             $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
             $isClienteCRM = in_array(ROL_NOMBRE_CLIENTE_CRM, $rolesNombres, true);  // CRM
             $isProveedorCRM = in_array(ROL_NOMBRE_PROVEEDOR_CRM, $rolesNombres, true);  // CRM
+            $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true); // Logística
             
             // Si es repartidor (y no es admin), redirigir a su página de seguimiento
             if ($isRepartidor && !$isAdmin) {
@@ -269,6 +270,14 @@ class UsuariosController
             if (($isClienteCRM || $isProveedorCRM) && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'crm/notificaciones' : 'index.php?enlace=crm/notificaciones';
+                header('Location: ' . $redirectUrl);
+                exit;
+            }
+
+            // Si es Cliente de Logística y no es admin, redirigir a pedidos
+            if ($isCliente && !$isAdmin) {
+                set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
+                $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'pedidos/listar' : 'index.php?enlace=pedidos/listar';
                 header('Location: ' . $redirectUrl);
                 exit;
             }

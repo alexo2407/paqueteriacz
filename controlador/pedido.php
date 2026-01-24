@@ -951,6 +951,31 @@ class PedidosController {
             }
         }
 
+        // Si el usuario es Cliente y no es Admin, sólo permitir cambiar el estado
+        // para pedidos que le pertenezcan (id_cliente).
+        $isClienteRole = user_has_any_role_names([ROL_NOMBRE_CLIENTE]) && !$isAdmin;
+        if ($isClienteRole) {
+            try {
+                $pedido = PedidosModel::obtenerPedidoPorId($id_pedido);
+            } catch (Exception $e) {
+                echo json_encode(["success" => false, "message" => "Error al obtener el pedido."]);
+                exit();
+            }
+
+            if (empty($pedido)) {
+                echo json_encode(["success" => false, "message" => "Pedido no encontrado."]);
+                exit();
+            }
+
+            $userId = $_SESSION['user_id'] ?? null;
+            $idCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;
+
+            if ($idCliente === null || $idCliente === 0 || $userId === null || (int)$userId !== (int)$idCliente) {
+                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."]);
+                exit();
+            }
+        }
+
         // Ejecutar la actualización (admins y otros roles pasan sin restricciones adicionales)
         $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado);
 
