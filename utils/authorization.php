@@ -9,18 +9,15 @@
 require_once __DIR__ . '/session.php';
 require_once __DIR__ . '/crm_roles.php';
 
-// Constants for Roles (mirroring logical names if not defined elsewhere)
-if (!defined('ROL_ADMIN')) define('ROL_ADMIN', 'Administrador');
-if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 'Proveedor');
-if (!defined('ROL_CLIENTE')) define('ROL_CLIENTE', 'Cliente');
-if (!defined('ROL_REPARTIDOR')) define('ROL_REPARTIDOR', 'Repartidor');
+// Role-based access control uses the names defined in config/config.php:
+// ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE, ROL_NOMBRE_REPARTIDOR
 
 /**
  * Verifica si el usuario está logueado. Si no, redirige al login.
  */
 function require_login() {
     start_secure_session();
-    if (empty($_SESSION['user_id'])) {
+    if (empty($_SESSION['user_id']) && empty($_SESSION['idUsuario']) && empty($_SESSION['registrado'])) {
         header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'login');
         exit;
     }
@@ -60,10 +57,10 @@ function require_role($rolesPermitidos) {
         set_flash('error', 'No tienes permisos para acceder a esta sección.');
         
         // Redirect logic based on what they ARE allowed to see
-        if (in_array(ROL_REPARTIDOR, $userRoles)) {
+        if (in_array(ROL_NOMBRE_REPARTIDOR, $userRoles)) {
             header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'seguimiento/listar');
-        } elseif (in_array(ROL_CLIENTE, $userRoles)) {
-            header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'pedidos/listar');
+        } elseif (in_array(ROL_NOMBRE_CLIENTE, $userRoles)) {
+            header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'logistica/dashboard');
         } else {
             header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'dashboard');
         }
@@ -75,5 +72,5 @@ function require_role($rolesPermitidos) {
  * Helper rápido para solo Admin
  */
 function require_admin() {
-    require_role(ROL_ADMIN);
+    require_role(ROL_NOMBRE_ADMIN);
 }

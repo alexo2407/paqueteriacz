@@ -274,10 +274,10 @@ class UsuariosController
                 exit;
             }
 
-            // Si es Cliente de Logística y no es admin, redirigir a pedidos
+            // Si es Cliente de Logística y no es admin, redirigir a su dashboard de logística
             if ($isCliente && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
-                $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'pedidos/listar' : 'index.php?enlace=pedidos/listar';
+                $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'logistica/dashboard' : 'index.php?enlace=logistica/dashboard';
                 header('Location: ' . $redirectUrl);
                 exit;
             }

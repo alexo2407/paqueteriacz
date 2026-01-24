@@ -63,66 +63,8 @@ function start_secure_session()
     }
 }
 
-function require_login()
-{
-    start_secure_session();
-    if (empty($_SESSION['registrado'])) {
-        // Redirigir al login
-        $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
-        header('Location: ' . $loginUrl);
-        exit;
-    }
-}
-
-function require_role($roles)
-{
-    start_secure_session();
-    if (empty($_SESSION['registrado'])) {
-        $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
-        header('Location: ' . $loginUrl);
-        exit;
-    }
-
-    $userRole = $_SESSION['rol'] ?? null;
-    if (is_array($roles)) {
-        if (!in_array($userRole, $roles)) {
-            $homeUrl = defined('RUTA_URL') ? RUTA_URL : 'index.php';
-            header('Location: ' . $homeUrl);
-            exit;
-        }
-    } else {
-        if ($userRole !== $roles) {
-            $homeUrl = defined('RUTA_URL') ? RUTA_URL : 'index.php';
-            header('Location: ' . $homeUrl);
-            exit;
-        }
-    }
-}
-
-// Helpers para multi-rol por nombre
-function user_has_any_role_names(array $names): bool
-{
-    start_secure_session();
-    $userNames = $_SESSION['roles_nombres'] ?? [];
-    if (!is_array($userNames)) $userNames = [];
-    return count(array_intersect($names, $userNames)) > 0;
-}
-
-function require_role_name($names)
-{
-    start_secure_session();
-    if (empty($_SESSION['registrado'])) {
-        $loginUrl = defined('RUTA_URL') ? RUTA_URL . 'login' : 'index.php?enlace=login';
-        header('Location: ' . $loginUrl);
-        exit;
-    }
-    $names = is_array($names) ? $names : [$names];
-    if (!user_has_any_role_names($names)) {
-        $homeUrl = defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard';
-        header('Location: ' . $homeUrl);
-        exit;
-    }
-}
+// Authorization checks moved to utils/authorization.php
+require_once __DIR__ . '/authorization.php';
 
 function logout()
 {

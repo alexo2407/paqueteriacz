@@ -1,8 +1,8 @@
 <?php
+require_once "utils/authorization.php";
+require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
 
 include("vista/includes/header.php");
-
-
 ?>
 
 <?php
