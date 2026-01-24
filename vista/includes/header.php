@@ -10,12 +10,10 @@
     $rolClienteCRM = defined('ROL_NOMBRE_CLIENTE_CRM') ? ROL_NOMBRE_CLIENTE_CRM : 'Cliente CRM';
     $isProveedorCRM = in_array($rolProveedorCRM, $rolesNombres, true);
     $isClienteCRM = in_array($rolClienteCRM, $rolesNombres, true);
-    $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true); // Logística
+    $isClienteId = in_array(ROL_CLIENTE, $_SESSION['roles'] ?? [], true) || ($_SESSION['rol'] ?? null) == ROL_CLIENTE;
+    $isCliente = $isClienteId || in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true); // Logística
     
-    // Si es repartidor (y no es admin), ir a seguimiento; 
-    // Si es CRM (proveedor o cliente), ir a notificaciones; 
-    // Si es Cliente (Logística), ir a lista de pedidos directamente
-    // Caso contrario, ir a dashboard
+    // Redirección del home según rol
     if ($isRepartidor && !$isAdmin) {
         $homeUrl = RUTA_URL . 'seguimiento/listar';
     } elseif (($isProveedorCRM || $isClienteCRM) && !$isAdmin) {
@@ -54,7 +52,7 @@
                 <?php if ($isAdmin || $isProveedor || $isCliente): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarPedidos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-clipboard-check"></i> <?= $isCliente ? 'Mis Pedidos' : 'Pedidos' ?>
+                        <i class="bi bi-clipboard-check"></i> <?= $isCliente ? 'Procesar mis Pedidos' : 'Pedidos' ?>
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarPedidos">
                         <li>

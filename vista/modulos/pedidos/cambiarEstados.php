@@ -13,11 +13,13 @@ class Ajax{
 	#---------------------------------------------
 	public $actualizarEstadoPedido;
     public $actualizarIdPedido;
+    public $actualizarObservaciones;
 
 	public function actualizarPedidoAjax(){	
 
 		$datos = array("estado" => $this->actualizarEstadoPedido,
-                        "id_pedido"  => $this->actualizarIdPedido);
+                        "id_pedido"  => $this->actualizarIdPedido,
+                        "observaciones" => $this->actualizarObservaciones);
 
 		$respuesta = PedidosController::actualizarEstadoAjax($datos);
 
@@ -38,6 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["id_pedido"], $_POST["
     $b = new Ajax();
     $b->actualizarEstadoPedido = $_POST["estado"];
     $b->actualizarIdPedido = $_POST["id_pedido"];
+    $b->actualizarObservaciones = $_POST["observaciones"] ?? null;
     echo json_encode($b->actualizarPedidoAjax());
 } else {
     echo json_encode(["success" => false, "message" => "Método no permitido"]);

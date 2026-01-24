@@ -910,6 +910,7 @@ class PedidosController {
 
         $id_pedido = intval($datos["id_pedido"] ?? 0);
         $nuevo_estado = intval($datos["estado"] ?? 0);
+        $observaciones = $datos["observaciones"] ?? null;
 
         header('Content-Type: application/json');
 
@@ -977,7 +978,7 @@ class PedidosController {
         }
 
         // Ejecutar la actualización (admins y otros roles pasan sin restricciones adicionales)
-        $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado);
+        $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado, $observaciones);
 
         // Normalizar respuesta: el modelo puede devolver true/false o un array con error
         if (is_array($resultado)) {

@@ -535,73 +535,76 @@ foreach ($pedidos as $p) {
 <script>
     $(document).ready(function() {
         $(".actualizarEstado").change(function() {
-            let select = $(this); // Guardamos la referencia al select
+            let select = $(this);
             let idPedido = select.data("id");
             let nuevoEstado = select.val();
-            let estadoAnterior = select.data("estado"); // Guarda el estado anterior
+            let estadoAnterior = select.data("estado");
+            let nombreEstado = select.find("option:selected").text().trim();
 
-            // Deshabilita el select mientras se procesa la petición
-            select.prop("disabled", true);
+            // Preguntar por comentarios/observaciones usando SweetAlert2
+            Swal.fire({
+                title: 'Procesar Pedido',
+                text: '¿Deseas agregar algún comentario para el cambio a: ' + nombreEstado + '?',
+                input: 'textarea',
+                inputPlaceholder: 'Escribe tus observaciones aquí...',
+                showCancelButton: true,
+                confirmButtonText: 'Actualizar Estado',
+                cancelButtonText: 'Cancelar',
+                inputAttributes: {
+                    'aria-label': 'Escribe tus observaciones aquí'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    let observaciones = result.value;
 
-            $.ajax({
-                url: "cambiarEstados",
-                type: "POST",
-                data: {
-                    id_pedido: idPedido,
-                    estado: nuevoEstado
-                },
-                dataType: "json",
-                success: function(response) {
-                    //console.log("Respuesta recibida:", response);
+                    // Deshabilita el select mientras se procesa
+                    select.prop("disabled", true);
 
-                    if (response.success) {
-                        Swal.fire({
-                            title: "¡Éxito!",
-                            text: "Estado actualizado correctamente.",
-                            icon: "success",
-                            confirmButtonText: "OK"
-                        });
-                        select.data("estado", nuevoEstado);
-                        select.val(nuevoEstado);
-                    } else {
-                        Swal.fire({
-                            title: "Error",
-                            text: response.message,
-                            icon: "error",
-                            confirmButtonText: "OK"
-                        });
-                        select.val(estadoAnterior);
-                    }
-                },
-
-                error: function(xhr, status, error) {
-                   // Mostrar mensaje más útil: si el servidor devolvió JSON, usar su campo message
-                   var serverMsg = null;
-                   try {
-                       if (xhr.responseJSON && xhr.responseJSON.message) serverMsg = xhr.responseJSON.message;
-                       else if (xhr.responseText) {
-                           // Intentar parsear JSON en texto
-                           var parsed = JSON.parse(xhr.responseText);
-                           if (parsed && parsed.message) serverMsg = parsed.message;
-                       }
-                   } catch (e) {
-                       // no hacer nada
-                   }
-                   var messageToShow = serverMsg || ('Error de conexión: ' + (error || status));
-                   Swal.fire({
-                            title: "Error",
-                            text: messageToShow,
-                            icon: "error",
-                            confirmButtonText: "OK"
-                        });
-                    // alert("Error de conexión. Intenta nuevamente.");
+                    $.ajax({
+                        url: "cambiarEstados",
+                        type: "POST",
+                        data: {
+                            id_pedido: idPedido,
+                            estado: nuevoEstado,
+                            observaciones: observaciones
+                        },
+                        dataType: "json",
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    title: "¡Éxito!",
+                                    text: "Estado actualizado correctamente.",
+                                    icon: "success",
+                                    confirmButtonText: "OK"
+                                });
+                                select.data("estado", nuevoEstado);
+                                select.prop("disabled", false);
+                            } else {
+                                Swal.fire({
+                                    title: "Error",
+                                    text: response.message,
+                                    icon: "error",
+                                    confirmButtonText: "OK"
+                                });
+                                select.val(estadoAnterior);
+                                select.prop("disabled", false);
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            Swal.fire({
+                                title: "Error",
+                                text: "Hubo un problema al procesar la solicitud.",
+                                icon: "error"
+                            });
+                            select.val(estadoAnterior);
+                            select.prop("disabled", false);
+                        }
+                    });
+                } else {
+                    // Si cancela, revertir el select al estado anterior
                     select.val(estadoAnterior);
-                },
-                complete: function() {
-                    select.prop("disabled", false);
                 }
             });
-
         });
     });
 </script>

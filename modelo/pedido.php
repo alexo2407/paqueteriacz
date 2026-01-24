@@ -1491,7 +1491,7 @@ class PedidosModel
 
     /* cambiar  estados en los datatable */
 
-    public static function actualizarEstado($id_pedido, $estado) {
+    public static function actualizarEstado($id_pedido, $estado, $observaciones = null) {
         try {
             $db = (new Conexion())->conectar();
             
@@ -1520,14 +1520,15 @@ class PedidosModel
                     
                     // 1. Insertar en historial específico de estados (Visible para clientes)
                     $histQuery = "INSERT INTO pedidos_historial_estados 
-                                 (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, created_at) 
-                                 VALUES (:id_pedido, :ant, :nuevo, :user, NOW())";
+                                 (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at) 
+                                 VALUES (:id_pedido, :ant, :nuevo, :user, :obs, NOW())";
                     $histStmt = $db->prepare($histQuery);
                     $histStmt->execute([
                         ':id_pedido' => $id_pedido,
                         ':ant' => $estadoAnterior ?: null, 
                         ':nuevo' => $estado, 
-                        ':user' => $userId
+                        ':user' => $userId,
+                        ':obs' => $observaciones
                     ]);
 
                     // 2. Registrar auditoría interna (Sistema legacy)
