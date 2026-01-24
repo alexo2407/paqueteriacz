@@ -20,6 +20,16 @@ foreach ($paisesLista as $p) {
 // Contar estadísticas
 $totalUsuarios = count($resultadoUsuarios);
 $usuariosActivos = 0;
+
+// Filtrado por rol si viene en la URL
+$rolFiltro = $_GET['rol'] ?? null;
+if ($rolFiltro) {
+    $resultadoUsuarios = array_filter($resultadoUsuarios, function($u) use ($rolFiltro, $um) {
+        $roles = $um->obtenerRolesDeUsuario($u['id']);
+        return in_array($rolFiltro, $roles['nombres'] ?? []);
+    });
+}
+
 foreach ($resultadoUsuarios as $u) {
     if (isset($u['activo']) && $u['activo']) $usuariosActivos++;
 }
@@ -144,8 +154,8 @@ $roleColors = [
                             <i class="bi bi-people-fill fs-3"></i>
                         </div>
                         <div>
-                            <h3>Gestión de Usuarios</h3>
-                            <p class="mb-0 opacity-75">Administra los usuarios del sistema</p>
+                            <h3><?= $rolFiltro ? "Gestión de " . htmlspecialchars($rolFiltro) . "s" : "Gestión de Usuarios" ?></h3>
+                            <p class="mb-0 opacity-75"><?= $rolFiltro ? "Listado filtrado por rol: " . htmlspecialchars($rolFiltro) : "Administra los usuarios del sistema" ?></p>
                         </div>
                     </div>
                 </div>
@@ -167,7 +177,12 @@ $roleColors = [
         <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <span class="text-muted">Mostrando <?= $totalUsuarios ?> usuarios registrados</span>
+                    <span class="text-muted">Mostrando <?= count($resultadoUsuarios) ?> <?= $rolFiltro ? htmlspecialchars($rolFiltro) . "s" : "usuarios" ?> registrados</span>
+                    <?php if ($rolFiltro): ?>
+                        <a href="<?= RUTA_URL ?>usuarios/listar" class="btn btn-sm btn-outline-secondary ms-2">
+                            <i class="bi bi-x-circle"></i> Quitar Filtro
+                        </a>
+                    <?php endif; ?>
                 </div>
                 <a href="<?=RUTA_URL?>usuarios/crear" class="btn btn-primary px-4">
                     <i class="bi bi-plus-circle me-2"></i>Nuevo Usuario

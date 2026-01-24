@@ -48,10 +48,36 @@
                 <!-- 2. OPERACIONES - Pedidos y Seguimiento -->
                 <!-- ========================================== -->
                 <?php if ($isAdmin || $isProveedor): ?>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= RUTA_URL ?>pedidos/listar">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarPedidos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-clipboard-check"></i> Pedidos
                     </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarPedidos">
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>pedidos/listar">
+                                <i class="bi bi-list-check"></i> Listado General
+                            </a>
+                        </li>
+                        <?php if ($isAdmin): ?>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>pedidos/crearPedido">
+                                <i class="bi bi-plus-circle"></i> Nuevo Pedido
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-header">Gestión de Actores</li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios/listar?rol=Cliente">
+                                <i class="bi bi-people"></i> Clientes
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>usuarios/listar?rol=Proveedor">
+                                <i class="bi bi-building"></i> Proveedores
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
                 </li>
                 <?php endif; ?>
 
