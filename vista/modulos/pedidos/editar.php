@@ -442,7 +442,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
 
                                     <div class="col-md-6 mb-4">
                                         <label for="cliente" class="form-label fw-bold">Cliente (Opcional)</label>
-                                        <select class="form-control select2-searchable" id="cliente" name="cliente">
+                                        <select class="form-control select2-searchable" id="cliente" name="id_cliente">
                                             <option value="">Sin Cliente asignado</option>
                                             <?php foreach ($clientes as $cli): ?>
                                                 <option value="<?= $cli['id'] ?>" <?= ((int)($pedido['id_cliente'] ?? 0) === (int)$cli['id']) ? 'selected' : '' ?>>

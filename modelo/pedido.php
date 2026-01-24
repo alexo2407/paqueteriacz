@@ -123,7 +123,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -259,6 +259,14 @@ class PedidosModel
                             case 'id_proveedor':
                                 $val = $row['id_proveedor'] ?? ($defaultValues['proveedor'] ?? null);
                                 $params[':id_proveedor'] = ($val === '') ? null : $val;
+                                break;
+                            case 'id_cliente':
+                                $val = $row['id_cliente'] ?? ($defaultValues['id_cliente'] ?? null);
+                                $params[':id_cliente'] = ($val === '') ? null : $val;
+                                break;
+                            case 'es_combo':
+                                $val = $row['es_combo'] ?? 0;
+                                $params[':es_combo'] = !empty($val) ? 1 : 0;
                                 break;
                         }
                     }
@@ -883,6 +891,15 @@ class PedidosModel
                 $fields[] = 'id_proveedor = :id_proveedor';
                 $params[':id_proveedor'] = (int)$data['proveedor'];
             }
+            if (isset($data['id_cliente'])) {
+                $fields[] = 'id_cliente = :id_cliente';
+                $params[':id_cliente'] = $data['id_cliente'] !== '' ? (int)$data['id_cliente'] : null;
+            }
+            // For older forms that might use 'cliente' instead of 'id_cliente'
+            elseif (isset($data['cliente'])) {
+                $fields[] = 'id_cliente = :id_cliente';
+                $params[':id_cliente'] = $data['cliente'] !== '' ? (int)$data['cliente'] : null;
+            }
             if (isset($data['id_pais'])) {
                 $fields[] = 'id_pais = :id_pais';
                 $params[':id_pais'] = $data['id_pais'] !== '' ? (int)$data['id_pais'] : null;
@@ -1243,7 +1260,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1295,7 +1312,8 @@ class PedidosModel
                 'id_estado' => 'estado',
                 'id_moneda' => 'moneda',
                 'id_vendedor' => 'vendedor',
-                'id_proveedor' => 'proveedor'
+                'id_proveedor' => 'proveedor',
+                'id_cliente' => 'id_cliente'
             ];
 
             foreach ($map as $col => $key) {

@@ -519,6 +519,8 @@ class PedidosController {
         $estado = $parse_positive_int($data, 'estado');
         $vendedor = $parse_positive_int($data, 'vendedor');
         $proveedor = $parse_positive_int($data, 'proveedor');
+        $idCliente = $parse_positive_int($data, 'id_cliente');
+        if (!$idCliente) $idCliente = $parse_positive_int($data, 'cliente');
         
         // Si el usuario es Proveedor, forzar su ID como proveedor del pedido
         require_once __DIR__ . '/../utils/permissions.php';
@@ -682,6 +684,7 @@ class PedidosController {
             'estado' => is_int($estado) ? (int)$estado : null,
             'vendedor' => is_int($vendedor) ? (int)$vendedor : null,
             'proveedor' => is_int($proveedor) ? (int)$proveedor : null,
+            'id_cliente' => is_int($idCliente) ? (int)$idCliente : null,
             'moneda' => is_int($moneda) ? (int)$moneda : null,
             'latitud' => (float)$latitud,
             'longitud' => (float)$longitud,
