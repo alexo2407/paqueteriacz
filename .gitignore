@@ -12,6 +12,7 @@ config/
 # =====================================================
 logs/*.log
 logs/*.txt
+logs/*.heartbeat
 *.log
 *.tmp
 
