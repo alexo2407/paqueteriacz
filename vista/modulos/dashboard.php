@@ -34,6 +34,13 @@ if (($isClienteCRM || $isProveedorCRM) && !$isAdmin) {
     exit;
 }
 
+// Clientes de Logística van a pedidos
+$isClienteLogistica = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true);
+if ($isClienteLogistica && !$isAdmin) {
+    header('Location: ' . RUTA_URL . 'pedidos/listar');
+    exit;
+}
+
 require_once __DIR__ . '/../../controlador/dashboard.php';
 
 include("vista/includes/header.php");

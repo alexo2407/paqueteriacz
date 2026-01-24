@@ -38,9 +38,9 @@
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
 
                 <!-- ========================================== -->
-                <!-- 1. INICIO - Dashboard (todos los roles) -->
+                <!-- 1. INICIO - Dashboard (todos los roles excepto Clientes de Logística) -->
                 <!-- ========================================== -->
-                <?php if (!$isRepartidor || $isAdmin): ?>
+                <?php if ((!$isRepartidor || $isAdmin) && !$isCliente): ?>
                 <li class="nav-item">
                     <a class="nav-link" href="<?= RUTA_URL ?>dashboard">
                         <i class="bi bi-speedometer2"></i> Dashboard
@@ -54,7 +54,7 @@
                 <?php if ($isAdmin || $isProveedor || $isCliente): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarPedidos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-clipboard-check"></i> Pedidos
+                        <i class="bi bi-clipboard-check"></i> <?= $isCliente ? 'Mis Pedidos' : 'Pedidos' ?>
                     </a>
                     <ul class="dropdown-menu" aria-labelledby="navbarPedidos">
                         <li>
