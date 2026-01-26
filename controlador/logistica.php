@@ -30,10 +30,14 @@ class LogisticaController {
         // 2. Histórico Total (con filtros)
         $historial = LogisticaModel::obtenerHistorialCliente($clienteId, $filtros);
 
+        // 3. Obtener todos los estados disponibles para el selector
+        $estados = LogisticaModel::obtenerEstados();
+
         return [
             'notificaciones' => $notificaciones,
             'historial' => $historial,
-            'filtros' => $filtros
+            'filtros' => $filtros,
+            'estados' => $estados
         ];
     }
 
@@ -58,9 +62,13 @@ class LogisticaController {
         // 2. Obtener Historial de Cambios (Auditoría) para este pedido
         $historialCambios = LogisticaModel::obtenerHistorialCambiosPedido($id);
 
+        // 3. Obtener todos los estados disponibles para el selector
+        $estados = LogisticaModel::obtenerEstados();
+
         return [
             'pedido' => $pedido,
-            'historial' => $historialCambios
+            'historial' => array_reverse($historialCambios), // Revertir para mostrar más recientes primero si listarPorRegistro devuelve ASC
+            'estados' => $estados
         ];
     }
 
@@ -90,11 +98,25 @@ class LogisticaController {
         $nuevoEstado = $_POST['estado'] ?? '';
         $observaciones = $_POST['observaciones'] ?? '';
 
+        $success = false;
         if (!empty($nuevoEstado)) {
-            LogisticaModel::actualizarEstado($id, $nuevoEstado, $observaciones, $clienteId);
+            $success = LogisticaModel::actualizarEstado($id, $nuevoEstado, $observaciones, $clienteId);
         }
 
-        // Redireccionar
+        // Si es una petición AJAX (detectada por header o parámetro)
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            // Limpiar cualquier salida previa (notices, warnings) para asegurar JSON válido
+            if (ob_get_length()) ob_clean();
+            
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => $success,
+                'message' => $success ? 'Estado actualizado correctamente' : 'Error al actualizar el estado'
+            ]);
+            exit;
+        }
+
+        // Redireccionar si no es AJAX
         if (isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], 'dashboard') !== false) {
              header('Location: ' . RUTA_URL . 'logistica/dashboard?msg=actualizado');
         } else {

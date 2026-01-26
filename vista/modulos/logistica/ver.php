@@ -8,35 +8,47 @@ $controller = new LogisticaController();
 $idPedido = $parametros[0] ?? null;
 
 // Obtener datos
-$data = $controller->obtenerDatosPedido($idPedido);
+$datos = $controller->obtenerDatosPedido($idPedido);
 
 // Si no hay datos (no existe o no autorizado), redirigir
-if ($data === null) {
-    if (!headers_sent()) {
-        header('Location: ' . RUTA_URL . 'logistica/dashboard');
-    } else {
-        echo "<script>window.location.href = '" . RUTA_URL . "logistica/dashboard';</script>";
-    }
+if (!$idPedido || !$datos) {
+    echo "<script>window.location.href='".RUTA_URL."logistica/dashboard';</script>";
     exit;
 }
 
-$pedido = $data['pedido'];
-$historialCambios = $data['historial'];
+$pedido = $datos['pedido'];
+$historialCambios = $datos['historial'] ?? [];
+$estadosDisponibles = $datos['estados'] ?? [];
 
-// Mapa de Colores Estandarizado
+// Crear un mapa de ID => Nombre para registros antiguos
+$mapaEstados = [];
+foreach ($estadosDisponibles as $e) {
+    $mapaEstados[$e['id']] = $e['nombre_estado'];
+}
+
+// Mapa de Colores Estandarizado y Vibrante
 $estadoColores = [
-    'EN BODEGA' => 'primary',
-    'EN RUTA' => 'info text-dark',
-    'ENTREGADO' => 'success',
-    'CANCELADO' => 'danger',
-    'LIQUIDADO' => 'dark',
-    'DEVOLUCION' => 'warning text-dark',
-    'DEVOLUCION COMPLETA' => 'warning text-dark',
-    'EN_ESPERA' => 'secondary'
+    'EN BODEGA'           => 'primary',           // Azul (Proceso inicial)
+    'EN RUTA'             => 'info text-dark',    // Celeste (En camino)
+    'ENTREGADO'           => 'success',           // Verde (Completado)
+    'CANCELADO'           => 'danger',            // Rojo (Anulado)
+    'LIQUIDADO'           => 'dark',              // Negro (Cierre contable)
+    'DEVOLUCION'          => 'warning text-dark', // Naranja (Problema/Retorno)
+    'DEVOLUCION COMPLETA' => 'warning text-dark', // Naranja
+    'EN_ESPERA'           => 'secondary',         // Gris
+    'PENDIENTE'           => 'warning text-dark', // Amarillo
+    'VENDIDO'             => 'success',           // Verde
+    'RECHAZADO'           => 'danger',            // Rojo
+    'DOMICILIO'           => 'warning text-dark', // Amarillo (No encontrado)
+    'DEVUELTO'            => 'danger',            // Rojo
+    'TRANSITO'            => 'info text-dark'     // Celeste
 ];
 
 function getBadgeColor($estado, $map) {
-    $estadoUpper = strtoupper($estado ?? '');
+    if (empty($estado)) return 'secondary';
+    $estadoUpper = strtoupper($estado);
+    
+    // Búsqueda de palabra clave para mayor flexibilidad
     foreach ($map as $key => $val) {
         if (strpos($estadoUpper, $key) !== false) return $val;
     }
@@ -175,29 +187,39 @@ include("vista/includes/header.php");
                                 $datosNuevos = $cambio['datos_nuevos'] ?? [];
                                 $datosAnt = $cambio['datos_anteriores'] ?? [];
                                 
-                                $titulo = "Actualización";
-                                $timelineBadgeColor = "secondary";
+                                $titulo = "Actualización de Pedido";
                                 $detalle = "";
+                                $badgeColor = "info";
 
                                 if ($cambio['accion'] == 'crear') {
                                     $titulo = "Pedido Creado";
-                                    $timelineBadgeColor = "primary";
                                     $detalle = "El pedido fue ingresado al sistema.";
-                                } elseif (isset($datosNuevos['id_estado']) && $datosNuevos['id_estado'] != ($datosAnt['id_estado'] ?? 0)) {
-                                    $titulo = "Cambio de Estado";
-                                    $timelineBadgeColor = "warning text-dark";
-                                    $detalle = "Estado actualizado a ID: " . $datosNuevos['id_estado'];
+                                    $badgeColor = "success";
                                 } else {
-                                    $titulo = "Actualización de Datos";
-                                    $timelineBadgeColor = "info text-dark";
-                                    $keys = array_keys(array_diff_assoc($datosNuevos, $datosAnt));
-                                    $detalle = "Campos modificados: " . implode(', ', $keys);
+                                    // 1. Si hay cambio de estado (Formato Nuevo)
+                                    if (isset($datosNuevos['estado'])) {
+                                        $titulo = "Cambio de Estado: " . htmlspecialchars($datosNuevos['estado']);
+                                        $detalle = $datosNuevos['observaciones'] ?? 'Sin observaciones.';
+                                        $badgeColor = getBadgeColor($datosNuevos['estado'], $estadoColores);
+                                    } 
+                                    // 2. Si es formato antiguo pero cambió el ID del estado
+                                    elseif (isset($datosNuevos['id_estado'])) {
+                                        $nombreEs = $mapaEstados[$datosNuevos['id_estado']] ?? "Estado #" . $datosNuevos['id_estado'];
+                                        $titulo = "Cambio de Estado: " . htmlspecialchars($nombreEs);
+                                        $detalle = "Actualización de estado procesada por el sistema.";
+                                        $badgeColor = getBadgeColor($nombreEs, $estadoColores);
+                                    }
+                                    // 3. Otros cambios
+                                    else {
+                                        $keys = array_keys(array_diff_assoc($datosNuevos, $datosAnt));
+                                        $detalle = "Campos modificados: " . implode(', ', $keys);
+                                    }
                                 }
                             ?>
                             <div class="d-flex mb-3 pb-3 border-bottom position-relative">
                                 <div class="flex-shrink-0 me-3">
-                                    <div class="badge bg-<?= $timelineBadgeColor ?> p-2 rounded-circle" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-                                        <i class="bi bi-arrow-right"></i>
+                                    <div class="badge bg-<?= $badgeColor ?> p-2 rounded-circle" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-clock"></i>
                                     </div>
                                 </div>
                                 <div class="flex-grow-1">
@@ -206,11 +228,9 @@ include("vista/includes/header.php");
                                         <small class="text-muted"><?= date('d/m/Y H:i', strtotime($cambio['created_at'])) ?></small>
                                     </div>
                                     <p class="mb-0 text-muted small"><?= $detalle ?></p>
-                                    <?php if($cambio['accion'] == 'actualizar'): ?>
-                                        <div class="small mt-1 text-secondary fst-italic">
-                                            Por: Sistema / Usuario
-                                        </div>
-                                    <?php endif; ?>
+                                    <div class="small mt-1 text-secondary fst-italic">
+                                        Por: <?= htmlspecialchars($cambio['usuario_nombre'] ?? 'Sistema') ?>
+                                    </div>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -236,8 +256,12 @@ include("vista/includes/header.php");
                     <div class="mb-3">
                         <label class="form-label">Nuevo Estado</label>
                         <select name="estado" class="form-select" required>
-                            <option value="CANCELADO">CANCELADO</option>
-                            <!-- Se pueden agregar más estados permitidos para el cliente aquí -->
+                            <option value="">Seleccione un estado...</option>
+                            <?php foreach ($estadosDisponibles as $est): ?>
+                                <option value="<?= htmlspecialchars($est['nombre_estado']) ?>" <?= ($est['nombre_estado'] == $pedido['nombre_estado']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($est['nombre_estado']) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                         <div class="form-text text-muted">Seleccione el nuevo estado para esta orden.</div>
                     </div>
@@ -255,5 +279,89 @@ include("vista/includes/header.php");
     </div>
 </div>
 
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('#cambiarEstadoModal form');
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(async response => {
+            const text = await response.text();
+            try {
+                return JSON.parse(text);
+            } catch (err) {
+                console.error('Error parseando JSON. Respuesta del servidor:', text);
+                throw new Error('La respuesta del servidor no es un JSON válido.');
+            }
+        })
+        .then(data => {
+            if (data.success) {
+                // Cerrar modal
+                const modalEl = document.getElementById('cambiarEstadoModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+                
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: data.message || 'Estado actualizado correctamente',
+                        confirmButtonColor: '#0d6efd'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    alert(data.message || 'Estado actualizado correctamente');
+                    window.location.reload();
+                }
+            } else {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Error al actualizar el estado',
+                        confirmButtonColor: '#0d6efd'
+                    });
+                } else {
+                    alert(data.message || 'Error al actualizar el estado');
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            }
+        })
+        .catch(error => {
+            console.error('Error en fetch:', error);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Conexión',
+                    text: error.message || 'Error en la comunicación con el servidor',
+                    confirmButtonColor: '#0d6efd'
+                });
+            } else {
+                alert(error.message || 'Error en la comunicación con el servidor');
+            }
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        });
+    });
+});
+</script>
 
 <?php include("vista/includes/footer.php"); ?>

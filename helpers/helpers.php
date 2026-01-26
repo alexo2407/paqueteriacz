@@ -48,7 +48,7 @@ function mostrarNombreModulo()
 function cargarRecursos($pagina) {
   $recursos = [
       "global" => [
-          '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">',
+          '<link href="' . RUTA_URL . 'vista/css/bootstrap.min.css" rel="stylesheet">',
           '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/bootstrap-icons-1.2.1/font/bootstrap-icons.css">',
           '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/estilos.css">',
           // Select2 para búsqueda en dropdowns

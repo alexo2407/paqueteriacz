@@ -359,12 +359,17 @@ class AuditoriaModel
             return (int)$GLOBALS['API_USER_ID'];
         }
         
-        // 2. Verificar sesión web - user_id (variable principal del sistema)
+        // 2. Verificar sesión web - idUsuario (usado en controlador logistica y otros)
+        if (session_status() !== PHP_SESSION_NONE && isset($_SESSION['idUsuario'])) {
+            return (int)$_SESSION['idUsuario'];
+        }
+
+        // 3. Verificar sesión web - user_id (variable principal del sistema)
         if (session_status() !== PHP_SESSION_NONE && isset($_SESSION['user_id'])) {
             return (int)$_SESSION['user_id'];
         }
         
-        // 3. Compatibilidad - ID_Usuario
+        // 4. Compatibilidad - ID_Usuario
         if (session_status() !== PHP_SESSION_NONE && isset($_SESSION['ID_Usuario'])) {
             return (int)$_SESSION['ID_Usuario'];
         }

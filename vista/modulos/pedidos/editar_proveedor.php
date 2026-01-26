@@ -636,29 +636,52 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(res => {
             if(res.success && res.data && res.data.length > 0) {
+                const getBadgeColor = (estado) => {
+                    if (!estado) return 'secondary';
+                    const s = estado.toUpperCase();
+                    if (s.includes('ENTREGADO') || s.includes('VENDIDO')) return 'success';
+                    if (s.includes('CANCELADO') || s.includes('RECHAZADO') || s.includes('DEVUELTO')) return 'danger';
+                    if (s.includes('RUTA') || s.includes('TRANSITO')) return 'info text-dark';
+                    if (s.includes('BODEGA')) return 'primary';
+                    if (s.includes('DEVOLUCION') || s.includes('PENDIENTE') || s.includes('DOMICILIO')) return 'warning text-dark';
+                    if (s.includes('LIQUIDADO')) return 'dark';
+                    return 'secondary';
+                };
+
                 let html = '<ul class="list-group list-group-flush">';
                 res.data.forEach(item => {
                     const fecha = new Date(item.created_at).toLocaleString();
                     const usuario = item.usuario_nombre || 'Sistema';
-                    const estadoAnt = item.estado_anterior_nombre ? `<span class="badge bg-secondary">${item.estado_anterior_nombre}</span> <i class="bi bi-arrow-right"></i> ` : '';
-                    const estadoNuevo = `<span class="badge bg-success">${item.estado_nombre}</span>`;
-                    const obs = item.observaciones ? `<div class="mt-1 text-muted small"><i class="bi bi-info-circle"></i> ${item.observaciones}</div>` : '';
+                    
+                    const colorAnt = getBadgeColor(item.estado_anterior_nombre);
+                    const colorNuevo = getBadgeColor(item.estado_nombre);
+                    
+                    const estadoAnt = item.estado_anterior_nombre ? `<span class="badge bg-${colorAnt}">${item.estado_anterior_nombre}</span> <i class="bi bi-arrow-right mx-1"></i> ` : '';
+                    const estadoNuevo = `<span class="badge bg-${colorNuevo}">${item.estado_nombre}</span>`;
+                    const obs = item.observaciones ? `<div class="mt-2 p-2 bg-light rounded small border-start border-4 border-info"><i class="bi bi-info-circle me-1"></i> ${item.observaciones}</div>` : '';
                     
                     html += `
-                        <li class="list-group-item d-flex justify-content-between align-items-start bg-transparent">
-                            <div class="ms-2 me-auto">
-                                <div class="fw-bold">${estadoAnt}${estadoNuevo}</div>
-                                <small class="text-muted"><i class="bi bi-person"></i> ${usuario}</small>
-                                ${obs}
+                        <li class="list-group-item py-3 px-0 bg-transparent border-bottom">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-light rounded-circle p-2 me-3 text-center" style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-clock text-primary"></i>
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold">${estadoAnt}${estadoNuevo}</div>
+                                        <small class="text-muted"><i class="bi bi-person me-1"></i>${usuario}</small>
+                                    </div>
+                                </div>
+                                <span class="badge bg-white text-dark rounded-pill border shadow-sm font-monospace">${fecha}</span>
                             </div>
-                            <span class="badge bg-white text-dark rounded-pill border shadow-sm">${fecha}</span>
+                            ${obs}
                         </li>
                     `;
                 });
                 html += '</ul>';
                 container.innerHTML = html;
             } else {
-                container.innerHTML = '<div class="alert alert-light text-center border">No hay cambios de estado registrados en el historial detallado.</div>';
+                container.innerHTML = '<div class="alert alert-light text-center border p-4"><i class="bi bi-info-circle fs-2 d-block mb-2"></i> No hay cambios de estado registrados en el historial detallado.</div>';
             }
         })
         .catch(err => {

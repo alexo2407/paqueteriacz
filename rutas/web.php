@@ -1138,3 +1138,36 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
     }
 }
 
+
+// -----------------------
+// Manejo de Logística (POST a ?enlace=logistica/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    
+    // Permitir Admin o Cliente de Logística
+    if (!isUserAdmin($userId) && !isUserCliente($userId)) {
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);
+            exit;
+        }
+        set_flash('error', 'No tienes permisos para realizar esta acción.');
+        header('Location: ' . RUTA_URL . 'dashboard');
+        exit;
+    }
+    
+    $ctrl = new LogisticaController();
+    
+    if ($accion === 'cambiarEstado') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $ctrl->cambiarEstado($id);
+        exit;
+    }
+}

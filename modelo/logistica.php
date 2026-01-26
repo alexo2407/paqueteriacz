@@ -104,25 +104,22 @@ class LogisticaModel {
     }
 
     /**
-     * Obtener historial de cambios de una orden específica
+     * Obtener historial de cambios de una orden específica con nombres de usuario
      */
     public static function obtenerHistorialCambiosPedido($pedidoId) {
+        return AuditoriaModel::listarPorRegistro('pedidos', $pedidoId);
+    }
+
+    /**
+     * Obtener todos los estados disponibles de la tabla estados_pedidos
+     */
+    public static function obtenerEstados() {
         try {
             $db = (new Conexion())->conectar();
-            $sql = "SELECT * FROM auditoria_cambios 
-                    WHERE tabla = 'pedidos' AND id_registro = :id 
-                    ORDER BY created_at DESC";
-            $stmt = $db->prepare($sql);
-            $stmt->execute([':id' => $pedidoId]);
-            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Decodificar JSON
-            foreach ($resultados as &$row) {
-                if (!empty($row['datos_anteriores'])) $row['datos_anteriores'] = json_decode($row['datos_anteriores'], true);
-                if (!empty($row['datos_nuevos'])) $row['datos_nuevos'] = json_decode($row['datos_nuevos'], true);
-            }
-            return $resultados;
+            $stmt = $db->query("SELECT id, nombre_estado FROM estados_pedidos ORDER BY nombre_estado ASC");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
+            error_log("Error al obtener estados: " . $e->getMessage());
             return [];
         }
     }

@@ -24,6 +24,7 @@ $data = $controller->dashboard();
 $notificaciones = $data['notificaciones'];
 $historialTotal = $data['historial']; // Esto trae TODO según filtros básica
 $filtros = $data['filtros'];
+$estadosDisponibles = $data['estados'] ?? [];
 
 // --- LÓGICA DE FILTRADO PARA TABS ---
 // Separamos "Activos" de "Historial" (Entregados/Finalizados)
@@ -36,21 +37,27 @@ foreach ($historialTotal as $pedido) {
     }
 }
 
-// Mapa de Colores Estandarizado
+// Mapa de Colores Estandarizado y Vibrante
 $estadoColores = [
-    'EN BODEGA' => 'primary',
-    'EN RUTA' => 'info text-dark',
-    'ENTREGADO' => 'success',
-    'CANCELADO' => 'danger',
-    'LIQUIDADO' => 'dark',
-    'DEVOLUCION' => 'warning text-dark',
-    'DEVOLUCION COMPLETA' => 'warning text-dark',
-    'EN_ESPERA' => 'secondary'
+    'EN BODEGA'           => 'primary',           
+    'EN RUTA'             => 'info text-dark',    
+    'ENTREGADO'           => 'success',           
+    'CANCELADO'           => 'danger',            
+    'LIQUIDADO'           => 'dark',              
+    'DEVOLUCION'          => 'warning text-dark', 
+    'DEVOLUCION COMPLETA' => 'warning text-dark', 
+    'EN_ESPERA'           => 'secondary',         
+    'PENDIENTE'           => 'warning text-dark', 
+    'VENDIDO'             => 'success',           
+    'RECHAZADO'           => 'danger',            
+    'DOMICILIO'           => 'warning text-dark', 
+    'DEVUELTO'            => 'danger',            
+    'TRANSITO'            => 'info text-dark'     
 ];
 
 function getBadgeColor($estado, $map) {
+    if (empty($estado)) return 'secondary';
     $estadoUpper = strtoupper($estado);
-    // Búsqueda aproximada si no exacto
     foreach ($map as $key => $val) {
         if (strpos($estadoUpper, $key) !== false) return $val;
     }
@@ -458,7 +465,12 @@ include "vista/includes/header.php";
                     <div class="mb-3">
                         <label class="form-label">Nuevo Estado</label>
                         <select name="estado" class="form-select" required>
-                            <option value="CANCELADO">CANCELADO</option>
+                            <option value="">Seleccione un estado...</option>
+                            <?php foreach ($estadosDisponibles as $est): ?>
+                                <option value="<?= htmlspecialchars($est['nombre_estado']) ?>">
+                                    <?= htmlspecialchars($est['nombre_estado']) ?>
+                                </option>
+                            <?php endforeach; ?>
                         </select>
                         <div class="form-text text-muted">Seleccione el nuevo estado.</div>
                     </div>
@@ -506,6 +518,82 @@ include "vista/includes/header.php";
         const modalEl = document.getElementById('cambiarEstadoModal');
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
+
+        // Manejar el submit del formulario con AJAX
+        form.onsubmit = function(e) {
+            e.preventDefault();
+            
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            
+            const formData = new FormData(form);
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                try {
+                    return JSON.parse(text);
+                } catch (err) {
+                    console.error('Error parseando JSON. Respuesta del servidor:', text);
+                    throw new Error('La respuesta del servidor no es un JSON válido.');
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    modal.hide();
+                    
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Actualizado!',
+                            text: data.message || 'El estado ha sido actualizado.',
+                            confirmButtonColor: '#0d6efd'
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        alert(data.message || 'Actualizado correctamente');
+                        window.location.reload();
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'No se pudo actualizar el estado.',
+                            confirmButtonColor: '#0d6efd'
+                        });
+                    } else {
+                        alert(data.message || 'Error al actualizar');
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de Red',
+                        text: 'Hubo un error en la comunicación con el servidor.',
+                        confirmButtonColor: '#0d6efd'
+                    });
+                } else {
+                    alert('Error en la comunicación con el servidor');
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            });
+        };
     }
 </script>
 
