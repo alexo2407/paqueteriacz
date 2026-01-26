@@ -260,12 +260,22 @@ if (preg_match('/\/api\/cliente\/cambiar_estado$/', $path) && $method === 'POST'
 
 // Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
 if (strpos($path, '/api/') === 0) {
+    // Inteligencia Adicional: Si no hubo match explícito arriba, intentar buscar el archivo físicamente
+    // Esto previene errores de 404 si el archivo existe pero olvidamos registrarlo en el router.
+    $relativePart = substr($path, 5); // Quitar '/api/'
+    $possibleFile = __DIR__ . '/' . $relativePart . '.php';
+    
+    if (file_exists($possibleFile) && is_file($possibleFile)) {
+        require_once $possibleFile;
+        exit;
+    }
+
     http_response_code(404);
     echo json_encode([
         'success' => false,
         'error' => [
             'code' => 404,
-            'message' => 'El endpoint solicitado no existe.',
+            'message' => 'El endpoint solicitado no existe o no está registrado en el router.',
             'path' => $path,
             'timestamp' => date('c')
         ]
