@@ -747,16 +747,18 @@ class PedidosModel
                     m.codigo AS moneda_codigo,
                     m.nombre AS moneda_nombre,
                     uV.nombre AS vendedor_nombre,
-                    uP.nombre AS proveedor_nombre,
-                    (SELECT fecha_asignacion FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_asignacion,
+                uP.nombre AS proveedor_nombre,
+                uC.nombre AS cliente_nombre,
+                (SELECT fecha_asignacion FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_asignacion,
                     (SELECT fecha_entrega FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_entrega,
                     (SELECT observaciones FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as entrega_observaciones
                 FROM pedidos p
                 LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
                 LEFT JOIN monedas m ON m.id = p.id_moneda
                 LEFT JOIN usuarios uV ON uV.id = p.id_vendedor
-                LEFT JOIN usuarios uP ON uP.id = p.id_proveedor
-                WHERE p.id = :id_pedido
+            LEFT JOIN usuarios uP ON uP.id = p.id_proveedor
+            LEFT JOIN usuarios uC ON uC.id = p.id_cliente
+            WHERE p.id = :id_pedido
             ";
 
             $stmt = $db->prepare($query);
@@ -1263,7 +1265,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1307,6 +1309,8 @@ class PedidosModel
                 'es_combo' => 'es_combo',
                 'id_pais' => 'id_pais',
                 'id_departamento' => 'id_departamento',
+                'id_municipio' => 'id_municipio',
+                'id_barrio' => 'id_barrio',
                 'municipio' => 'municipio',
                 'barrio' => 'barrio',
                 'direccion' => 'direccion',
@@ -1439,9 +1443,21 @@ class PedidosModel
     {
         try {
             $usuarioModel = new UsuarioModel();
-            // Obtener Clientes (Rol 5)
-            // 'Cliente' es el nombre del rol según verificación previa
-            return $usuarioModel->obtenerUsuariosPorRolNombre('Cliente');
+            // Obtener Clientes (Rol 5) y Clientes CRM (Rol 7)
+            $clientes = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente');
+            $clientesCrm = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente CRM');
+            
+            // Combinar y eliminar duplicados (si un usuario tiene ambos roles)
+            $todo = array_merge($clientes, $clientesCrm);
+            $hash = [];
+            $unique = [];
+            foreach ($todo as $u) {
+                if (!isset($hash[$u['id']])) {
+                    $hash[$u['id']] = true;
+                    $unique[] = $u;
+                }
+            }
+            return $unique;
         } catch (Exception $e) {
             throw new Exception("Error al obtener los clientes: " . $e->getMessage());
         }

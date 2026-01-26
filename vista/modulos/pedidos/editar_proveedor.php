@@ -444,11 +444,22 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                         <label for="cliente" class="form-label fw-bold">Cliente (Opcional)</label>
                                         <select class="form-control select2-searchable" id="cliente" name="id_cliente" style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">
                                             <option value="">Sin Cliente asignado</option>
-                                            <?php foreach ($clientes as $cli): ?>
-                                                <option value="<?= $cli['id'] ?>" <?= ((int)($pedido['id_cliente'] ?? 0) === (int)$cli['id']) ? 'selected' : '' ?>>
+                                            <?php 
+                                            $clienteExistenteEnLista = false;
+                                            foreach ($clientes as $cli): 
+                                                $selected = ((int)($pedido['id_cliente'] ?? 0) === (int)$cli['id']);
+                                                if ($selected) $clienteExistenteEnLista = true;
+                                            ?>
+                                                <option value="<?= $cli['id'] ?>" <?= $selected ? 'selected' : '' ?>>
                                                     <?= htmlspecialchars($cli['nombre']) ?><?= isset($cli['email']) && $cli['email'] ? ' — ' . htmlspecialchars($cli['email']) : '' ?>
                                                 </option>
                                             <?php endforeach; ?>
+                                            
+                                            <?php if (!$clienteExistenteEnLista && !empty($pedido['id_cliente'])): ?>
+                                                <option value="<?= $pedido['id_cliente'] ?>" selected>
+                                                    <?= htmlspecialchars($pedido['cliente_nombre'] ?? 'Cliente #' . $pedido['id_cliente']) ?> (Asignado)
+                                                </option>
+                                            <?php endif; ?>
                                         </select>
                                     </div>
 

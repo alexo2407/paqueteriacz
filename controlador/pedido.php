@@ -52,9 +52,9 @@ class PedidosController {
      * @param array|object $jsonData
      * @return array
      */
-    public function crearPedidoAPI($jsonData) {
+    public function crearPedidoAPI($jsonData, $autoEnqueue = false, $authUserId = 0, $authUserRole = '') {
         // Delegate to specialized API controller
-        return $this->apiController->crear($jsonData);
+        return $this->apiController->crear($jsonData, $autoEnqueue, $authUserId, $authUserRole);
     }
 
     /**
@@ -65,10 +65,10 @@ class PedidosController {
      *
      * Uso: POST /api/pedidos/multiple (o la ruta que corresponda) con body JSON.
      */
-    public function createMultiple($authUserId = 0, $authUserRole = '')
+    public function createMultiple($authUserId = 0, $authUserRole = '', $autoEnqueue = false)
     {
         // DEBUG LOGGING
-        error_log("createMultiple called with UserID: " . json_encode($authUserId) . " Role: " . json_encode($authUserRole));
+        error_log("createMultiple called with UserID: " . json_encode($authUserId) . " Role: " . json_encode($authUserRole) . " AutoEnqueue: " . json_encode($autoEnqueue));
 
         // Read and decode JSON payload
         $raw = file_get_contents('php://input');
@@ -82,155 +82,18 @@ class PedidosController {
             return;
         }
 
-        $results = [];
-
-        // Ensure model is available
-        require_once __DIR__ . '/../modelo/pedido.php';
-
-        foreach ($payload['pedidos'] as $pedido) {
-            $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
-
-            // Basic validation using existing helper
-            $valid = $this->validarDatosPedido($pedido);
-            if (!$valid['success']) {
-                $itemResult['message'] = $valid['message'];
-                $itemResult['details'] = $valid['details'] ?? [];
-                // Compatibilidad/Resumen en string
-                $itemResult['error'] = $valid['message']; 
-                $results[] = $itemResult;
-                continue;
-            }
-
-            // Determine Provider ID
-            $idProveedor = isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : (isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null);
-            
-            // Si el usuario autenticado es Proveedor, forzar su ID 
-            // Aceptamos tanto el string "Proveedor" como el ID 4 (ROL_PROVEEDOR)
-            $isProviderRole = (is_numeric($authUserRole) && (int)$authUserRole === 4) || 
-                              (is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0);
-
-            if ($isProviderRole && $authUserId > 0) {
-                $idProveedor = (int)$authUserId;
-            }
-
-            // Build payload expected by the model
-            $modelPayload = [
-                'numero_orden' => isset($pedido['numero_orden']) ? (int)$pedido['numero_orden'] : null,
-                'destinatario' => $pedido['destinatario'] ?? null,
-                'telefono' => $pedido['telefono'] ?? null,
-                'direccion' => $pedido['direccion'] ?? null,
-                'comentario' => $pedido['comentario'] ?? null,
-                'estado' => isset($pedido['estado']) ? (int)$pedido['estado'] : null,
-                'vendedor' => isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null,
-                'proveedor' => $idProveedor,
-                'moneda' => isset($pedido['moneda']) ? (int)$pedido['moneda'] : null,
-                'latitud' => isset($pedido['latitud']) ? (float)$pedido['latitud'] : (isset($pedido['latitude']) ? (float)$pedido['latitude'] : null),
-                'longitud' => isset($pedido['longitud']) ? (float)$pedido['longitud'] : (isset($pedido['longitude']) ? (float)$pedido['longitude'] : null),
-                'id_pais' => isset($pedido['id_pais']) ? $pedido['id_pais'] : ($pedido['pais'] ?? null),
-                'id_departamento' => isset($pedido['id_departamento']) ? $pedido['id_departamento'] : ($pedido['departamento'] ?? null),
-                'municipio' => $pedido['municipio'] ?? null,
-                'barrio' => $pedido['barrio'] ?? null,
-                'zona' => $pedido['zona'] ?? null,
-                'precio_local' => isset($pedido['precio_local']) ? $pedido['precio_local'] : ($pedido['precio'] ?? null),
-                'precio_usd' => $pedido['precio_usd'] ?? null,
-            ];
-
-            // Build items array.
-            $items = [];
-            if (isset($pedido['productos']) && is_array($pedido['productos']) && count($pedido['productos']) > 0) {
-                foreach ($pedido['productos'] as $pi) {
-                    // Accept different key names
-                    $pid = $pi['producto_id'] ?? $pi['id_producto'] ?? $pi['id'] ?? null;
-                    $qty = $pi['cantidad'] ?? $pi['qty'] ?? $pi['cantidad_producto'] ?? null;
-                    if (!is_numeric($pid) || !is_numeric($qty) || (int)$qty <= 0) continue;
-                    $items[] = ['id_producto' => (int)$pid, 'cantidad' => (int)$qty, 'cantidad_devuelta' => 0];
-                }
-            } else {
-                // fallback to single product fields
-                $pid = $pedido['producto_id'] ?? $pedido['id_producto'] ?? null;
-                $qty = $pedido['cantidad'] ?? $pedido['cantidad_producto'] ?? null;
-                if (is_numeric($pid) && is_numeric($qty) && (int)$qty > 0) {
-                    $items[] = ['id_producto' => (int)$pid, 'cantidad' => (int)$qty, 'cantidad_devuelta' => 0];
-                }
-            }
-
-            if (count($items) === 0) {
-                $itemResult['error'] = 'El pedido debe incluir al menos un producto válido.';
-                $results[] = $itemResult;
-                continue;
-            }
-
-            try {
-                // Delegate to model which sets fecha_ingreso and handles pivot inserts/transactions
-                $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items);
-                $itemResult['success'] = true;
-                $itemResult['id_pedido'] = $nuevoId;
-                
-                // Optional: Enqueue logistics job if auto_enqueue parameter is set
-                if (isset($_GET['auto_enqueue']) && $_GET['auto_enqueue'] === 'true') {
-                    try {
-                        require_once __DIR__ . '/../services/LogisticsQueueService.php';
-                        LogisticsQueueService::queue('validar_direccion', $nuevoId);
-                        $itemResult['job_queued'] = true;
-                    } catch (Exception $queueError) {
-                        // Don't fail the order creation if queueing fails
-                        $itemResult['job_queued'] = false;
-                        $itemResult['queue_error'] = $queueError->getMessage();
-                    }
-                }
-                
-                $results[] = $itemResult;
-            } catch (Exception $e) {
-                $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
-                $results[] = $itemResult;
-                continue;
-            }
-        }
-
-        // Generar Resumen Global (Informe de Errores Agrupados)
+        // Delegar al controlador especializado
+        $results = $this->apiController->crearMultiple($payload, $autoEnqueue, $authUserId, $authUserRole);
+        
+        // Generar resumen
         $summary = [
-            'total_received' => count($results),
-            'success_count' => 0,
-            'error_count' => 0,
-            'error_breakdown' => []
+            'total' => count($payload['pedidos']),
+            'processed' => count($results['results'] ?? []),
+            'success' => count(array_filter($results['results'] ?? [], function($r){ return $r['success']; })),
+            'failed' => count(array_filter($results['results'] ?? [], function($r){ return !$r['success']; }))
         ];
 
-        foreach ($results as $res) {
-            if ($res['success']) {
-                $summary['success_count']++;
-            } else {
-                $summary['error_count']++;
-                
-                // Determinar la fuente de los errores (validación o excepción)
-                $msgs = [];
-                if (!empty($res['details'])) {
-                     $msgs = $res['details'];
-                } else {
-                     $rawError = $res['error'] ?? 'Error desconocido';
-                     $msgs[] = $rawError;
-                }
-                
-                foreach ($msgs as $m) {
-                    // Limpieza y Agrupación de Errores Técnicos
-                    $friendlyError = $m;
-
-                    if (strpos($m, 'Duplicate entry') !== false && strpos($m, 'numero_orden') !== false) {
-                        $friendlyError = 'Orden Duplicada (El número ya existe)';
-                    } elseif (stripos($m, 'Stock insuficiente') !== false) {
-                        $friendlyError = 'Stock Insuficiente';
-                    } elseif (stripos($m, 'Integrity constraint violation') !== false) {
-                        $friendlyError = 'Error de Integridad de Datos';
-                    }
-
-                    if (!isset($summary['error_breakdown'][$friendlyError])) {
-                        $summary['error_breakdown'][$friendlyError] = 0;
-                    }
-                    $summary['error_breakdown'][$friendlyError]++;
-                }
-            }
-        }
-
-        echo json_encode(['summary' => $summary, 'results' => $results], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['summary' => $summary, 'results' => $results['results'] ?? []], JSON_UNESCAPED_UNICODE);
         return;
     }
 

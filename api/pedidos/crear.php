@@ -47,6 +47,7 @@ try {
     require_once __DIR__ . '/../utils/autenticacion.php';
     require_once __DIR__ . '/../../controlador/pedido.php';
     require_once __DIR__ . '/../../modelo/pedido.php';
+    require_once __DIR__ . '/../utils/responder.php';
 
     // Verificar autenticación
     $token = AuthMiddleware::obtenerTokenDeHeaders();
@@ -76,12 +77,14 @@ try {
     }
 
     // Delegar la creación del pedido al controlador centralizado
+    $userId = $validacion['data']['id'] ?? 0;
+    $userRole = $validacion['data']['rol'] ?? '';
+    $autoEnqueue = (isset($_GET['auto_enqueue']) && $_GET['auto_enqueue'] === 'true');
     $pedidoController = new PedidosController();
-    $response = $pedidoController->crearPedidoAPI($data);
+    $response = $pedidoController->crearPedidoAPI($data, $autoEnqueue, $userId, $userRole);
 
     // El controlador ya devuelve el sobre { success, message, data }
-    http_response_code(200);
-    echo json_encode($response);
+    responder($response['success'], $response['message'], $response['data'] ?? null, $response['success'] ? 200 : 400);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([

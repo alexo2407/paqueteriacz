@@ -8,21 +8,18 @@
 
 class PedidoApiController
 {
-    /**
-     * Crear pedido desde API
-     * 
-     * @param array $jsonData
-     * @return array ['success' => bool, 'message' => string, 'data' => mixed]
-     */
-    public function crear(array $jsonData): array
+    public function crear(array $jsonData, bool $autoEnqueue = false, int $authUserId = 0, $authUserRole = ''): array
     {
         $data = $jsonData;
 
+        // Determinar si el usuario es proveedor
+        $isProvider = (is_numeric($authUserRole) && (int)$authUserRole === 4) || 
+                      (is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0);
+
         // Si el usuario es Proveedor, forzar su ID como proveedor del pedido
-        require_once __DIR__ . '/../../utils/permissions.php';
-        if (isProveedor()) {
-            $data['id_proveedor'] = $_SESSION['user_id'];
-            $data['proveedor'] = $_SESSION['user_id'];
+        if ($isProvider && $authUserId > 0) {
+            $data['id_proveedor'] = $authUserId;
+            $data['proveedor'] = $authUserId;
         }
 
         // Validar la estructura del pedido
@@ -62,6 +59,17 @@ class PedidoApiController
         // Crear pedido
         $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
         
+        // Encolar si se solicita
+        if ($autoEnqueue && $nuevoId) {
+            try {
+                require_once __DIR__ . '/../../services/LogisticsQueueService.php';
+                LogisticsQueueService::queue('generar_guia', $nuevoId);
+            } catch (Exception $e) {
+                // No fallar la creación por error en la cola, pero registrar
+                error_log("Error auto_enqueue: " . $e->getMessage());
+            }
+        }
+        
         return [
             "success" => true,
             "message" => "Pedido creado correctamente.",
@@ -69,22 +77,26 @@ class PedidoApiController
         ];
     }
 
-    /**
-     * Crear múltiples pedidos desde JSON
-     * 
-     * @param array $payload
-     * @return array
-     */
-    public function crearMultiple(array $payload): array
+    public function crearMultiple(array $payload, bool $autoEnqueue = false, int $authUserId = 0, $authUserRole = ''): array
     {
         if (!isset($payload['pedidos']) || !is_array($payload['pedidos'])) {
             return ['error' => "JSON inválido o falta la clave 'pedidos' (esperado array)."];
         }
 
         $results = [];
+        
+        // Determinar si el usuario es proveedor
+        $isProvider = (is_numeric($authUserRole) && (int)$authUserRole === 4) || 
+                      (is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0);
 
         foreach ($payload['pedidos'] as $pedido) {
             $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
+
+            // Si el usuario es Proveedor, forzar su ID
+            if ($isProvider && $authUserId > 0) {
+                $pedido['id_proveedor'] = $authUserId;
+                $pedido['proveedor'] = $authUserId;
+            }
 
             // Validación básica
             $valid = $this->validar($pedido);
@@ -110,6 +122,17 @@ class PedidoApiController
                 $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items);
                 $itemResult['success'] = true;
                 $itemResult['id_pedido'] = $nuevoId;
+                
+                // Encolar si se solicita
+                if ($autoEnqueue && $nuevoId) {
+                    try {
+                        require_once __DIR__ . '/../../services/LogisticsQueueService.php';
+                        LogisticsQueueService::queue('generar_guia', $nuevoId);
+                    } catch (Exception $qe) {
+                        error_log("Error auto_enqueue multiple: " . $qe->getMessage());
+                    }
+                }
+                
                 $results[] = $itemResult;
             } catch (Exception $e) {
                 $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
@@ -307,6 +330,7 @@ class PedidoApiController
         $proveedorId = isset($data['id_proveedor']) && is_numeric($data['id_proveedor']) ? (int)$data['id_proveedor'] : null;
         $municipioId = isset($data['id_municipio']) && is_numeric($data['id_municipio']) ? (int)$data['id_municipio'] : null;
         $barrioId = isset($data['id_barrio']) && is_numeric($data['id_barrio']) ? (int)$data['id_barrio'] : null;
+        $idCliente = isset($data['id_cliente']) && is_numeric($data['id_cliente']) ? (int)$data['id_cliente'] : null;
 
         // Combo pricing fields
         $precioTotalLocal = isset($data['precio_total_local']) && $data['precio_total_local'] !== '' ? (float)$data['precio_total_local'] : null;
@@ -355,13 +379,21 @@ class PedidoApiController
             'estado' => isset($data['id_estado']) ? (int)$data['id_estado'] : 1,
             'vendedor' => $vendedorId,
             'proveedor' => $proveedorId,
+            'id_moneda' => $monedaId ?? 0,
             'moneda' => $monedaId ?? 0,
+            'id_vendedor' => $vendedorId,
+            'vendedor' => $vendedorId,
+            'id_proveedor' => $proveedorId,
+            'proveedor' => $proveedorId,
+            'id_cliente' => $idCliente,
             'latitud' => $latitud,
             'longitud' => $longitud,
             'id_pais' => $data['id_pais'] ?? $data['pais'] ?? null,
             'id_departamento' => $data['id_departamento'] ?? $data['departamento'] ?? null,
-            'municipio' => $municipioId ?? $data['municipio'] ?? null,
-            'barrio' => $barrioId ?? $data['barrio'] ?? null,
+            'id_municipio' => $data['id_municipio'] ?? $data['municipio'] ?? null,
+            'id_barrio' => $data['id_barrio'] ?? $data['barrio'] ?? null,
+            'municipio' => $data['municipio_nombre'] ?? null,
+            'barrio' => $data['barrio_nombre'] ?? null,
             'zona' => $data['zona'] ?? null,
             'precio_local' => $precioLocal,
             'precio_usd' => $precioUsd,
@@ -410,15 +442,21 @@ class PedidoApiController
             'direccion' => $pedido['direccion'] ?? null,
             'comentario' => $pedido['comentario'] ?? null,
             'estado' => isset($pedido['estado']) ? (int)$pedido['estado'] : null,
-            'vendedor' => isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null,
-            'proveedor' => isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : (isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null),
-            'moneda' => isset($pedido['moneda']) ? (int)$pedido['moneda'] : null,
+            'id_moneda' => isset($pedido['id_moneda']) ? (int)$pedido['id_moneda'] : (isset($pedido['moneda']) ? (int)$pedido['moneda'] : null),
+            'moneda' => isset($pedido['id_moneda']) ? (int)$pedido['id_moneda'] : (isset($pedido['moneda']) ? (int)$pedido['moneda'] : null),
+            'id_vendedor' => isset($pedido['id_vendedor']) ? (int)$pedido['id_vendedor'] : (isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null),
+            'vendedor' => isset($pedido['id_vendedor']) ? (int)$pedido['id_vendedor'] : (isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null),
+            'id_proveedor' => isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : (isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : null),
+            'proveedor' => isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : (isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : null),
+            'id_cliente' => isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : (isset($pedido['cliente']) ? (int)$pedido['cliente'] : null),
             'latitud' => isset($pedido['latitud']) ? (float)$pedido['latitud'] : (isset($pedido['latitude']) ? (float)$pedido['latitude'] : null),
             'longitud' => isset($pedido['longitud']) ? (float)$pedido['longitud'] : (isset($pedido['longitude']) ? (float)$pedido['longitude'] : null),
             'id_pais' => $pedido['id_pais'] ?? $pedido['pais'] ?? null,
             'id_departamento' => $pedido['id_departamento'] ?? $pedido['departamento'] ?? null,
-            'municipio' => $pedido['municipio'] ?? null,
-            'barrio' => $pedido['barrio'] ?? null,
+            'id_municipio' => $pedido['id_municipio'] ?? $pedido['municipio'] ?? null,
+            'id_barrio' => $pedido['id_barrio'] ?? $pedido['barrio'] ?? null,
+            'municipio' => $pedido['municipio_nombre'] ?? null,
+            'barrio' => $pedido['barrio_nombre'] ?? null,
             'zona' => $pedido['zona'] ?? null,
             'precio_local' => $pedido['precio_local'] ?? $pedido['precio'] ?? null,
             'precio_usd' => $pedido['precio_usd'] ?? null,

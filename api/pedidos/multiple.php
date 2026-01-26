@@ -19,6 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 require_once __DIR__ . '/../utils/autenticacion.php';
 require_once __DIR__ . '/../../controlador/pedido.php';
+require_once __DIR__ . '/../utils/responder.php';
 
     // Verificar autenticación
     $token = AuthMiddleware::obtenerTokenDeHeaders();
@@ -40,8 +41,9 @@ if (!$validacion['success']) {
 // Delegar todo el trabajo de lectura/validación/inserción al controlador
 $userId = $validacion['data']['id'] ?? 0;
 $userRole = $validacion['data']['rol'] ?? '';
+$autoEnqueue = (isset($_GET['auto_enqueue']) && $_GET['auto_enqueue'] === 'true');
 
 $controller = new PedidosController();
-$controller->createMultiple($userId, $userRole);
+$controller->createMultiple($userId, $userRole, $autoEnqueue);
 
 ?>

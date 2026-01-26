@@ -681,14 +681,16 @@
                     <li data-lang="es">Validación y normalización de direcciones</li>
                     <li data-lang="en">Status sync with external providers</li>
                     <li data-lang="es">Sincronización de estados con proveedores externos</li>
+                    <li data-lang="en"><strong>Combo Logic:</strong> Validates <code>es_combo</code> orders, ensuring the fixed total price is respected over individual item prices.</li>
+                    <li data-lang="es"><strong>Lógica de Combos:</strong> Valida pedidos con <code>es_combo</code>, asegurando que se respete el precio total fijo sobre los precios individuales.</li>
                 </ul>
 
                 <hr style="margin: 1.5rem 0;">
 
                 <h4 data-lang="en">📦 Bulk Import with Automatic Validation (Async)</h4>
                 <h4 data-lang="es">📦 Importación Masiva con Validación Automática (Asíncrono)</h4>
-                <p data-lang="en">Import multiple orders in a single request. Use <code>auto_enqueue=true</code> to validate addresses asynchronously via the Worker.</p>
-                <p data-lang="es">Importa múltiples órdenes en una sola petición. Usa <code>auto_enqueue=true</code> para validar direcciones asíncronamente vía Worker.</p>
+                <p data-lang="en">Import multiple orders in a single request. Use <code>auto_enqueue=true</code> to validate addresses asynchronously via the Worker. Supports <strong>Combos</strong> within the batch.</p>
+                <p data-lang="es">Importa múltiples órdenes en una sola petición. Usa <code>auto_enqueue=true</code> para validar direcciones asíncronamente vía Worker. Soporta <strong>Combos</strong> dentro del lote.</p>
 
                 <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/pedidos/multiple?auto_enqueue=true</div>
                 
@@ -703,23 +705,24 @@
             "productos": [{ "producto_id": 1, "cantidad": 2 }],
             "coordenadas": "-34.500000,-58.400000",
             "direccion": "Street 1 #123",
-            "precio_total_local": 150.00,
-            "moneda": 1,
             "id_pais": 1,
             "id_departamento": 2
         },
         {
-            "numero_orden": 1002,
-            "destinatario": "Customer Two",
-            "telefono": "87654321",
-            "productos": [{ "producto_id": 2, "cantidad": 1 }],
-            "latitud": -34.600000,
-            "longitud": -58.500000,
-            "direccion": "Evergreen Ave 742",
-            "precio_total_local": 85.50,
+            "numero_orden": 1003,
+            "destinatario": "Combo Example",
+            "telefono": "55555555",
+            "es_combo": 1,
+            "productos": [
+                { "producto_id": 10, "cantidad": 1 },
+                { "producto_id": 11, "cantidad": 1 }
+            ],
+            "precio_total_local": 500.00,
+            "precio_total_usd": 15.00,
+            "tasa_conversion_usd": 33.33,
             "moneda": 1,
-            "id_pais": 1,
-            "id_departamento": 2
+            "coordenadas": "-34.600000,-58.500000",
+            "direccion": "Combo St."
         }
     ]
 }</code></pre>
@@ -791,95 +794,70 @@
 
 
 
-                        <h4 data-lang="en">Example create request (Single Item Order)</h4>
-                        <h4 data-lang="es">Petición de creación ejemplo (Orden con un Ítem)</h4>
+                        <h4 data-lang="en">1. Simple Order (Single Product)</h4>
+                        <h4 data-lang="es">1. Orden Simple (Un Producto)</h4>
+                        <p data-lang="en">Standard order with one product. You can provide <code>producto_id</code> and <code>cantidad</code> at the root level.</p>
+                        <p data-lang="es">Orden estándar con un producto. Puedes indicar <code>producto_id</code> y <code>cantidad</code> en el nivel raíz.</p>
+
                         <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": 90001,
-    "destinatario": "Cliente Prueba",
-    "telefono": "0999999999",
-    "producto_id": 12,
+    "numero_orden": 10001,
+    "destinatario": "Juan Perez",
+    "telefono": "88888888",
+    "producto_id": 1,
     "cantidad": 1,
-    "coordenadas": "-0.180653,-78.467838",
-    "direccion": "Calle Falsa 123",
-    "zona": "Zona A",
-    "precio_total_local": 120.50,
-    "moneda": 1,
-    "vendedor": 5,
-    "proveedor": 6,
-    "id_pais": 3,
-    "id_departamento": 5,
-    "id_municipio": 12,
-    "id_barrio": 7,
-    "comentario": "Entrega en horario de oficina"
+    "coordenadas": "-34.603722,-58.381592",
+    "direccion": "Av. Principal 123",
+    "id_pais": 1,
+    "id_departamento": 1,
+    "id_municipio": 1,
+    "precio_local": 100.00,
+    "moneda": 1
 }</code></pre>
 
-            <h4 data-lang="en">Example create request (Multi-Item Order)</h4>
-            <h4 data-lang="es">Petición de creación ejemplo (Orden con Múltiples Ítems)</h4>
-            <p>Provide product IDs in the <code>productos</code> array. Each item must include <code>producto_id</code> (integer) and <code>cantidad</code> (int).</p>
-            <p><strong>Note:</strong> Auto-detection for <code>es_combo</code> works here too. If you omit the flag, the system checks the first product in the list.</p>
-        <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": 90002,
-    "destinatario": "Cliente Prueba",
-    "telefono": "0999999999",
+                        <h4 data-lang="en">2. Multi-product Order</h4>
+                        <h4 data-lang="es">2. Orden con Múltiples Productos</h4>
+                        <p data-lang="en">To include multiple items, use the <code>productos</code> array. Each item must have <code>producto_id</code> and <code>cantidad</code>.</p>
+                        <p data-lang="es">Para incluir varios ítems, usa el array <code>productos</code>. Cada ítem debe tener <code>producto_id</code> y <code>cantidad</code>.</p>
+
+                        <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 10002,
+    "destinatario": "Maria Gonzalez",
+    "telefono": "88889999",
+    "coordenadas": "-34.603722,-58.381592",
+    "direccion": "Calle 456",
     "productos": [
-        { "producto_id": 12, "cantidad": 2 },
-        { "producto_id": 13, "cantidad": 1 }
+        { "producto_id": 1, "cantidad": 2 },
+        { "producto_id": 5, "cantidad": 1 }
     ],
-    "coordenadas": "-0.180653,-78.467838",
-    "direccion": "Calle Falsa 123",
-    "precio_total_local": 80.00,
-    "moneda": 1,
-    "id_pais": 3,
-    "id_departamento": 5,
-    "id_municipio": 12
+    "id_pais": 1,
+    "id_departamento": 1,
+    "moneda": 1
 }</code></pre>
 
-            <h4 data-lang="en">Example create request (Combo Order)</h4>
-            <h4 data-lang="es">Petición de creación ejemplo (Pedido Combo)</h4>
-            <p>For combos, set <code>es_combo: 1</code> and provide the <strong>total price</strong>. The system will respect this price instead of summing product prices.</p>
-        <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": 90003,
-    "destinatario": "Cliente Combo",
-    "telefono": "0999999999",
-    "productos": [
-        { "producto_id": 12, "cantidad": 1 },
-        { "producto_id": 13, "cantidad": 1 }
-    ],
+                        <h4 data-lang="en">3. Combo Order</h4>
+                        <h4 data-lang="es">3. Orden Tipo Combo</h4>
+                        <p data-lang="en">Combos have a fixed total price that overrides individual product prices. Set <code>es_combo: 1</code> and provide <code>precio_total_local</code>.</p>
+                        <p data-lang="es">Los combos tienen un precio total fijo que sobrescribe los precios individuales. Envía <code>es_combo: 1</code> y <code>precio_total_local</code>.</p>
+
+                        <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 10003,
+    "destinatario": "Combo Client",
+    "telefono": "88887777",
     "es_combo": 1,
+    "productos": [
+        { "producto_id": 10, "cantidad": 1 },
+        { "producto_id": 11, "cantidad": 1 }
+    ],
     "precio_total_local": 500.00,
-    "coordenadas": "-0.180653,-78.467838",
+    "precio_total_usd": 15.00,
+    "tasa_conversion_usd": 33.33,
     "moneda": 1,
-    "id_pais": 3,
-    "id_departamento": 5,
-    "id_municipio": 12
+    "coordenadas": "-34.603722,-58.381592",
+    "direccion": "Combo St.",
+    "id_pais": 1,
+    "id_departamento": 1
 }</code></pre>
 
-                                                <h4>Working example (real payload)</h4>
-                                                                                                <p>Example JSON that has been tested with the <code>/api/pedidos/crear</code> endpoint — it uses the <code>productos</code> array with <code>producto_id</code> (product 2: "Protein Shake").</p>
-                                                <pre class="code-block line-numbers"><code class="language-json">{
-                            "numero_orden": 1700385600,
-                            "destinatario": "Proveedor Prueba",
-                            "telefono": "0999999999",
-                            "productos": [
-                                { "producto_id": 2, "cantidad": 1 }
-                            ],
-                            "coordenadas": "-0.180653,-78.467838",
-                            "direccion": "Calle Falsa 123",
-                            "zona": "Centro",
-                            "precio_total_local": 25.00,
-                            "moneda": 1,
-                            "id_pais": 3,
-                            "id_departamento": 5,
-                            "id_municipio": 12,
-                            "id_barrio": 7,
-                            "comentario": "Pedido de prueba via Postman"
-                        }</code></pre>
-
-            <h4>Example (curl) - create order</h4>
-            <div class="code-block">curl -s -X POST "{API_BASE_URL}/api/pedidos/crear" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer &lt;JWT_TOKEN&gt;" \
-  -d '{ "numero_orden": 90001, "destinatario": "Cliente Prueba", "precio_total_local": 10.00, "telefono": "0999999999", "producto_id": 12, "cantidad": 1, "coordenadas": "-0.180653,-78.467838", "id_municipio": 12 }'</div>
 
                         <h4>Usage rules / Quick tips</h4>
                                     <ul style="color: #212529;">
