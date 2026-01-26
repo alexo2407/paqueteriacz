@@ -20,16 +20,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 require_once __DIR__ . '/../utils/autenticacion.php';
 require_once __DIR__ . '/../../controlador/pedido.php';
 
-$headers = getallheaders();
-if (!isset($headers['Authorization'])) {
-    http_response_code(401);
-    echo json_encode(['success' => false, 'message' => 'Token requerido']);
-    exit;
-}
+    // Verificar autenticación
+    $token = AuthMiddleware::obtenerTokenDeHeaders();
+    if (!$token) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Token requerido']);
+        exit;
+    }
 
-$token = str_replace('Bearer ', '', $headers['Authorization']);
-$auth = new AuthMiddleware();
-$validacion = $auth->validarToken($token);
+    $auth = new AuthMiddleware();
+    $validacion = $auth->validarToken($token);
+
 if (!$validacion['success']) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => $validacion['message']]);

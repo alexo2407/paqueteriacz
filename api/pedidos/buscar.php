@@ -13,15 +13,13 @@ require_once __DIR__ . '/../utils/responder.php';
 require_once __DIR__ . '/../../modelo/pedido.php';
 require_once __DIR__ . '/../../controlador/pedido.php';
 
-// Obtener encabezados de la solicitud
-$headers = apache_request_headers();
+// Verificar autenticación
+$token = AuthMiddleware::obtenerTokenDeHeaders();
 
-if (!isset($headers['Authorization'])) {
+if (!$token) {
     responder(false, 'Token requerido', null, 401);
     exit;
 }
-
-$token = str_replace('Bearer ', '', $headers['Authorization']);
 $auth = new AuthMiddleware();
 $validacion = $auth->validarToken($token);
 

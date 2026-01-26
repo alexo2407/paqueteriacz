@@ -31,15 +31,14 @@ try {
     require_once __DIR__ . '/../../controlador/pedido.php';
     require_once __DIR__ . '/../../services/LogisticsQueueService.php';
 
-    // 1. Verificar autenticación
-    $headers = getallheaders();
-    if (!isset($headers['Authorization'])) {
+    // Verificar autenticación
+    $token = AuthMiddleware::obtenerTokenDeHeaders();
+    if (!$token) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Token requerido']);
         exit;
     }
 
-    $token = str_replace('Bearer ', '', $headers['Authorization']);
     $auth = new AuthMiddleware();
     $validacion = $auth->validarToken($token);
     

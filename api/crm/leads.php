@@ -19,18 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 
 try {
     require_once __DIR__ . '/../utils/autenticacion.php';
+    require_once __DIR__ . '/../utils/responder.php';
     require_once __DIR__ . '/../../utils/crm_roles.php';
     require_once __DIR__ . '/../../modelo/crm_inbox.php';
     
-    // Validar JWT
-    $headers = getallheaders();
-    if (!isset($headers['Authorization'])) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Token requerido']);
+    // 1. Obtener Token
+    $token = AuthMiddleware::obtenerTokenDeHeaders();
+    if (!$token) {
+        responder(false, 'Token requerido', null, 401);
         exit;
     }
     
-    $token = str_replace('Bearer ', '', $headers['Authorization']);
+    // 2. Validar Token
     $auth = new AuthMiddleware();
     $validacion = $auth->validarToken($token);
     

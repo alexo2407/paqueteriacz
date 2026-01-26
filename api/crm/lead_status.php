@@ -30,22 +30,27 @@ try {
     $userId = 0;
     
     // Estrategia de Autenticación Híbrida (JWT o Sesión Web)
-    $headers = getallheaders();
-    $authMethod = 'none';
+    // 1. Obtener Token
+require_once __DIR__ . '/../utils/autenticacion.php';
+require_once __DIR__ . '/../utils/responder.php';
 
-    if (isset($headers['Authorization'])) {
-        // Intento 1: JWT
-        $token = str_replace('Bearer ', '', $headers['Authorization']);
-        $auth = new AuthMiddleware();
-        $validacion = $auth->validarToken($token);
-        
-        if ($validacion['success']) {
-            $userData = $validacion['data'];
-            $userId = (int)$userData['id'];
-            $authMethod = 'jwt';
-        }
-    } 
-    
+$token = AuthMiddleware::obtenerTokenDeHeaders();
+if (!$token) {
+    responder(false, 'Token requerido', null, 401);
+    exit;
+}
+
+// 2. Validar Token
+$auth = new AuthMiddleware();
+$check = $auth->validarToken($token);
+if (!$check['success']) {
+    responder(false, $check['message'], null, 403);
+    exit;
+}
+$userData = $check['data'];
+$userId = (int)$userData['id'];
+$authMethod = 'jwt';
+
     // Intento 2: Sesión Web (Fallback)
     if ($userId === 0 && isset($_SESSION['registrado']) && $_SESSION['registrado'] === true) {
         $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
