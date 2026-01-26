@@ -1,23 +1,35 @@
 <?php
-/* require_once '../../config/config.php';
-require_once '../../modelo/PedidosModel.php';
-require_once '../utils/responder.php';
+/**
+ * POST /api/pedidos/actualizar
+ * Body: JSON with fields to update (must include id)
+ */
+require_once __DIR__ . '/../../modelo/pedido.php';
+require_once __DIR__ . '/../../controlador/pedido.php';
+require_once __DIR__ . '/../utils/responder.php';
+require_once __DIR__ . '/../utils/autenticacion.php';
 
-$idPedido = isset($_GET['id']) ? intval($_GET['id']) : null;
-$data = json_decode(file_get_contents('php://input'), true);
-
-if (!$idPedido || !$data) {
-    responder(false, "Datos inválidos o ID no especificado", null, 400);
+$auth = new AuthMiddleware();
+if (!$auth->validarToken()['success']) {
+    responder(false, "No autorizado", null, 401);
     exit;
 }
 
-$controller = new PedidosController();
-$result = $controller->editarPedido($idPedido, $data);
+$input = json_decode(file_get_contents('php://input'), true);
 
-if ($result) {
-    responder(true, "Pedido actualizado correctamente", null, 200);
-} else {
-    responder(false, "Error al actualizar el pedido", null, 500);
-} */
-?>
-<h1>Actualizar</h1>
+if (!$input || empty($input['id'])) {
+    responder(false, "Datos inválidos o ID faltante", null, 400);
+    exit;
+}
+
+try {
+    $controller = new PedidosController();
+    $result = $controller->actualizarPedido($input);
+
+    if ($result['success']) {
+        responder(true, $result['message'], null, 200);
+    } else {
+        responder(false, $result['message'], null, 400);
+    }
+} catch (Exception $e) {
+    responder(false, "Error: " . $e->getMessage(), null, 500);
+}
