@@ -30,19 +30,21 @@ class PedidoQueryService
         // Si es proveedor (Logística o CRM), filtrar solo sus pedidos
         if (isProveedor() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_PROVEEDOR_CRM)) {
             $userId = getCurrentUserId();
-            return array_filter($pedidos, function($pedido) use ($userId) {
+            $filtered = array_filter($pedidos, function($pedido) use ($userId) {
                 $pedidoProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null;
                 return $pedidoProveedor === (int)$userId;
             });
+            return array_values($filtered);
         }
 
         // Si es cliente (Logística o CRM), filtrar solo sus pedidos
         if (isCliente() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_CLIENTE_CRM)) {
             $userId = getCurrentUserId();
-            return array_filter($pedidos, function($pedido) use ($userId) {
+            $filtered = array_filter($pedidos, function($pedido) use ($userId) {
                 $pedidoCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;
                 return $pedidoCliente === (int)$userId;
             });
+            return array_values($filtered);
         }
         
         return [];

@@ -18,6 +18,7 @@ require_once __DIR__ . '/../utils/responder.php';
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../utils/autenticacion.php';
+require_once __DIR__ . '/../../utils/permissions.php';
 
 // Verificar autenticación
 $token = AuthMiddleware::obtenerTokenDeHeaders();
@@ -50,14 +51,6 @@ try {
         $result = $controller->listarPedidosPaginados($page, $limit);
         responder(true, 'Listado de pedidos', $result['data'], 200, $result['pagination']);
     } else {
-        // Legacy mode: return all (or update to default pagination)
-        // For now, let's keep legacy behavior UNLESS they start using page param, to avoid breaking frontend that expects pure array in data
-        // Wait, user request implies changing it.
-        // Let's default to pagination even without params? "haz paginaciones"
-        // If I change the response structure (data is now array vs data was array of orders), existing clients might break if I don't check.
-        // The previous responder format was `responder(success, msg, data)`. 
-        // If I pass data as array, it fits.
-        
         // I will implement pagination ONLY if page parameter is present to be safe, 
         // OR if I am confident to change it for "consultas generales".
         // Let's support both. If page is present, return paginated structure (or if I update responder to handle metadata).
