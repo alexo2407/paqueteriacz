@@ -49,14 +49,14 @@ try {
     require_once __DIR__ . '/../../modelo/pedido.php';
 
     // Verificar autenticación
-    $headers = getallheaders();
-    if (!isset($headers['Authorization'])) {
+    $token = AuthMiddleware::obtenerTokenDeHeaders();
+
+    if (!$token) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Token requerido']);
         exit;
     }
 
-    $token = str_replace('Bearer ', '', $headers['Authorization']);
     $auth = new AuthMiddleware();
     $validacion = $auth->validarToken($token);
     

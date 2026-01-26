@@ -10,36 +10,46 @@
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../modelo/producto.php';
-require_once __DIR__ . '/../../utils/csrf.php';
-require_once __DIR__ . '/../../utils/session.php';
+require_once __DIR__ . '/../utils/autenticacion.php';
+require_once __DIR__ . '/../utils/responder.php';
 
-// Iniciar sesión para CSRF
-start_secure_session();
+// 1. Intentar autenticación por Token (Prioridad API)
+$token = AuthMiddleware::obtenerTokenDeHeaders();
+$isAuthenticated = false;
 
-// LOG: Registrar que se está ejecutando este archivo
-error_log('API actualizar.php ejecutado - Method: ' . $_SERVER['REQUEST_METHOD']);
-error_log('POST data: ' . print_r($_POST, true));
-
-// Leer datos POST (puede ser form-data o JSON)
-$datos = [];
-
-// Si es JSON
-$rawInput = file_get_contents('php://input');
-$json = json_decode($rawInput, true);
-if (is_array($json)) {
-    $datos = $json;
-} else {
-    // Si es form-data
-    $datos = $_POST;
+if ($token) {
+    $auth = new AuthMiddleware();
+    $check = $auth->validarToken($token);
+    if ($check['success']) {
+        $isAuthenticated = true;
+    } else {
+        responder(false, $check['message'], null, 401);
+        exit;
+    }
 }
 
-// VALIDAR TOKEN CSRF
-$csrfToken = $datos['csrf_token'] ?? null;
-if (!verify_csrf_token($csrfToken)) {
-    echo json_encode(['success' => false, 'message' => 'Token de seguridad inválido']);
-    http_response_code(403);
+// 2. Intentar autenticación por Sesión/CSRF (Fallback Web/Ajax)
+if (!$isAuthenticated) {
+    require_once __DIR__ . '/../../utils/csrf.php';
+    require_once __DIR__ . '/../../utils/session.php';
+    start_secure_session();
+
+    // Leer datos POST (puede ser form-data o JSON)
+    $datosInput = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+    
+    $csrfToken = $datosInput['csrf_token'] ?? null;
+    if (verify_csrf_token($csrfToken)) {
+        $isAuthenticated = true;
+    }
+}
+
+if (!$isAuthenticated) {
+    responder(false, 'No autorizado: Token o sesión válida requerida', null, 401);
     exit;
 }
+
+$datos = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
 
 // Validar ID
 $id = isset($datos['id']) ? (int)$datos['id'] : 0;

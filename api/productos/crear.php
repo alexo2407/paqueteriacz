@@ -7,25 +7,27 @@
  * Response: { success, message, id }
  */
 
+header('Access-Control-Allow-Origin: *');
 header('Content-Type: application/json');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 require_once __DIR__ . '/../utils/autenticacion.php';
 require_once __DIR__ . '/../utils/responder.php';
 require_once __DIR__ . '/../../modelo/producto.php';
 
-// Obtener headers (apache_request_headers disponible en Apache; fallback a $_SERVER)
-$headers = function_exists('apache_request_headers') ? apache_request_headers() : [];
-if (empty($headers)) {
-    // intentar detectar Authorization en $_SERVER
-    if (!empty($_SERVER['HTTP_AUTHORIZATION'])) $headers['Authorization'] = $_SERVER['HTTP_AUTHORIZATION'];
-}
+$token = AuthMiddleware::obtenerTokenDeHeaders();
 
-if (empty($headers['Authorization'])) {
+if (!$token) {
     responder(false, 'Token requerido', null, 401);
     exit;
 }
 
-$token = str_replace('Bearer ', '', $headers['Authorization']);
 $auth = new AuthMiddleware();
 $valid = $auth->validarToken($token);
 if (!$valid['success']) {

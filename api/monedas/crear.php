@@ -5,12 +5,18 @@ require_once __DIR__ . '/../utils/autenticacion.php';
 
 header('Content-Type: application/json');
 
+$token = AuthMiddleware::obtenerTokenDeHeaders();
+
+if (!$token) {
+    responder(false, 'Token requerido', null, 401);
+    exit;
+}
+
 $auth = new AuthMiddleware();
-$token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION'] ?? '');
 $check = $auth->validarToken($token);
 
 if (!$check['success']) {
-    responder(false, 'No autorizado', null, 401);
+    responder(false, $check['message'], null, 401);
     exit;
 }
 
