@@ -79,12 +79,13 @@ function canEditOrder($pedido) {
  * @return bool
  */
 function canCreateCatalogData() {
-    if (!isset($_SESSION['rol'])) {
+    $rol = $_SESSION['rol'] ?? $GLOBALS['API_USER_ROLE'] ?? null;
+    if ($rol === null) {
         return false;
     }
     
     $allowedRoles = [ROL_ADMIN, ROL_PROVEEDOR];
-    return in_array($_SESSION['rol'], $allowedRoles);
+    return in_array($rol, $allowedRoles);
 }
 
 /**
@@ -95,6 +96,11 @@ function canCreateCatalogData() {
 function isSuperAdmin() {
     // Verificar en el rol principal
     if (isset($_SESSION['rol']) && $_SESSION['rol'] == ROL_ADMIN) {
+        return true;
+    }
+
+    // Verificar en variables globales de API (JWT)
+    if (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_ADMIN) {
         return true;
     }
     
@@ -116,6 +122,11 @@ function isProveedor() {
     if (isset($_SESSION['rol']) && $_SESSION['rol'] == ROL_PROVEEDOR) {
         return true;
     }
+
+    // Verificar en variables globales de API (JWT)
+    if (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_PROVEEDOR) {
+        return true;
+    }
     
     // Verificar en el array de roles (multi-rol)
     if (isset($_SESSION['roles']) && is_array($_SESSION['roles'])) {
@@ -131,16 +142,18 @@ function isProveedor() {
  * @return bool
  */
 function isRepartidor() {
-    // Verificar en el rol principal
+    // 1. Verificar en variables globales de API (Prioridad)
+    if (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_REPARTIDOR) {
+        return true; // Un repartidor vía API suele ser solo repartidor
+    }
+
+    // 2. Verificar en sesión clásica
     if (isset($_SESSION['rol']) && $_SESSION['rol'] == ROL_REPARTIDOR) {
-        // Asegurar que no sea también admin
-        if (isSuperAdmin()) {
-            return false;
-        }
+        if (isSuperAdmin()) return false;
         return true;
     }
     
-    // Verificar en el array de roles (multi-rol)
+    // 3. Verificar en array de roles (multi-rol sesión)
     if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
         $hasRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $_SESSION['roles_nombres'], true);
         $hasAdmin = in_array(ROL_NOMBRE_ADMIN, $_SESSION['roles_nombres'], true);
@@ -159,6 +172,11 @@ function isRepartidor() {
 function isCliente() {
     // Verificar en el rol principal
     if (isset($_SESSION['rol']) && $_SESSION['rol'] == ROL_CLIENTE) {
+        return true;
+    }
+
+    // Verificar en variables globales de API (JWT)
+    if (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_CLIENTE) {
         return true;
     }
     

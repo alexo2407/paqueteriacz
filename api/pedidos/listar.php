@@ -17,6 +17,22 @@ require_once __DIR__ . '/../utils/responder.php';
 
 header('Content-Type: application/json');
 
+require_once __DIR__ . '/../utils/autenticacion.php';
+
+// Verificar autenticación
+$token = AuthMiddleware::obtenerTokenDeHeaders();
+if (!$token) {
+    responder(false, 'Token requerido', null, 401);
+    exit;
+}
+
+$auth = new AuthMiddleware();
+$check = $auth->validarToken($token);
+if (!$check['success']) {
+    responder(false, $check['message'], null, 401);
+    exit;
+}
+
 try {
     $controller = new PedidosController();
     

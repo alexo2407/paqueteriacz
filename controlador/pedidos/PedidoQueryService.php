@@ -29,19 +29,19 @@ class PedidoQueryService
         
         // Si es proveedor, filtrar solo sus pedidos
         if (isProveedor()) {
-            $userId = (int)$_SESSION['user_id'];
+            $userId = getCurrentUserId();
             return array_filter($pedidos, function($pedido) use ($userId) {
                 $pedidoProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null;
-                return $pedidoProveedor === $userId;
+                return $pedidoProveedor === (int)$userId;
             });
         }
 
         // Si es cliente, filtrar solo sus pedidos
         if (isCliente()) {
-            $userId = (int)$_SESSION['user_id'];
+            $userId = getCurrentUserId();
             return array_filter($pedidos, function($pedido) use ($userId) {
                 $pedidoCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;
-                return $pedidoCliente === $userId;
+                return $pedidoCliente === (int)$userId;
             });
         }
         

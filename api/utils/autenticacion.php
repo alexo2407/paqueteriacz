@@ -27,9 +27,12 @@ class AuthMiddleware {
             $decoded = JWT::decode($token, new Key($this->secret_key, 'HS256'));
             $userData = (array) $decoded->data;
             
-            // Establecer el ID del usuario para auditoría
+            // Establecer el ID y Rol del usuario para auditoría y permisos
             if (isset($userData['id'])) {
                 $GLOBALS['API_USER_ID'] = (int)$userData['id'];
+            }
+            if (isset($userData['rol'])) {
+                $GLOBALS['API_USER_ROLE'] = (int)$userData['rol'];
             }
             
             return [
