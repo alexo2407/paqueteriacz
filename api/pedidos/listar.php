@@ -36,6 +36,23 @@ if (!$check['success']) {
 
 try {
     $controller = new PedidosController();
+    $userId = getCurrentUserId();
+    $roleId = $GLOBALS['API_USER_ROLE'] ?? 'NONE';
+    
+    // DEBUG FORZADO PARA EL USUARIO
+    if (isset($_GET['debug_auth'])) {
+        die(json_encode([
+            'debug_active' => true,
+            'identified_user_id' => $userId,
+            'identified_role_id' => $roleId,
+            'is_admin' => isAdmin(),
+            'is_proveedor' => isProveedor(),
+            'is_vendedor' => isVendedor(),
+            'server_vars' => [
+                'HTTP_AUTHORIZATION' => $_SERVER['HTTP_AUTHORIZATION'] ?? 'MISSING'
+            ]
+        ]));
+    }
     
     // Check for pagination params
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
