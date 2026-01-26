@@ -22,13 +22,13 @@ class PedidoQueryService
         
         $pedidos = PedidosModel::obtenerPedidosExtendidos();
         
-        // Si es admin, mostrar todos
-        if (isSuperAdmin()) {
+        // Si es admin, vendedor o repartidor, mostrar todos
+        if (isSuperAdmin() || isVendedor() || isRepartidor()) {
             return $pedidos;
         }
         
-        // Si es proveedor, filtrar solo sus pedidos
-        if (isProveedor()) {
+        // Si es proveedor (Logística o CRM), filtrar solo sus pedidos
+        if (isProveedor() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_PROVEEDOR_CRM)) {
             $userId = getCurrentUserId();
             return array_filter($pedidos, function($pedido) use ($userId) {
                 $pedidoProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null;
@@ -36,8 +36,8 @@ class PedidoQueryService
             });
         }
 
-        // Si es cliente, filtrar solo sus pedidos
-        if (isCliente()) {
+        // Si es cliente (Logística o CRM), filtrar solo sus pedidos
+        if (isCliente() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_CLIENTE_CRM)) {
             $userId = getCurrentUserId();
             return array_filter($pedidos, function($pedido) use ($userId) {
                 $pedidoCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;

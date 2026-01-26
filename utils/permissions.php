@@ -165,6 +165,16 @@ function isRepartidor() {
 }
 
 /**
+ * Verifica si el usuario actual es Vendedor.
+ * 
+ * @return bool
+ */
+function isVendedor() {
+    $rol = $_SESSION['rol'] ?? $GLOBALS['API_USER_ROLE'] ?? null;
+    return $rol == ROL_VENDEDOR;
+}
+
+/**
  * Verifica si el usuario actual es Cliente de Logística.
  * 
  * @return bool

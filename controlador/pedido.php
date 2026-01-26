@@ -365,9 +365,17 @@ class PedidosController {
             'offset' => $offset
         ];
         
+        // Ownership Security Filters
+        require_once __DIR__ . '/../utils/permissions.php';
+        if (isProveedor() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_PROVEEDOR_CRM)) {
+            $filtros['id_proveedor'] = getCurrentUserId();
+        } elseif (isCliente() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_CLIENTE_CRM)) {
+            $filtros['id_cliente'] = getCurrentUserId();
+        }
+
         // Add support for filters from GET if needed
         if (isset($_GET['estado'])) $filtros['id_estado'] = (int)$_GET['estado'];
-        if (isset($_GET['destinatario'])) $filtros['destinatario'] = $_GET['destinatario']; // Not yet implemented in model but good practice
+        if (isset($_GET['destinatario'])) $filtros['destinatario'] = $_GET['destinatario']; 
         
         $data = PedidosModel::obtenerConFiltros($filtros);
         $total = PedidosModel::contarConFiltros($filtros);
