@@ -1294,9 +1294,7 @@ class PedidosModel
             if (in_array('telefono', $columns)) $stmt->bindValue(':telefono', $pedido['telefono']);
             
             if (in_array('coordenadas', $columns)) {
-                $lat = $pedido['latitud'];
-                $lng = $pedido['longitud'];
-                $stmt->bindValue(':coordenadas', "POINT($lng $lat)");
+                $stmt->bindValue(':coordenadas', $coordenadas);
             }
 
             // Bind optional params

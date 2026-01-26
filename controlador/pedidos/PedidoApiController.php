@@ -435,6 +435,18 @@ class PedidoApiController
             }
         }
 
+        // Parsing coordenadas string (lat,lng) if provided
+        $lat = isset($pedido['latitud']) ? (float)$pedido['latitud'] : (isset($pedido['latitude']) ? (float)$pedido['latitude'] : null);
+        $lng = isset($pedido['longitud']) ? (float)$pedido['longitud'] : (isset($pedido['longitude']) ? (float)$pedido['longitude'] : null);
+
+        if (($lat === null || $lng === null) && !empty($pedido['coordenadas'])) {
+            $parts = array_map('trim', explode(',', $pedido['coordenadas']));
+            if (count($parts) === 2 && is_numeric($parts[0]) && is_numeric($parts[1])) {
+                $lat = (float)$parts[0];
+                $lng = (float)$parts[1];
+            }
+        }
+
         return [
             'numero_orden' => isset($pedido['numero_orden']) ? (int)$pedido['numero_orden'] : null,
             'destinatario' => $pedido['destinatario'] ?? null,
@@ -449,8 +461,8 @@ class PedidoApiController
             'id_proveedor' => isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : (isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : null),
             'proveedor' => isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : (isset($pedido['proveedor']) ? (int)$pedido['proveedor'] : null),
             'id_cliente' => isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : (isset($pedido['cliente']) ? (int)$pedido['cliente'] : null),
-            'latitud' => isset($pedido['latitud']) ? (float)$pedido['latitud'] : (isset($pedido['latitude']) ? (float)$pedido['latitude'] : null),
-            'longitud' => isset($pedido['longitud']) ? (float)$pedido['longitud'] : (isset($pedido['longitude']) ? (float)$pedido['longitude'] : null),
+            'latitud' => $lat,
+            'longitud' => $lng,
             'id_pais' => $pedido['id_pais'] ?? $pedido['pais'] ?? null,
             'id_departamento' => $pedido['id_departamento'] ?? $pedido['departamento'] ?? null,
             'id_municipio' => $pedido['id_municipio'] ?? $pedido['municipio'] ?? null,
