@@ -1924,24 +1924,31 @@ class PedidosModel
             }
 
             $sql = "SELECT 
-                        p.id,
-                        p.numero_orden,
-                        p.destinatario,
-                        p.telefono,
+                        p.id AS ID_Pedido,
+                        p.numero_orden AS Numero_Orden,
+                        p.destinatario AS Cliente,
+                        p.telefono AS Telefono,
+                        p.comentario AS Comentario,
+                        ST_Y(p.coordenadas) AS latitud, 
+                        ST_X(p.coordenadas) AS longitud,
+                        p.precio_local AS PrecioLocal,
+                        p.precio_usd AS PrecioUSD,
                         p.subtotal_usd,
                         p.total_usd,
-                        p.prioridad,
                         p.fecha_ingreso,
-                        p.fecha_estimada_entrega,
-                        ep.nombre_estado as estado,
-                        uP.nombre as proveedor,
-                        uV.nombre as vendedor
+                        ep.nombre_estado AS Estado,
+                        m.codigo AS Moneda,
+                        uP.nombre AS proveedor,
+                        uV.nombre AS vendedor,
+                        p.id_proveedor,
+                        p.id_cliente
                     FROM pedidos p
                     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                    LEFT JOIN monedas m ON p.id_moneda = m.id
                     LEFT JOIN usuarios uP ON uP.id = p.id_proveedor
                     LEFT JOIN usuarios uV ON uV.id = p.id_vendedor
                     {$whereClause}
-                    ORDER BY p.prioridad DESC, p.fecha_ingreso DESC
+                    ORDER BY p.fecha_ingreso DESC
                     {$limitClause}";
             
             $stmt = $db->prepare($sql);
@@ -1985,10 +1992,6 @@ class PedidosModel
             if (!empty($filtros['id_vendedor'])) {
                 $where[] = 'p.id_vendedor = :id_vendedor';
                 $params[':id_vendedor'] = $filtros['id_vendedor'];
-            }
-            if (!empty($filtros['prioridad'])) {
-                $where[] = 'p.prioridad = :prioridad';
-                $params[':prioridad'] = $filtros['prioridad'];
             }
             if (!empty($filtros['id_cliente'])) {
                 $where[] = 'p.id_cliente = :id_cliente';
