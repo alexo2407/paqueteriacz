@@ -52,24 +52,55 @@ class AuthMiddleware {
     public static function obtenerTokenDeHeaders() {
         $header = null;
 
-        if (function_exists('getallheaders')) {
-            $headers = getallheaders();
-            $header = $headers['Authorization'] ?? $headers['authorization'] ?? null;
+        // 1. Intentar con apache_request_headers o getallheaders
+        $allHeaders = [];
+        if (function_exists('apache_request_headers')) {
+            $allHeaders = apache_request_headers();
+        } elseif (function_exists('getallheaders')) {
+            $allHeaders = getallheaders();
         }
 
-        if (!$header) {
-            // Fallback a variables de servidor (común en configuraciones CGI/FastCGI)
-            if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-                $header = $_SERVER['HTTP_AUTHORIZATION'];
-            } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-                $header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-            } elseif (isset($_SERVER['Authorization'])) {
-                $header = $_SERVER['Authorization'];
+        // Buscar 'Authorization' sin importar mayúsculas/minúsculas
+        foreach ($allHeaders as $name => $value) {
+            if (strtolower($name) === 'authorization') {
+                $header = $value;
+                break;
             }
         }
 
-        if ($header && preg_match('/Bearer\s(\S+)/', $header, $matches)) {
-            return $matches[1];
+        if (!$header) {
+            // 2. Fallback a variables de servidor (común en configuraciones CGI/FastCGI)
+            $serverKeys = [
+                'HTTP_AUTHORIZATION',
+                'REDIRECT_HTTP_AUTHORIZATION',
+                'Authorization',
+                'authorization'
+            ];
+            
+            foreach ($serverKeys as $key) {
+                if (isset($_SERVER[$key]) && !empty($_SERVER[$key])) {
+                    $header = $_SERVER[$key];
+                    break;
+                }
+            }
+        }
+
+        // 3. Si aún no lo tenemos, registrar para debug (opcional)
+        if (!$header) {
+            // error_log("AUTH_DEBUG: No se encontró header Authorization en: " . print_r($_SERVER, true));
+        }
+
+        if ($header) {
+            if (preg_match('/Bearer\s+(.+)$/i', $header, $matches)) {
+                return trim($matches[1]);
+            }
+            
+            // Fallback: Si el usuario olvidó poner 'Bearer ', pero el header empieza por 'eyJ' (común en JWT)
+            // o simplemente tiene contenido, lo intentamos usar tal cual.
+            $trimmed = trim($header);
+            if (!empty($trimmed)) {
+                return $trimmed;
+            }
         }
 
         return null;
