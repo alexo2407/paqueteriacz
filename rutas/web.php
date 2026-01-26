@@ -917,11 +917,27 @@ if (isset($ruta[0]) && $ruta[0] === 'stock' && $_SERVER['REQUEST_METHOD'] === 'P
         try {
             $nuevoId = StockModel::registrarMovimiento($data);
             if ($nuevoId) {
+                if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                    ob_clean();
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => true, 'message' => 'Movimiento de stock registrado correctamente.', 'id' => $newId]);
+                    exit;
+                }
                 set_flash('success', 'Movimiento de stock registrado correctamente.');
             } else {
+                if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                    header('Content-Type: application/json');
+                    echo json_encode(['success' => false, 'message' => 'No fue posible registrar el movimiento.']);
+                    exit;
+                }
                 set_flash('error', 'No fue posible registrar el movimiento.');
             }
         } catch (Exception $e) {
+            if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'message' => 'Error al registrar movimiento: ' . $e->getMessage()]);
+                exit;
+            }
             set_flash('error', 'Error al registrar movimiento: ' . $e->getMessage());
         }
         
@@ -1036,6 +1052,11 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
     
     // Permitir Admin o Cliente
     if (!isUserAdmin($userId) && !isUserCliente($userId)) {
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);
+            exit;
+        }
         set_flash('error', 'No tienes permisos para realizar esta acción.');
         header('Location: ' . RUTA_URL . 'dashboard');
         exit;
@@ -1049,6 +1070,14 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
         $observaciones = $_POST['observaciones'] ?? null;
         
         $resultado = $ctrl->cambiarEstado($id, $nuevoEstado, $observaciones);
+
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            ob_clean();
+            header('Content-Type: application/json');
+            echo json_encode($resultado);
+            exit;
+        }
+
         set_flash($resultado['success'] ? 'success' : 'error', $resultado['message']);
         header('Location: ' . RUTA_URL . 'crm/ver/' . $id);
         exit;
@@ -1075,6 +1104,13 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
     if ($accion === 'guardarLead') {
         $resultado = $ctrl->guardarLead($_POST);
         
+        if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+            ob_clean();
+            header('Content-Type: application/json');
+            echo json_encode($resultado);
+            exit;
+        }
+
         if ($resultado['success']) {
             set_flash('success', $resultado['message']);
             // Redirigir al lead creado/editado si hay ID (crear devuelve lead_id)
