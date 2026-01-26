@@ -107,6 +107,10 @@ if (preg_match('/\/api\/geoinfo\/barrios$/', $path)) {
     include __DIR__ . '/geoinfo/barrios.php';
     exit;
 }
+if (preg_match('/\/api\/geoinfo\/listar$/', $path)) {
+    include __DIR__ . '/geoinfo/listar.php';
+    exit;
+}
 
 // Rutas de Monedas
 if (preg_match('/\/api\/monedas\/listar$/', $path) && $method === 'GET') {
