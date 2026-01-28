@@ -23,10 +23,16 @@ class PedidoApiController
             
             // Auto-detectar moneda del proveedor si no se envió id_moneda
             if (!isset($data['id_moneda']) || $data['id_moneda'] === '' || $data['id_moneda'] === 0) {
+                error_log("DEBUG - Auto-detectando moneda para proveedor: $authUserId");
                 $monedaProveedor = $this->obtenerMonedaDeProveedor($authUserId);
                 if ($monedaProveedor) {
                     $data['id_moneda'] = $monedaProveedor;
+                    error_log("DEBUG - Moneda auto-detectada y asignada: $monedaProveedor");
+                } else {
+                    error_log("DEBUG - No se pudo auto-detectar moneda");
                 }
+            } else {
+                error_log("DEBUG - Moneda ya proporcionada en request: " . $data['id_moneda']);
             }
         }
 
@@ -532,7 +538,10 @@ class PedidoApiController
             $stmt->execute();
             $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
             
+            error_log("DEBUG - Proveedor ID: $proveedorId, id_pais: " . ($usuario['id_pais'] ?? 'NULL'));
+            
             if (!$usuario || !$usuario['id_pais']) {
+                error_log("DEBUG - Proveedor sin id_pais configurado");
                 return null;
             }
             
@@ -546,10 +555,14 @@ class PedidoApiController
             $stmt->execute();
             $pais = $stmt->fetch(PDO::FETCH_ASSOC);
             
+            error_log("DEBUG - País ID: " . $usuario['id_pais'] . ", id_moneda_local: " . ($pais['id_moneda_local'] ?? 'NULL'));
+            
             if ($pais && $pais['id_moneda_local']) {
+                error_log("DEBUG - Moneda detectada: " . $pais['id_moneda_local']);
                 return (int)$pais['id_moneda_local'];
             }
             
+            error_log("DEBUG - País sin id_moneda_local configurado");
             return null;
         } catch (Exception $e) {
             error_log("Error obteniendo moneda del proveedor: " . $e->getMessage());
