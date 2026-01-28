@@ -1001,6 +1001,10 @@ class PedidosModel
                 $stmtIns = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, :cantidad_devuelta)');
                 foreach ($data['productos'] as $prod) {
                     if (isset($prod['producto_id']) && isset($prod['cantidad'])) {
+                        // DEBUG
+                        if (defined('DEBUG') && DEBUG) {
+                             error_log("PedidosModel: Inserting product " . $prod['producto_id'] . " qty " . $prod['cantidad'] . " for Order " . $data['id_pedido']);
+                        }
                         $stmtIns->execute([
                             ':id_pedido' => (int)$data['id_pedido'],
                             ':id_producto' => (int)$prod['producto_id'],

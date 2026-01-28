@@ -673,6 +673,8 @@ class PedidosController {
         // redirect + set_flash. Esto facilita que el frontend maneje la respuesta
         // y muestre SweetAlert
         // DEBUG: Log controller entry
+        file_put_contents(__DIR__ . '/../debug_dump.txt', date('Y-m-d H:i:s') . " - guardarEdicion POST: " . print_r($data, true) . "\n", FILE_APPEND);
+
 
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                  || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
@@ -705,14 +707,36 @@ class PedidosController {
         };
 
         try {
-            // Validaciones mínimas
+        // Validaciones mínimas
             if (!isset($data['id_pedido']) || !is_numeric($data['id_pedido'])) {
                 $resp = ['success' => false, 'message' => 'ID de pedido inválido.'];
                 if ($isAjax) { $sendJson($resp); }
-                // persist submitted data for repopulation when redirecting back
                 $persistOldEdit($data);
                 require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/listar'); exit;
             }
+
+            // [SECURITY] Validar permisos de edición
+            require_once __DIR__ . '/../utils/session.php'; start_secure_session();
+            $checkPerms = $this->apiController->validarPermisosEdicion(
+                (int)$data['id_pedido'], 
+                $_SESSION['user_id'] ?? 0, 
+                $_SESSION['rol'] ?? ''
+            );
+
+            if (!$checkPerms['permitido']) {
+                $resp = ['success' => false, 'message' => $checkPerms['mensaje']];
+                if ($isAjax) { $sendJson($resp, 403); }
+                $persistOldEdit($data);
+                set_flash('error', $resp['message']); 
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido']); 
+                exit;
+            }
+
+            // DEBUG: Log POST data specifically for persistence debugging
+            if (defined('DEBUG') && DEBUG) {
+                 file_put_contents(__DIR__ . '/../logs/debug_pedido.log', date('Y-m-d H:i:s') . " - ID: {$data['id_pedido']} - DATA: " . json_encode($data) . "\n", FILE_APPEND);
+            }
+
 
             if (!is_numeric($data['latitud']) || !is_numeric($data['longitud'])) {
                 $resp = ['success' => false, 'message' => 'Las coordenadas no tienen un formato válido.'];
