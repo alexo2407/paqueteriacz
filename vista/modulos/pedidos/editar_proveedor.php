@@ -729,6 +729,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const hidQty = document.createElement('input'); hidQty.type = 'hidden'; hidQty.id = 'cantidad_producto'; hidQty.name = 'cantidad_producto'; form.appendChild(hidQty);
     }
     form.addEventListener('submit', function(){
+        // Si los campos están deshabilitados, no sincronizar y asegurar que no se envíen los legacy
+        if (typeof camposProductosDeshabilitados !== 'undefined' && camposProductosDeshabilitados) {
+            const hidProd = document.getElementById('producto_id');
+            const hidQty = document.getElementById('cantidad_producto');
+            if (hidProd) hidProd.disabled = true;
+            if (hidQty) hidQty.disabled = true;
+            return;
+        }
+
         const firstRow = document.querySelector('#productosContainer .producto-row');
         const hidProd = document.getElementById('producto_id');
         const hidQty = document.getElementById('cantidad_producto');
@@ -874,6 +883,9 @@ document.addEventListener('DOMContentLoaded', function() {
         require_once __DIR__ . '/../../../utils/permissions.php';
         echo isSuperAdmin() ? 'true' : 'false'; 
     ?>;
+    
+    // Detectar si los campos de productos están deshabilitados (solo editable en "En bodega")
+    const camposProductosDeshabilitados = <?php echo $camposProductosDeshabilitados ? 'true' : 'false'; ?>;
     
     const productosContainer = document.getElementById('productosContainer');
     const btnAdd = document.getElementById('btnAddProducto');
@@ -1037,16 +1049,25 @@ document.addEventListener('DOMContentLoaded', function() {
         const row = document.createElement('div');
         row.className = 'row mb-2 producto-row align-items-center';
         const index = Date.now() + Math.floor(Math.random() * 1000); // Unique index
+        
+        // Determinar atributos basados en si está deshabilitado
+        const pointerEvents = camposProductosDeshabilitados ? 'none' : 'auto';
+        const bgStyle = camposProductosDeshabilitados ? 'background-color: #e9ecef;' : '';
+        const readonlyAttr = camposProductosDeshabilitados ? 'readonly' : '';
+        const btnVisibility = camposProductosDeshabilitados ? 'hidden' : 'visible';
+        
+        // Estilo del select2 container se manejará después de inicializar
+        
         row.innerHTML = `
             <div class="col-md-7">
-                <select name="productos[${index}][producto_id]" class="form-select producto-select" required style="pointer-events: none; background-color: #e9ecef;" tabindex="-1">
+                <select name="productos[${index}][producto_id]" class="form-select producto-select" required style="pointer-events: ${pointerEvents}; ${bgStyle}">
                     ${makeProductOptions(selectedId)}
                 </select>
             </div>
             <div class="col-md-2">
-                <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cantidad" required readonly>
+                <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cantidad" required ${readonlyAttr}>
             </div>
-            <div class="col-md-3" style="visibility: hidden;">
+            <div class="col-md-3" style="visibility: ${btnVisibility};">
                 <button type="button" class="btn btn-outline-danger btnRemove w-100">
                     <i class="bi bi-trash"></i> Eliminar
                 </button>
