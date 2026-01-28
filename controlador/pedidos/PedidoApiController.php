@@ -247,8 +247,9 @@ class PedidoApiController
             }
         }
 
+        // Si no se proporcionan coordenadas válidas, usar valores por defecto (0.0, 0.0)
         if (!is_numeric($latitud) || !is_numeric($longitud)) {
-            throw new Exception("Coordenadas inválidas para el pedido.", 400);
+            return [0.0, 0.0];
         }
 
         return [(float)$latitud, (float)$longitud];
