@@ -899,9 +899,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function makeProductOptions(selectedId) {
         let opts = '<option value="">Selecciona un producto</option>';
-        const idProveedorSeleccionado = proveedorSelect ? parseInt(proveedorSelect.value) : null;
+        const idProveedorSeleccionado = proveedorSelect && proveedorSelect.value ? parseInt(proveedorSelect.value) : null;
 
-        if (!idProveedorSeleccionado) {
+        // Si no hay proveedor seleccionado, Y no estamos intentando mostrar un producto pre-seleccionado, bloquear.
+        // Pero si hay un selectedId, DEBEMOS permitir buscar ese producto en la lista para mostrarlo.
+        if (!idProveedorSeleccionado && !selectedId) {
             opts += '<option value="" disabled>Selecciona un proveedor primero</option>';
             return opts;
         }
