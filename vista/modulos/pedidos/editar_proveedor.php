@@ -1086,7 +1086,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 theme: 'bootstrap-5',
                 placeholder: 'Escribe para buscar un producto...',
                 allowClear: true,
-                disabled: camposProductosDeshabilitados, // Explicitly disable Select2
                 width: '100%',
                 language: {
                     noResults: function() {
@@ -1097,6 +1096,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
+            
+            // Si debe estar deshabilitado, hacerlo programáticamente después de inicializar
+            // Esto asegura que Select2 visualice correctamente el valor seleccionado
+            if (camposProductosDeshabilitados) {
+                $(select).prop('disabled', true);
+            }
 
             // Evento change de Select2
             $(select).on('change.select2', function() {
