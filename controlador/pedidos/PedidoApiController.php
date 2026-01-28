@@ -526,7 +526,8 @@ class PedidoApiController
     private function obtenerMonedaDeProveedor(int $proveedorId): ?int
     {
         try {
-            $db = Conexion::conectar();
+            $conexion = new Conexion();
+            $db = $conexion->conectar();
             
             // Obtener el id_pais del proveedor
             $stmt = $db->prepare("
