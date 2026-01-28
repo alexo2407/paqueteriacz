@@ -720,7 +720,8 @@ class PedidosController {
             $checkPerms = $this->apiController->validarPermisosEdicion(
                 (int)$data['id_pedido'], 
                 $_SESSION['user_id'] ?? 0, 
-                $_SESSION['rol'] ?? ''
+                $_SESSION['rol'] ?? '',
+                [] // Campos a editar (vacío para usar validación de estado solamente)
             );
 
             if (!$checkPerms['permitido']) {

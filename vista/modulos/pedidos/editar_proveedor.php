@@ -114,6 +114,10 @@ if ($id_pais_usuario) {
     }
 }
 
+// Define Admin role for UI logic
+$rolUsuario = $_SESSION['rol'] ?? '';
+$esAdmin = (is_numeric($rolUsuario) && (int)$rolUsuario === 1) || (is_string($rolUsuario) && strcasecmp($rolUsuario, 'Admin') === 0);
+
 // If the previous non-AJAX edit submit failed, repopulate fields from session
 $old_edit = $_SESSION['old_pedido_edit_' . $id_pedido] ?? null;
 if (isset($_SESSION['old_pedido_edit_' . $id_pedido])) unset($_SESSION['old_pedido_edit_' . $id_pedido]);
@@ -317,6 +321,13 @@ $disabledAttr = $camposProductosDeshabilitados ? 'disabled readonly style="backg
                 </div>
                 <div class="order-info-badge">
                     <i class="bi bi-hash me-1"></i>ID: <?= $id_pedido ?>
+                    <?php if ($esAdmin): ?>
+                        <button id="btnToggleBloqueo" class="btn btn-sm btn-outline-danger ms-2 bg-white text-danger" onclick="toggleBloqueo()">
+                            <?= (isset($pedido['bloqueado_edicion']) && $pedido['bloqueado_edicion'] == 1) 
+                                ? '<i class="bi bi-unlock-fill"></i> Desbloquear' 
+                                : '<i class="bi bi-lock-fill"></i> Bloquear Edición' ?>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -1319,6 +1330,49 @@ document.addEventListener('DOMContentLoaded', function() {
             populateMunicipios('', <?= json_encode($pedido['id_municipio'] ?? '') ?>);
         }
     });
+
+    // Toggle bloqueo function (Global scope)
+    window.toggleBloqueo = function() {
+        const btn = document.getElementById('btnToggleBloqueo');
+        const isLocked = btn.innerHTML.includes('Desbloquear');
+        const action = isLocked ? 'desbloquear' : 'bloquear';
+        
+        if (!confirm(`¿Estás seguro de que deseas ${action} la edición de este pedido?`)) return;
+        
+        btn.disabled = true;
+        
+        fetch('<?= RUTA_URL ?>api/pedidos/bloquear_edicion.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                id_pedido: <?= $id_pedido ?>,
+                bloqueado: !isLocked
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            if (data.success) {
+                // Update UI
+                if (data.data.bloqueado_edicion == 1) {
+                    btn.innerHTML = '<i class="bi bi-unlock-fill"></i> Desbloquear';
+                    Swal.fire('Bloqueado', 'El pedido ha sido bloqueado para edición por parte del proveedor.', 'success');
+                } else {
+                    btn.innerHTML = '<i class="bi bi-lock-fill"></i> Bloquear Edición';
+                    Swal.fire('Desbloqueado', 'El pedido ha sido desbloqueado.', 'success');
+                }
+            } else {
+                Swal.fire('Error', data.message || 'Error al actualizar estado', 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            Swal.fire('Error', 'Error de conexión', 'error');
+        });
+    };
 })();
 </script>
 
