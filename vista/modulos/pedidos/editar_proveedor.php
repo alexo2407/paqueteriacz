@@ -1056,11 +1056,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const readonlyAttr = camposProductosDeshabilitados ? 'readonly' : '';
         const btnVisibility = camposProductosDeshabilitados ? 'hidden' : 'visible';
         
-        // Estilo del select2 container se manejará después de inicializar
         
+        const disabledSelectAttr = camposProductosDeshabilitados ? 'disabled' : '';
+
         row.innerHTML = `
             <div class="col-md-7">
-                <select name="productos[${index}][producto_id]" class="form-select producto-select" required style="pointer-events: ${pointerEvents}; ${bgStyle}">
+                <select name="productos[${index}][producto_id]" class="form-select producto-select" required style="pointer-events: ${pointerEvents}; ${bgStyle}" ${disabledSelectAttr}>
                     ${makeProductOptions(selectedId)}
                 </select>
             </div>
@@ -1085,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 theme: 'bootstrap-5',
                 placeholder: 'Escribe para buscar un producto...',
                 allowClear: true,
+                disabled: camposProductosDeshabilitados, // Explicitly disable Select2
                 width: '100%',
                 language: {
                     noResults: function() {
