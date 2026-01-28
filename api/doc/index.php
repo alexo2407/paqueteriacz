@@ -720,49 +720,199 @@
                     <h2 class="section-title" data-lang="en">Create Order</h2>
                     <h2 class="section-title" data-lang="es">Crear Pedido</h2>
                     
-                    <p data-lang="en">Create a new delivery order. The system automatically validates stock and calculates totals if not provided.</p>
-                    <p data-lang="es">Crea un nuevo pedido de entrega. El sistema valida automáticamente el stock y calcula totales si no se proveen.</p>
+                    <p data-lang="en">Create a new delivery order. The system automatically validates stock, calculates pricing, and enforces security rules based on user role.</p>
+                    <p data-lang="es">Crea un nuevo pedido de entrega. El sistema valida automáticamente el stock, calcula precios y aplica reglas de seguridad según el rol del usuario.</p>
 
                     <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/pedidos/crear</div>
 
-                    <h4 data-lang="en">Request Parameters</h4>
-                    <h4 data-lang="es">Parámetros de Petición</h4>
+                    <h4 data-lang="en">🔑 Required Fields</h4>
+                    <h4 data-lang="es">🔑 Campos Obligatorios</h4>
                     
                      <table class="table table-sm table-bordered" data-lang="en">
-                        <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                        <thead><tr><th>Field</th><th>Type</th><th>Validation</th><th>Description</th></tr></thead>
                         <tbody>
-                            <tr><td><code>numero_orden</code></td><td>integer</td><td>✅ Yes</td><td>Unique external ID for the order</td></tr>
-                            <tr><td><code>destinatario</code></td><td>string</td><td>✅ Yes</td><td>Name of the recipient</td></tr>
-                            <tr><td><code>telefono</code></td><td>string</td><td>✅ Yes</td><td>Contact phone number</td></tr>
-                            <tr><td><code>direccion</code></td><td>string</td><td>✅ Yes</td><td>Full delivery address</td></tr>
-                            <tr><td><code>coordenadas</code></td><td>string</td><td>✅ Yes</td><td>Lat,Long format (e.g. "12.12,-86.23")</td></tr>
-                            <tr><td><code>productos</code></td><td>array</td><td>✅ Yes</td><td>List of items <code>[{ "producto_id": 1, "cantidad": 2 }]</code></td></tr>
-                            <tr><td><code>id_pais</code></td><td>integer</td><td>No</td><td>Country ID (default: system default)</td></tr>
-                            <tr><td><code>es_combo</code></td><td>integer</td><td>No</td><td><code>1</code> if it's a fixed-price combo, <code>0</code> otherwise</td></tr>
+                            <tr><td><code>numero_orden</code></td><td>integer</td><td>Unique, positive</td><td>Unique external order ID</td></tr>
+                            <tr><td><code>destinatario</code></td><td>string</td><td>Not empty</td><td>Recipient's full name</td></tr>
+                            <tr><td><code>producto_id</code> or <code>productos</code></td><td>int/array</td><td>Must exist in DB</td><td>Single product ID or array of products</td></tr>
                         </tbody>
                     </table>
                     
                     <table class="table table-sm table-bordered" data-lang="es">
-                        <thead><tr><th>Campo</th><th>Tipo</th><th>Req.</th><th>Descripción</th></tr></thead>
+                        <thead><tr><th>Campo</th><th>Tipo</th><th>Validación</th><th>Descripción</th></tr></thead>
                         <tbody>
-                            <tr><td><code>numero_orden</code></td><td>entero</td><td>✅ Sí</td><td>ID externo único para el pedido</td></tr>
-                            <tr><td><code>destinatario</code></td><td>string</td><td>✅ Sí</td><td>Nombre del destinatario</td></tr>
-                            <tr><td><code>telefono</code></td><td>string</td><td>✅ Sí</td><td>Teléfono de contacto</td></tr>
-                            <tr><td><code>direccion</code></td><td>string</td><td>✅ Sí</td><td>Dirección completa de entrega</td></tr>
-                            <tr><td><code>coordenadas</code></td><td>string</td><td>✅ Sí</td><td>Formato Lat,Long (ej. "12.12,-86.23")</td></tr>
-                            <tr><td><code>productos</code></td><td>array</td><td>✅ Sí</td><td>Lista de items <code>[{ "producto_id": 1, "cantidad": 2 }]</code></td></tr>
-                            <tr><td><code>id_pais</code></td><td>entero</td><td>No</td><td>ID País (default: sistema)</td></tr>
-                            <tr><td><code>es_combo</code></td><td>entero</td><td>No</td><td><code>1</code> si es combo precio fijo, <code>0</code> si no</td></tr>
+                            <tr><td><code>numero_orden</code></td><td>entero</td><td>Único, positivo</td><td>ID externo único del pedido</td></tr>
+                            <tr><td><code>destinatario</code></td><td>string</td><td>No vacío</td><td>Nombre completo del destinatario</td></tr>
+                            <tr><td><code>producto_id</code> o <code>productos</code></td><td>int/array</td><td>Debe existir en BD</td><td>ID de producto único o array de productos</td></tr>
                         </tbody>
                     </table>
 
-                    <h4 data-lang="en">Example Request</h4>
-                    <h4 data-lang="es">Ejemplo de Petición</h4>
+                    <h4 data-lang="en">📋 Optional Fields - Contact & Delivery</h4>
+                    <h4 data-lang="es">📋 Campos Opcionales - Contacto y Entrega</h4>
+                    
+                    <table class="table table-sm table-bordered" data-lang="en">
+                        <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>telefono</code></td><td>string</td><td>''</td><td>Contact phone number</td></tr>
+                            <tr><td><code>direccion</code></td><td>string</td><td>''</td><td>Full delivery address</td></tr>
+                            <tr><td><code>comentario</code></td><td>string</td><td>null</td><td>Additional delivery notes</td></tr>
+                            <tr><td><code>coordenadas</code></td><td>string</td><td>null</td><td>GPS format: "lat,long" (e.g. "14.6349,-90.5069")</td></tr>
+                            <tr><td><code>latitud</code></td><td>float</td><td>null</td><td>Latitude (alternative to coordenadas)</td></tr>
+                            <tr><td><code>longitud</code></td><td>float</td><td>null</td><td>Longitude (alternative to coordenadas)</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <table class="table table-sm table-bordered" data-lang="es">
+                        <thead><tr><th>Campo</th><th>Tipo</th><th>Defecto</th><th>Descripción</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>telefono</code></td><td>string</td><td>''</td><td>Teléfono de contacto</td></tr>
+                            <tr><td><code>direccion</code></td><td>string</td><td>''</td><td>Dirección completa de entrega</td></tr>
+                            <tr><td><code>comentario</code></td><td>string</td><td>null</td><td>Notas adicionales de entrega</td></tr>
+                            <tr><td><code>coordenadas</code></td><td>string</td><td>null</td><td>Formato GPS: "lat,long" (ej. "14.6349,-90.5069")</td></tr>
+                            <tr><td><code>latitud</code></td><td>float</td><td>null</td><td>Latitud (alternativa a coordenadas)</td></tr>
+                            <tr><td><code>longitud</code></td><td>float</td><td>null</td><td>Longitud (alternativa a coordenadas)</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h4 data-lang="en">🌍 Optional Fields - Geographic</h4>
+                    <h4 data-lang="es">🌍 Campos Opcionales - Geográficos</h4>
+                    
+                    <table class="table table-sm table-bordered" data-lang="en">
+                        <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>id_pais</code> or <code>pais</code></td><td>integer</td><td>Country ID</td></tr>
+                            <tr><td><code>id_departamento</code> or <code>departamento</code></td><td>integer</td><td>State/Department ID</td></tr>
+                            <tr><td><code>id_municipio</code> or <code>municipio</code></td><td>integer</td><td>City/Municipality ID</td></tr>
+                            <tr><td><code>id_barrio</code> or <code>barrio</code></td><td>integer</td><td>Neighborhood/District ID</td></tr>
+                            <tr><td><code>zona</code></td><td>string</td><td>Zone name</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <table class="table table-sm table-bordered" data-lang="es">
+                        <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>id_pais</code> o <code>pais</code></td><td>entero</td><td>ID del país</td></tr>
+                            <tr><td><code>id_departamento</code> o <code>departamento</code></td><td>entero</td><td>ID del departamento/estado</td></tr>
+                            <tr><td><code>id_municipio</code> o <code>municipio</code></td><td>entero</td><td>ID del municipio/ciudad</td></tr>
+                            <tr><td><code>id_barrio</code> o <code>barrio</code></td><td>entero</td><td>ID del barrio/zona</td></tr>
+                            <tr><td><code>zona</code></td><td>string</td><td>Nombre de la zona</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h4 data-lang="en">👥 Optional Fields - Assignments</h4>
+                    <h4 data-lang="es">👥 Campos Opcionales - Asignaciones</h4>
+                    
+                    <table class="table table-sm table-bordered" data-lang="en">
+                        <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>id_estado</code></td><td>integer</td><td>1</td><td>Order status (see Status Reference)</td></tr>
+                            <tr><td><code>id_vendedor</code></td><td>integer</td><td>null</td><td>Assigned delivery person</td></tr>
+                            <tr><td><code>id_proveedor</code></td><td>integer</td><td>null</td><td>Provider ID (auto-set for Provider role)</td></tr>
+                            <tr><td><code>id_cliente</code></td><td>integer</td><td>null</td><td>Client ID</td></tr>
+                            <tr><td><code>id_moneda</code></td><td>integer</td><td>null</td><td>Currency ID</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <table class="table table-sm table-bordered" data-lang="es">
+                        <thead><tr><th>Campo</th><th>Tipo</th><th>Defecto</th><th>Descripción</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>id_estado</code></td><td>entero</td><td>1</td><td>Estado del pedido (ver Referencia de Estados)</td></tr>
+                            <tr><td><code>id_vendedor</code></td><td>entero</td><td>null</td><td>Repartidor asignado</td></tr>
+                            <tr><td><code>id_proveedor</code></td><td>entero</td><td>null</td><td>ID del proveedor (auto-asignado para rol Proveedor)</td></tr>
+                            <tr><td><code>id_cliente</code></td><td>entero</td><td>null</td><td>ID del cliente</td></tr>
+                            <tr><td><code>id_moneda</code></td><td>entero</td><td>null</td><td>ID de la moneda</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h4 data-lang="en">💰 Optional Fields - Pricing</h4>
+                    <h4 data-lang="es">💰 Campos Opcionales - Precios</h4>
+                    
+                    <table class="table table-sm table-bordered" data-lang="en">
+                        <thead><tr><th>Field</th><th>Type</th><th>Auto-calculated</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>No</td><td>Total price in local currency</td></tr>
+                            <tr><td><code>precio_total_usd</code></td><td>decimal</td><td>Yes*</td><td>Total price in USD (auto-calc if local + currency provided)</td></tr>
+                            <tr><td><code>tasa_conversion_usd</code></td><td>decimal</td><td>Yes*</td><td>Exchange rate used (auto-fetched from currency)</td></tr>
+                            <tr><td><code>es_combo</code></td><td>boolean</td><td>Yes*</td><td>Whether it's a combo (auto-detected from product)</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <table class="table table-sm table-bordered" data-lang="es">
+                        <thead><tr><th>Campo</th><th>Tipo</th><th>Auto-calculado</th><th>Descripción</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>No</td><td>Precio total en moneda local</td></tr>
+                            <tr><td><code>precio_total_usd</code></td><td>decimal</td><td>Sí*</td><td>Precio total en USD (auto-calc si local + moneda)</td></tr>
+                            <tr><td><code>tasa_conversion_usd</code></td><td>decimal</td><td>Sí*</td><td>Tasa de cambio usada (auto desde moneda)</td></tr>
+                            <tr><td><code>es_combo</code></td><td>boolean</td><td>Sí*</td><td>Si es combo (auto-detectado desde producto)</td></tr>
+                        </tbody>
+                    </table>
+
+                    <h4 data-lang="en">✅ Automatic Validations</h4>
+                    <h4 data-lang="es">✅ Validaciones Automáticas</h4>
+                    
+                    <ul data-lang="en">
+                        <li><strong>Stock validation:</strong> Ensures sufficient inventory before creating order</li>
+                        <li><strong>Unique order number:</strong> Prevents duplicate numero_orden</li>
+                        <li><strong>Coordinate format:</strong> Validates "lat,long" format</li>
+                        <li><strong>Valid products:</strong> Verifies product IDs exist in database</li>
+                        <li><strong>Positive quantities:</strong> All quantities must be > 0</li>
+                        <li><strong>Foreign key validation:</strong> Checks vendor, provider, client, currency exist</li>
+                    </ul>
+                    
+                    <ul data-lang="es">
+                        <li><strong>Validación de stock:</strong> Asegura inventario suficiente antes de crear</li>
+                        <li><strong>Número único:</strong> Previene numero_orden duplicados</li>
+                        <li><strong>Formato coordenadas:</strong> Valida formato "lat,long"</li>
+                        <li><strong>Productos válidos:</strong> Verifica que IDs de productos existan en BD</li>
+                        <li><strong>Cantidades positivas:</strong> Todas las cantidades deben ser > 0</li>
+                        <li><strong>Validación FK:</strong> Verifica que vendedor, proveedor, cliente, moneda existan</li>
+                    </ul>
+
+                    <h4 data-lang="en">🔐 Security Rules</h4>
+                    <h4 data-lang="es">🔐 Reglas de Seguridad</h4>
+                    
+                    <p data-lang="en"><strong>Provider Role:</strong> If authenticated user is a Provider (role 4), the system automatically sets <code>id_proveedor</code> to their user ID, ignoring any value sent in the request.</p>
+                    <p data-lang="es"><strong>Rol Proveedor:</strong> Si el usuario autenticado es Proveedor (rol 4), el sistema automáticamente asigna <code>id_proveedor</code> a su ID de usuario, ignorando cualquier valor enviado en la petición.</p>
+
+                    <h4 data-lang="en">📝 Example: Minimal Order</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Pedido Mínimo</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 12345,
+    "destinatario": "Juan Pérez",
+    "producto_id": 10,
+    "cantidad": 2
+}</code></pre>
+
+                    <h4 data-lang="en">📝 Example: Complete Order with Combo Pricing</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Pedido Completo con Precio Combo</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 12346,
+    "destinatario": "María García",
+    "telefono": "50212345678",
+    "direccion": "Calle Principal #123",
+    "coordenadas": "14.6349,-90.5069",
+    "comentario": "Entregar en horario de oficina",
+    "id_pais": 1,
+    "id_departamento": 5,
+    "id_municipio": 25,
+    "id_proveedor": 8,
+    "id_cliente": 15,
+    "id_moneda": 2,
+    "es_combo": 1,
+    "precio_total_local": 150.00,
+    "productos": [
+        { "producto_id": 10, "cantidad": 2 },
+        { "producto_id": 15, "cantidad": 1 }
+    ]
+}</code></pre>
+
+                    <h4 data-lang="en">📝 Example: Multi-Product Standard Order</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Pedido Estándar Multi-Producto</h4>
                     <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 10050,
     "destinatario": "Maria Gonzalez",
     "telefono": "8888-8888",
     "direccion": "Bello Horizonte C-4",
+    "es_combo": 0,
     "coordenadas": "12.1345,-86.2456",
     "productos": [
         { "producto_id": 1, "cantidad": 2 },
