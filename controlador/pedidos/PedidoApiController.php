@@ -616,11 +616,11 @@ class PedidoApiController
             ];
         }
         
-        // Verificar estado (solo Pendiente = 1)
+        // Verificar estado (solo En bodega = 1)
         if ($pedido['id_estado'] != 1) {
             return [
                 'permitido' => false,
-                'mensaje' => 'Solo puedes editar pedidos en estado Pendiente'
+                'mensaje' => 'Solo puedes editar pedidos en estado En bodega'
             ];
         }
         

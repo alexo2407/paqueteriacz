@@ -199,9 +199,9 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
 }
 
 // Determinar si los campos de productos y precios deben estar deshabilitados
-// Solo se pueden editar si el pedido está en estado Pendiente (ID: 1)
-$estadoPendiente = 1;
-$camposProductosDeshabilitados = ((int)$pedido['id_estado'] !== $estadoPendiente);
+// Solo se pueden editar si el pedido está en estado "En bodega" (ID: 1)
+$estadoEnBodega = 1;
+$camposProductosDeshabilitados = ((int)$pedido['id_estado'] !== $estadoEnBodega);
 $disabledAttr = $camposProductosDeshabilitados ? 'disabled readonly style="background-color: #e9ecef; cursor: not-allowed;"' : '';
 
 ?>
@@ -505,7 +505,7 @@ $disabledAttr = $camposProductosDeshabilitados ? 'disabled readonly style="backg
                                 <?php if ($camposProductosDeshabilitados): ?>
                                 <div class="alert alert-warning border-warning" role="alert">
                                     <i class="bi bi-lock-fill me-2"></i>
-                                    <strong>Productos y precios bloqueados:</strong> Solo se pueden editar cuando el pedido está en estado <strong>Pendiente</strong>. 
+                                    <strong>Productos y precios bloqueados:</strong> Solo se pueden editar cuando el pedido está en estado <strong>En bodega</strong>. 
                                     El estado actual es <strong><?= htmlspecialchars($pedido['nombre_estado'] ?? 'Desconocido') ?></strong>.
                                 </div>
                                 <?php endif; ?>
