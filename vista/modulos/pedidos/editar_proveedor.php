@@ -1070,8 +1070,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="col-md-2">
                 <input type="number" name="productos[${index}][cantidad]" class="form-control producto-cantidad" min="1" value="${qty ? qty : 1}" placeholder="Cantidad" required ${readonlyAttr}>
             </div>
-            <div class="col-md-3" style="visibility: ${btnVisibility};">
-                <button type="button" class="btn btn-outline-danger btnRemove w-100">
+            <div class="col-md-3">
+                <button type="button" class="btn btn-outline-danger btnRemove w-100" ${camposProductosDeshabilitados ? 'disabled' : ''}>
                     <i class="bi bi-trash"></i> Eliminar
                 </button>
             </div>
