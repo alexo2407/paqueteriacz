@@ -20,6 +20,14 @@ class PedidoApiController
         if ($isProvider && $authUserId > 0) {
             $data['id_proveedor'] = $authUserId;
             $data['proveedor'] = $authUserId;
+            
+            // Auto-detectar moneda del proveedor si no se envió id_moneda
+            if (!isset($data['id_moneda']) || $data['id_moneda'] === '' || $data['id_moneda'] === 0) {
+                $monedaProveedor = $this->obtenerMonedaDeProveedor($authUserId);
+                if ($monedaProveedor) {
+                    $data['id_moneda'] = $monedaProveedor;
+                }
+            }
         }
 
         // Validar la estructura del pedido
@@ -48,7 +56,7 @@ class PedidoApiController
 
         // Calcular precios
         $precioLocal = $this->extraerPrecioLocal($data);
-        $monedaId = isset($data['id_moneda']) ? (int)$data['id_moneda'] : null;
+        $monedaId = isset($data['id_moneda']) && is_numeric($data['id_moneda']) ? (int)$data['id_moneda'] : null;
         if ($monedaId === 0) $monedaId = null;
         
         $precioUsd = $this->calcularPrecioUsd($precioLocal, $monedaId);
@@ -501,5 +509,51 @@ class PedidoApiController
         }
 
         return $items;
+    }
+
+    /**
+     * Obtener la moneda local del proveedor basada en su país
+     * 
+     * @param int $proveedorId
+     * @return int|null ID de la moneda o null si no se encuentra
+     */
+    private function obtenerMonedaDeProveedor(int $proveedorId): ?int
+    {
+        try {
+            $db = Conexion::conectar();
+            
+            // Obtener el id_pais del proveedor
+            $stmt = $db->prepare("
+                SELECT u.id_pais 
+                FROM usuarios u 
+                WHERE u.id = :proveedor_id
+            ");
+            $stmt->bindValue(':proveedor_id', $proveedorId, PDO::PARAM_INT);
+            $stmt->execute();
+            $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$usuario || !$usuario['id_pais']) {
+                return null;
+            }
+            
+            // Obtener la moneda local del país
+            $stmt = $db->prepare("
+                SELECT id_moneda_local 
+                FROM paises 
+                WHERE id = :id_pais
+            ");
+            $stmt->bindValue(':id_pais', $usuario['id_pais'], PDO::PARAM_INT);
+            $stmt->execute();
+            $pais = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($pais && $pais['id_moneda_local']) {
+                return (int)$pais['id_moneda_local'];
+            }
+            
+            return null;
+        } catch (Exception $e) {
+            error_log("Error obteniendo moneda del proveedor: " . $e->getMessage());
+            return null;
+        }
     }
 }
