@@ -570,4 +570,76 @@ class PedidoApiController
             return null;
         }
     }
+
+    /**
+     * Validar permisos de edición de pedido
+     * 
+     * @param int $pedidoId ID del pedido a editar
+     * @param int $userId ID del usuario que intenta editar
+     * @param mixed $userRole Rol del usuario (1 o 'Admin' para admin, 4 o 'Proveedor' para proveedor)
+     * @param array $camposAEditar Lista de campos que se intentan editar
+     * @return array ['permitido' => bool, 'mensaje' => string (si no permitido)]
+     */
+    public function validarPermisosEdicion(int $pedidoId, int $userId, $userRole, array $camposAEditar): array
+    {
+        // Admin puede editar todo siempre
+        $isAdmin = (is_numeric($userRole) && (int)$userRole === 1) || 
+                   (is_string($userRole) && strcasecmp(trim($userRole), 'Admin') === 0);
+        
+        if ($isAdmin) {
+            return ['permitido' => true];
+        }
+        
+        // Obtener datos del pedido
+        $pedido = PedidosModel::obtenerPedidoPorId($pedidoId);
+        
+        if (!$pedido) {
+            return [
+                'permitido' => false,
+                'mensaje' => 'Pedido no encontrado'
+            ];
+        }
+        
+        // Verificar que sea el proveedor del pedido
+        if ($pedido['id_proveedor'] != $userId) {
+            return [
+                'permitido' => false,
+                'mensaje' => 'Solo puedes editar tus propios pedidos'
+            ];
+        }
+        
+        // Verificar si está bloqueado
+        if (isset($pedido['bloqueado_edicion']) && $pedido['bloqueado_edicion'] == 1) {
+            return [
+                'permitido' => false,
+                'mensaje' => 'Este pedido está bloqueado para edición. Contacta al administrador.'
+            ];
+        }
+        
+        // Verificar estado (solo Pendiente = 1)
+        if ($pedido['id_estado'] != 1) {
+            return [
+                'permitido' => false,
+                'mensaje' => 'Solo puedes editar pedidos en estado Pendiente'
+            ];
+        }
+        
+        // Validar campos prohibidos para proveedores
+        $camposProhibidos = [
+            'producto_id', 'productos', 'cantidad', 'precio_total_local',
+            'precio_total_usd', 'tasa_conversion_usd', 'id_moneda',
+            'es_combo', 'numero_orden', 'id_estado', 'id_vendedor', 
+            'id_proveedor', 'estado', 'vendedor', 'proveedor', 'moneda'
+        ];
+        
+        $camposInvalidos = array_intersect($camposAEditar, $camposProhibidos);
+        if (!empty($camposInvalidos)) {
+            return [
+                'permitido' => false,
+                'mensaje' => 'No puedes editar estos campos: ' . implode(', ', $camposInvalidos)
+            ];
+        }
+        
+        return ['permitido' => true];
+    }
 }
