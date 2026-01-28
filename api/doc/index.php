@@ -808,7 +808,7 @@
                             <tr><td><code>id_vendedor</code></td><td>integer</td><td>null</td><td>Assigned delivery person</td></tr>
                             <tr><td><code>id_proveedor</code></td><td>integer</td><td>null</td><td>Provider ID (auto-set for Provider role)</td></tr>
                             <tr><td><code>id_cliente</code></td><td>integer</td><td>null</td><td>Client ID</td></tr>
-                            <tr><td><code>id_moneda</code></td><td>integer</td><td>null</td><td>Currency ID</td></tr>
+                            <tr><td><code>id_moneda</code></td><td>integer</td><td>null</td><td>Currency ID (auto-detected from provider's country if not provided)</td></tr>
                         </tbody>
                     </table>
                     
@@ -819,7 +819,7 @@
                             <tr><td><code>id_vendedor</code></td><td>entero</td><td>null</td><td>Repartidor asignado</td></tr>
                             <tr><td><code>id_proveedor</code></td><td>entero</td><td>null</td><td>ID del proveedor (auto-asignado para rol Proveedor)</td></tr>
                             <tr><td><code>id_cliente</code></td><td>entero</td><td>null</td><td>ID del cliente</td></tr>
-                            <tr><td><code>id_moneda</code></td><td>entero</td><td>null</td><td>ID de la moneda</td></tr>
+                            <tr><td><code>id_moneda</code></td><td>entero</td><td>null</td><td>ID de la moneda (auto-detectada del país del proveedor si no se envía)</td></tr>
                         </tbody>
                     </table>
 
