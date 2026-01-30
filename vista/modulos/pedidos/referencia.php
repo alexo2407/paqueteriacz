@@ -61,14 +61,18 @@ try {
 
         <!-- Search & Filters -->
         <div class="row mb-4 no-print">
-            <div class="col-md-6">
+            <div class="col-md-12 mb-3">
                 <div class="alert alert-info py-2 px-3 mb-0 small border-0 shadow-sm">
                     <i class="bi bi-info-circle-fill me-2"></i>
                     Puedes usar el <strong>ID</strong> (numérico) o el <strong>Nombre</strong> (texto) en tu archivo CSV.
                     Ejemplo: <code>id_estado=1</code> es igual a <code>estado_nombre=Pendiente</code>.
+                    <br>
+                    <i class="bi bi-geo-alt-fill me-2 text-primary"></i>
+                    <strong>Códigos Postales:</strong> Pueden estar asignados al <strong>Barrio</strong> o al <strong>Municipio</strong> según el país. 
+                    El sistema prioriza el código postal del barrio si existe, de lo contrario usa el del municipio.
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-light"><i class="bi bi-globe"></i></span>
                     <select id="paisFilter" class="form-select">
@@ -83,7 +87,7 @@ try {
                     </select>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="search-box">
                     <i class="bi bi-search"></i>
                     <input type="text" id="searchInput" class="form-control" placeholder="Buscar valor...">
