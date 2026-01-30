@@ -90,3 +90,8 @@ package-lock.json
 utils/email_config.php
 install-workers-production.sh
 
+# =====================================================
+# Archivos de Debug y Temporales
+# =====================================================
+debug_dump.txt
+force_logout.php
