@@ -108,6 +108,11 @@ try {
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pills-clientes-tab" data-bs-toggle="pill" data-bs-target="#pills-clientes" type="button" role="tab">
+                    <i class="bi bi-people"></i> Clientes
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="pills-monedas-tab" data-bs-toggle="pill" data-bs-target="#pills-monedas" type="button" role="tab">
                     <i class="bi bi-currency-exchange"></i> Monedas
                 </button>
@@ -208,6 +213,43 @@ try {
                                             <i class="bi bi-hash"></i>
                                         </button>
                                         <button class="btn btn-sm btn-light copy-btn text-success" onclick="copyToClipboard('<?= htmlspecialchars($p['nombre'], ENT_QUOTES) ?>', this)" title="Copiar Nombre">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CLIENTES -->
+            <div class="tab-pane fade" id="pills-clientes" role="tabpanel">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 100px;">ID</th>
+                                    <th>Nombre del Cliente</th>
+                                    <th class="text-end no-print">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $stmt = $db->query("SELECT ID_Cliente, Nombre FROM clientes WHERE activo = 1 ORDER BY Nombre");
+                                $clientes = $stmt->fetchAll();
+                                foreach ($clientes as $c):
+                                ?>
+                                <tr class="searchable-row">
+                                    <td><span class="badge bg-secondary badge-id"><?= $c['ID_Cliente'] ?></span></td>
+                                    <td class="fw-medium"><?= htmlspecialchars($c['Nombre']) ?></td>
+                                    <td class="text-end no-print">
+                                        <button class="btn btn-sm btn-light copy-btn text-muted" onclick="copyToClipboard('<?= $c['ID_Cliente'] ?>', this)" title="Copiar ID">
+                                            <i class="bi bi-hash"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-light copy-btn text-info" onclick="copyToClipboard('<?= htmlspecialchars($c['Nombre'], ENT_QUOTES) ?>', this)" title="Copiar Nombre">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
                                     </td>
