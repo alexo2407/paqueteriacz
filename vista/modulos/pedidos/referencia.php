@@ -202,7 +202,8 @@ try {
                             </thead>
                             <tbody>
                                 <?php
-                                $proveedores = $ctrl->obtenerProveedores();
+                                $stmt = $db->query("SELECT u.id, u.nombre FROM usuarios u INNER JOIN usuarios_roles ur ON u.id = ur.id_usuario WHERE ur.id_rol = 5 AND u.activo = 1 ORDER BY u.nombre");
+                                $proveedores = $stmt->fetchAll();
                                 foreach ($proveedores as $p):
                                 ?>
                                 <tr class="searchable-row">
@@ -238,18 +239,18 @@ try {
                             </thead>
                             <tbody>
                                 <?php
-                                $stmt = $db->query("SELECT ID_Cliente, Nombre FROM clientes WHERE activo = 1 ORDER BY Nombre");
+                                $stmt = $db->query("SELECT u.id, u.nombre FROM usuarios u INNER JOIN usuarios_roles ur ON u.id = ur.id_usuario WHERE ur.id_rol = 4 AND u.activo = 1 ORDER BY u.nombre");
                                 $clientes = $stmt->fetchAll();
                                 foreach ($clientes as $c):
                                 ?>
                                 <tr class="searchable-row">
-                                    <td><span class="badge bg-secondary badge-id"><?= $c['ID_Cliente'] ?></span></td>
-                                    <td class="fw-medium"><?= htmlspecialchars($c['Nombre']) ?></td>
+                                    <td><span class="badge bg-secondary badge-id"><?= $c['id'] ?></span></td>
+                                    <td class="fw-medium"><?= htmlspecialchars($c['nombre']) ?></td>
                                     <td class="text-end no-print">
-                                        <button class="btn btn-sm btn-light copy-btn text-muted" onclick="copyToClipboard('<?= $c['ID_Cliente'] ?>', this)" title="Copiar ID">
+                                        <button class="btn btn-sm btn-light copy-btn text-muted" onclick="copyToClipboard('<?= $c['id'] ?>', this)" title="Copiar ID">
                                             <i class="bi bi-hash"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-light copy-btn text-info" onclick="copyToClipboard('<?= htmlspecialchars($c['Nombre'], ENT_QUOTES) ?>', this)" title="Copiar Nombre">
+                                        <button class="btn btn-sm btn-light copy-btn text-info" onclick="copyToClipboard('<?= htmlspecialchars($c['nombre'], ENT_QUOTES) ?>', this)" title="Copiar Nombre">
                                             <i class="bi bi-clipboard"></i>
                                         </button>
                                     </td>
