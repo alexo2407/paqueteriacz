@@ -15,8 +15,8 @@ if (!defined('ROL_CLIENTE_CRM')) define('ROL_CLIENTE_CRM', 7);      // CRM (veri
 if (!defined('ROL_NOMBRE_ADMIN')) define('ROL_NOMBRE_ADMIN', 'Administrador');
 if (!defined('ROL_NOMBRE_VENDEDOR')) define('ROL_NOMBRE_VENDEDOR', 'Vendedor');
 if (!defined('ROL_NOMBRE_REPARTIDOR')) define('ROL_NOMBRE_REPARTIDOR', 'Repartidor');
-if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Proveedor');  // Logística
-if (!defined('ROL_NOMBRE_CLIENTE')) define('ROL_NOMBRE_CLIENTE', 'Cliente');               // Logística
+if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Cliente');  // Logística - INTERCAMBIADO
+if (!defined('ROL_NOMBRE_CLIENTE')) define('ROL_NOMBRE_CLIENTE', 'Proveedor');    // Logística - INTERCAMBIADO
 if (!defined('ROL_NOMBRE_PROVEEDOR_CRM')) define('ROL_NOMBRE_PROVEEDOR_CRM', 'Proveedor CRM');  // CRM
 if (!defined('ROL_NOMBRE_CLIENTE_CRM')) define('ROL_NOMBRE_CLIENTE_CRM', 'Cliente CRM');      // CRM
 

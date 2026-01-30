@@ -103,7 +103,7 @@ class GeoinfoController
         if (!DepartamentoModel::obtenerPorId($data['id_departamento'])) {
             throw new Exception("El departamento especificado no existe.", 400);
         }
-        $id = MunicipioModel::crear($data['nombre'], $data['id_departamento']);
+        $id = MunicipioModel::crear($data['nombre'], $data['id_departamento'], $data['codigo_postal'] ?? null);
         return ['id' => $id, 'message' => 'Municipio creado correctamente.'];
     }
 
@@ -118,7 +118,7 @@ class GeoinfoController
         if (!DepartamentoModel::obtenerPorId($data['id_departamento'])) {
             throw new Exception("El departamento especificado no existe.", 400);
         }
-        MunicipioModel::actualizar($id, $data['nombre'], $data['id_departamento']);
+        MunicipioModel::actualizar($id, $data['nombre'], $data['id_departamento'], $data['codigo_postal'] ?? null);
         return ['message' => 'Municipio actualizado correctamente.'];
     }
 
@@ -145,7 +145,7 @@ class GeoinfoController
         if (!MunicipioModel::obtenerPorId($data['id_municipio'])) {
             throw new Exception("El municipio especificado no existe.", 400);
         }
-        $id = BarrioModel::crear($data['nombre'], $data['id_municipio']);
+        $id = BarrioModel::crear($data['nombre'], $data['id_municipio'], $data['codigo_postal'] ?? null);
         return ['id' => $id, 'message' => 'Barrio creado correctamente.'];
     }
 
@@ -160,7 +160,7 @@ class GeoinfoController
         if (!MunicipioModel::obtenerPorId($data['id_municipio'])) {
             throw new Exception("El municipio especificado no existe.", 400);
         }
-        BarrioModel::actualizar($id, $data['nombre'], $data['id_municipio']);
+        BarrioModel::actualizar($id, $data['nombre'], $data['id_municipio'], $data['codigo_postal'] ?? null);
         return ['message' => 'Barrio actualizado correctamente.'];
     }
 

@@ -75,6 +75,15 @@ $m = $ctrl->ver($id);
                                 <input class="form-control" name="nombre" value="<?= htmlspecialchars($m['nombre']) ?>" required />
                             </div>
                         </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Código Postal</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-mailbox"></i></span>
+                                <input class="form-control" name="codigo_postal" value="<?= htmlspecialchars($m['codigo_postal'] ?? '') ?>" placeholder="Ej: 17008, 10101..." />
+                            </div>
+                            <div class="form-text">Opcional. Se usará si el país define CP a nivel de municipio.</div>
+                        </div>
                     </div>
 
                     <div class="card-footer bg-light p-3 d-flex justify-content-end gap-2 border-top-0">

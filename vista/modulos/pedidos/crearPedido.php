@@ -498,6 +498,11 @@ try {
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="codigo_postal" class="form-label">Código Postal 📮</label>
+                                        <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" placeholder="Ej: 10101, 17008..." value="<?= htmlspecialchars($old_posted['codigo_postal'] ?? '') ?>">
+                                        <div class="form-text small">Se autocompleta según la zona seleccionada.</div>
+                                    </div>
 
                                     <div class="col-12 mt-3">
                                         <label class="form-label">Geolocalización</label>
@@ -1044,6 +1049,7 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
                 opt.value = m.id;
                 opt.textContent = m.nombre;
                 opt.setAttribute('data-id-departamento', m.id_departamento);
+                opt.setAttribute('data-cp', m.codigo_postal || '');
                 munSelect.appendChild(opt);
             }
         });
@@ -1058,6 +1064,7 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
         initSelect2ForLocationSelects();
         
         populateBarrios(munSelect.value, initialBarrio);
+        updatePostalCode();
     }
 
     function populateBarrios(munId, selectedBarrioId) {
@@ -1073,6 +1080,7 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
                 opt.value = b.id;
                 opt.textContent = b.nombre;
                 opt.setAttribute('data-id-municipio', b.id_municipio);
+                opt.setAttribute('data-cp', b.codigo_postal || '');
                 barrioSelect.appendChild(opt);
             }
         });
@@ -1093,6 +1101,7 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
         });
         $(munSelect).on('change.select2', function(){
             populateBarrios(munSelect.value);
+            updatePostalCode();
         });
     } else {
         deptSelect.addEventListener('change', function(){
@@ -1101,7 +1110,45 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
         });
         munSelect.addEventListener('change', function(){
             populateBarrios(munSelect.value);
+            updatePostalCode();
         });
+    }
+
+    // Lógica de herencia de Código Postal
+    function updatePostalCode() {
+        const cpInput = document.getElementById('codigo_postal');
+        if (!cpInput) return;
+
+        let detectedCP = '';
+
+        // 1. Intentar obtener de Barrio
+        const selectedBarrio = barrioSelect.options[barrioSelect.selectedIndex];
+        if (selectedBarrio && selectedBarrio.getAttribute('data-cp')) {
+            detectedCP = selectedBarrio.getAttribute('data-cp');
+        }
+
+        // 2. Si no hay en Barrio, intentar obtener de Municipio
+        if (!detectedCP) {
+            const selectedMun = munSelect.options[munSelect.selectedIndex];
+            if (selectedMun && selectedMun.getAttribute('data-cp')) {
+                detectedCP = selectedMun.getAttribute('data-cp');
+            }
+        }
+
+        // Solo actualizar si detectamos algo, para no borrar entrada manual accidentalmente
+        // o si ambos están vacíos pero el usuario cambió selección.
+        if (detectedCP) {
+            cpInput.value = detectedCP;
+            // Visual feedback
+            cpInput.classList.add('is-valid');
+            setTimeout(() => cpInput.classList.remove('is-valid'), 2000);
+        }
+    }
+
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(barrioSelect).on('change.select2', updatePostalCode);
+    } else {
+        barrioSelect.addEventListener('change', updatePostalCode);
     }
 
     // initialize on load

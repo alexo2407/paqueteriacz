@@ -204,6 +204,12 @@ $pedido = !empty($detallesPedido) ? $detallesPedido[0] : null;
                                     <span><?= htmlspecialchars($pedido['Barrio']) ?: '—' ?></span>
                                 </div>
                             </div>
+                            <div class="col-6">
+                                <div class="info-item">
+                                    <label>Código Postal</label>
+                                    <span><?= htmlspecialchars($pedido['codigo_postal']) ?: '—' ?></span>
+                                </div>
+                            </div>
                             <div class="col-12">
                                 <div class="info-item">
                                     <label>Dirección Completa</label>

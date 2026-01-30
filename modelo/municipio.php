@@ -18,10 +18,10 @@ class MunicipioModel
     {
         $db = (new Conexion())->conectar();
         if ($depId !== null) {
-            $stmt = $db->prepare('SELECT id, nombre, id_departamento FROM municipios WHERE id_departamento = :did ORDER BY nombre ASC');
+            $stmt = $db->prepare('SELECT id, nombre, id_departamento, codigo_postal FROM municipios WHERE id_departamento = :did ORDER BY nombre ASC');
             $stmt->bindValue(':did', (int)$depId, PDO::PARAM_INT);
         } else {
-            $stmt = $db->prepare('SELECT id, nombre, id_departamento FROM municipios ORDER BY nombre ASC');
+            $stmt = $db->prepare('SELECT id, nombre, id_departamento, codigo_postal FROM municipios ORDER BY nombre ASC');
         }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -35,7 +35,7 @@ class MunicipioModel
     public static function obtenerPorId($id)
     {
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare('SELECT id, nombre, id_departamento FROM municipios WHERE id = :id');
+        $stmt = $db->prepare('SELECT id, nombre, id_departamento, codigo_postal FROM municipios WHERE id = :id');
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $stmt->execute();
         $res = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -48,12 +48,13 @@ class MunicipioModel
      * @param int $id_departamento
      * @return int ID creado
      */
-    public static function crear($nombre, $id_departamento)
+    public static function crear($nombre, $id_departamento, $codigo_postal = null)
     {
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare('INSERT INTO municipios (nombre, id_departamento) VALUES (:nombre, :id_departamento)');
+        $stmt = $db->prepare('INSERT INTO municipios (nombre, id_departamento, codigo_postal) VALUES (:nombre, :id_departamento, :codigo_postal)');
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':id_departamento', (int)$id_departamento, PDO::PARAM_INT);
+        $stmt->bindValue(':codigo_postal', $codigo_postal, $codigo_postal ? PDO::PARAM_STR : PDO::PARAM_NULL);
         $stmt->execute();
         $nuevoId = (int)$db->lastInsertId();
         
@@ -64,7 +65,7 @@ class MunicipioModel
             'crear',
             AuditoriaModel::getIdUsuarioActual(),
             null,
-            ['nombre' => $nombre, 'id_departamento' => $id_departamento]
+            ['nombre' => $nombre, 'id_departamento' => $id_departamento, 'codigo_postal' => $codigo_postal]
         );
         
         return $nuevoId;
@@ -77,15 +78,16 @@ class MunicipioModel
      * @param int $id_departamento
      * @return bool True si se actualizó.
      */
-    public static function actualizar($id, $nombre, $id_departamento)
+    public static function actualizar($id, $nombre, $id_departamento, $codigo_postal = null)
     {
         // Obtener datos anteriores
         $datosAnteriores = self::obtenerPorId($id);
         
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare('UPDATE municipios SET nombre = :nombre, id_departamento = :id_departamento WHERE id = :id');
+        $stmt = $db->prepare('UPDATE municipios SET nombre = :nombre, id_departamento = :id_departamento, codigo_postal = :codigo_postal WHERE id = :id');
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':id_departamento', (int)$id_departamento, PDO::PARAM_INT);
+        $stmt->bindValue(':codigo_postal', $codigo_postal, $codigo_postal ? PDO::PARAM_STR : PDO::PARAM_NULL);
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $resultado = $stmt->execute();
         
@@ -97,7 +99,7 @@ class MunicipioModel
                 'actualizar',
                 AuditoriaModel::getIdUsuarioActual(),
                 $datosAnteriores,
-                ['nombre' => $nombre, 'id_departamento' => $id_departamento]
+                ['nombre' => $nombre, 'id_departamento' => $id_departamento, 'codigo_postal' => $codigo_postal]
             );
         }
         

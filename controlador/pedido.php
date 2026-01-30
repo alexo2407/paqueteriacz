@@ -362,6 +362,23 @@ class PedidosController {
     }
 
     /**
+     * Obtener detalles de un pedido para la vista ver.php
+     * Retorna un array con un solo elemento para compatibilidad con la vista
+     * @param int $id_pedido
+     * @return array
+     */
+    public function verPedido($id_pedido)
+    {
+        $pedido = $this->obtenerPedido($id_pedido);
+        if (!$pedido) {
+            return [];
+        }
+        // Retornar como array para compatibilidad con la vista que espera $detallesPedido[0]
+        return [$pedido];
+    }
+
+
+    /**
      * Guardar pedido proveniente desde el formulario del frontend.
      *
      * Realiza validaciones server-side, logging en DEBUG y llama al modelo para
@@ -597,6 +614,9 @@ class PedidosController {
             'longitud' => (float)$longitud,
             'id_pais' => isset($data['id_pais']) ? $data['id_pais'] : ($data['pais'] ?? null),
             'id_departamento' => isset($data['id_departamento']) ? $data['id_departamento'] : ($data['departamento'] ?? null),
+            'id_municipio' => isset($data['id_municipio']) ? $data['id_municipio'] : ($data['municipio'] ?? null),
+            'id_barrio' => isset($data['id_barrio']) ? $data['id_barrio'] : ($data['barrio'] ?? null),
+            'codigo_postal' => $data['codigo_postal'] ?? null,
             'municipio' => $data['municipio'] ?? null,
             'barrio' => $data['barrio'] ?? null,
             'zona' => $data['zona'] ?? null,

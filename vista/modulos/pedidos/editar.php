@@ -126,7 +126,7 @@ $old_edit = $_SESSION['old_pedido_edit_' . $id_pedido] ?? null;
 if (isset($_SESSION['old_pedido_edit_' . $id_pedido])) unset($_SESSION['old_pedido_edit_' . $id_pedido]);
 if ($old_edit) {
     // override scalar values present in old edit
-    $fieldsToCopy = ['numero_orden','destinatario','telefono','direccion','comentario','latitud','longitud','precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','proveedor','moneda','vendedor','estado'];
+    $fieldsToCopy = ['numero_orden','destinatario','telefono','direccion','codigo_postal','comentario','latitud','longitud','precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','proveedor','moneda','vendedor','estado'];
     foreach ($fieldsToCopy as $f) {
         if (isset($old_edit[$f])) $pedido[$f] = $old_edit[$f];
     }
@@ -581,6 +581,28 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                                 <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
                                             <?php endforeach; ?>
                                         </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_municipio" class="form-label">Municipio</label>
+                                        <select class="form-select select2-searchable" id="id_municipio" name="id_municipio">
+                                            <option value="">Selecciona</option>
+                                            <!-- Dynamically populated -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_barrio" class="form-label">Barrio</label>
+                                        <select class="form-select select2-searchable" id="id_barrio" name="id_barrio">
+                                            <option value="">Selecciona</option>
+                                            <!-- Dynamically populated -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="codigo_postal" class="form-label">Código Postal</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bi bi-geo"></i></span>
+                                            <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" value="<?= htmlspecialchars($pedido['codigo_postal'] ?? '') ?>" placeholder="Ej: 1000">
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.75rem;">Se autocompleta según ubicación.</small>
                                     </div>
 
                                     <div class="col-12 mt-3">
@@ -1174,27 +1196,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Dependent selects for editar: departamento -> municipio -> barrio
 (function(){
     const deptSelect = document.getElementById('id_departamento');
-    const paisSelect = document.getElementById('id_pais');
+    const munSelect = document.getElementById('id_municipio');
+    const barrioSelect = document.getElementById('id_barrio');
+    const cpInput = document.getElementById('codigo_postal');
     const municipios = <?php echo json_encode($municipiosAll); ?>;
     const barrios = <?php echo json_encode($barriosAll); ?>;
-
-    // create municipio and barrio selects if not present
-    let munSelect = document.getElementById('id_municipio');
-    let barrioSelect = document.getElementById('id_barrio');
-    if (!munSelect) {
-        const munWrapper = document.createElement('div');
-        munWrapper.className = 'col-md-6 mb-3';
-        munWrapper.innerHTML = `\n            <label for="id_municipio" class="form-label">Municipio</label>\n            <select class="form-select select2-searchable" id="id_municipio" name="id_municipio" data-placeholder="Buscar municipio...">\n                <option value="" selected>Selecciona un municipio</option>\n            </select>`;
-        deptSelect.parentElement.parentElement.insertBefore(munWrapper, deptSelect.parentElement.nextSibling);
-        munSelect = document.getElementById('id_municipio');
-    }
-    if (!barrioSelect) {
-        const barrioWrapper = document.createElement('div');
-        barrioWrapper.className = 'col-md-6 mb-3';
-        barrioWrapper.innerHTML = `\n            <label for="id_barrio" class="form-label">Barrio</label>\n            <select class="form-select select2-searchable" id="id_barrio" name="id_barrio" data-placeholder="Buscar barrio...">\n                <option value="" selected>Selecciona un barrio</option>\n            </select>`;
-        munSelect.parentElement.insertBefore(barrioWrapper, munSelect.nextSibling);
-        barrioSelect = document.getElementById('id_barrio');
-    }
 
     // Inicializar Select2 en los nuevos selects
     function initSelect2ForLocationSelects() {
@@ -1228,7 +1234,11 @@ document.addEventListener('DOMContentLoaded', function() {
         municipios.forEach(m => {
             if (!depId || depId === '' || parseInt(m.id_departamento) === parseInt(depId)) {
                 const opt = document.createElement('option');
-                opt.value = m.id; opt.textContent = m.nombre; opt.setAttribute('data-id-departamento', m.id_departamento); if (selectedMunId && parseInt(selectedMunId) === parseInt(m.id)) opt.selected = true;
+                opt.value = m.id; 
+                opt.textContent = m.nombre; 
+                opt.setAttribute('data-id-departamento', m.id_departamento); 
+                opt.setAttribute('data-cp', m.codigo_postal || '');
+                if (selectedMunId && parseInt(selectedMunId) === parseInt(m.id)) opt.selected = true;
                 munSelect.appendChild(opt);
             }
         });
@@ -1248,12 +1258,43 @@ document.addEventListener('DOMContentLoaded', function() {
         barrioSelect.innerHTML = '<option value="" selected>Selecciona un barrio</option>';
         barrios.forEach(b => {
             if (!munId || munId === '' || parseInt(b.id_municipio) === parseInt(munId)) {
-                const opt = document.createElement('option'); opt.value = b.id; opt.textContent = b.nombre; opt.setAttribute('data-id-municipio', b.id_municipio); if (selectedBarrioId && parseInt(selectedBarrioId) === parseInt(b.id)) opt.selected = true; barrioSelect.appendChild(opt);
+                const opt = document.createElement('option'); 
+                opt.value = b.id; 
+                opt.textContent = b.nombre; 
+                opt.setAttribute('data-id-municipio', b.id_municipio); 
+                opt.setAttribute('data-cp', b.codigo_postal || '');
+                if (selectedBarrioId && parseInt(selectedBarrioId) === parseInt(b.id)) opt.selected = true; 
+                barrioSelect.appendChild(opt);
             }
         });
         
         // Reinicializar Select2
         initSelect2ForLocationSelects();
+    }
+
+    function updatePostalCode() {
+        if (!cpInput) return;
+        let detectedCP = '';
+
+        // 1. Intentar obtener de Barrio
+        const selectedBarrio = barrioSelect.options[barrioSelect.selectedIndex];
+        if (selectedBarrio && selectedBarrio.getAttribute('data-cp')) {
+            detectedCP = selectedBarrio.getAttribute('data-cp');
+        }
+
+        // 2. Si no hay en Barrio, intentar obtener de Municipio
+        if (!detectedCP) {
+            const selectedMun = munSelect.options[munSelect.selectedIndex];
+            if (selectedMun && selectedMun.getAttribute('data-cp')) {
+                detectedCP = selectedMun.getAttribute('data-cp');
+            }
+        }
+
+        if (detectedCP) {
+            cpInput.value = detectedCP;
+            cpInput.classList.add('is-valid');
+            setTimeout(() => cpInput.classList.remove('is-valid'), 2000);
+        }
     }
 
     // Events - usar eventos de Select2 si está disponible
@@ -1263,13 +1304,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         $(munSelect).on('change.select2', function(){ 
             populateBarrios(munSelect.value); 
+            updatePostalCode();
+        });
+        $(barrioSelect).on('change.select2', function(){ 
+            updatePostalCode();
         });
     } else {
         deptSelect.addEventListener('change', function(){
             const dep = deptSelect.value;
             populateMunicipios(dep, <?= json_encode($pedido['id_municipio'] ?? '') ?>);
         });
-        munSelect.addEventListener('change', function(){ populateBarrios(munSelect.value); });
+        munSelect.addEventListener('change', function(){ 
+            populateBarrios(munSelect.value); 
+            updatePostalCode();
+        });
+        barrioSelect.addEventListener('change', function(){ 
+            updatePostalCode();
+        });
     }
 
     document.addEventListener('DOMContentLoaded', function(){

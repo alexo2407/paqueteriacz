@@ -39,8 +39,10 @@ class MunicipiosController
     {
         $nombre = trim($data['nombre'] ?? '');
         $dep = isset($data['id_departamento']) ? (int)$data['id_departamento'] : null;
+        $cp = trim($data['codigo_postal'] ?? '');
+        if ($cp === '') $cp = null;
         if ($nombre === '' || !$dep) return ['success'=>false,'message'=>'Nombre y departamento obligatorios.','id'=>null];
-        $id = MunicipioModel::crear($nombre, $dep);
+        $id = MunicipioModel::crear($nombre, $dep, $cp);
         return $id ? ['success'=>true,'message'=>'Municipio creado.','id'=>$id] : ['success'=>false,'message'=>'No fue posible crear.','id'=>null];
     }
 
@@ -54,8 +56,10 @@ class MunicipiosController
     {
         $nombre = trim($data['nombre'] ?? '');
         $dep = isset($data['id_departamento']) ? (int)$data['id_departamento'] : null;
+        $cp = trim($data['codigo_postal'] ?? '');
+        if ($cp === '') $cp = null;
         if ($nombre === '' || !$dep) return ['success'=>false,'message'=>'Nombre y departamento obligatorios.'];
-        $ok = MunicipioModel::actualizar($id, $nombre, $dep);
+        $ok = MunicipioModel::actualizar($id, $nombre, $dep, $cp);
         return $ok ? ['success'=>true,'message'=>'Municipio actualizado.'] : ['success'=>false,'message'=>'No fue posible actualizar.'];
     }
 

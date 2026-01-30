@@ -41,8 +41,10 @@ class BarriosController
     {
         $nombre = trim($data['nombre'] ?? '');
         $mun = isset($data['id_municipio']) ? (int)$data['id_municipio'] : null;
+        $cp = trim($data['codigo_postal'] ?? '');
+        if ($cp === '') $cp = null;
         if ($nombre === '' || !$mun) return ['success'=>false,'message'=>'Nombre y municipio obligatorios.','id'=>null];
-        $id = BarrioModel::crear($nombre, $mun);
+        $id = BarrioModel::crear($nombre, $mun, $cp);
         return $id ? ['success'=>true,'message'=>'Barrio creado.','id'=>$id] : ['success'=>false,'message'=>'No fue posible crear.','id'=>null];
     }
 
@@ -56,8 +58,10 @@ class BarriosController
     {
         $nombre = trim($data['nombre'] ?? '');
         $mun = isset($data['id_municipio']) ? (int)$data['id_municipio'] : null;
+        $cp = trim($data['codigo_postal'] ?? '');
+        if ($cp === '') $cp = null;
         if ($nombre === '' || !$mun) return ['success'=>false,'message'=>'Nombre y municipio obligatorios.'];
-        $ok = BarrioModel::actualizar($id, $nombre, $mun);
+        $ok = BarrioModel::actualizar($id, $nombre, $mun, $cp);
         return $ok ? ['success'=>true,'message'=>'Barrio actualizado.'] : ['success'=>false,'message'=>'No fue posible actualizar.'];
     }
 

@@ -287,13 +287,13 @@ if (isset($ruta[0]) && $ruta[0] === 'municipios' && $_SERVER['REQUEST_METHOD'] =
     $ctrl = new MunicipiosController();
 
     if ($accion === 'guardar' || $accion === 'crear') {
-        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_departamento' => $_POST['id_departamento'] ?? null];
+        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_departamento' => $_POST['id_departamento'] ?? null, 'codigo_postal' => $_POST['codigo_postal'] ?? null];
         $response = $ctrl->crear($payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/listar'); exit;
     }
 
     if ($accion === 'actualizar') {
         $id = isset($ruta[2]) ? (int)$ruta[2] : 0; if ($id<=0) { set_flash('error','Municipio inválido'); header('Location: '.RUTA_URL.'municipios/listar'); exit; }
-        $payload = ['nombre'=> $_POST['nombre'] ?? '', 'id_departamento' => $_POST['id_departamento'] ?? null]; $response = $ctrl->actualizar($id,$payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/editar/'.$id); exit;
+        $payload = ['nombre'=> $_POST['nombre'] ?? '', 'id_departamento' => $_POST['id_departamento'] ?? null, 'codigo_postal' => $_POST['codigo_postal'] ?? null]; $response = $ctrl->actualizar($id,$payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/editar/'.$id); exit;
     }
 
     if ($accion === 'eliminar') { $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/listar'); exit; }
@@ -311,13 +311,13 @@ if (isset($ruta[0]) && $ruta[0] === 'barrios' && $_SERVER['REQUEST_METHOD'] === 
     $ctrl = new BarriosController();
 
     if ($accion === 'guardar' || $accion === 'crear') {
-        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_municipio' => $_POST['id_municipio'] ?? null];
+        $payload = ['nombre' => $_POST['nombre'] ?? '', 'id_municipio' => $_POST['id_municipio'] ?? null, 'codigo_postal' => $_POST['codigo_postal'] ?? null];
         $response = $ctrl->crear($payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'barrios/listar'); exit;
     }
 
     if ($accion === 'actualizar') {
         $id = isset($ruta[2]) ? (int)$ruta[2] : 0; if ($id<=0) { set_flash('error','Barrio inválido'); header('Location: '.RUTA_URL.'barrios/listar'); exit; }
-        $payload = ['nombre'=> $_POST['nombre'] ?? '', 'id_municipio' => $_POST['id_municipio'] ?? null]; $response = $ctrl->actualizar($id,$payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'barrios/editar/'.$id); exit;
+        $payload = ['nombre'=> $_POST['nombre'] ?? '', 'id_municipio' => $_POST['id_municipio'] ?? null, 'codigo_postal' => $_POST['codigo_postal'] ?? null]; $response = $ctrl->actualizar($id,$payload); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'barrios/editar/'.$id); exit;
     }
 
     if ($accion === 'eliminar') { $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'barrios/listar'); exit; }

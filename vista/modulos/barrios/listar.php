@@ -56,6 +56,7 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                         <tr>
                             <th style="width: 50px;">#</th>
                             <th>Barrio</th>
+                            <th>Código Postal</th>
                             <th>Municipio Perteneciente</th>
                             <th class="text-end">Acciones</th>
                         </tr>
@@ -76,6 +77,9 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                                     <td class="fw-bold text-muted text-center"><?= ($key + 1) ?></td>
                                     <td>
                                         <span class="fw-bold text-dark fs-6"><?= htmlspecialchars($value["nombre"]) ?></span>
+                                    </td>
+                                    <td>
+                                        <span class="text-secondary"><?= htmlspecialchars($value["codigo_postal"] ?? 'N/A') ?></span>
                                     </td>
                                     <td>
                                         <span class="badge bg-light text-dark border"><i class="bi bi-geo-alt me-1"></i> <?= htmlspecialchars($munName) ?></span>
