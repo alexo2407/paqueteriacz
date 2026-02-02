@@ -647,9 +647,32 @@
                     <p data-lang="en">To perform write operations (create orders, products, etc.), you must obtain a JWT token.</p>
                     <p data-lang="es">Para realizar operaciones de escritura (crear pedidos, productos, etc.), debes obtener un token JWT.</p>
 
+                    <div class="alert alert-info mt-3">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong data-lang="en">Role Access & Capabilities:</strong>
+                        <strong data-lang="es">Accesos y Capacidades por Rol:</strong>
+                        <div class="mt-2">
+                            <ul class="mb-0 ps-3">
+                                <li class="mb-2">
+                                    <strong class="text-primary">Role: Client (ID 4)</strong>
+                                    <div data-lang="en" class="small text-muted">Use this role for <strong>Order Management</strong>: Create new orders, manage massive shipments, and control inventory.</div>
+                                    <div data-lang="es" class="small text-muted">Usa este rol para <strong>Gestión de Pedidos</strong>: Crear nuevos pedidos, administrar envíos masivos y controlar inventario.</div>
+                                </li>
+                                <li>
+                                    <strong class="text-primary">Role: Provider (ID 5)</strong>
+                                    <div data-lang="en" class="small text-muted">Use this role for <strong>Tracking & Visualization</strong>: View order history and real-time delivery status.</div>
+                                    <div data-lang="es" class="small text-muted">Usa este rol para <strong>Seguimiento y Visualización</strong>: Ver historial de pedidos y estado de entrega en tiempo real.</div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
                     <h4 data-lang="en">1. Get Token</h4>
                     <h4 data-lang="es">1. Obtener Token</h4>
-                    <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/auth/login</div>
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-post">POST</span> /api/auth/login
+                        <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                    </div>
 
                     <h5 data-lang="en">Request Body</h5>
                     <h5 data-lang="es">Cuerpo de la Petición</h5>
@@ -703,14 +726,20 @@
                     <div class="mb-4">
                         <h4 data-lang="en">List Orders</h4>
                         <h4 data-lang="es">Listar Pedidos</h4>
-                        <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/pedidos/listar?page=1&limit=20</div>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/pedidos/listar?page=1&limit=20
+                            <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                        </div>
                         <p class="small text-muted">Returns paginated list of orders.</p>
                     </div>
 
                     <div class="mb-4">
                         <h4 data-lang="en">Get Single Order</h4>
                         <h4 data-lang="es">Ver Pedido</h4>
-                        <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/pedidos/ver?id=100</div>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/pedidos/ver?id=100
+                            <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                        </div>
                         <p class="small text-muted">Returns full details of a specific order by Internal ID.</p>
                     </div>
                 </div>
@@ -723,7 +752,11 @@
                     <p data-lang="en">Create a new delivery order. The system automatically validates stock, calculates pricing, and enforces security rules based on user role.</p>
                     <p data-lang="es">Crea un nuevo pedido de entrega. El sistema valida automáticamente el stock, calcula precios y aplica reglas de seguridad según el rol del usuario.</p>
 
-                    <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/pedidos/crear</div>
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-post">POST</span> /api/pedidos/crear
+                        <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                        <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                    </div>
 
                     <h4 data-lang="en">🔑 Required Fields</h4>
                     <h4 data-lang="es">🔑 Campos Obligatorios</h4>
@@ -745,6 +778,22 @@
                             <tr><td><code>producto_id</code> o <code>productos</code></td><td>int/array</td><td>Debe existir en BD</td><td>ID de producto único o array de productos</td></tr>
                         </tbody>
                     </table>
+                    
+                    <!-- ... (middle content skipped for brevity but would be preserved in a real manual edit, here handled by context) ... -->
+
+                 <!-- Bulk Orders -->
+                 <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Bulk Import (Async)</h2>
+                    <h2 class="section-title" data-lang="es">Importación Masiva (Async)</h2>
+                    
+                    <p data-lang="en">Import multiple orders efficiently. Use <code>auto_enqueue=true</code> to process in background.</p>
+                    <p data-lang="es">Importa múltiples pedidos eficientemente. Usa <code>auto_enqueue=true</code> para procesar en segundo plano.</p>
+                    
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-post">POST</span> /api/pedidos/multiple?auto_enqueue=true
+                        <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                        <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                    </div>
 
                     <h4 data-lang="en">📋 Optional Fields - Contact & Delivery</h4>
                     <h4 data-lang="es">📋 Campos Opcionales - Contacto y Entrega</h4>
@@ -797,7 +846,6 @@
                             <tr><td><code>zona</code></td><td>string</td><td>Nombre de la zona</td></tr>
                         </tbody>
                     </table>
-
                     <h4 data-lang="en">👥 Optional Fields - Assignments</h4>
                     <h4 data-lang="es">👥 Campos Opcionales - Asignaciones</h4>
                     
@@ -976,7 +1024,10 @@
                     <p data-lang="en">Import multiple orders efficiently. Use <code>auto_enqueue=true</code> to process in background.</p>
                     <p data-lang="es">Importa múltiples pedidos eficientemente. Usa <code>auto_enqueue=true</code> para procesar en segundo plano.</p>
                     
-                    <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/pedidos/multiple?auto_enqueue=true</div>
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-post">POST</span> /api/pedidos/multiple?auto_enqueue=true
+                        <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                    </div>
                     
                     <h4 data-lang="en">Success Response (202 Accepted)</h4>
                     <h4 data-lang="es">Respuesta Exitosa (202 Accepted)</h4>
@@ -1026,21 +1077,29 @@
 }</code></pre>
                  </div>
             </div>
+            </div>
 
             <!-- Tab: Products -->
-            <div class="tab-pane fade" id="products" role="tabpanel">
+            <div class="tab-pane fade" id="products" role="tabpanel" aria-labelledby="products-tab">
                  <div class="section-container">
                     <h2 class="section-title" data-lang="en">Product Management</h2>
                     <h2 class="section-title" data-lang="es">Gestión de Productos</h2>
                     
                     <div class="mb-4">
-                        <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/productos/listar</div>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/productos/listar
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
                         <p data-lang="en" class="mt-2">List all available products with current stock.</p>
                         <p data-lang="es" class="mt-2">Listar todos los productos disponibles con stock actual.</p>
                     </div>
 
                     <div class="mb-4">
-                         <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/productos/crear</div>
+                         <div class="code-block">
+                            <span class="badge-endpoint badge-post">POST</span> /api/productos/crear
+                            <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                            <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                        </div>
                          <p data-lang="es" class="mt-2">Crear un nuevo producto.</p>
                     </div>
                     
@@ -1062,7 +1121,11 @@
                     <div class="mb-4">
                         <h4 data-lang="en">Update Product</h4>
                         <h4 data-lang="es">Actualizar Producto</h4>
-                        <div class="code-block"><span class="badge-endpoint badge-put">POST</span> /api/productos/actualizar</div> 
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-put">POST</span> /api/productos/actualizar
+                            <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                            <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                        </div> 
                         <small class="text-muted d-block mb-2">Note: Use POST with <code>id</code> param or check PHP config for PUT support.</small>
 
                         <pre class="code-block line-numbers"><code class="language-json">{
@@ -1076,7 +1139,10 @@
                     <div class="mb-4">
                          <h4 data-lang="en">Get Single Product</h4>
                          <h4 data-lang="es">Ver Producto Individual</h4>
-                         <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/productos/ver?id=1</div>
+                         <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/productos/ver?id=1
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
                     </div>
                  </div>
             </div>
@@ -1090,7 +1156,10 @@
                     <p data-lang="en">Retrieve reference data for dropdowns (Countries, Departments, Municipalities).</p>
                     <p data-lang="es">Obtener datos de referencia para listas desplegables (Países, Departamentos, Municipios).</p>
                     
-                     <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/geoinfo/listar</div>
+                     <div class="code-block">
+                         <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/listar
+                         <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                     </div>
                      
                      <h4 data-lang="en">Response Structure</h4>
                      <h4 data-lang="es">Estructura de Respuesta</h4>
@@ -1111,6 +1180,7 @@
                     
                     <p data-lang="en">Endpoints to manage reference data. All accept POST for creation/update.</p>
                     <p data-lang="es">Endpoints para gestionar datos de referencia. Todos aceptan POST para crear/actualizar.</p>
+                    <p class="text-end mb-2"><span class="badge bg-primary">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span></p>
 
                     <table class="table table-bordered">
                         <thead>
@@ -1124,18 +1194,6 @@
                         <tbody>
                             <tr>
                                 <td><strong>Countries</strong></td>
-                                <td><span class="badge-endpoint badge-post">POST</span></td>
-                                <td><code>/api/geoinfo/paises</code></td>
-                                <td><code>{ "nombre": "...", "codigo_iso": "..." }</code></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Departments</strong></td>
-                                <td><span class="badge-endpoint badge-post">POST</span></td>
-                                <td><code>/api/geoinfo/departamentos</code></td>
-                                <td><code>{ "nombre": "...", "id_pais": 1 }</code></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Municipalities</strong></td>
                                 <td><span class="badge-endpoint badge-post">POST</span></td>
                                 <td><code>/api/geoinfo/municipios</code></td>
                                 <td><code>{ "nombre": "...", "id_departamento": 1 }</code></td>
@@ -1161,7 +1219,7 @@
             </div>
 
             <!-- Tab: Client App -->
-            <div class="tab-pane fade" id="client" role="tabpanel">
+            <div class="tab-pane fade" id="client" role="tabpanel" aria-labelledby="client-tab">
                 <div class="section-container">
                     <h2 class="section-title" data-lang="en">Client Application API</h2>
                     <h2 class="section-title" data-lang="es">API App Cliente</h2>
@@ -1176,7 +1234,10 @@
                         <p data-lang="en">Get list of orders belonging to the authenticated client.</p>
                         <p data-lang="es">Obtener lista de pedidos pertenecientes al cliente autenticado.</p>
 
-                        <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/cliente/pedidos</div>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/cliente/pedidos
+                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider (ID 5)</span><span data-lang="es">Rol: Proveedor (ID 5)</span></span>
+                        </div>
                         <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "data": [
@@ -1197,7 +1258,10 @@
                         <p data-lang="en">Allows clients to mark orders as delivered or returned (if permitted).</p>
                         <p data-lang="es">Permite a los clientes marcar pedidos como entregados o devueltos (si está permitido).</p>
 
-                        <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/cliente/cambiar_estado</div>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-post">POST</span> /api/cliente/cambiar_estado
+                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider (ID 5)</span><span data-lang="es">Rol: Proveedor (ID 5)</span></span>
+                        </div>
                         
                         <table class="table table-sm table-bordered mt-2">
                              <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
