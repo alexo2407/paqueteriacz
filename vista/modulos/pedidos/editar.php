@@ -64,13 +64,16 @@ try {
 }
 
 try {
-    $proveedores = $pedidoController->obtenerProveedores();
+    // NOTA: Las variables están intercambiadas intencionalmente para corregir la inversión semántica
+    // $proveedores contiene CLIENTES de logística (quienes solicitan envíos)
+    // $clientes contiene PROVEEDORES de logística (quienes proveen el servicio)
+    $proveedores = $pedidoController->obtenerClientes();
 } catch (Exception $e) {
     $proveedores = [];
 }
 
 try {
-    $clientes = $pedidoController->obtenerClientes();
+    $clientes = $pedidoController->obtenerProveedores();
 } catch (Exception $e) {
     $clientes = [];
 }
@@ -431,10 +434,10 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                     </div>
                                     
                                     <div class="col-md-6 mb-4">
-                                        <label for="proveedor" class="form-label fw-bold">Proveedor (Logística)</label>
+                                        <label for="proveedor" class="form-label fw-bold">Cliente</label>
                                         <?php if (canSelectAnyProveedor()): ?>
                                             <select class="form-control select2-searchable" id="proveedor" name="proveedor" required>
-                                                <option value="">Selecciona un proveedor</option>
+                                                <option value="">Selecciona un cliente</option>
                                                 <?php foreach ($proveedores as $proveedor): ?>
                                                     <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
                                                         <?= htmlspecialchars($proveedor['nombre']) ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
@@ -448,9 +451,9 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                     </div>
 
                                     <div class="col-md-6 mb-4">
-                                        <label for="cliente" class="form-label fw-bold">Cliente (Opcional)</label>
+                                        <label for="cliente" class="form-label fw-bold">Proveedor (Opcional)</label>
                                         <select class="form-control select2-searchable" id="cliente" name="id_cliente">
-                                            <option value="">Sin Cliente asignado</option>
+                                            <option value="">Sin Proveedor asignado</option>
                                             <?php 
                                             $clienteExistenteEnLista = false;
                                             foreach ($clientes as $cli): 
