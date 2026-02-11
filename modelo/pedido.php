@@ -1550,10 +1550,23 @@ class PedidosModel
     public static function obtenerProveedores()
     {
         try {
-            $usuarioModel = new UsuarioModel();
-            // Obtener Solamente Proveedores (Logística)
-            // Se eliminó la mezcla con clientes para mantener inputs separados en la UI
-            return $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
+            $db = (new Conexion())->conectar();
+            
+            // Obtener proveedores de logística
+            // Rol ID 4 en BD = "Proveedor" (proveedores como Novads, Pulox, Fly Box)
+            // Nota: No usamos ROL_NOMBRE_PROVEEDOR porque esa constante apunta a "Cliente"
+            // debido a una inversión semántica histórica en config.php
+            
+            $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                    FROM usuarios u
+                    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    WHERE ur.id_rol = 4  -- Proveedor de logística
+                    AND u.activo = 1
+                    ORDER BY u.nombre";
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
         }
