@@ -1562,22 +1562,38 @@ class PedidosModel
     public static function obtenerClientes()
     {
         try {
-            $usuarioModel = new UsuarioModel();
-            // Obtener Clientes (Rol 5) y Clientes CRM (Rol 7)
-            $clientes = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente');
-            $clientesCrm = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente CRM');
+            $db = (new Conexion())->conectar();
             
-            // Combinar y eliminar duplicados (si un usuario tiene ambos roles)
-            $todo = array_merge($clientes, $clientesCrm);
-            $hash = [];
-            $unique = [];
-            foreach ($todo as $u) {
-                if (!isset($hash[$u['id']])) {
-                    $hash[$u['id']] = true;
-                    $unique[] = $u;
-                }
-            }
-            return $unique;
+            // Obtener CLIENTES de logística (quienes solicitan el servicio de envío)
+            // Roles en BD:
+            // - ID 4: "Proveedor" = Proveedores de logística (Novads, Pulox, Fly Box, etc.)
+            // - ID 5: "Cliente" = Clientes de logística (quienes solicitan envíos)
+            // - ID 7: "Cliente CRM" = Clientes del sistema CRM
+            //
+            // Buscamos usuarios con rol ID 5 ("Cliente") y 7 ("Cliente CRM")
+            // Y excluimos usuarios que también tengan roles operativos:
+            // - ID 1: Administrador
+            // - ID 2: Vendedor  
+            // - ID 3: Repartidor
+            // - ID 4: Proveedor (de logística)
+            // - ID 6: Proveedor CRM
+            
+            $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                    FROM usuarios u
+                    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    WHERE ur.id_rol IN (5, 7)  -- 5='Cliente', 7='Cliente CRM'
+                    AND u.activo = 1
+                    AND u.id NOT IN (
+                        -- Excluir usuarios con roles operativos
+                        SELECT DISTINCT ur2.id_usuario
+                        FROM usuarios_roles ur2
+                        WHERE ur2.id_rol IN (1, 2, 3, 4, 6)  -- Admin, Vendedor, Repartidor, Proveedor, Proveedor CRM
+                    )
+                    ORDER BY u.nombre";
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             throw new Exception("Error al obtener los clientes: " . $e->getMessage());
         }
