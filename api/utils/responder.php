@@ -23,7 +23,7 @@ function responder($success, $message, $data = null, $code = 200, $extra = [])
         $response = array_merge($response, $extra);
     }
     
-    echo json_encode($response);
+    echo json_encode($response, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
     exit;
 }
 ?>
