@@ -711,7 +711,7 @@ try {
         // ADMIN ve TODOS los productos sin filtro
         let productosDelProveedor;
         if (esAdmin) {
-            // Admin: mostrar todos los productos
+            // Admin: mostrar todos los productos siempre
             productosDelProveedor = productos;
         } else {
             // Proveedor: filtrar solo sus productos y los legacy sin creador
@@ -740,10 +740,13 @@ try {
             opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${marcaText}${p.stock !== null ? ' — Stock: ' + p.stock : ''}</option>`;
         });
         
-        if (productosDelProveedor.length === 0 && proveedorId) {
-            opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
-        } else if (!proveedorId) {
-            opts += '<option value="" disabled>Primero selecciona un proveedor</option>';
+        // Solo mostrar mensajes de error para usuarios no-admin
+        if (!esAdmin) {
+            if (productosDelProveedor.length === 0 && proveedorId) {
+                opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
+            } else if (!proveedorId) {
+                opts += '<option value="" disabled>Primero selecciona un proveedor</option>';
+            }
         }
         
         return opts;
