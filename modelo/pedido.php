@@ -123,7 +123,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -241,7 +241,9 @@ class PedidosModel
                             case 'zona':
                                 $params[':zona'] = $zona;
                                 break;
-
+                            case 'codigo_postal':
+                                $params[':codigo_postal'] = $row['codigo_postal'] ?? null;
+                                break;
                             case 'comentario':
                                 $params[':comentario'] = $comentario;
                                 break;
@@ -418,7 +420,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -507,7 +509,9 @@ class PedidosModel
                     case 'zona':
                         $params[':zona'] = $data['zona'] ?? null;
                         break;
-
+                    case 'codigo_postal':
+                        $params[':codigo_postal'] = $data['codigo_postal'] ?? null;
+                        break;
                     case 'comentario':
                         $params[':comentario'] = $data['comentario'] ?? null;
                         break;
@@ -595,6 +599,7 @@ class PedidosModel
                         p.id_departamento,
                         p.id_municipio,
                         p.id_barrio,
+                        p.codigo_postal,
                         p.id_cliente,
                         ST_Y(p.coordenadas) AS latitud,
                         ST_X(p.coordenadas) AS longitud,
@@ -971,7 +976,10 @@ class PedidosModel
                 $fields[] = 'id_barrio = :id_barrio';
                 $params[':id_barrio'] = $data['id_barrio'] !== '' ? (int)$data['id_barrio'] : null;
             }
-
+            if (isset($data['codigo_postal'])) {
+                $fields[] = 'codigo_postal = :codigo_postal';
+                $params[':codigo_postal'] = $data['codigo_postal'] !== '' ? $data['codigo_postal'] : null;
+            }
 
             // Execute UPDATE if there are fields to update
             if (!empty($fields)) {
@@ -1361,7 +1369,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1408,7 +1416,7 @@ class PedidosModel
                 'municipio' => 'municipio',
                 'barrio' => 'barrio',
                 'direccion' => 'direccion',
-
+                'codigo_postal' => 'codigo_postal',
                 'zona' => 'zona',
                 'comentario' => 'comentario',
                 'id_estado' => 'estado',
