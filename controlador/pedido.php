@@ -78,7 +78,7 @@ class PedidosController {
 
         if (!is_array($payload) || !isset($payload['pedidos']) || !is_array($payload['pedidos'])) {
             http_response_code(400);
-            echo json_encode(['error' => "JSON inválido o falta la clave 'pedidos' (esperado array)."], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['error' => "JSON inválido o falta la clave 'pedidos' (esperado array)."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             return;
         }
 
@@ -93,7 +93,7 @@ class PedidosController {
             'failed' => count(array_filter($results['results'] ?? [], function($r){ return !$r['success']; }))
         ];
 
-        echo json_encode(['summary' => $summary, 'results' => $results['results'] ?? []], JSON_UNESCAPED_UNICODE);
+        echo json_encode(['summary' => $summary, 'results' => $results['results'] ?? []], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         return;
     }
 
@@ -417,7 +417,7 @@ class PedidosController {
                 if (isset($sanitized['comentario'])) $sanitized['comentario'] = '[SANITIZED]';
 
                 $dbg = '[' . date('c') . '] guardarPedidoFormulario DEBUG: ' . php_sapi_name() . "\n";
-                $dbg .= json_encode($sanitized, JSON_UNESCAPED_UNICODE) . "\n";
+                $dbg .= json_encode($sanitized, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE) . "\n";
                 file_put_contents($logDir . '/pedido_debug.log', $dbg . "\n", FILE_APPEND | LOCK_EX);
             } catch (Exception $e) {
                 // no interrumpir la ejecución por errores de logging
@@ -722,7 +722,7 @@ class PedidosController {
                 error_log("Spurious output in guardarEdicion: " . $buffered);
             }
             header('Content-Type: application/json', true, $code);
-            echo json_encode($data);
+            echo json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         };
 
@@ -755,7 +755,7 @@ class PedidosController {
 
             // DEBUG: Log POST data specifically for persistence debugging
             if (defined('DEBUG') && DEBUG) {
-                 file_put_contents(__DIR__ . '/../logs/debug_pedido.log', date('Y-m-d H:i:s') . " - ID: {$data['id_pedido']} - DATA: " . json_encode($data) . "\n", FILE_APPEND);
+                 file_put_contents(__DIR__ . '/../logs/debug_pedido.log', date('Y-m-d H:i:s') . " - ID: {$data['id_pedido']} - DATA: " . json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
             }
 
 
@@ -853,7 +853,7 @@ class PedidosController {
         if (empty($_SESSION['registrado'])) {
             if ($isAjaxRequest) {
                 header('Content-Type: application/json', true, 401);
-                echo json_encode(["success" => false, "message" => "No autenticado. Inicia sesión e intenta de nuevo."]);
+                echo json_encode(["success" => false, "message" => "No autenticado. Inicia sesión e intenta de nuevo."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
             // Para peticiones normales, mantener el comportamiento histórico
@@ -867,7 +867,7 @@ class PedidosController {
         header('Content-Type: application/json');
 
         if ($id_pedido <= 0 || $nuevo_estado <= 0) {
-            echo json_encode(["success" => false, "message" => "Datos inválidos. ID o Estado vacío."]);
+            echo json_encode(["success" => false, "message" => "Datos inválidos. ID o Estado vacío."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit();
         }
 
@@ -880,12 +880,12 @@ class PedidosController {
             try {
                 $pedido = PedidosModel::obtenerPedidoPorId($id_pedido);
             } catch (Exception $e) {
-                echo json_encode(["success" => false, "message" => "Error al obtener el pedido."]);
+                echo json_encode(["success" => false, "message" => "Error al obtener el pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
 
             if (empty($pedido)) {
-                echo json_encode(["success" => false, "message" => "Pedido no encontrado."]);
+                echo json_encode(["success" => false, "message" => "Pedido no encontrado."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
 
@@ -894,12 +894,12 @@ class PedidosController {
 
             if ($asignado === null || $asignado === 0) {
                 // No está asignado a nadie: no permitir que un repartidor no asignado lo modifique
-                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."]);
+                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
 
             if ($userId === null || (int)$userId !== (int)$asignado) {
-                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."]);
+                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
         }
@@ -911,12 +911,12 @@ class PedidosController {
             try {
                 $pedido = PedidosModel::obtenerPedidoPorId($id_pedido);
             } catch (Exception $e) {
-                echo json_encode(["success" => false, "message" => "Error al obtener el pedido."]);
+                echo json_encode(["success" => false, "message" => "Error al obtener el pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
 
             if (empty($pedido)) {
-                echo json_encode(["success" => false, "message" => "Pedido no encontrado."]);
+                echo json_encode(["success" => false, "message" => "Pedido no encontrado."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
 
@@ -924,7 +924,7 @@ class PedidosController {
             $idCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;
 
             if ($idCliente === null || $idCliente === 0 || $userId === null || (int)$userId !== (int)$idCliente) {
-                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."]);
+                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
         }
@@ -942,7 +942,7 @@ class PedidosController {
             $message = $success ? 'Estado actualizado correctamente.' : 'No se realizó ningún cambio en el estado.';
         }
 
-        echo json_encode(["success" => $success, "message" => $message]);
+        echo json_encode(["success" => $success, "message" => $message], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         exit();
     }
 
@@ -979,7 +979,7 @@ class PedidosController {
                 $resp = ['success' => false, 'message' => 'No se recibió el archivo CSV.'];
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    echo json_encode($resp);
+                    echo json_encode($resp, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                     exit;
                 }
                 set_flash('error', $resp['message']);
@@ -992,7 +992,7 @@ class PedidosController {
                 $resp = ['success' => false, 'message' => $validacion['error']];
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    echo json_encode($resp);
+                    echo json_encode($resp, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                     exit;
                 }
                 set_flash('error', $resp['message']);
@@ -1040,7 +1040,7 @@ class PedidosController {
                 $msg = 'Faltan columnas requeridas en el CSV: ' . implode(', ', $missing);
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'message' => $msg]);
+                    echo json_encode(['success' => false, 'message' => $msg], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                     exit;
                 }
                 set_flash('error', $msg);
@@ -1129,7 +1129,7 @@ class PedidosController {
                 ];
                 
                 header('Content-Type: application/json');
-                echo json_encode($previewData, JSON_UNESCAPED_UNICODE);
+                echo json_encode($previewData, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
             
@@ -1142,7 +1142,7 @@ class PedidosController {
                         'success' => false,
                         'message' => $msg,
                         'errores' => $resumenValidacion['errores']
-                    ]);
+                    ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                     exit;
                 }
                 $_SESSION['import_errors'] = $resumenValidacion['errores'];
@@ -1277,7 +1277,7 @@ class PedidosController {
             
             if ($isAjax) {
                 header('Content-Type: application/json');
-                echo json_encode($responseData, JSON_UNESCAPED_UNICODE);
+                echo json_encode($responseData, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
             
@@ -1310,7 +1310,7 @@ class PedidosController {
                     'success' => false,
                     'message' => 'Error interno durante la importación. ID: ' . $errorId,
                     'error_id' => $errorId
-                ]);
+                ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
             
@@ -1338,7 +1338,7 @@ class PedidosController {
         header('Content-Type: application/json');
 
         if (!$id || !is_numeric($id)) {
-            echo json_encode(['success' => false, 'message' => 'ID de pedido inválido']);
+            echo json_encode(['success' => false, 'message' => 'ID de pedido inválido'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -1348,12 +1348,12 @@ class PedidosController {
             echo json_encode([
                 'success' => true,
                 'data' => $historial
-            ]);
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false, 
                 'message' => 'Error al obtener historial: ' . $e->getMessage()
-            ]);
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         }
         exit;
     }

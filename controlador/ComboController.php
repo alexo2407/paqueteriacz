@@ -49,7 +49,7 @@ class ComboController
         session_start();
         
         if (!isset($_SESSION['usuario_id'])) {
-            echo json_encode(['success' => false, 'message' => 'No autenticado']);
+            echo json_encode(['success' => false, 'message' => 'No autenticado'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -95,13 +95,13 @@ class ComboController
                 'success' => true,
                 'message' => 'Combo creado exitosamente',
                 'id_pedido' => $idPedido
-            ]);
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
 
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,
                 'message' => $e->getMessage()
-            ]);
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         }
     }
 
@@ -193,7 +193,7 @@ class ComboController
         session_start();
         
         if (!isset($_SESSION['usuario_id']) || empty($_GET['id_proveedor'])) {
-            echo json_encode(['success' => false]);
+            echo json_encode(['success' => false], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -210,18 +210,18 @@ class ComboController
                 echo json_encode([
                     'success' => true,
                     'moneda' => $moneda
-                ]);
+                ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             } else {
                 echo json_encode([
                     'success' => false,
                     'message' => 'Proveedor sin moneda configurada'
-                ]);
+                ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             }
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,
                 'message' => $e->getMessage()
-            ]);
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         }
     }
 }
