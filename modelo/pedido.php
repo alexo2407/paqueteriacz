@@ -1548,70 +1548,68 @@ class PedidosModel
     }
 
     public static function obtenerProveedores()
-    {
-        try {
-            $db = (new Conexion())->conectar();
-            
-            // Obtener proveedores de logística
-            // Rol ID 4 en BD = "Proveedor" (proveedores como Novads, Pulox, Fly Box)
-            // Nota: No usamos ROL_NOMBRE_PROVEEDOR porque esa constante apunta a "Cliente"
-            // debido a una inversión semántica histórica en config.php
-            
-            $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
-                    FROM usuarios u
-                    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-                    WHERE ur.id_rol = 4  -- Proveedor de logística
-                    AND u.activo = 1
-                    ORDER BY u.nombre";
-            
-            $stmt = $db->prepare($sql);
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
-        }
+{
+    try {
+        $db = (new Conexion())->conectar();
+        
+        // Obtener proveedores de logística (empresas de mensajería)
+        // Después de migración 008 y swap de constantes:
+        // - Rol ID 5 en BD = "Proveedor" (nombre en BD) = Proveedores de servicio semánticamente
+        // - ROL_PROVEEDOR constante ahora apunta a ID 5
+        
+        $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                FROM usuarios u
+                INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                WHERE ur.id_rol = 5  -- Proveedores de servicio (empresas de mensajería)
+                AND u.activo = 1
+                ORDER BY u.nombre";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
     }
-
+}
     public static function obtenerClientes()
-    {
-        try {
-            $db = (new Conexion())->conectar();
-            
-            // Obtener CLIENTES de logística (quienes solicitan el servicio de envío)
-            // Roles en BD:
-            // - ID 4: "Proveedor" = Proveedores de logística (Novads, Pulox, Fly Box, etc.)
-            // - ID 5: "Cliente" = Clientes de logística (quienes solicitan envíos)
-            // - ID 7: "Cliente CRM" = Clientes del sistema CRM
-            //
-            // Buscamos usuarios con rol ID 5 ("Cliente") y 7 ("Cliente CRM")
-            // Y excluimos usuarios que también tengan roles operativos:
-            // - ID 1: Administrador
-            // - ID 2: Vendedor  
-            // - ID 3: Repartidor
-            // - ID 4: Proveedor (de logística)
-            // - ID 6: Proveedor CRM
-            
-            $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
-                    FROM usuarios u
-                    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-                    WHERE ur.id_rol IN (5, 7)  -- 5='Cliente', 7='Cliente CRM'
-                    AND u.activo = 1
-                    AND u.id NOT IN (
-                        -- Excluir usuarios con roles operativos
-                        SELECT DISTINCT ur2.id_usuario
-                        FROM usuarios_roles ur2
-                        WHERE ur2.id_rol IN (1, 2, 3, 4, 6)  -- Admin, Vendedor, Repartidor, Proveedor, Proveedor CRM
-                    )
-                    ORDER BY u.nombre";
-            
-            $stmt = $db->prepare($sql);
-            $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            throw new Exception("Error al obtener los clientes: " . $e->getMessage());
-        }
+{
+    try {
+        $db = (new Conexion())->conectar();
+        
+        // Obtener CLIENTES de logística (quienes solicitan el servicio de envío)
+        // Después de migración 008 y swap de constantes:
+        // - Rol ID 4 en BD = "Cliente" (nombre en BD) = Clientes semánticamente (quienes solicitan envíos)
+        // - Rol ID 7 = "Cliente CRM" = Clientes del sistema CRM
+        // - ROL_CLIENTE constante ahora apunta a ID 4
+        //
+        // Buscamos usuarios con rol ID 4 ("Cliente") y 7 ("Cliente CRM")
+        // Y excluimos usuarios que también tengan roles operativos:
+        // - ID 1: Administrador
+        // - ID 2: Vendedor  
+        // - ID 3: Repartidor
+        // - ID 5: Proveedor (de logística)
+        // - ID 6: Proveedor CRM
+        
+        $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                FROM usuarios u
+                INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                WHERE ur.id_rol IN (4, 7)  -- 4='Cliente', 7='Cliente CRM'
+                AND u.activo = 1
+                AND u.id NOT IN (
+                    -- Excluir usuarios con roles operativos
+                    SELECT DISTINCT ur2.id_usuario
+                    FROM usuarios_roles ur2
+                    WHERE ur2.id_rol IN (1, 2, 3, 5, 6)  -- Admin, Vendedor, Repartidor, Proveedor, Proveedor CRM
+                )
+                ORDER BY u.nombre";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        throw new Exception("Error al obtener los clientes: " . $e->getMessage());
     }
-
+}
     public static function obtenerMonedas()
     {
         return MonedaModel::listar();

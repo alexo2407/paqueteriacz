@@ -456,13 +456,17 @@ class PedidosController {
         // Aplicar auto-asignación según rol del usuario logueado
         require_once __DIR__ . '/../utils/permissions.php';
         if (isProveedor()) {
-            // Usuario con Rol 4 ("Cliente" en BD, pero es proveedor): auto-asignar como proveedor
+            // Usuario proveedor: auto-asignar como proveedor
             $proveedor = $_SESSION['user_id'];
         } elseif (isCliente()) {
-            // Usuario con Rol 5 ("Proveedor" en BD, pero es cliente): auto-asignar como cliente
+            // Usuario cliente: auto-asignar como cliente
             $idCliente = $_SESSION['user_id'];
         }
         
+        // Validar que haya un proveedor (antes del swap)
+        if ($proveedor === null || $proveedor === false) {
+            $errores[] = 'Selecciona un proveedor válido.';
+        }
         
         $moneda = $parse_positive_int($data, 'moneda');
 
