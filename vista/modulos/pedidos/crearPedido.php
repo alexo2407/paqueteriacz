@@ -28,15 +28,12 @@ try {
 }
 
 try {
-    // NOTA: Las variables están intercambiadas intencionalmente para corregir la inversión semántica
-    // $proveedores contiene CLIENTES de logística (quienes solicitan envíos)
-    // $clientes contiene PROVEEDORES de logística (quienes proveen el servicio)
-    $proveedores = $pedidosController->obtenerClientes();
+    $proveedores = $pedidosController->obtenerProveedores();
 } catch (Exception $e) {
     $proveedores = [];
 }
 try {
-    $clientes = $pedidosController->obtenerProveedores();
+    $clientes = $pedidosController->obtenerClientes();
 } catch (Exception $e) {
     $clientes = [];
 }
@@ -313,13 +310,13 @@ try {
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="proveedor" class="form-label">Cliente</label>
+                                            <label for="proveedor" class="form-label">Proveedor de Servicio</label>
                                             <?php
                                             require_once __DIR__ . '/../../../utils/permissions.php';
                                             $canSelect = canSelectAnyProveedor();
                                             if ($canSelect): ?>
-                                                <select class="form-select select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar cliente...">
-                                                    <option value="" disabled selected>Selecciona un cliente</option>
+                                                <select class="form-select select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar proveedor...">
+                                                    <option value="" disabled selected>Selecciona un proveedor</option>
                                                     <?php foreach ($proveedores as $proveedor): ?>
                                                         <option value="<?= $proveedor['id']; ?>" <?= (isset($old_posted['proveedor']) && (int)$old_posted['proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
                                                             <?= htmlspecialchars($proveedor['nombre']); ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
@@ -327,9 +324,9 @@ try {
                                                     <?php endforeach; ?>
                                                 </select>
                                                 <?php if (empty($proveedores)): ?>
-                                                    <div class="form-text text-warning">No hay clientes activos.</div>
+                                                    <div class="form-text text-warning">No hay proveedores activos.</div>
                                                 <?php endif; ?>
-                                                <div class="invalid-feedback">Por favor, selecciona un cliente.</div>
+                                                <div class="invalid-feedback">Por favor, selecciona un proveedor.</div>
                                             <?php else: ?>
                                                 <!-- Usuario Proveedor: auto-asignado -->
                                                 <input type="hidden" id="proveedor" name="proveedor" value="<?= $_SESSION['user_id'] ?>">
@@ -340,9 +337,9 @@ try {
                                     </div>
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="cliente" class="form-label">Proveedor (Opcional)</label>
-                                            <select class="form-select select2-searchable" id="cliente" name="id_cliente" data-placeholder="Buscar proveedor...">
-                                                <option value="" selected>Sin Proveedor asignado</option>
+                                            <label for="cliente" class="form-label">Cliente (Opcional)</label>
+                                            <select class="form-select select2-searchable" id="cliente" name="id_cliente" data-placeholder="Buscar cliente...">
+                                                <option value="" selected>Sin Cliente asignado</option>
                                                 <?php foreach ($clientes as $cli): ?>
                                                     <option value="<?= $cli['id']; ?>" <?= (isset($old_posted['id_cliente']) && (int)$old_posted['id_cliente'] === (int)$cli['id']) ? 'selected' : '' ?> >
                                                         <?= htmlspecialchars($cli['nombre']); ?><?= isset($cli['email']) && $cli['email'] ? ' — ' . htmlspecialchars($cli['email']) : '' ?>

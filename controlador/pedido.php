@@ -438,19 +438,31 @@ class PedidosController {
             return false;
         };
 
+
         $productoId = $parse_positive_int($data, 'producto_id');
         $cantidadProducto = $parse_positive_int($data, 'cantidad_producto');
         $estado = $parse_positive_int($data, 'estado');
         $vendedor = $parse_positive_int($data, 'vendedor');
+        
+        // Leer valores de los campos del formulario
+        // NOTA: Los nombres en BD están invertidos históricamente:
+        // - Rol ID 4 en BD se llama "Cliente" pero son PROVEEDORES de mensajería
+        // - Rol ID 5 en BD se llama "Proveedor" pero son CLIENTES que solicitan envíos
+        // Las etiquetas de la vista son correctas semánticamente, así que mapeamos directo
         $proveedor = $parse_positive_int($data, 'proveedor');
         $idCliente = $parse_positive_int($data, 'id_cliente');
         if (!$idCliente) $idCliente = $parse_positive_int($data, 'cliente');
         
-        // Si el usuario es Proveedor, forzar su ID como proveedor del pedido
+        // Aplicar auto-asignación según rol del usuario logueado
         require_once __DIR__ . '/../utils/permissions.php';
         if (isProveedor()) {
+            // Usuario con Rol 4 ("Cliente" en BD, pero es proveedor): auto-asignar como proveedor
             $proveedor = $_SESSION['user_id'];
+        } elseif (isCliente()) {
+            // Usuario con Rol 5 ("Proveedor" en BD, pero es cliente): auto-asignar como cliente
+            $idCliente = $_SESSION['user_id'];
         }
+        
         
         $moneda = $parse_positive_int($data, 'moneda');
 
