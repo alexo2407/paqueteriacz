@@ -8,9 +8,20 @@ class LogisticaController {
     public function dashboard() {
         require_once "modelo/logistica.php";
         require_once "modelo/pedido.php";
+        require_once __DIR__ . '/../utils/permissions.php';
         
-        // Verificar sesión y rol (idealmente en la vista o router, pero validamos user id)
-        $clienteId = $_SESSION['idUsuario'] ?? 0;
+        // Verificar sesión y rol
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        
+        // Determinar si el usuario es proveedor (mensajería) o cliente
+        // IMPORTANTE: isCliente() verifica ROL_CLIENTE (ID 5) que en BD se llama "Proveedor"
+        // Estos son los proveedores de mensajería que ven pedidos donde id_proveedor = su user_id
+        $isProveedor = isCliente();
+        
+        // Paginación
+        $page = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $perPage = 2;
+        $offset = ($page - 1) * $perPage;
         
         // Filtros
         $fechaDesde = $_GET['fecha_desde'] ?? date('Y-m-d', strtotime('-30 days'));
@@ -24,11 +35,17 @@ class LogisticaController {
         ];
 
         // 1. Notificaciones (Cambios recientes en mis pedidos)
-        // Interpretamos "notificaciones" como actualizaciones recientes de estado
-        $notificaciones = LogisticaModel::obtenerNotificacionesCliente($clienteId, 10);
+        // Pasamos el flag $isProveedor para filtrar correctamente
+        $notificaciones = LogisticaModel::obtenerNotificacionesCliente($userId, 10, $isProveedor);
         
-        // 2. Histórico Total (con filtros)
-        $historial = LogisticaModel::obtenerHistorialCliente($clienteId, $filtros);
+        // 2. Histórico Total (con filtros y paginación)
+        // Pasamos el flag $isProveedor para filtrar correctamente
+        // IMPORTANTE: Excluimos estados finales para que la paginación solo cuente pedidos activos
+        $historial = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, $perPage, $offset, true);
+        
+        // 3. Contar total de pedidos para paginación (solo activos)
+        $totalPedidos = LogisticaModel::contarPedidos($userId, $filtros, $isProveedor, true);
+        $totalPages = ceil($totalPedidos / $perPage);
 
         // 3. Obtener todos los estados disponibles para el selector
         $estados = LogisticaModel::obtenerEstados();
@@ -36,8 +53,14 @@ class LogisticaController {
         return [
             'notificaciones' => $notificaciones,
             'historial' => $historial,
+            'estados' => $estados,
             'filtros' => $filtros,
-            'estados' => $estados
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $totalPedidos,
+                'total_pages' => $totalPages
+            ]
         ];
     }
 
@@ -46,23 +69,40 @@ class LogisticaController {
      */
     public function obtenerDatosPedido($id) {
         require_once "modelo/logistica.php";
+        require_once __DIR__ . '/../utils/permissions.php';
         
-        $clienteId = $_SESSION['idUsuario'] ?? 0;
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $id = (int)$id;
+        // IMPORTANTE: isCliente() verifica ROL_CLIENTE (ID 5) que en BD se llama "Proveedor"
+        $isProveedor = isCliente();
 
-        // 1. Obtener Pedido (reutilizamos modelo pedido o logistica, pero validando cliente)
+        // 1. Obtener Pedido
         require_once "modelo/pedido.php";
         $pedido = PedidosModel::obtenerPedidoPorId($id);
 
-        if (!$pedido || $pedido['id_cliente'] != $clienteId) {
-            // No existe o no es de este cliente
-            return null; // El controlador no debe redirigir si se usa como data provider
+        if (!$pedido) {
+            return null;
+        }
+        
+        // 2. Validar propiedad según el rol
+        $hasAccess = false;
+        if ($isProveedor) {
+            // Proveedor: verificar id_proveedor
+            $hasAccess = ($pedido['id_proveedor'] == $userId);
+        } else {
+            // Cliente: verificar id_cliente
+            $hasAccess = ($pedido['id_cliente'] == $userId);
+        }
+        
+        if (!$hasAccess) {
+            // No tiene permisos
+            return null;
         }
 
-        // 2. Obtener Historial de Cambios (Auditoría) para este pedido
+        // 3. Obtener Historial de Cambios (Auditoría) para este pedido
         $historialCambios = LogisticaModel::obtenerHistorialCambiosPedido($id);
 
-        // 3. Obtener todos los estados disponibles para el selector
+        // 4. Obtener todos los estados disponibles para el selector
         $estados = LogisticaModel::obtenerEstados();
 
         return [
@@ -83,13 +123,31 @@ class LogisticaController {
 
         require_once "modelo/logistica.php";
         require_once "modelo/pedido.php";
+        require_once __DIR__ . '/../utils/permissions.php';
 
-        $clienteId = $_SESSION['idUsuario'] ?? 0;
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $id = (int)$id;
+        // IMPORTANTE: isCliente() verifica ROL_CLIENTE (ID 5) que en BD se llama "Proveedor"
+        $isProveedor = isCliente();
 
         // Verificar propiedad
         $pedido = PedidosModel::obtenerPedidoPorId($id);
-        if (!$pedido || $pedido['id_cliente'] != $clienteId) {
+        if (!$pedido) {
+            header('Location: ' . RUTA_URL . 'logistica/dashboard');
+            exit;
+        }
+        
+        // Validar propiedad según el rol
+        $hasAccess = false;
+        if ($isProveedor) {
+            // Proveedor: verificar id_proveedor
+            $hasAccess = ($pedido['id_proveedor'] == $userId);
+        } else {
+            // Cliente: verificar id_cliente
+            $hasAccess = ($pedido['id_cliente'] == $userId);
+        }
+        
+        if (!$hasAccess) {
             // No tiene permisos
             header('Location: ' . RUTA_URL . 'logistica/dashboard');
             exit;

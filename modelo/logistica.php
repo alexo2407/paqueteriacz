@@ -6,12 +6,20 @@ require_once __DIR__ . '/auditoria.php';
 class LogisticaModel {
 
     /**
-     * Obtener notificaciones (cambios recientes) de los pedidos del cliente.
+     * Obtener notificaciones (cambios recientes) de los pedidos del usuario.
      * Se basa en la tabla auditoria_cambios unida con pedidos.
+     * 
+     * @param int $userId ID del usuario
+     * @param int $limit Límite de resultados
+     * @param bool $filterByProveedor Si true, filtra por id_proveedor; si false, por id_cliente
      */
-    public static function obtenerNotificacionesCliente($clienteId, $limit = 20) {
+    public static function obtenerNotificacionesCliente($userId, $limit = 20, $filterByProveedor = false) {
         try {
             $db = (new Conexion())->conectar();
+            
+            // Determinar el campo de filtro según el tipo de usuario
+            $filterField = $filterByProveedor ? 'p.id_proveedor' : 'p.id_cliente';
+            
             $sql = "SELECT 
                         a.id AS auditoria_id,
                         a.accion,
@@ -24,13 +32,13 @@ class LogisticaModel {
                     FROM auditoria_cambios a
                     INNER JOIN pedidos p ON a.id_registro = p.id
                     WHERE a.tabla = 'pedidos' 
-                    AND p.id_cliente = :cliente_id
+                    AND {$filterField} = :user_id
                     AND (a.accion = 'actualizar' OR a.accion = 'crear')
                     ORDER BY a.created_at DESC
                     LIMIT :limit";
 
             $stmt = $db->prepare($sql);
-            $stmt->bindParam(':cliente_id', $clienteId, PDO::PARAM_INT);
+            $stmt->bindParam(':user_id', $userId, PDO::PARAM_INT);
             $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
             $stmt->execute();
             
@@ -55,10 +63,20 @@ class LogisticaModel {
 
     /**
      * Obtener historial de pedidos con filtros
+     * 
+     * @param int $userId ID del usuario
+     * @param array $filtros Filtros de búsqueda
+     * @param bool $filterByProveedor Si true, filtra por id_proveedor; si false, por id_cliente
+     * @param int|null $limit Límite de resultados (null = sin límite)
+     * @param int $offset Offset para paginación
+     * @param bool $excluirEstadosFinales Si true, excluye estados finales (ENTREGADO, CANCELADO, etc.)
      */
-    public static function obtenerHistorialCliente($clienteId, $filtros = []) {
+    public static function obtenerHistorialCliente($userId, $filtros = [], $filterByProveedor = false, $limit = null, $offset = 0, $excluirEstadosFinales = false) {
         try {
             $db = (new Conexion())->conectar();
+            
+            // Determinar el campo de filtro según el tipo de usuario
+            $filterField = $filterByProveedor ? 'p.id_proveedor' : 'p.id_cliente';
             
             $sql = "SELECT 
                         p.id,
@@ -73,9 +91,9 @@ class LogisticaModel {
                     FROM pedidos p
                     LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
                     LEFT JOIN monedas m ON p.id_moneda = m.id
-                    WHERE p.id_cliente = :cliente_id";
+                    WHERE {$filterField} = :user_id";
             
-            $params = [':cliente_id' => $clienteId];
+            $params = [':user_id' => $userId];
 
             if (!empty($filtros['fecha_desde'])) {
                 $sql .= " AND p.fecha_ingreso >= :fecha_desde";
@@ -89,8 +107,20 @@ class LogisticaModel {
                 $sql .= " AND (p.numero_orden LIKE :search OR p.destinatario LIKE :search)";
                 $params[':search'] = '%' . $filtros['search'] . '%';
             }
+            
+            // Excluir estados finales si se solicita (para tab "En Proceso")
+            if ($excluirEstadosFinales) {
+                $sql .= " AND ep.nombre_estado NOT IN ('Entregado', 'Devuelto', 'Cancelado')";
+            }
 
             $sql .= " ORDER BY p.fecha_ingreso DESC";
+            
+            // Agregar paginación si se especifica límite
+            if ($limit !== null) {
+                $sql .= " LIMIT :limit OFFSET :offset";
+                $params[':limit'] = $limit;
+                $params[':offset'] = $offset;
+            }
 
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
@@ -100,6 +130,59 @@ class LogisticaModel {
         } catch (Exception $e) {
             error_log("Error al obtener historial logistica: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Contar total de pedidos para paginación
+     * 
+     * @param int $userId ID del usuario
+     * @param array $filtros Filtros de búsqueda
+     * @param bool $filterByProveedor Si true, filtra por id_proveedor; si false, por id_cliente
+     * @param bool $excluirEstadosFinales Si true, excluye estados finales
+     * @return int Total de pedidos
+     */
+    public static function contarPedidos($userId, $filtros = [], $filterByProveedor = false, $excluirEstadosFinales = false) {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Determinar el campo de filtro según el tipo de usuario
+            $filterField = $filterByProveedor ? 'p.id_proveedor' : 'p.id_cliente';
+            
+            $sql = "SELECT COUNT(*) as total
+                    FROM pedidos p
+                    LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                    WHERE {$filterField} = :user_id";
+            
+            $params = [':user_id' => $userId];
+
+            if (!empty($filtros['fecha_desde'])) {
+                $sql .= " AND p.fecha_ingreso >= :fecha_desde";
+                $params[':fecha_desde'] = $filtros['fecha_desde'] . ' 00:00:00';
+            }
+            if (!empty($filtros['fecha_hasta'])) {
+                $sql .= " AND p.fecha_ingreso <= :fecha_hasta";
+                $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
+            }
+            if (!empty($filtros['search'])) {
+                $sql .= " AND (p.numero_orden LIKE :search OR p.destinatario LIKE :search)";
+                $params[':search'] = '%' . $filtros['search'] . '%';
+            }
+            
+            // Excluir estados finales si se solicita
+            if ($excluirEstadosFinales) {
+                $sql .= " AND ep.nombre_estado NOT IN ('Entregado', 'Devuelto', 'Cancelado')";
+            }
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (int)($result['total'] ?? 0);
+
+        } catch (Exception $e) {
+            error_log("Error al contar pedidos logistica: " . $e->getMessage());
+            return 0;
         }
     }
 

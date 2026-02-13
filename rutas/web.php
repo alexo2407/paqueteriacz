@@ -1187,8 +1187,9 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] ==
 
     $userId = (int)($_SESSION['idUsuario'] ?? 0);
     
-    // Permitir Admin o Cliente de Logística
-    if (!isUserAdmin($userId) && !isUserCliente($userId)) {
+    // Permitir Admin, Cliente de Logística (ID 4) o Proveedor de Mensajería (ID 5)
+    // IMPORTANTE: En la BD, "Cliente" (ID 4) y "Proveedor" (ID 5) son roles de logística
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);

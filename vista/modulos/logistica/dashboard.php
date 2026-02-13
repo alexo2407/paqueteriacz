@@ -22,20 +22,12 @@ $controller = new LogisticaController();
 $data = $controller->dashboard();
 
 $notificaciones = $data['notificaciones'];
-$historialTotal = $data['historial']; // Esto trae TODO según filtros básica
+$historialTotal = $data['historial']; // Ya viene filtrado sin estados finales
 $filtros = $data['filtros'];
 $estadosDisponibles = $data['estados'] ?? [];
 
-// --- LÓGICA DE FILTRADO PARA TABS ---
-// Separamos "Activos" de "Historial" (Entregados/Finalizados)
-$pedidosActivos = [];
-$estadosFinales = ['ENTREGADO', 'CANCELADO', 'LIQUIDADO', 'DEVOLUCION COMPLETA'];
-
-foreach ($historialTotal as $pedido) {
-    if (!in_array(strtoupper($pedido['estado']), $estadosFinales)) {
-        $pedidosActivos[] = $pedido;
-    }
-}
+// Los pedidos activos ya vienen filtrados desde el controlador/modelo
+$pedidosActivos = $historialTotal;
 
 // Mapa de Colores Estandarizado y Vibrante
 $estadoColores = [
@@ -221,7 +213,8 @@ include "vista/includes/header.php";
     $paneUpdates = ($activeTab === 'updates') ? 'show active' : '';
     $paneAll = ($activeTab === 'all') ? 'show active' : '';
     
-    $countActivos = count($pedidosActivos);
+    // Usar el total de pedidos de la paginación, no solo los de la página actual
+    $countActivos = $data['pagination']['total'] ?? count($pedidosActivos);
     ?>
 
     <!-- Tabs -->
@@ -335,6 +328,78 @@ include "vista/includes/header.php";
                         </div>
                     </div>
                 <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            
+            <?php 
+            // Mostrar paginación solo si hay más de una página
+            if (!empty($data['pagination']) && $data['pagination']['total_pages'] > 1): 
+                $pagination = $data['pagination'];
+                $currentPage = $pagination['current_page'];
+                $totalPages = $pagination['total_pages'];
+                $total = $pagination['total'];
+                $perPage = $pagination['per_page'];
+                
+                // Calcular rango de pedidos mostrados
+                $start = (($currentPage - 1) * $perPage) + 1;
+                $end = min($currentPage * $perPage, $total);
+                
+                // Construir URL base con filtros
+                $baseUrl = RUTA_URL . 'logistica/dashboard?';
+                $params = [];
+                if (!empty($filtros['fecha_desde'])) $params[] = 'fecha_desde=' . urlencode($filtros['fecha_desde']);
+                if (!empty($filtros['fecha_hasta'])) $params[] = 'fecha_hasta=' . urlencode($filtros['fecha_hasta']);
+                if (!empty($filtros['search'])) $params[] = 'search=' . urlencode($filtros['search']);
+                $baseUrl .= implode('&', $params) . (count($params) > 0 ? '&' : '');
+            ?>
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                    <div class="text-muted small">
+                        Mostrando <strong><?= $start ?></strong> - <strong><?= $end ?></strong> de <strong><?= $total ?></strong> pedidos
+                    </div>
+                    
+                    <nav aria-label="Paginación de pedidos">
+                        <ul class="pagination pagination-sm mb-0">
+                            <!-- Primera página -->
+                            <li class="page-item <?= $currentPage == 1 ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrl ?>page=1" aria-label="Primera">
+                                    <i class="bi bi-chevron-double-left"></i>
+                                </a>
+                            </li>
+                            
+                            <!-- Página anterior -->
+                            <li class="page-item <?= $currentPage == 1 ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrl ?>page=<?= max(1, $currentPage - 1) ?>" aria-label="Anterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </a>
+                            </li>
+                            
+                            <?php
+                            // Mostrar números de página (máximo 5)
+                            $startPage = max(1, $currentPage - 2);
+                            $endPage = min($totalPages, $currentPage + 2);
+                            
+                            for ($i = $startPage; $i <= $endPage; $i++):
+                            ?>
+                                <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
+                                    <a class="page-link" href="<?= $baseUrl ?>page=<?= $i ?>"><?= $i ?></a>
+                                </li>
+                            <?php endfor; ?>
+                            
+                            <!-- Página siguiente -->
+                            <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrl ?>page=<?= min($totalPages, $currentPage + 1) ?>" aria-label="Siguiente">
+                                    <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                            
+                            <!-- Última página -->
+                            <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrl ?>page=<?= $totalPages ?>" aria-label="Última">
+                                    <i class="bi bi-chevron-double-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             <?php endif; ?>
         </div>
