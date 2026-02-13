@@ -423,7 +423,8 @@ class PedidosController {
                 // no interrumpir la ejecución por errores de logging
             }
         }
-
+        
+        
         $numeroOrden = trim($data['numero_orden'] ?? '');
         $destinatario = trim($data['destinatario'] ?? '');
         $telefono = preg_replace('/\s+/', '', (string)($data['telefono'] ?? ''));
@@ -514,6 +515,34 @@ class PedidosController {
             $esCombo = (bool)$data['es_combo'];
         }
 
+        // Support multiple products from the form: productos is an array of { producto_id, cantidad }
+        $items = [];
+        if (isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0) {
+            foreach ($data['productos'] as $i => $it) {
+                $pid = $it['producto_id'] ?? null;
+                $qty = $it['cantidad'] ?? null;
+                if (!is_numeric($pid) || !is_numeric($qty) || (int)$qty <= 0) continue;
+                $items[] = [
+                    'id_producto' => (int)$pid,
+                    'cantidad' => (int)$qty,
+                    'cantidad_devuelta' => 0,
+                ];
+            }
+        } 
+        
+        // Fallback or Legacy: if no items found in 'productos', try single fields
+        if (empty($items)) {
+             $productoId = $parse_positive_int($data, 'producto_id');
+             $cantidadProducto = $parse_positive_int($data, 'cantidad_producto');
+             if ($productoId && $cantidadProducto) {
+                $items = [[
+                    'id_producto' => (int)$productoId,
+                    'cantidad' => (int)$cantidadProducto,
+                    'cantidad_devuelta' => 0,
+                ]];
+             }
+        }
+
         // Validaciones de campos REQUERIDOS
         if ($numeroOrden === '') {
             $errores[] = 'El número de orden es obligatorio.';
@@ -523,51 +552,32 @@ class PedidosController {
                 $errores[] = 'El número de orden debe ser un entero positivo.';
             }
         }
-        // Destinatario y teléfono ahora son opcionales
-        // if ($destinatario === '') {
-        //     $errores[] = 'El destinatario es obligatorio.';
-        // }
-        // if ($telefono === '' || !preg_match('/^[0-9]{8,15}$/', $telefono)) {
-        //     $errores[] = 'El teléfono debe contener entre 8 y 15 dígitos.';
-        // }
-        if ($productoId === null || $productoId === false) {
-            $errores[] = 'Selecciona un producto válido.';
+        
+        if (empty($items)) {
+            $errores[] = 'El pedido debe incluir al menos un producto válido (ya sea por lista o campos individuales).';
         }
-        if ($cantidadProducto === null || $cantidadProducto === false) {
-            $errores[] = 'La cantidad debe ser un número entero mayor a cero.';
-        }
+        
         // Estado y vendedor ahora son opcionales
-        // if ($estado === null || $estado === false) {
-        //     $errores[] = 'Selecciona un estado válido.';
-        // }
-        // if ($vendedor === null || $vendedor === false) {
-        //     $errores[] = 'Selecciona un usuario asignado válido.';
-        // }
         if ($proveedor === null || $proveedor === false) {
             $errores[] = 'Selecciona un proveedor válido.';
         }
         if ($moneda === null || $moneda === false) {
             $errores[] = 'Selecciona una moneda válida.';
         }
-        // Dirección y coordenadas ahora son opcionales
-        // if ($direccion === '') {
-        //     $errores[] = 'La dirección es obligatoria.';
-        // }
-        // if ($latitud === false || $longitud === false) {
-        //     $errores[] = 'Las coordenadas no tienen un formato válido.';
-        // }
 
         if (empty($errores) && PedidosModel::existeNumeroOrden((int)$numeroOrden)) {
             $errores[] = 'El número de orden ya existe en la base de datos.';
         }
 
-        // Validación server-side de stock: si el producto tiene stock registrado, no permitir cantidad mayor al stock
-        if (is_int($productoId) && is_int($cantidadProducto)) {
-            try {
-                $stockDisponible = ProductoModel::obtenerStockTotal((int)$productoId);
+        // Validación server-side de stock: iterar sobre $items ya procesados
+        foreach ($items as $item) {
+             $pid = (int)$item['id_producto'];
+             $qty = (int)$item['cantidad'];
+             try {
+                $stockDisponible = ProductoModel::obtenerStockTotal($pid);
                 if ($stockDisponible !== null && $stockDisponible >= 0) {
-                    if ($stockDisponible > 0 && (int)$cantidadProducto > $stockDisponible) {
-                        $errores[] = 'La cantidad solicitada supera el stock disponible (' . $stockDisponible . ').';
+                    if ($stockDisponible > 0 && $qty > $stockDisponible) {
+                        $errores[] = 'La cantidad solicitada para el producto ID ' . $pid . ' supera el stock disponible (' . $stockDisponible . ').';
                     }
                 }
             } catch (Exception $e) {
@@ -575,6 +585,8 @@ class PedidosController {
                 error_log('Error comprobando stock del producto: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
             }
         }
+
+
 
         $monedaSeleccionada = null;
         if (is_int($moneda)) {
@@ -585,6 +597,7 @@ class PedidosController {
         }
 
         if (!empty($errores)) {
+            error_log("guardarPedidoFormulario ERRORES VALIDACION: " . implode(' ', $errores));
             return [
                 'success' => false,
                 'message' => implode(' ', $errores)
@@ -609,6 +622,7 @@ class PedidosController {
         }
 
         if (!empty($errores)) {
+            error_log("guardarPedidoFormulario ERRORES VALIDACION: " . implode(' ', $errores));
             return [
                 'success' => false,
                 'message' => implode(' ', $errores)
@@ -645,45 +659,16 @@ class PedidosController {
             'es_combo' => $esCombo ? 1 : 0,
         ];
 
-        // Support multiple products from the form: productos is an array of { producto_id, cantidad }
-        $items = [];
-        if (isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0) {
-            foreach ($data['productos'] as $i => $it) {
-                $pid = $it['producto_id'] ?? null;
-                $qty = $it['cantidad'] ?? null;
-                if (!is_numeric($pid) || !is_numeric($qty) || (int)$qty <= 0) continue;
-                $items[] = [
-                    'id_producto' => (int)$pid,
-                    'cantidad' => (int)$qty,
-                    'cantidad_devuelta' => 0,
-                ];
-            }
-
-            // If productos[] was provided but no valid items were parsed, return a clear validation
-            // error instead of letting the model throw a generic exception later.
-            if (count($items) === 0) {
-                return [
-                    'success' => false,
-                    'message' => 'El pedido debe incluir al menos un producto válido en la lista.'
-                ];
-            }
-        } else {
-            // Fallback to single-product fields
-            $items = [[
-                'id_producto' => (int)$productoId,
-                'cantidad' => (int)$cantidadProducto,
-                'cantidad_devuelta' => 0,
-            ]];
-        }
-
         try {
             $nuevoId = PedidosModel::crearPedidoConProductos($payload, $items);
+            error_log("guardarPedidoFormulario EXITO. Nuevo ID: " . $nuevoId);
             return [
                 'success' => true,
                 'message' => 'Pedido guardado correctamente.',
                 'id' => $nuevoId
             ];
         } catch (Exception $e) {
+            error_log("guardarPedidoFormulario EXCEPTION: " . $e->getMessage());
             return [
                 'success' => false,
                 'message' => 'Error al guardar el pedido: ' . $e->getMessage()

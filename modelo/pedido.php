@@ -1103,7 +1103,6 @@ class PedidosModel
                     if (isset($prod['producto_id']) && isset($prod['cantidad'])) {
                         // DEBUG
                         if (defined('DEBUG') && DEBUG) {
-                             error_log("PedidosModel: Inserting product " . $prod['producto_id'] . " qty " . $prod['cantidad'] . " for Order " . $data['id_pedido']);
                         }
                         $stmtIns->execute([
                             ':id_pedido' => (int)$data['id_pedido'],
@@ -1284,7 +1283,7 @@ class PedidosModel
             if ($resolvedFallbackUser === null) {
                 throw new Exception('No se pudo determinar un id de usuario válido para operaciones de stock. Define FALLBACK_USER_FOR_STOCK en la configuración o asegúrate de que la tabla usuarios contenga al menos un usuario activo.');
             }
-
+            
             // Apply resolved fallback where missing so DB triggers get a valid id
             if (empty($pedido['vendedor']) || $pedido['vendedor'] === null) {
                 $pedido['vendedor'] = $resolvedFallbackUser;
