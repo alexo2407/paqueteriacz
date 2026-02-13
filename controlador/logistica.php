@@ -20,7 +20,7 @@ class LogisticaController {
         
         // Paginación
         $page = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-        $perPage = 2;
+        $perPage = 20;
         $offset = ($page - 1) * $perPage;
         
         // Filtros
