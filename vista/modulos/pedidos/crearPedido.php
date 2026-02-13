@@ -310,7 +310,7 @@ try {
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="proveedor" class="form-label">Proveedor</label>
+                                            <label for="proveedor" class="form-label">Proveedor de Servicio</label>
                                             <?php
                                             require_once __DIR__ . '/../../../utils/permissions.php';
                                             $canSelect = canSelectAnyProveedor();
@@ -324,7 +324,7 @@ try {
                                                     <?php endforeach; ?>
                                                 </select>
                                                 <?php if (empty($proveedores)): ?>
-                                                    <div class="form-text text-warning">No hay usuarios con rol Proveedor activos.</div>
+                                                    <div class="form-text text-warning">No hay proveedores activos.</div>
                                                 <?php endif; ?>
                                                 <div class="invalid-feedback">Por favor, selecciona un proveedor.</div>
                                             <?php else: ?>
@@ -708,7 +708,7 @@ try {
         // ADMIN ve TODOS los productos sin filtro
         let productosDelProveedor;
         if (esAdmin) {
-            // Admin: mostrar todos los productos
+            // Admin: mostrar todos los productos siempre
             productosDelProveedor = productos;
         } else {
             // Proveedor: filtrar solo sus productos y los legacy sin creador
@@ -737,10 +737,13 @@ try {
             opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${marcaText}${p.stock !== null ? ' — Stock: ' + p.stock : ''}</option>`;
         });
         
-        if (productosDelProveedor.length === 0 && proveedorId) {
-            opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
-        } else if (!proveedorId) {
-            opts += '<option value="" disabled>Primero selecciona un proveedor</option>';
+        // Solo mostrar mensajes de error para usuarios no-admin
+        if (!esAdmin) {
+            if (productosDelProveedor.length === 0 && proveedorId) {
+                opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
+            } else if (!proveedorId) {
+                opts += '<option value="" disabled>Primero selecciona un proveedor</option>';
+            }
         }
         
         return opts;

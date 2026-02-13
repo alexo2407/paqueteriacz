@@ -431,13 +431,13 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                     </div>
                                     
                                     <div class="col-md-6 mb-4">
-                                        <label for="proveedor" class="form-label fw-bold">Proveedor (Logística)</label>
+                                        <label for="proveedor" class="form-label fw-bold">Proveedor de Servicio</label>
                                         <?php if (canSelectAnyProveedor()): ?>
                                             <select class="form-control select2-searchable" id="proveedor" name="proveedor" required>
                                                 <option value="">Selecciona un proveedor</option>
-                                                <?php foreach ($proveedores as $proveedor): ?>
-                                                    <option value="<?= $proveedor['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
-                                                        <?= htmlspecialchars($proveedor['nombre']) ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
+                                                <?php foreach ($proveedores as $prov): ?>
+                                                    <option value="<?= $prov['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$prov['id']) ? 'selected' : '' ?> >
+                                                        <?= htmlspecialchars($prov['nombre']) ?><?= isset($prov['email']) && $prov['email'] ? ' — ' . htmlspecialchars($prov['email']) : '' ?>
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -904,7 +904,8 @@ document.addEventListener('DOMContentLoaded', function() {
         let opts = '<option value="">Selecciona un producto</option>';
         const idProveedorSeleccionado = proveedorSelect ? parseInt(proveedorSelect.value) : null;
 
-        if (!idProveedorSeleccionado) {
+        // Solo requerir proveedor para usuarios no-admin
+        if (!esAdmin && !idProveedorSeleccionado) {
             opts += '<option value="" disabled>Selecciona un proveedor primero</option>';
             return opts;
         }
@@ -912,7 +913,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // ADMIN ve TODOS los productos, Proveedor solo los suyos
         let productosFiltrados;
         if (esAdmin) {
-            // Admin: mostrar todos los productos
+            // Admin: mostrar todos los productos siempre
             productosFiltrados = productos;
         } else {
             // Proveedor: Aplicar filtro - solo productos del proveedor y legacy sin creador
@@ -928,7 +929,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        if (productosFiltrados.length === 0) {
+        // Solo mostrar mensaje de error para usuarios no-admin
+        if (!esAdmin && productosFiltrados.length === 0) {
             opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
             return opts;
         }

@@ -96,7 +96,7 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
                 $resp['redirect'] = RUTA_URL . 'pedidos/editar/' . $id;
             }
 
-            echo json_encode($resp);
+            echo json_encode($resp, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -402,7 +402,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
             
             if ($isAjax) {
                 header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'Producto inválido.']);
+                echo json_encode(['success' => false, 'message' => 'Producto inválido.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
             
@@ -433,7 +433,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
                 
                 if ($isAjax) {
                     header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'message' => 'Error al subir imagen: ' . $resultado['error']]);
+                    echo json_encode(['success' => false, 'message' => 'Error al subir imagen: ' . $resultado['error']], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                     exit;
                 }
                 
@@ -487,7 +487,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
             echo json_encode([
                 'success' => $response['success'],
                 'message' => $response['message']
-            ]);
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
         
@@ -526,7 +526,7 @@ if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] =
         
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'Token de seguridad inválido']);
+            echo json_encode(['success' => false, 'message' => 'Token de seguridad inválido'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
         
@@ -554,7 +554,7 @@ if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] =
         
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode($response);
+            echo json_encode($response, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
         
@@ -574,7 +574,7 @@ if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] =
             
             if ($isAjax) {
                 header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'Categoría inválida']);
+                echo json_encode(['success' => false, 'message' => 'Categoría inválida'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
             
@@ -596,7 +596,7 @@ if (isset($ruta[0]) && $ruta[0] === 'categorias' && $_SERVER['REQUEST_METHOD'] =
         
         if ($isAjax) {
             header('Content-Type: application/json');
-            echo json_encode($response);
+            echo json_encode($response, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
         
@@ -920,14 +920,14 @@ if (isset($ruta[0]) && $ruta[0] === 'stock' && $_SERVER['REQUEST_METHOD'] === 'P
                 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
                     ob_clean();
                     header('Content-Type: application/json');
-                    echo json_encode(['success' => true, 'message' => 'Movimiento de stock registrado correctamente.', 'id' => $newId]);
+                    echo json_encode(['success' => true, 'message' => 'Movimiento de stock registrado correctamente.', 'id' => $newId], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                     exit;
                 }
                 set_flash('success', 'Movimiento de stock registrado correctamente.');
             } else {
                 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
                     header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'message' => 'No fue posible registrar el movimiento.']);
+                    echo json_encode(['success' => false, 'message' => 'No fue posible registrar el movimiento.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                     exit;
                 }
                 set_flash('error', 'No fue posible registrar el movimiento.');
@@ -935,7 +935,7 @@ if (isset($ruta[0]) && $ruta[0] === 'stock' && $_SERVER['REQUEST_METHOD'] === 'P
         } catch (Exception $e) {
             if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
                 header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'Error al registrar movimiento: ' . $e->getMessage()]);
+                echo json_encode(['success' => false, 'message' => 'Error al registrar movimiento: ' . $e->getMessage()], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
             set_flash('error', 'Error al registrar movimiento: ' . $e->getMessage());
@@ -1054,7 +1054,7 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
     if (!isUserAdmin($userId) && !isUserCliente($userId)) {
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
         set_flash('error', 'No tienes permisos para realizar esta acción.');
@@ -1074,7 +1074,7 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             ob_clean();
             header('Content-Type: application/json');
-            echo json_encode($resultado);
+            echo json_encode($resultado, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -1107,7 +1107,7 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             ob_clean();
             header('Content-Type: application/json');
-            echo json_encode($resultado);
+            echo json_encode($resultado, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
 
@@ -1192,7 +1192,7 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] ==
     if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
             header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.']);
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
             exit;
         }
         set_flash('error', 'No tienes permisos para realizar esta acción.');

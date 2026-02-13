@@ -4,8 +4,10 @@
 if (!defined('ROL_ADMIN')) define('ROL_ADMIN', 1);
 if (!defined('ROL_VENDEDOR')) define('ROL_VENDEDOR', 2);
 if (!defined('ROL_REPARTIDOR')) define('ROL_REPARTIDOR', 3);
-if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 4);  // Logística
-if (!defined('ROL_CLIENTE')) define('ROL_CLIENTE', 5);      // Logística
+// NOTA: Los IDs 4 y 5 están intercambiados para coincidir con la semántica del negocio
+// después de la migración 008 que corrigió las columnas id_cliente/id_proveedor
+if (!defined('ROL_CLIENTE')) define('ROL_CLIENTE', 4);      // Logística - quien crea pedidos
+if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 5);  // Logística - quien rastrea pedidos
 if (!defined('ROL_PROVEEDOR_CRM')) define('ROL_PROVEEDOR_CRM', 6);  // CRM (verificado en BD)
 if (!defined('ROL_CLIENTE_CRM')) define('ROL_CLIENTE_CRM', 7);      // CRM (verificado en BD)
 
@@ -15,8 +17,10 @@ if (!defined('ROL_CLIENTE_CRM')) define('ROL_CLIENTE_CRM', 7);      // CRM (veri
 if (!defined('ROL_NOMBRE_ADMIN')) define('ROL_NOMBRE_ADMIN', 'Administrador');
 if (!defined('ROL_NOMBRE_VENDEDOR')) define('ROL_NOMBRE_VENDEDOR', 'Vendedor');
 if (!defined('ROL_NOMBRE_REPARTIDOR')) define('ROL_NOMBRE_REPARTIDOR', 'Repartidor');
-if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Cliente');  // Logística - INTERCAMBIADO
-if (!defined('ROL_NOMBRE_CLIENTE')) define('ROL_NOMBRE_CLIENTE', 'Proveedor');    // Logística - INTERCAMBIADO
+// NOTA: Los nombres siguen siendo los originales de la BD, pero ahora las constantes
+// ROL_CLIENTE y ROL_PROVEEDOR apuntan a los IDs correctos según la semántica del negocio
+if (!defined('ROL_NOMBRE_CLIENTE')) define('ROL_NOMBRE_CLIENTE', 'Cliente');      // ID 4 en BD
+if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Proveedor');  // ID 5 en BD
 if (!defined('ROL_NOMBRE_PROVEEDOR_CRM')) define('ROL_NOMBRE_PROVEEDOR_CRM', 'Proveedor CRM');  // CRM
 if (!defined('ROL_NOMBRE_CLIENTE_CRM')) define('ROL_NOMBRE_CLIENTE_CRM', 'Cliente CRM');      // CRM
 

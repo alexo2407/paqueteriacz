@@ -9,7 +9,16 @@ require_once __DIR__ . '/../utils/responder.php';
 require_once __DIR__ . '/../utils/autenticacion.php';
 
 $auth = new AuthMiddleware();
-if (!$auth->validarToken()['success']) {
+$token = AuthMiddleware::obtenerTokenDeHeaders();
+
+if (!$token) {
+    responder(false, "Token no proporcionado", null, 401);
+    exit;
+}
+
+$validacion = $auth->validarToken($token);
+
+if (!$validacion['success']) {
     responder(false, "No autorizado", null, 401);
     exit;
 }

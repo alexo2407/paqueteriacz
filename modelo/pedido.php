@@ -313,6 +313,28 @@ class PedidosModel
 
                     $db->commit();
                     $resultado['inserted']++;
+
+                    // Registrar auditoría para esta fila importada
+                    try {
+                        // Construir datos para auditoría
+                        $datosAuditoria = $row;
+                        $datosAuditoria['id'] = $pedidoId;
+                        if ($productoId) {
+                            $datosAuditoria['producto_id'] = $productoId;
+                            $datosAuditoria['cantidad'] = $cantidad;
+                        }
+
+                        AuditoriaModel::registrar(
+                            'pedidos',
+                            $pedidoId,
+                            'crear',
+                            AuditoriaModel::getIdUsuarioActual(),
+                            null,
+                            $datosAuditoria
+                        );
+                    } catch (Exception $e) {
+                        error_log("Error auditoria insertarPedidosLote fila $idx: " . $e->getMessage());
+                    }
                 } catch (Exception $eRow) {
                     // Rollback de esta fila y registrar error
                     if ($db->inTransaction()) $db->rollBack();
@@ -526,10 +548,27 @@ class PedidosModel
                 ]);
             }
 
-            return [
+            $resultado = [
                 "numero_orden" => $data["numero_orden"],
                 "pedido_id" => $pedidoId
             ];
+
+            // Registrar auditoría de creación
+            try {
+                AuditoriaModel::registrar(
+                    'pedidos',
+                    $pedidoId,
+                    'crear',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    null,
+                    $data
+                );
+            } catch (Exception $e) {
+                // Silenciar errores de auditoría para no interrumpir el flujo principal
+                error_log("Error auditoria crearPedido: " . $e->getMessage());
+            }
+
+            return $resultado;
         } catch (Exception $e) {
             throw new Exception("Error al insertar el pedido: " . $e->getMessage());
         }
@@ -819,10 +858,16 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
-            // [Historial] Obtener estado y proveedor anterior (para logs)
-            $stmtAnt = $db->prepare("SELECT id_estado, id_proveedor FROM pedidos WHERE id = :id");
+            // [Historial y Auditoría] Obtener datos completos ANTES de la actualización
+            $stmtAnt = $db->prepare("SELECT * FROM pedidos WHERE id = :id");
             $stmtAnt->execute([':id' => (int)$data['id_pedido']]);
             $datosAnteriores = $stmtAnt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$datosAnteriores) {
+                $db->rollBack();
+                return false; // El pedido no existe
+            }
+
             $estadoAnterior = $datosAnteriores['id_estado'] ?? null;
             $proveedorAnterior = $datosAnteriores['id_proveedor'] ?? null;
 
@@ -942,13 +987,63 @@ class PedidosModel
                 $stmt = $db->prepare($sql);
                 $stmt->execute($params);
 
-                // [Historial] Registrar cambio si hubo modificación de estado
-                // [Historial] Registrar cambio si hubo modificación de estado O proveedor
-                $nuevoEstado = isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0' ? (int)$data['estado'] : ($estadoAnterior ?? 1); // Default to 1 (Solicitado) if null
+                // [Auditoría General] Detectar cambios en CUALQUIER campo
+                // Construimos el array de datos nuevos basándonos en los fields que se actualizaron
+                // Nota: $fields contiene strings como "campo = :campo". 
+                // $params contiene los valores nuevos.
+                
+                $cambiosDetectados = [];
+                // Mapeo inverso de parámetros a nombres de columnas (simple)
+                foreach ($params as $key => $val) {
+                     if ($key === ':id') continue;
+                     
+                     // Extraer nombre columna del key (ej: :precio_local -> precio_local)
+                     $colName = substr($key, 1); 
+                     
+                     // Casos especiales donde el param name no matchea exacto con columna de DB (si los hubiera)
+                     // En nuestra construcción anterior, usamos nombres de params iguales a columnas.
+                     // Ej: $params[':id_estado'] va a id_estado.
+                     
+                     // Verificar si realmente cambió (comparación laxa por tipos string/int)
+                     $valAnterior = $datosAnteriores[$colName] ?? null;
+                     
+                     // Normalizar para comparación
+                     if (is_numeric($val) && is_numeric($valAnterior)) {
+                         if ((float)$val != (float)$valAnterior) {
+                             $cambiosDetectados[$colName] = $val;
+                         }
+                     } elseif ($val !== $valAnterior) {
+                         $cambiosDetectados[$colName] = $val;
+                     }
+                }
+                
+                // Si hubo cambios, registramos auditoría
+                if (!empty($cambiosDetectados)) {
+                     // Preparamos el array de 'antes' solo para las columnas que cambiaron
+                     $datosAntesLog = [];
+                     foreach ($cambiosDetectados as $col => $nuevoVal) {
+                         $datosAntesLog[$col] = $datosAnteriores[$col] ?? null;
+                     }
+                     
+                     try {
+                         AuditoriaModel::registrar(
+                            'pedidos',
+                            (int)$data['id_pedido'],
+                            'actualizar',
+                            self::resolveCurrentUserId(), // Ojo: esto debe resolverse correctamente
+                            $datosAntesLog,
+                            $cambiosDetectados
+                         );
+                     } catch (Exception $e) {
+                         error_log("Error auditoria actualizarPedido: " . $e->getMessage());
+                     }
+                }
+
+                // [Historial Estados/Proveedor - Legacy logic kept for specific UI logs]
+                $nuevoEstado = isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0' ? (int)$data['estado'] : ($estadoAnterior ?? 1); 
                 $nuevoProveedor = isset($data['proveedor']) && $data['proveedor'] !== '' ? (int)$data['proveedor'] : $proveedorAnterior;
                 
                 $huboCambioEstado = ($estadoAnterior && $nuevoEstado != $estadoAnterior);
-                // Cambio de proveedor: verificamos si cambió el ID
                 $huboCambioProveedor = ($proveedorAnterior !== null && $nuevoProveedor != $proveedorAnterior);
 
                 if ($huboCambioEstado || $huboCambioProveedor) {
@@ -983,16 +1078,7 @@ class PedidosModel
                             ':obs' => $observaciones
                         ]);
 
-                        if ($huboCambioEstado) {
-                            AuditoriaModel::registrar(
-                                'pedidos',
-                                (int)$data['id_pedido'],
-                                'actualizar',
-                                $userId,
-                                ['id_estado' => $estadoAnterior],
-                                ['id_estado' => $nuevoEstado]
-                            );
-                        }
+                        // Nota: La auditoría ya se registró arriba en el bloque general de cambios
                     } catch (Exception $e) {
                         error_log("Error logs historial: " . $e->getMessage());
                     }
@@ -1380,6 +1466,23 @@ class PedidosModel
             }
 
             $db->commit();
+
+            // Registrar auditoría de creación compleja
+            try {
+                $datosAuditoria = $pedido;
+                $datosAuditoria['items'] = $items;
+                AuditoriaModel::registrar(
+                    'pedidos',
+                    $pedidoId,
+                    'crear',
+                    AuditoriaModel::getIdUsuarioActual(),
+                    null,
+                    $datosAuditoria
+                );
+            } catch (Exception $e) {
+                 error_log("Error auditoria crearPedidoConProductos: " . $e->getMessage());
+            }
+
             return $pedidoId;
 
         } catch (Exception $e) {
@@ -1445,41 +1548,68 @@ class PedidosModel
     }
 
     public static function obtenerProveedores()
-    {
-        try {
-            $usuarioModel = new UsuarioModel();
-            // Obtener Solamente Proveedores (Logística)
-            // Se eliminó la mezcla con clientes para mantener inputs separados en la UI
-            return $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
-        } catch (Exception $e) {
-            throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
-        }
+{
+    try {
+        $db = (new Conexion())->conectar();
+        
+        // Obtener proveedores de logística (empresas de mensajería)
+        // Después de migración 008 y swap de constantes:
+        // - Rol ID 5 en BD = "Proveedor" (nombre en BD) = Proveedores de servicio semánticamente
+        // - ROL_PROVEEDOR constante ahora apunta a ID 5
+        
+        $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                FROM usuarios u
+                INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                WHERE ur.id_rol = 5  -- Proveedores de servicio (empresas de mensajería)
+                AND u.activo = 1
+                ORDER BY u.nombre";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
     }
-
+}
     public static function obtenerClientes()
-    {
-        try {
-            $usuarioModel = new UsuarioModel();
-            // Obtener Clientes (Rol 5) y Clientes CRM (Rol 7)
-            $clientes = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente');
-            $clientesCrm = $usuarioModel->obtenerUsuariosPorRolNombre('Cliente CRM');
-            
-            // Combinar y eliminar duplicados (si un usuario tiene ambos roles)
-            $todo = array_merge($clientes, $clientesCrm);
-            $hash = [];
-            $unique = [];
-            foreach ($todo as $u) {
-                if (!isset($hash[$u['id']])) {
-                    $hash[$u['id']] = true;
-                    $unique[] = $u;
-                }
-            }
-            return $unique;
-        } catch (Exception $e) {
-            throw new Exception("Error al obtener los clientes: " . $e->getMessage());
-        }
+{
+    try {
+        $db = (new Conexion())->conectar();
+        
+        // Obtener CLIENTES de logística (quienes solicitan el servicio de envío)
+        // Después de migración 008 y swap de constantes:
+        // - Rol ID 4 en BD = "Cliente" (nombre en BD) = Clientes semánticamente (quienes solicitan envíos)
+        // - Rol ID 7 = "Cliente CRM" = Clientes del sistema CRM
+        // - ROL_CLIENTE constante ahora apunta a ID 4
+        //
+        // Buscamos usuarios con rol ID 4 ("Cliente") y 7 ("Cliente CRM")
+        // Y excluimos usuarios que también tengan roles operativos:
+        // - ID 1: Administrador
+        // - ID 2: Vendedor  
+        // - ID 3: Repartidor
+        // - ID 5: Proveedor (de logística)
+        // - ID 6: Proveedor CRM
+        
+        $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                FROM usuarios u
+                INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                WHERE ur.id_rol IN (4, 7)  -- 4='Cliente', 7='Cliente CRM'
+                AND u.activo = 1
+                AND u.id NOT IN (
+                    -- Excluir usuarios con roles operativos
+                    SELECT DISTINCT ur2.id_usuario
+                    FROM usuarios_roles ur2
+                    WHERE ur2.id_rol IN (1, 2, 3, 5, 6)  -- Admin, Vendedor, Repartidor, Proveedor, Proveedor CRM
+                )
+                ORDER BY u.nombre";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        throw new Exception("Error al obtener los clientes: " . $e->getMessage());
     }
-
+}
     public static function obtenerMonedas()
     {
         return MonedaModel::listar();
