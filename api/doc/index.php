@@ -1438,39 +1438,73 @@ GET /api/geoinfo/buscar?q=San&tipo=municipio&pais_id=1</code></pre>
     "success": true,
     "data": [
         {
-            "id": 1,
-            "tipo": "departamento",
-            "nombre": "Managua",
-            "codigo_iso": null,
-            "id_pais": 1,
-            "pais": "Nicaragua",
+            "id": 6,
+            "tipo": "pais",
+            "nombre": "Guatemala",
+            "codigo_iso": "GUAT",
+            "id_pais": null,
+            "pais": null,
             "id_departamento": null,
             "departamento": null,
             "id_municipio": null,
             "municipio": null
         },
         {
-            "id": 1,
-            "tipo": "municipio",
-            "nombre": "Managua",
-            "codigo_iso": "10101",
-            "id_pais": 1,
-            "pais": "Nicaragua",
-            "id_departamento": 1,
-            "departamento": "Managua",
+            "id": 80,
+            "tipo": "departamento",
+            "nombre": "Guatemala",
+            "codigo_iso": null,
+            "id_pais": 6,
+            "pais": "Guatemala",
+            "id_departamento": null,
+            "departamento": null,
             "id_municipio": null,
             "municipio": null
+        },
+        {
+            "id": 1278,
+            "tipo": "municipio",
+            "nombre": "Antigua Guatemala",
+            "codigo_iso": "3001",
+            "id_pais": 6,
+            "pais": "Guatemala",
+            "id_departamento": 89,
+            "departamento": "Sacatepequez",
+            "id_municipio": null,
+            "municipio": null
+        },
+        {
+            "id": 7747,
+            "tipo": "barrio",
+            "nombre": "Antigua Guatemala",
+            "codigo_iso": "3001",
+            "id_pais": 6,
+            "pais": "Guatemala",
+            "id_departamento": 89,
+            "departamento": "Sacatepequez",
+            "id_municipio": 1278,
+            "municipio": "Antigua Guatemala"
         }
     ],
-    "query": "Mana",
+    "query": "Guatemala",
     "filters": []
 }</code></pre>
 
                     <div class="alert alert-info mt-3">
-                        <strong data-lang="en">💡 Perfect for Autocomplete</strong>
-                        <strong data-lang="es">💡 Perfecto para Autocomplete</strong>
-                        <p class="mb-0 mt-2" data-lang="en">This endpoint returns hierarchical data including parent names, making it ideal for typeahead/autocomplete implementations. Results are limited to 20 items for performance.</p>
-                        <p class="mb-0 mt-2" data-lang="es">Este endpoint retorna datos jerárquicos incluyendo nombres de padres, ideal para implementaciones typeahead/autocomplete. Los resultados están limitados a 20 items para rendimiento.</p>
+                        <strong data-lang="en">💡 Key Features</strong>
+                        <strong data-lang="es">💡 Características Clave</strong>
+                        <ul class="mb-0 mt-2" data-lang="en">
+                            <li><strong>Priority Ordering:</strong> Countries first, then departments, municipalities, and neighborhoods</li>
+                            <li><strong>Postal Codes:</strong> Neighborhoods inherit postal code from parent municipality if not set</li>
+                            <li><strong>Hierarchical Data:</strong> Includes parent entity names for complete context</li>
+                            <li><strong>Performance:</strong> Limited to 20 results, perfect for autocomplete/typeahead</li>
+                        </ul>
+                        <ul class="mb-0 mt-2" data-lang="es">
+                            <li><strong>Orden por Prioridad:</strong> Países primero, luego departamentos, municipios y barrios</li>
+                            <li><strong>Códigos Postales:</strong> Barrios heredan código postal del municipio si no tienen</li>
+                            <li><strong>Datos Jerárquicos:</strong> Incluye nombres de entidades padre para contexto completo</li>
+                            <li><strong>Rendimiento:</strong> Limitado a 20 resultados, perfecto para autocomplete/typeahead</li>
+                        </ul>
                     </div>
                 </div>
                 
