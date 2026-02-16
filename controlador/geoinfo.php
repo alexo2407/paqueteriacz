@@ -172,4 +172,22 @@ class GeoinfoController
         BarrioModel::eliminar($id);
         return ['message' => 'Barrio eliminado correctamente.'];
     }
+
+    // --- BÚSQUEDA UNIFICADA ---
+    /**
+     * Buscar en todos los tipos de entidades geográficas
+     * @param string $query Término de búsqueda
+     * @param array $filters Filtros opcionales (tipo, pais_id, departamento_id, municipio_id)
+     * @return array Resultados de búsqueda
+     */
+    public function buscar($query, $filters = [])
+    {
+        include_once __DIR__ . '/../modelo/geoinfo.php';
+        
+        if (empty($query) || strlen(trim($query)) < 2) {
+            throw new Exception("La consulta de búsqueda debe tener al menos 2 caracteres.", 400);
+        }
+        
+        return GeoinfoModel::buscar($query, $filters);
+    }
 }

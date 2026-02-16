@@ -1149,74 +1149,370 @@
 
             <!-- Tab: Geo -->
             <div class="tab-pane fade" id="geo" role="tabpanel">
+                
+                <!-- Get All Geoinfo -->
                 <div class="section-container">
-                    <h2 class="section-title" data-lang="en">Geographic Data</h2>
-                    <h2 class="section-title" data-lang="es">Datos Geográficos</h2>
+                    <h2 class="section-title" data-lang="en">🗺️ Get All Geographic Data</h2>
+                    <h2 class="section-title" data-lang="es">🗺️ Obtener Todos los Datos Geográficos</h2>
                     
-                    <p data-lang="en">Retrieve reference data for dropdowns (Countries, Departments, Municipalities).</p>
-                    <p data-lang="es">Obtener datos de referencia para listas desplegables (Países, Departamentos, Municipios).</p>
+                    <p data-lang="en">Retrieve complete hierarchical geographic data (countries, departments, municipalities, neighborhoods).</p>
+                    <p data-lang="es">Obtener datos geográficos jerárquicos completos (países, departamentos, municipios, barrios).</p>
                     
-                     <div class="code-block">
-                         <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/listar
-                         <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
-                     </div>
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/listar
+                        <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                    </div>
                      
-                     <h4 data-lang="en">Response Structure</h4>
-                     <h4 data-lang="es">Estructura de Respuesta</h4>
-                     <pre class="code-block line-numbers"><code class="language-json">{
+                    <h4 data-lang="en">Response Structure</h4>
+                    <h4 data-lang="es">Estructura de Respuesta</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "data": {
-        "paises": [ ... ],
-        "departamentos": [ ... ],
-        "municipios": [ ... ],
-        "barrios": [ ... ]
+        "paises": [
+            { "id": 1, "nombre": "Nicaragua", "codigo_iso": "NI" }
+        ],
+        "departamentos": [
+            { "id": 1, "nombre": "Managua", "id_pais": 1 }
+        ],
+        "municipios": [
+            { "id": 1, "nombre": "Managua", "id_departamento": 1, "codigo_postal": "10000" }
+        ],
+        "barrios": [
+            { "id": 1, "nombre": "Altamira", "id_municipio": 1, "codigo_postal": "10100" }
+        ]
     }
 }</code></pre>
                 </div>
 
+                <!-- Countries Endpoints -->
                 <div class="section-container">
-                    <h2 class="section-title" data-lang="en">Geo CRUD Operations</h2>
-                    <h2 class="section-title" data-lang="es">Operaciones CRUD Geo</h2>
+                    <h2 class="section-title" data-lang="en">🌎 Countries (Países)</h2>
+                    <h2 class="section-title" data-lang="es">🌎 Países</h2>
                     
-                    <p data-lang="en">Endpoints to manage reference data. All accept POST for creation/update.</p>
-                    <p data-lang="es">Endpoints para gestionar datos de referencia. Todos aceptan POST para crear/actualizar.</p>
-                    <p class="text-end mb-2"><span class="badge bg-primary">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span></p>
+                    <div class="mb-4">
+                        <h4 data-lang="en">List All Countries</h4>
+                        <h4 data-lang="es">Listar Todos los Países</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/paises
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                        
+                        <pre class="code-block line-numbers mt-3"><code class="language-json">// Response
+[
+    {
+        "id": 1,
+        "nombre": "Nicaragua",
+        "codigo_iso": "NI",
+        "id_moneda_local": 1
+    },
+    {
+        "id": 2,
+        "nombre": "Honduras",
+        "codigo_iso": "HN",
+        "id_moneda_local": 2
+    }
+]</code></pre>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 data-lang="en">Get Single Country</h4>
+                        <h4 data-lang="es">Obtener País Individual</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/paises?id=1
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                    </div>
+                </div>
 
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Resource</th>
-                                <th>Method</th>
-                                <th>Endpoint</th>
-                                <th>Params (JSON)</th>
-                            </tr>
-                        </thead>
+                <!-- Departments Endpoints -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">🏛️ Departments (Departamentos)</h2>
+                    <h2 class="section-title" data-lang="es">🏛️ Departamentos</h2>
+                    
+                    <div class="mb-4">
+                        <h4 data-lang="en">List All Departments</h4>
+                        <h4 data-lang="es">Listar Todos los Departamentos</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/departamentos
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 data-lang="en">Filter by Country</h4>
+                        <h4 data-lang="es">Filtrar por País</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/departamentos<strong>?id_pais=1</strong>
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                        
+                        <table class="table table-sm table-bordered mt-3" data-lang="en">
+                            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id_pais</code></td><td>integer</td><td>Filter departments by country ID</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <table class="table table-sm table-bordered mt-3" data-lang="es">
+                            <thead><tr><th>Parámetro</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id_pais</code></td><td>entero</td><td>Filtrar departamentos por ID de país</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <pre class="code-block line-numbers mt-3"><code class="language-json">// Response
+[
+    {
+        "id": 1,
+        "nombre": "Managua",
+        "id_pais": 1
+    },
+    {
+        "id": 2,
+        "nombre": "Granada",
+        "id_pais": 1
+    }
+]</code></pre>
+                    </div>
+                </div>
+
+                <!-- Municipalities Endpoints -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">🏘️ Municipalities (Municipios)</h2>
+                    <h2 class="section-title" data-lang="es">🏘️ Municipios</h2>
+                    
+                    <div class="mb-4">
+                        <h4 data-lang="en">List All Municipalities</h4>
+                        <h4 data-lang="es">Listar Todos los Municipios</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/municipios
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 data-lang="en">Filter by Department</h4>
+                        <h4 data-lang="es">Filtrar por Departamento</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/municipios<strong>?id_departamento=1</strong>
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                        
+                        <table class="table table-sm table-bordered mt-3" data-lang="en">
+                            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id_departamento</code></td><td>integer</td><td>Filter municipalities by department ID</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <table class="table table-sm table-bordered mt-3" data-lang="es">
+                            <thead><tr><th>Parámetro</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id_departamento</code></td><td>entero</td><td>Filtrar municipios por ID de departamento</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <pre class="code-block line-numbers mt-3"><code class="language-json">// Response
+[
+    {
+        "id": 1,
+        "nombre": "Managua",
+        "id_departamento": 1,
+        "codigo_postal": "10000"
+    },
+    {
+        "id": 2,
+        "nombre": "Tipitapa",
+        "id_departamento": 1,
+        "codigo_postal": "11000"
+    }
+]</code></pre>
+                    </div>
+                </div>
+
+                <!-- Neighborhoods Endpoints -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">🏠 Neighborhoods (Barrios)</h2>
+                    <h2 class="section-title" data-lang="es">🏠 Barrios</h2>
+                    
+                    <div class="mb-4">
+                        <h4 data-lang="en">List All Neighborhoods</h4>
+                        <h4 data-lang="es">Listar Todos los Barrios</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/barrios
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 data-lang="en">Filter by Municipality</h4>
+                        <h4 data-lang="es">Filtrar por Municipio</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/barrios<strong>?id_municipio=1</strong>
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                        
+                        <table class="table table-sm table-bordered mt-3" data-lang="en">
+                            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id_municipio</code></td><td>integer</td><td>Filter neighborhoods by municipality ID</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <table class="table table-sm table-bordered mt-3" data-lang="es">
+                            <thead><tr><th>Parámetro</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id_municipio</code></td><td>entero</td><td>Filtrar barrios por ID de municipio</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <pre class="code-block line-numbers mt-3"><code class="language-json">// Response
+[
+    {
+        "id": 1,
+        "nombre": "Altamira",
+        "id_municipio": 1,
+        "codigo_postal": "10100"
+    },
+    {
+        "id": 2,
+        "nombre": "Bolonia",
+    }\n]\</code></pre>
+                    </div>
+                </div>
+                
+                <!-- Search Endpoint -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">🔍 Unified Search</h2>
+                    <h2 class="section-title" data-lang="es">🔍 Búsqueda Unificada</h2>
+                    
+                    <p data-lang="en">Search across all geographic entities (países, departamentos, municipios, barrios) with autocomplete/typeahead functionality.</p>
+                    <p data-lang="es">Buscar en todas las entidades geográficas (países, departamentos, municipios, barrios) con funcionalidad de autocomplete/typeahead.</p>
+                    
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/buscar?q=<strong>&lt;query&gt;</strong>
+                        <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                    </div>
+                    
+                    <h4 data-lang="en">Query Parameters</h4>
+                    <h4 data-lang="es">Parámetros de Consulta</h4>
+                    
+                    <table class="table table-sm table-bordered" data-lang="en">
+                        <thead><tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
                         <tbody>
-                            <tr>
-                                <td><strong>Countries</strong></td>
-                                <td><span class="badge-endpoint badge-post">POST</span></td>
-                                <td><code>/api/geoinfo/municipios</code></td>
-                                <td><code>{ "nombre": "...", "id_departamento": 1 }</code></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Neighborhoods</strong></td>
-                                <td><span class="badge-endpoint badge-post">POST</span></td>
-                                <td><code>/api/geoinfo/barrios</code></td>
-                                <td><code>{ "nombre": "...", "id_municipio": 1 }</code></td>
-                            </tr>
+                            <tr><td><code>q</code></td><td>string</td><td>✅ Yes</td><td>Search query (min 2 chars)</td></tr>
+                            <tr><td><code>tipo</code></td><td>string</td><td>❌ No</td><td>Filter by type: <code>pais</code>, <code>departamento</code>, <code>municipio</code>, <code>barrio</code></td></tr>
+                            <tr><td><code>pais_id</code></td><td>integer</td><td>❌ No</td><td>Filter results within country</td></tr>
+                            <tr><td><code>departamento_id</code></td><td>integer</td><td>❌ No</td><td>Filter results within department</td></tr>
+                            <tr><td><code>municipio_id</code></td><td>integer</td><td>❌ No</td><td>Filter results within municipality</td></tr>
                         </tbody>
                     </table>
                     
+                    <table class="table table-sm table-bordered" data-lang="es">
+                        <thead><tr><th>Parámetro</th><th>Tipo</th><th>Requerido</th><th>Descripción</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>q</code></td><td>string</td><td>✅ Sí</td><td>Consulta de búsqueda (mín 2 caracteres)</td></tr>
+                            <tr><td><code>tipo</code></td><td>string</td><td>❌ No</td><td>Filtrar por tipo: <code>pais</code>, <code>departamento</code>, <code>municipio</code>, <code>barrio</code></td></tr>
+                            <tr><td><code>pais_id</code></td><td>entero</td><td>❌ No</td><td>Filtrar resultados dentro de país</td></tr>
+                            <tr><td><code>departamento_id</code></td><td>entero</td><td>❌ No</td><td>Filtrar resultados dentro de departamento</td></tr>
+                            <tr><td><code>municipio_id</code></td><td>entero</td><td>❌ No</td><td>Filtrar resultados dentro de municipio</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <h4 data-lang="en">Example Requests</h4>
+                    <h4 data-lang="es">Ejemplos de Peticiones</h4>
+                    
+                    <pre class="code-block line-numbers"><code class="language-bash"># Basic search
+GET /api/geoinfo/buscar?q=Mana
+
+# Filter by type
+GET /api/geoinfo/buscar?q=San&tipo=municipio
+
+# Filter by country
+GET /api/geoinfo/buscar?q=San&tipo=municipio&pais_id=1</code></pre>
+                    
+                    <h4 data-lang="en">Example Response</h4>
+                    <h4 data-lang="es">Ejemplo de Respuesta</h4>
+                    
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "data": [
+        {
+            "id": 1,
+            "tipo": "departamento",
+            "nombre": "Managua",
+            "codigo_iso": null,
+            "id_pais": 1,
+            "pais": "Nicaragua",
+            "id_departamento": null,
+            "departamento": null,
+            "id_municipio": null,
+            "municipio": null
+        },
+        {
+            "id": 1,
+            "tipo": "municipio",
+            "nombre": "Managua",
+            "codigo_iso": "10101",
+            "id_pais": 1,
+            "pais": "Nicaragua",
+            "id_departamento": 1,
+            "departamento": "Managua",
+            "id_municipio": null,
+            "municipio": null
+        }
+    ],
+    "query": "Mana",
+    "filters": []
+}</code></pre>
+
                     <div class="alert alert-info mt-3">
-                        <i class="bi bi-info-circle"></i> 
-                        <span data-lang="en">To <strong>Update</strong> or <strong>Delete</strong>, pass the <code>action</code> parameter:</span>
-                        <span data-lang="es">Para <strong>Actualizar</strong> o <strong>Eliminar</strong>, pasa el parámetro <code>action</code>:</span>
-                        <br>
-                        <code>{ "action": "update", "id": 1, "nombre": "New Name" }</code><br>
-                        <code>{ "action": "delete", "id": 1 }</code>
+                        <strong data-lang="en">💡 Perfect for Autocomplete</strong>
+                        <strong data-lang="es">💡 Perfecto para Autocomplete</strong>
+                        <p class="mb-0 mt-2" data-lang="en">This endpoint returns hierarchical data including parent names, making it ideal for typeahead/autocomplete implementations. Results are limited to 20 items for performance.</p>
+                        <p class="mb-0 mt-2" data-lang="es">Este endpoint retorna datos jerárquicos incluyendo nombres de padres, ideal para implementaciones typeahead/autocomplete. Los resultados están limitados a 20 items para rendimiento.</p>
                     </div>
                 </div>
-            </div>
+                
+                <!-- Usage Example
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">💡 Cascading Dropdown Example</h2>
+                    <h2 class="section-title" data-lang="es">💡 Ejemplo de Dropdown en Cascada</h2>
+                    
+                    <p data-lang="en">Common pattern for building dependent geographic selectors:</p>
+                    <p data-lang="es">Patrón común para construir selectores geográficos dependientes:</p>
+                    
+                    <pre class="code-block line-numbers"><code class="language-javascript">// 1. Load all countries on page load
+fetch('/api/geoinfo/paises')
+    .then(r => r.json())
+    .then(data => populateCountries(data));
+
+// 2. When user selects country, load departments
+countrySelect.addEventListener('change', (e) => {
+    const paisId = e.target.value;
+    fetch(`/api/geoinfo/departamentos?id_pais=${paisId}`)
+        .then(r => r.json())
+        .then(data => populateDepartments(data));
+});
+
+// 3. When user selects department, load municipalities
+departmentSelect.addEventListener('change', (e) => {
+    const deptoId = e.target.value;
+    fetch(`/api/geoinfo/municipios?id_departamento=${deptoId}`)
+        .then(r => r.json())
+        .then(data => populateMunicipalities(data));
+});
+
+// 4. When user selects municipality, load neighborhoods
+municipalitySelect.addEventListener('change', (e) => {
+    const munId = e.target.value;
+    fetch(`/api/geoinfo/barrios?id_municipio=${munId}`)
+        .then(r => r.json())
+        .then(data => populateNeighborhoods(data));
+});</code></pre>
+                </div>-->
+            </div> 
+
 
             <!-- Tab: Client App -->
             <div class="tab-pane fade" id="client" role="tabpanel" aria-labelledby="client-tab">
