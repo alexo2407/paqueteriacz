@@ -147,7 +147,7 @@ class GeoinfoModel
                         b.id,
                         'barrio' AS tipo,
                         b.nombre,
-                        b.codigo_postal AS codigo_iso,
+                        COALESCE(b.codigo_postal, m.codigo_postal) AS codigo_iso,
                         d.id_pais,
                         p.nombre AS pais,
                         m.id_departamento,
