@@ -79,7 +79,7 @@ class GeoinfoModel
                         NULL AS departamento,
                         NULL AS id_municipio,
                         NULL AS municipio,
-                        CASE WHEN d.nombre = :query_exact THEN 1 ELSE 2 END AS relevancia
+                        CASE WHEN d.nombre = :query_exact THEN 3 ELSE 4 END AS relevancia
                     FROM departamentos d
                     INNER JOIN paises p ON p.id = d.id_pais
                     WHERE d.nombre LIKE :query";
@@ -113,7 +113,7 @@ class GeoinfoModel
                         d.nombre AS departamento,
                         NULL AS id_municipio,
                         NULL AS municipio,
-                        CASE WHEN m.nombre = :query_exact THEN 1 ELSE 2 END AS relevancia
+                        CASE WHEN m.nombre = :query_exact THEN 5 ELSE 6 END AS relevancia
                     FROM municipios m
                     INNER JOIN departamentos d ON d.id = m.id_departamento
                     INNER JOIN paises p ON p.id = d.id_pais
@@ -154,7 +154,7 @@ class GeoinfoModel
                         d.nombre AS departamento,
                         b.id_municipio,
                         m.nombre AS municipio,
-                        CASE WHEN b.nombre = :query_exact THEN 1 ELSE 2 END AS relevancia
+                        CASE WHEN b.nombre = :query_exact THEN 7 ELSE 8 END AS relevancia
                     FROM barrios b
                     INNER JOIN municipios m ON m.id = b.id_municipio
                     INNER JOIN departamentos d ON d.id = m.id_departamento
