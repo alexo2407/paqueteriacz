@@ -30,6 +30,14 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
     }
 
     if ($accion === 'guardarPedido') {
+        // DEBUG: Log entrada inmediata
+        if (defined('DEBUG') && DEBUG) {
+            error_log("[DEBUG WEB.PHP] POST recibido en guardarPedido");
+            error_log("[DEBUG WEB.PHP] REQUEST_METHOD: " . $_SERVER['REQUEST_METHOD']);
+            error_log("[DEBUG WEB.PHP] POST keys: " . implode(', ', array_keys($_POST)));
+            error_log("[DEBUG WEB.PHP] POST data: " . json_encode($_POST, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE));
+        }
+        
         // Start buffering to prevent spurious output (warnings, notices) from breaking JSON response
         ob_start();
 
@@ -60,7 +68,18 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'precio_local' => $_POST['precio_local'] ?? null,
             'precio_usd' => $_POST['precio_usd'] ?? null,
             'moneda' => $_POST['moneda'] ?? null,
+            // Nuevos campos de combo pricing
+            'precio_total_local' => $_POST['precio_total_local'] ?? null,
+            'precio_total_usd' => $_POST['precio_total_usd'] ?? null,
+            'tasa_conversion_usd' => $_POST['tasa_conversion_usd'] ?? null,
+            'es_combo' => isset($_POST['es_combo']) ? 1 : 0,
+            'csrf_token' => $_POST['csrf_token'] ?? null,
+            'id_cliente' => $_POST['id_cliente'] ?? null,
         ];
+        
+        if (defined('DEBUG') && DEBUG) {
+            error_log("[DEBUG WEB.PHP] Payload construido: " . json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE));
+        }
 
         // Llamar al controlador para procesar y persistir el pedido
         $resultado = $ctrl->guardarPedidoFormulario($payload);

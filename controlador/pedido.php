@@ -659,6 +659,7 @@ class PedidosController {
             'es_combo' => $esCombo ? 1 : 0,
         ];
 
+
         try {
             $nuevoId = PedidosModel::crearPedidoConProductos($payload, $items);
             error_log("guardarPedidoFormulario EXITO. Nuevo ID: " . $nuevoId);

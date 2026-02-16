@@ -1218,6 +1218,14 @@ class PedidosModel
      */
     public static function crearPedidoConProductos(array $pedido, array $items)
     {
+        // DEBUG: Log method entry
+        if (defined('DEBUG') && DEBUG) {
+            error_log("[DEBUG] crearPedidoConProductos - ENTRY");
+            error_log("[DEBUG] Pedido data: " . json_encode($pedido, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE));
+            error_log("[DEBUG] Items count: " . count($items));
+            error_log("[DEBUG] Items data: " . json_encode($items, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE));
+        }
+        
         // NOTA: La gestión de inventario (tabla `stock`) se realiza mediante
         // triggers en la base de datos. No se deben insertar/actualizar filas
         // en `stock` desde PHP en este flujo para evitar discrepancias entre
@@ -1225,6 +1233,7 @@ class PedidosModel
         // para detalles y para desplegar los triggers en staging/producción.
 
         if (empty($items)) {
+            error_log("[DEBUG] ERROR: No items provided");
             throw new Exception('El pedido debe incluir al menos un producto.');
         }
 
@@ -1440,8 +1449,17 @@ class PedidosModel
                 }
             }
 
+            if (defined('DEBUG') && DEBUG) {
+                error_log("[DEBUG] Executing INSERT pedido statement");
+                error_log("[DEBUG] SQL: " . $sql);
+            }
+            
             $stmt->execute();
             $pedidoId = (int)$db->lastInsertId();
+            
+            if (defined('DEBUG') && DEBUG) {
+                error_log("[DEBUG] Pedido INSERT SUCCESS - ID: " . $pedidoId);
+            }
 
             // 3. Insertar items y descontar stock
             $detalleStmt = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
@@ -1464,7 +1482,15 @@ class PedidosModel
                 StockModel::registrarSalida($prodId, $cant, $vendedorId, $db, 'pedido', $pedidoId);
             }
 
+            if (defined('DEBUG') && DEBUG) {
+                error_log("[DEBUG] Committing transaction for pedido ID: " . $pedidoId);
+            }
+            
             $db->commit();
+            
+            if (defined('DEBUG') && DEBUG) {
+                error_log("[DEBUG] Transaction COMMITTED successfully for pedido ID: " . $pedidoId);
+            }
 
             // Registrar auditoría de creación compleja
             try {
@@ -1485,7 +1511,15 @@ class PedidosModel
             return $pedidoId;
 
         } catch (Exception $e) {
+            if (defined('DEBUG') && DEBUG) {
+                error_log("[DEBUG] EXCEPTION in crearPedidoConProductos: " . $e->getMessage());
+                error_log("[DEBUG] Exception trace: " . $e->getTraceAsString());
+            }
+            
             if (isset($db) && $db->inTransaction()) {
+                if (defined('DEBUG') && DEBUG) {
+                    error_log("[DEBUG] Rolling back transaction");
+                }
                 $db->rollBack();
             }
             throw $e;

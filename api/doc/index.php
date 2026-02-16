@@ -706,12 +706,12 @@
                         <div class="mt-2">
                             <ul class="mb-0 ps-3">
                                 <li class="mb-2">
-                                    <strong class="text-primary">Role: Client (ID 4)</strong>
+                                    <strong class="text-primary">Role: Client</strong>
                                     <div data-lang="en" class="small text-muted">Use this role for <strong>Order Management</strong>: Create new orders, manage massive shipments, and control inventory.</div>
                                     <div data-lang="es" class="small text-muted">Usa este rol para <strong>Gestión de Pedidos</strong>: Crear nuevos pedidos, administrar envíos masivos y controlar inventario.</div>
                                 </li>
                                 <li>
-                                    <strong class="text-primary">Role: Provider (ID 5)</strong>
+                                    <strong class="text-primary">Role: Provider</strong>
                                     <div data-lang="en" class="small text-muted">Use this role for <strong>Tracking & Visualization</strong>: View order history and real-time delivery status.</div>
                                     <div data-lang="es" class="small text-muted">Usa este rol para <strong>Seguimiento y Visualización</strong>: Ver historial de pedidos y estado de entrega en tiempo real.</div>
                                 </li>
@@ -807,7 +807,7 @@
                     <div class="code-block">
                         <span class="badge-endpoint badge-post">POST</span> /api/pedidos/crear
                         <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
-                        <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                        <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                     </div>
 
                     <h4 data-lang="en">🔑 Required Fields</h4>
@@ -844,7 +844,7 @@
                     <div class="code-block">
                         <span class="badge-endpoint badge-post">POST</span> /api/pedidos/multiple?auto_enqueue=true
                         <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
-                        <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                        <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                     </div>
 
                     <h4 data-lang="en">📋 Optional Fields - Contact & Delivery</h4>
@@ -1150,7 +1150,7 @@
                          <div class="code-block">
                             <span class="badge-endpoint badge-post">POST</span> /api/productos/crear
                             <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
-                            <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                            <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                         </div>
                          <p data-lang="es" class="mt-2">Crear un nuevo producto.</p>
                     </div>
@@ -1176,7 +1176,7 @@
                         <div class="code-block">
                             <span class="badge-endpoint badge-put">POST</span> /api/productos/actualizar
                             <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
-                            <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client (ID 4)</span><span data-lang="es">Rol: Cliente (ID 4)</span></span>
+                            <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                         </div> 
                         <small class="text-muted d-block mb-2">Note: Use POST with <code>id</code> param or check PHP config for PUT support.</small>
 
@@ -1679,7 +1679,7 @@ municipalitySelect.addEventListener('change', (e) => {
 
                         <div class="code-block">
                             <span class="badge-endpoint badge-get">GET</span> /api/cliente/pedidos
-                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider (ID 5)</span><span data-lang="es">Rol: Proveedor (ID 5)</span></span>
+                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider</span><span data-lang="es">Rol: Proveedor</span></span>
                         </div>
                         <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
@@ -1703,7 +1703,7 @@ municipalitySelect.addEventListener('change', (e) => {
 
                         <div class="code-block">
                             <span class="badge-endpoint badge-post">POST</span> /api/cliente/cambiar_estado
-                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider (ID 5)</span><span data-lang="es">Rol: Proveedor (ID 5)</span></span>
+                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider</span><span data-lang="es">Rol: Proveedor</span></span>
                         </div>
                         
                         <table class="table table-sm table-bordered mt-2">

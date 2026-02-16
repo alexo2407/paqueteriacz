@@ -1,6 +1,0 @@
-[2025-12-01T16:01:55+01:00] guardarPedidoFormulario DEBUG: cli
-{"numero_orden":571298,"destinatario":"Test User","telefono":"1234****","producto_id":18,"cantidad_producto":1,"productos":null,"estado":1,"vendedor":1,"proveedor":1,"comentario":"[SANITIZED]","direccion":"[SANITIZED]","latitud":10,"longitud":10,"id_pais":1,"id_departamento":1,"municipio":null,"barrio":null,"zona":null,"precio_local":null,"precio_usd":null,"moneda":1}
-
-[2025-12-01T16:02:44+01:00] guardarPedidoFormulario DEBUG: cli
-{"numero_orden":317254,"destinatario":"Test User","telefono":"1234****","producto_id":18,"cantidad_producto":1,"productos":null,"estado":1,"vendedor":1,"proveedor":1,"comentario":"[SANITIZED]","direccion":"[SANITIZED]","latitud":10,"longitud":10,"id_pais":1,"id_departamento":1,"municipio":null,"barrio":null,"zona":null,"precio_local":null,"precio_usd":null,"moneda":1}
-
