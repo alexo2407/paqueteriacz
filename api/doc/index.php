@@ -1419,17 +1419,74 @@
                         </tbody>
                     </table>
                     
+                    
                     <h4 data-lang="en">Example Requests</h4>
                     <h4 data-lang="es">Ejemplos de Peticiones</h4>
                     
-                    <pre class="code-block line-numbers"><code class="language-bash"># Basic search
-GET /api/geoinfo/buscar?q=Mana
+                    <pre class="code-block line-numbers"><code class="language-bash"># 1. Basic search (all types)
+GET /api/geoinfo/buscar?q=Guatemala
 
-# Filter by type
+# 2. Search only countries
+GET /api/geoinfo/buscar?q=Guat&tipo=pais
+
+# 3. Search municipalities containing "San"
 GET /api/geoinfo/buscar?q=San&tipo=municipio
 
-# Filter by country
-GET /api/geoinfo/buscar?q=San&tipo=municipio&pais_id=1</code></pre>
+# 4. Search within specific country (Nicaragua = 1)
+GET /api/geoinfo/buscar?q=San&tipo=municipio&pais_id=1
+
+# 5. Search neighborhoods in specific municipality
+GET /api/geoinfo/buscar?q=Alta&tipo=barrio&municipio_id=1
+
+# 6. Autocomplete for cascading dropdown
+GET /api/geoinfo/buscar?q=Mana&tipo=departamento&pais_id=1</code></pre>
+
+                    <h4 class="mt-4" data-lang="en">Practical Use Cases</h4>
+                    <h4 class="mt-4" data-lang="es">Casos de Uso Prácticos</h4>
+                    
+                    <div class="alert alert-secondary">
+                        <strong data-lang="en">🎯 Use Case 1: Country Autocomplete</strong>
+                        <strong data-lang="es">🎯 Caso de Uso 1: Autocomplete de País</strong>
+                        <pre class="mt-2 mb-0"><code class="language-javascript">// User types "Gua"
+fetch('/api/geoinfo/buscar?q=Gua&tipo=pais')
+  .then(r => r.json())
+  .then(data => {
+    // Shows: Guatemala, Guinea, etc.
+    populateCountryDropdown(data.data);
+  });</code></pre>
+                    </div>
+
+                    <div class="alert alert-secondary mt-2">
+                        <strong data-lang="en">🎯 Use Case 2: Cascading Location Selector</strong>
+                        <strong data-lang="es">🎯 Caso de Uso 2: Selector de Ubicación en Cascada</strong>
+                        <pre class="mt-2 mb-0"><code class="language-javascript">// Step 1: User selects country
+const selectedCountryId = 6; // Guatemala
+
+// Step 2: Search departments in that country
+fetch(`/api/geoinfo/buscar?q=${userInput}&tipo=departamento&pais_id=${selectedCountryId}`)
+  .then(r => r.json())
+  .then(data => populateDepartmentDropdown(data.data));
+
+// Step 3: Search municipalities in selected department
+const selectedDepartmentId = 80;
+fetch(`/api/geoinfo/buscar?q=${userInput}&tipo=municipio&departamento_id=${selectedDepartmentId}`)
+  .then(r => r.json())
+  .then(data => populateMunicipalityDropdown(data.data));</code></pre>
+                    </div>
+
+                    <div class="alert alert-secondary mt-2">
+                        <strong data-lang="en">🎯 Use Case 3: Quick Global Search</strong>
+                        <strong data-lang="es">🎯 Caso de Uso 3: Búsqueda Global Rápida</strong>
+                        <pre class="mt-2 mb-0"><code class="language-javascript">// Search everywhere, get prioritized results
+fetch('/api/geoinfo/buscar?q=Managua')
+  .then(r => r.json())
+  .then(data => {
+    // Returns:
+    // 1. Departamento "Managua" (priority 3)
+    // 2. Municipio "Managua" (priority 5)
+    displayResults(data.data);
+  });</code></pre>
+                    </div>
                     
                     <h4 data-lang="en">Example Response</h4>
                     <h4 data-lang="es">Ejemplo de Respuesta</h4>
