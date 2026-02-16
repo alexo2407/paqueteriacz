@@ -606,6 +606,58 @@
     }
 }</code></pre>
                 </div>
+                
+                <!-- Get Order States Endpoint -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Get Order States</h2>
+                    <h2 class="section-title" data-lang="es">Obtener Estados de Pedidos</h2>
+                    
+                    <p data-lang="en">Retrieve all available order states programmatically.</p>
+                    <p data-lang="es">Obtener todos los estados de pedidos disponibles de forma programática.</p>
+                    
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-get">GET</span> /api/pedidos/estados
+                        <span class="badge bg-success float-end">🌐 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                    </div>
+                    
+                    <h4 data-lang="en">Example Request</h4>
+                    <h4 data-lang="es">Ejemplo de Petición</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estados</code></pre>
+                    
+                    <h4 data-lang="en">Response <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 data-lang="es">Respuesta <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "data": [
+        {"id": 1, "nombre_estado": "En bodega"},
+        {"id": 2, "nombre_estado": "En ruta o proceso"},
+        {"id": 3, "nombre_estado": "Entregado"},
+        {"id": 4, "nombre_estado": "Reprogramado"},
+        {"id": 5, "nombre_estado": "Domicilio cerrado"},
+        {"id": 6, "nombre_estado": "No hay quien reciba en domicilio"},
+        {"id": 7, "nombre_estado": "Devuelto"},
+        {"id": 8, "nombre_estado": "Domicilio no encontrado"},
+        {"id": 9, "nombre_estado": "Rechazado"},
+        {"id": 10, "nombre_estado": "No puede pagar recaudo"}
+    ]
+}</code></pre>
+
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">💡 Use Cases</strong>
+                        <strong data-lang="es">💡 Casos de Uso</strong>
+                        <ul class="mb-0 mt-2" data-lang="en">
+                            <li>Populate status dropdown filters</li>
+                            <li>Build dynamic order management UIs</li>
+                            <li>Validate status IDs before updates</li>
+                        </ul>
+                        <ul class="mb-0 mt-2" data-lang="es">
+                            <li>Poblar filtros dropdown de estados</li>
+                            <li>Construir UIs dinámicas de gestión de pedidos</li>
+                            <li>Validar IDs de estado antes de actualizar</li>
+                        </ul>
+                    </div>
+                </div>
+                
             <!-- Reference: Order Statuses -->
                  <div class="section-container">
                     <h2 class="section-title" data-lang="en">Order Status Reference</h2>
