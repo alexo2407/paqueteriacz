@@ -2395,5 +2395,570 @@ class PedidosModel
             return [];
         }
     }
+
+    /**
+     * Obtener métricas de efectividad agrupadas por país
+     * 
+     * @param int|null $clienteId Filtrar por cliente específico
+     * @param string|null $fechaDesde Fecha inicio (Y-m-d)
+     * @param string|null $fechaHasta Fecha fin (Y-m-d)
+     * @return array Array con estadísticas por país
+     */
+    public static function obtenerEfectividadPorPais($clienteId = null, $fechaDesde = null, $fechaHasta = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Definir estados considerados como "entregados" y "devueltos"
+            // Ajustar según los estados reales en la base de datos
+            $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
+            $estadosDevueltos = ['Devuelto', 'No entregado', 'Rechazado'];
+            
+            // Construir placeholders para IN clauses
+            $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
+            $devueltosPlaceholders = implode(',', array_fill(0, count($estadosDevueltos), '?'));
+            
+            // Construir WHERE clause
+            $where = [];
+            $params = [];
+            
+            if ($clienteId !== null) {
+                $where[] = 'p.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            
+            if ($fechaDesde !== null) {
+                $where[] = 'p.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            
+            if ($fechaHasta !== null) {
+                $where[] = 'p.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $query = "
+                SELECT 
+                    pa.id AS pais_id,
+                    pa.nombre AS pais_nombre,
+                    COUNT(*) AS total_pedidos,
+                    SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) AS entregados,
+                    SUM(CASE WHEN ep.nombre_estado IN ($devueltosPlaceholders) THEN 1 ELSE 0 END) AS devueltos,
+                    SUM(CASE 
+                        WHEN ep.nombre_estado NOT IN ($entregadosPlaceholders) 
+                        AND ep.nombre_estado NOT IN ($devueltosPlaceholders) 
+                        THEN 1 ELSE 0 END) AS en_proceso,
+                    ROUND(
+                        SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 
+                        2
+                    ) AS efectividad
+                FROM pedidos p
+                LEFT JOIN paises pa ON p.id_pais = pa.id
+                LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                $whereClause
+                GROUP BY pa.id, pa.nombre
+                HAVING total_pedidos > 0
+                ORDER BY total_pedidos DESC
+            ";
+            
+            $stmt = $db->prepare($query);
+            
+            // Bind parameters: estados + filtros
+            $bindParams = array_merge($estadosEntregados, $estadosDevueltos, $estadosEntregados, $estadosDevueltos, $params);
+            $stmt->execute($bindParams);
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (Exception $e) {
+            error_log('Error al obtener efectividad por país: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtener efectividad en el tiempo (para gráficos lineales)
+     * 
+     * @param int|null $clienteId Filtrar por cliente específico
+     * @param int|null $paisId Filtrar por país
+     * @param string|null $fechaDesde Fecha inicio
+     * @param string|null $fechaHasta Fecha fin
+     * @return array Array con datos diarios/mensuales
+     */
+    public static function obtenerEfectividadTemporal($clienteId = null, $paisId = null, $fechaDesde = null, $fechaHasta = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Definir estados considerados como "entregados"
+            $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
+            $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
+            
+            // Construir WHERE clause
+            $where = [];
+            $params = [];
+            
+            if ($clienteId !== null) {
+                $where[] = 'p.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            
+            if ($paisId !== null) {
+                $where[] = 'p.id_pais = ?';
+                $params[] = $paisId;
+            }
+            
+            if ($fechaDesde !== null) {
+                $where[] = 'p.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            
+            if ($fechaHasta !== null) {
+                $where[] = 'p.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $query = "
+                SELECT 
+                    DATE(p.fecha_ingreso) AS fecha,
+                    COUNT(*) AS total_pedidos,
+                    SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) AS entregados,
+                    ROUND(
+                        SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 
+                        2
+                    ) AS efectividad
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                $whereClause
+                GROUP BY DATE(p.fecha_ingreso)
+                ORDER BY fecha ASC
+            ";
+            
+            $stmt = $db->prepare($query);
+            
+            // Bind parameters: estados + filtros
+            $bindParams = array_merge($estadosEntregados, $estadosEntregados, $params);
+            $stmt->execute($bindParams);
+            
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Formatear fechas para mejor visualización
+            foreach ($resultados as &$row) {
+                $row['fecha'] = date('d/m', strtotime($row['fecha']));
+            }
+            
+            return $resultados;
+            
+        } catch (Exception $e) {
+            error_log('Error al obtener efectividad temporal: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtener KPIs de efectividad para el dashboard
+     * 
+     * @param int|null $clienteId Filtrar por cliente
+     * @param string $fechaDesde Fecha inicio
+     * @param string $fechaHasta Fecha fin
+     * @return array KPIs de efectividad
+     */
+    public static function obtenerKPIsEfectividad($clienteId = null, $fechaDesde = null, $fechaHasta = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
+            $estadosDevueltos = ['Devuelto', 'No entregado', 'Rechazado'];
+            
+            $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
+            $devueltosPlaceholders = implode(',', array_fill(0, count($estadosDevueltos), '?'));
+            
+            $where = [];
+            $params = [];
+            
+            if ($clienteId !== null) {
+                $where[] = 'p.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            
+            if ($fechaDesde !== null) {
+                $where[] = 'p.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            
+            if ($fechaHasta !== null) {
+                $where[] = 'p.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $query = "
+                SELECT 
+                    COUNT(*) AS total_pedidos,
+                    SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) AS total_entregados,
+                    SUM(CASE WHEN ep.nombre_estado IN ($devueltosPlaceholders) THEN 1 ELSE 0 END) AS total_devueltos,
+                    SUM(CASE 
+                        WHEN ep.nombre_estado NOT IN ($entregadosPlaceholders) 
+                        AND ep.nombre_estado NOT IN ($devueltosPlaceholders) 
+                        THEN 1 ELSE 0 END) AS en_proceso
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                $whereClause
+            ";
+            
+            $stmt = $db->prepare($query);
+            $bindParams = array_merge($estadosEntregados, $estadosDevueltos, $estadosEntregados, $estadosDevueltos, $params);
+            $stmt->execute($bindParams);
+            
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            $total = (int)$result['total_pedidos'];
+            $entregados = (int)$result['total_entregados'];
+            $devueltos = (int)$result['total_devueltos'];
+            $enProceso = (int)$result['en_proceso'];
+            
+            return [
+                'efectividad_global' => $total > 0 ? round(($entregados / $total) * 100, 2) : 0,
+                'total_entregados' => $entregados,
+                'en_proceso' => $enProceso,
+                'tasa_devolucion' => $total > 0 ? round(($devueltos / $total) * 100, 2) : 0,
+                'total_pedidos' => $total
+            ];
+            
+        } catch (Exception $e) {
+            error_log('Error al obtener KPIs de efectividad: ' . $e->getMessage());
+            return [
+                'efectividad_global' => 0,
+                'total_entregados' => 0,
+                'en_proceso' => 0,
+                'tasa_devolucion' => 0,
+                'total_pedidos' => 0
+            ];
+        }
+    }
+
+    /**
+     * Comparativa de efectividad: período actual vs período anterior
+     * 
+     * @param int|null $clienteId Filtrar por cliente
+     * @param string $fechaDesde Fecha inicio período actual
+     * @param string $fechaHasta Fecha fin período actual
+     * @return array Datos para gráfico comparativo
+     */
+    public static function obtenerComparativaEfectividad($clienteId = null, $fechaDesde = null, $fechaHasta = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Calcular período anterior
+            $inicio = new DateTime($fechaDesde);
+            $fin = new DateTime($fechaHasta);
+            $dias = $inicio->diff($fin)->days + 1;
+            
+            $fechaDesdeAnterior = (clone $inicio)->modify("-$dias days")->format('Y-m-d');
+            $fechaHastaAnterior = (clone $inicio)->modify('-1 day')->format('Y-m-d');
+            
+            $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
+            $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
+            
+            $where = [];
+            $params = [];
+            
+            if ($clienteId !== null) {
+                $where[] = 'p.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            
+            $whereClause = !empty($where) ? 'AND ' . implode(' AND ', $where) : '';
+            
+            // Generar labels de días
+            $labels = [];
+            $period = new DatePeriod($inicio, new DateInterval('P1D'), (clone $fin)->modify('+1 day'));
+            foreach ($period as $date) {
+                $labels[] = $date->format('d');
+            }
+            
+            // Datos período actual
+            $query = "
+                SELECT 
+                    DAY(p.fecha_ingreso) AS dia,
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) AS entregados
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                WHERE p.fecha_ingreso >= ? AND p.fecha_ingreso <= ? $whereClause
+                GROUP BY DAY(p.fecha_ingreso)
+                ORDER BY dia
+            ";
+            
+            $stmt = $db->prepare($query);
+            $bindParams = array_merge($estadosEntregados, [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'], $params);
+            $stmt->execute($bindParams);
+            $resultadosActual = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Datos período anterior
+            $stmt->execute(array_merge($estadosEntregados, [$fechaDesdeAnterior . ' 00:00:00', $fechaHastaAnterior . ' 23:59:59'], $params));
+            $resultadosAnterior = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Procesar datos
+            $dataActual = [];
+            $dataAnterior = [];
+            
+            foreach ($labels as $dia) {
+                $diaNum = (int)$dia;
+                
+                // Período actual
+                $encontrado = false;
+                foreach ($resultadosActual as $row) {
+                    if ((int)$row['dia'] === $diaNum) {
+                        $total = (int)$row['total'];
+                        $dataActual[] = $total > 0 ? round(((int)$row['entregados'] / $total) * 100, 2) : 0;
+                        $encontrado = true;
+                        break;
+                    }
+                }
+                if (!$encontrado) $dataActual[] = 0;
+                
+                // Período anterior
+                $encontrado = false;
+                foreach ($resultadosAnterior as $row) {
+                    if ((int)$row['dia'] === $diaNum) {
+                        $total = (int)$row['total'];
+                        $dataAnterior[] = $total > 0 ? round(((int)$row['entregados'] / $total) * 100, 2) : 0;
+                        $encontrado = true;
+                        break;
+                    }
+                }
+                if (!$encontrado) $dataAnterior[] = 0;
+            }
+            
+            return [
+                'labels' => $labels,
+                'efectividad_actual' => $dataActual,
+                'efectividad_anterior' => $dataAnterior
+            ];
+            
+        } catch (Exception $e) {
+            error_log('Error al obtener comparativa de efectividad: ' . $e->getMessage());
+            return [
+                'labels' => [],
+                'efectividad_actual' => [],
+                'efectividad_anterior' => []
+            ];
+        }
+    }
+
+    /**
+     * Entregas acumuladas por día
+     * 
+     * @param int|null $clienteId Filtrar por cliente
+     * @param string $fechaDesde Fecha inicio
+     * @param string $fechaHasta Fecha fin
+     * @return array Datos para gráfico de entregas acumuladas
+     */
+    public static function obtenerEntregasAcumuladas($clienteId = null, $fechaDesde = null, $fechaHasta = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
+            $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
+            
+            $where = [];
+            $params = [];
+            
+            if ($clienteId !== null) {
+                $where[] = 'p.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            
+            if ($fechaDesde !== null) {
+                $where[] = 'p.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            
+            if ($fechaHasta !== null) {
+                $where[] = 'p.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $query = "
+                SELECT 
+                    DATE(p.fecha_ingreso) AS fecha,
+                    SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) AS entregas
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                $whereClause
+                GROUP BY DATE(p.fecha_ingreso)
+                ORDER BY fecha ASC
+            ";
+            
+            $stmt = $db->prepare($query);
+            $bindParams = array_merge($estadosEntregados, $params);
+            $stmt->execute($bindParams);
+            
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $labels = [];
+            $data = [];
+            $acumulado = 0;
+            
+            foreach ($resultados as $row) {
+                $labels[] = date('d/m', strtotime($row['fecha']));
+                $acumulado += (int)$row['entregas'];
+                $data[] = $acumulado;
+            }
+            
+            return [
+                'labels' => $labels,
+                'data' => $data
+            ];
+            
+        } catch (Exception $e) {
+            error_log('Error al obtener entregas acumuladas: ' . $e->getMessage());
+            return [
+                'labels' => [],
+                'data' => []
+            ];
+        }
+    }
+
+    /**
+     * Top productos con métricas de efectividad
+     * 
+     * @param int|null $clienteId Filtrar por cliente
+     * @param string $fechaDesde Fecha inicio
+     * @param string $fechaHasta Fecha fin
+     * @param int $limit Número de productos a retornar
+     * @return array Top productos con efectividad
+     */
+    public static function obtenerTopProductosConEfectividad($clienteId = null, $fechaDesde = null, $fechaHasta = null, $limit = 5)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
+            $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
+            
+            $where = [];
+            $params = [];
+            
+            if ($clienteId !== null) {
+                $where[] = 'p.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            
+            if ($fechaDesde !== null) {
+                $where[] = 'p.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            
+            if ($fechaHasta !== null) {
+                $where[] = 'p.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $query = "
+                SELECT 
+                    p.producto AS nombre,
+                    COUNT(*) AS total_pedidos,
+                    SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) AS entregados,
+                    ROUND(
+                        SUM(CASE WHEN ep.nombre_estado IN ($entregadosPlaceholders) THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 
+                        2
+                    ) AS efectividad
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                $whereClause
+                GROUP BY p.producto
+                ORDER BY total_pedidos DESC
+                LIMIT ?
+            ";
+            
+            $stmt = $db->prepare($query);
+            $bindParams = array_merge($estadosEntregados, $params, [$limit]);
+            $stmt->execute($bindParams);
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+        } catch (Exception $e) {
+            error_log('Error al obtener top productos con efectividad: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Distribución de estados de pedidos
+     * 
+     * @param int|null $clienteId Filtrar por cliente
+     * @param string $fechaDesde Fecha inicio
+     * @param string $fechaHasta Fecha fin
+     * @return array Distribución de estados
+     */
+    public static function obtenerDistribucionEstados($clienteId = null, $fechaDesde = null, $fechaHasta = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            $where = [];
+            $params = [];
+            
+            if ($clienteId !== null) {
+                $where[] = 'p.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            
+            if ($fechaDesde !== null) {
+                $where[] = 'p.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            
+            if ($fechaHasta !== null) {
+                $where[] = 'p.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+            
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+            
+            $query = "
+                SELECT 
+                    COALESCE(ep.nombre_estado, 'Sin estado') AS estado,
+                    COUNT(*) AS cantidad
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                $whereClause
+                GROUP BY ep.nombre_estado
+                ORDER BY cantidad DESC
+            ";
+            
+            $stmt = $db->prepare($query);
+            $stmt->execute($params);
+            
+            $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Calcular total para porcentajes
+            $total = array_sum(array_column($resultados, 'cantidad'));
+            
+            // Agregar porcentajes
+            foreach ($resultados as &$row) {
+                $row['porcentaje'] = $total > 0 ? round(((int)$row['cantidad'] / $total) * 100, 2) : 0;
+            }
+            
+            return $resultados;
+            
+        } catch (Exception $e) {
+            error_log('Error al obtener distribución de estados: ' . $e->getMessage());
+            return [];
+        }
+    }
 }
 

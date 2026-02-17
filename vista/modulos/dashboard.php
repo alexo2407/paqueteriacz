@@ -56,6 +56,10 @@ $acumulada = $datos['acumulada'];
 $topProductos = $datos['topProductos'];
 $fechaDesde = $datos['fechaDesde'];
 $fechaHasta = $datos['fechaHasta'];
+$efectividadPaises = $datos['efectividadPaises'] ?? [];
+$efectividadTemporal = $datos['efectividadTemporal'] ?? [];
+$clientes = $datos['clientes'] ?? [];
+$paises = $datos['paises'] ?? [];
 
 // Formatear fechas para mostrar
 $fechaDesdeFormateada = date('d/m/Y', strtotime($fechaDesde));
@@ -205,6 +209,39 @@ if ($hora < 12) {
     align-items: center;
     gap: 0.5rem;
 }
+.efectividad-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    height: 100%;
+}
+.efectividad-gauge {
+    margin: 1rem 0;
+}
+.efectividad-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #11998e;
+}
+.efectividad-stats {
+    margin-top: 1rem;
+}
+.stat-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+.period-badge-old {
+    border-radius: 50px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
 </style>
 
 <div class="container-fluid py-3">
@@ -250,33 +287,120 @@ if ($hora < 12) {
         </form>
     </div>
 
-    <!-- KPIs Section -->
+    <!-- KPIs Section - Efectividad -->
     <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="kpi-card green">
-                <div class="kpi-icon">💰</div>
-                <div class="kpi-value">$<?= number_format($kpis['totalVendido'], 2) ?></div>
-                <div class="kpi-label">Total Vendido</div>
-                <div class="kpi-desc">Ingresos confirmados en el período</div>
+        <div class="col-md-3">
+            <div class="kpi-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="kpi-icon">📊</div>
+                <div class="kpi-value"><?= number_format($kpis['efectividad_global'], 1) ?>%</div>
+                <div class="kpi-label">Efectividad Global</div>
+                <div class="kpi-desc">Entregas exitosas</div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="kpi-card blue">
-                <div class="kpi-icon">🧾</div>
-                <div class="kpi-value">$<?= number_format($kpis['ticketPromedio'], 2) ?></div>
-                <div class="kpi-label">Ticket Promedio</div>
-                <div class="kpi-desc">Gasto promedio por pedido</div>
+        <div class="col-md-3">
+            <div class="kpi-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="kpi-icon">✅</div>
+                <div class="kpi-value"><?= number_format($kpis['total_entregados']) ?></div>
+                <div class="kpi-label">Entregas Exitosas</div>
+                <div class="kpi-desc">Pedidos entregados</div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="kpi-card orange">
-                <div class="kpi-icon">📦</div>
-                <div class="kpi-value"><?= $kpis['totalPedidos'] ?></div>
-                <div class="kpi-label">Total Pedidos</div>
-                <div class="kpi-desc">Órdenes entregadas</div>
+        <div class="col-md-3">
+            <div class="kpi-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="kpi-icon">🚚</div>
+                <div class="kpi-value"><?= number_format($kpis['en_proceso']) ?></div>
+                <div class="kpi-label">En Proceso</div>
+                <div class="kpi-desc">Pedidos en tránsito</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="kpi-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <div class="kpi-icon">↩️</div>
+                <div class="kpi-value"><?= number_format($kpis['tasa_devolucion'], 1) ?>%</div>
+                <div class="kpi-label">Tasa de Devolución</div>
+                <div class="kpi-desc">Pedidos devueltos</div>
             </div>
         </div>
     </div>
+
+    <!-- Sección de Efectividad por País -->
+    <?php if (!empty($efectividadPaises)): ?>
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5><i class="bi bi-globe text-success"></i> Efectividad por País</h5>
+                    <small>Rendimiento de entregas por ubicación</small>
+                </div>
+                <div class="chart-body">
+                    <div class="row">
+                        <?php foreach ($efectividadPaises as $pais): ?>
+                        <div class="col-md-4 mb-3">
+                            <div class="efectividad-card">
+                                <h6><?= htmlspecialchars($pais['pais_nombre']) ?></h6>
+                                <div class="efectividad-gauge">
+                                    <span class="efectividad-value"><?= number_format($pais['efectividad'], 1) ?>%</span>
+                                </div>
+                                <div class="efectividad-stats">
+                                    <div class="stat-item">
+                                        <i class="bi bi-check-circle text-success"></i>
+                                        <span><?= $pais['entregados'] ?> Entregados</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="bi bi-arrow-return-left text-warning"></i>
+                                        <span><?= $pais['devueltos'] ?> Devueltos</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <i class="bi bi-hourglass-split text-info"></i>
+                                        <span><?= $pais['en_proceso'] ?> En Proceso</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Gráfico de Efectividad Temporal (Solo Admin) -->
+    <?php if ($isAdmin && !empty($clientes)): ?>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="chart-card">
+                <div class="chart-header d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <h5><i class="bi bi-graph-up-arrow text-primary"></i> Efectividad Temporal</h5>
+                        <small>Tendencia de entregas exitosas en el tiempo</small>
+                    </div>
+                    <!-- Filtros para Admin -->
+                    <div class="d-flex gap-2 mt-2 mt-md-0">
+                        <select id="filtroCliente" class="form-select form-select-sm" style="width: 200px;">
+                            <option value="">Todos los clientes</option>
+                            <?php foreach ($clientes as $cliente): ?>
+                            <option value="<?= $cliente['id'] ?>"><?= htmlspecialchars($cliente['nombre']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select id="filtroPais" class="form-select form-select-sm" style="width: 180px;">
+                            <option value="">Todos los países</option>
+                            <?php foreach ($paises as $pais): ?>
+                            <option value="<?= $pais['id'] ?>"><?= htmlspecialchars($pais['nombre']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button id="btnAplicarFiltros" class="btn btn-sm btn-primary">
+                            <i class="bi bi-funnel"></i> Aplicar
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-body">
+                    <canvas id="efectividadTemporalChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <!-- Charts Section -->
     <div class="row g-4">
@@ -284,8 +408,8 @@ if ($hora < 12) {
         <div class="col-lg-8">
             <div class="chart-card">
                 <div class="chart-header">
-                    <h5><i class="bi bi-graph-up text-primary"></i> Comparativa de Ventas</h5>
-                    <small>Período actual vs anterior</small>
+                    <h5><i class="bi bi-graph-up text-primary"></i> Comparativa de Efectividad</h5>
+                    <small>% de entregas exitosas: período actual vs anterior</small>
                 </div>
                 <div class="chart-body">
                     <canvas id="comparativaChart" height="130"></canvas>
@@ -297,7 +421,7 @@ if ($hora < 12) {
             <div class="chart-card">
                 <div class="chart-header">
                     <h5><i class="bi bi-trophy text-warning"></i> Top 5 Productos</h5>
-                    <small>Más vendidos en el período</small>
+                    <small>Productos más pedidos con % de efectividad</small>
                 </div>
                 <div class="chart-body">
                     <canvas id="productosChart" height="280"></canvas>
@@ -311,8 +435,8 @@ if ($hora < 12) {
         <div class="col-12">
             <div class="chart-card">
                 <div class="chart-header">
-                    <h5><i class="bi bi-bar-chart-line text-success"></i> Progreso de Ventas Acumuladas</h5>
-                    <small>Evolución <?= $periodoTexto ?></small>
+                    <h5><i class="bi bi-bar-chart-line text-success"></i> Entregas Acumuladas</h5>
+                    <small>Evolución de entregas exitosas <?= $periodoTexto ?></small>
                 </div>
                 <div class="chart-body">
                     <canvas id="acumuladoChart" height="80"></canvas>
@@ -333,6 +457,86 @@ if ($hora < 12) {
         },
         acumulada: <?= json_encode($acumulada) ?>
     };
+
+    // Gráfico de Efectividad Temporal (Admin)
+    <?php if ($isAdmin && !empty($clientes)): ?>
+    let efectividadChart = null;
+
+    // Función para cargar datos de efectividad
+    function cargarEfectividadTemporal() {
+        const clienteId = document.getElementById('filtroCliente').value;
+        const paisId = document.getElementById('filtroPais').value;
+        const fechaDesde = document.querySelector('input[name="fecha_desde"]').value;
+        const fechaHasta = document.querySelector('input[name="fecha_hasta"]').value;
+        
+        // Construir URL con parámetros
+        const params = new URLSearchParams({
+            cliente_id: clienteId,
+            pais_id: paisId,
+            fecha_desde: fechaDesde,
+            fecha_hasta: fechaHasta
+        });
+        
+        // Llamada AJAX para obtener datos
+        fetch(`<?= RUTA_URL ?>api/dashboard/efectividad-temporal?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                const labels = data.map(e => e.fecha);
+                const values = data.map(e => parseFloat(e.efectividad) || 0);
+                
+                // Actualizar o crear gráfico
+                if (efectividadChart) {
+                    efectividadChart.data.labels = labels;
+                    efectividadChart.data.datasets[0].data = values;
+                    efectividadChart.update();
+                } else {
+                    efectividadChart = new Chart(document.getElementById('efectividadTemporalChart'), {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: '% Efectividad',
+                                data: values,
+                                borderColor: '#11998e',
+                                backgroundColor: 'rgba(17, 153, 142, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: true
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            })
+            .catch(error => console.error('Error al cargar efectividad:', error));
+    }
+
+    // Cargar datos iniciales
+    document.addEventListener('DOMContentLoaded', function() {
+        cargarEfectividadTemporal();
+        
+        // Event listener para botón de filtros
+        document.getElementById('btnAplicarFiltros').addEventListener('click', cargarEfectividadTemporal);
+    });
+    <?php endif; ?>
 </script>
 <script src="js/dashboard.js?v=<?= time() ?>"></script>
 <?php 

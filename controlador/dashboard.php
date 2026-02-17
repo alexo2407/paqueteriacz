@@ -39,69 +39,55 @@ class DashboardController {
             $fechaHasta = date('Y-m-t');
         }
 
-        // 1. KPIs (filtrados por proveedor y fechas si aplica)
-        $kpis = PedidosModel::obtenerKPIsMesActual($proveedorId, $fechaDesde, $fechaHasta);
-        $totalVendido = $kpis['total_vendido'] ?? 0;
-        $ticketPromedio = $kpis['ticket_promedio'] ?? 0;
-        $totalPedidos = $kpis['total_pedidos'] ?? 0;
+        // 1. KPIs de Efectividad (reemplaza métricas de dinero)
+        $kpis = PedidosModel::obtenerKPIsEfectividad($proveedorId, $fechaDesde, $fechaHasta);
 
-        // 2. Ventas Comparativas (filtradas por proveedor y fechas si aplica)
-        $comparativa = PedidosModel::obtenerVentasComparativa($proveedorId, $fechaDesde, $fechaHasta);
-        $ventasActual = $comparativa['actual'];
-        $ventasAnterior = $comparativa['anterior'];
+        // 2. Comparativa de Efectividad (reemplaza comparativa de ventas)
+        $comparativa = PedidosModel::obtenerComparativaEfectividad($proveedorId, $fechaDesde, $fechaHasta);
 
-        // Preparar datos para chart comparativo
-        $labelsDias = range(1, 31);
-        $dataActual = array_fill(1, 31, 0);
-        $dataAnterior = array_fill(1, 31, 0);
+        // 3. Entregas Acumuladas (reemplaza ventas acumuladas)
+        $acumulada = PedidosModel::obtenerEntregasAcumuladas($proveedorId, $fechaDesde, $fechaHasta);
 
-        foreach ($ventasActual as $v) {
-            $dia = (int)date('d', strtotime($v['fecha']));
-            $dataActual[$dia] = (float)$v['total'];
-        }
-        foreach ($ventasAnterior as $v) {
-            $dia = (int)date('d', strtotime($v['fecha']));
-            $dataAnterior[$dia] = (float)$v['total'];
+        // 4. Top Productos con Efectividad
+        $topProductos = PedidosModel::obtenerTopProductosConEfectividad($proveedorId, $fechaDesde, $fechaHasta, 5);
+
+        // 5. Distribución de Estados (nuevo)
+        $distribucionEstados = PedidosModel::obtenerDistribucionEstados($proveedorId, $fechaDesde, $fechaHasta);
+
+        // 5. Efectividad por País (para clientes)
+        $efectividadPaises = [];
+        if ($proveedorId !== null) {
+            // Si es proveedor/cliente, mostrar su efectividad
+            $efectividadPaises = PedidosModel::obtenerEfectividadPorPais($proveedorId, $fechaDesde, $fechaHasta);
         }
 
-        // 3. Ventas Acumuladas (filtradas por proveedor y fechas si aplica)
-        $acumuladas = PedidosModel::obtenerVentasAcumuladasMesActual($proveedorId, $fechaDesde, $fechaHasta);
-        $dataAcumulada = [];
-        $labelsAcumulada = [];
-        foreach ($acumuladas as $ac) {
-            $labelsAcumulada[] = date('d/m', strtotime($ac['fecha']));
-            $dataAcumulada[] = $ac['total_acumulado'];
-        }
-
-        // 4. Top Productos (filtrados por proveedor y fechas si aplica)
-        $topProductos = PedidosModel::obtenerTopProductosMesActual($proveedorId, $fechaDesde, $fechaHasta);
-        $nombresProd = [];
-        $cantidadesProd = [];
-        foreach ($topProductos as $prod) {
-            $nombresProd[] = $prod['nombre'];
-            $cantidadesProd[] = (int)$prod['total'];
+        // 6. Efectividad Temporal y listas para filtros (solo para admin)
+        $efectividadTemporal = [];
+        $clientes = [];
+        $paises = [];
+        if (isAdmin()) {
+            // Obtener listas para filtros
+            require_once "modelo/usuario.php";
+            require_once "modelo/pais.php";
+            
+            $clientes = UsuarioModel::listarClientes();
+            $paises = PaisModel::listar();
+            
+            // Cargar datos iniciales (sin filtros específicos)
+            $efectividadTemporal = PedidosModel::obtenerEfectividadTemporal(null, null, $fechaDesde, $fechaHasta);
         }
 
         return [
-            'kpis' => [
-                'totalVendido' => $totalVendido,
-                'ticketPromedio' => $ticketPromedio,
-                'totalPedidos' => $totalPedidos
-            ],
-            'comparativa' => [
-                'labels' => array_values($labelsDias),
-                'actual' => array_values($dataActual),
-                'anterior' => array_values($dataAnterior)
-            ],
-            'acumulada' => [
-                'labels' => $labelsAcumulada,
-                'data' => $dataAcumulada
-            ],
-            'topProductos' => [
-                'nombres' => $nombresProd,
-                'cantidades' => $cantidadesProd
-            ],
-            'esProveedor' => $proveedorId !== null, // Para mostrar mensaje en la vista
+            'kpis' => $kpis,
+            'comparativa' => $comparativa,
+            'acumulada' => $acumulada,
+            'topProductos' => $topProductos,
+            'distribucionEstados' => $distribucionEstados,
+            'efectividadPaises' => $efectividadPaises,
+            'efectividadTemporal' => $efectividadTemporal,
+            'clientes' => $clientes,
+            'paises' => $paises,
+            'esProveedor' => $proveedorId !== null,
             'fechaDesde' => $fechaDesde,
             'fechaHasta' => $fechaHasta
         ];

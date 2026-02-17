@@ -468,4 +468,28 @@ class UsuarioModel {
 
         return ['ids' => $ids, 'nombres' => $nombres];
     }
+
+    /**
+     * Listar todos los clientes (usuarios con rol de cliente de logística)
+     * 
+     * @return array Lista de clientes
+     */
+    public static function listarClientes()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $sql = 'SELECT DISTINCT u.id, u.nombre, u.email
+                    FROM usuarios u
+                    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    INNER JOIN roles r ON r.id = ur.id_rol
+                    WHERE r.nombre_rol = "cliente" AND u.activo = 1
+                    ORDER BY u.nombre ASC';
+            $stmt = $db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            error_log('Error al listar clientes: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return [];
+        }
+    }
 }
