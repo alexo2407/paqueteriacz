@@ -1144,6 +1144,33 @@
                         </div>
                         <p data-lang="en" class="mt-2">List all available products with current stock.</p>
                         <p data-lang="es" class="mt-2">Listar todos los productos disponibles con stock actual.</p>
+
+                        <h5 data-lang="en" class="mt-3">Query Parameters</h5>
+                        <h5 data-lang="es" class="mt-3">Parámetros de Consulta</h5>
+                        
+                        <table class="table table-sm table-bordered mt-2" data-lang="en">
+                            <thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>page</code></td><td>integer</td><td>Page number (default 1)</td></tr>
+                                <tr><td><code>limit</code></td><td>integer</td><td>Items per page (default 50)</td></tr>
+                                <tr><td><code>id_cliente</code></td><td>integer</td><td>Filter by Creator/Client ID</td></tr>
+                                <tr><td><code>categoria_id</code></td><td>integer</td><td>Filter by Category ID</td></tr>
+                                <tr><td><code>marca</code></td><td>string</td><td>Filter by Brand name (exact match)</td></tr>
+                                <tr><td><code>activo</code></td><td>boolean</td><td>Filter by active status (1/0 or true/false)</td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <table class="table table-sm table-bordered mt-2" data-lang="es">
+                            <thead><tr><th>Parámetro</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>page</code></td><td>entero</td><td>Número de página (defecto 1)</td></tr>
+                                <tr><td><code>limit</code></td><td>entero</td><td>Items por página (defecto 50)</td></tr>
+                                <tr><td><code>id_cliente</code></td><td>entero</td><td>Filtrar por ID de Cliente/Creador</td></tr>
+                                <tr><td><code>categoria_id</code></td><td>entero</td><td>Filtrar por ID de Categoría</td></tr>
+                                <tr><td><code>marca</code></td><td>string</td><td>Filtrar por Marca (coincidencia exacta)</td></tr>
+                                <tr><td><code>activo</code></td><td>boolean</td><td>Filtrar por estado activo (1/0 o true/false)</td></tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <div class="mb-4">
