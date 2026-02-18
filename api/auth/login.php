@@ -45,8 +45,11 @@ $auth = new AuthController();
 $response = $auth->login($data['email'], $data['password']);
 
 if ($response['success']) {
-    // Devolvemos el token dentro de data.token (consistente con la API)
-    responder(true, 'Login exitoso', ['token' => $response['token']]);
+    // Devolvemos el token, datos de usuario y roles
+    responder(true, 'Login exitoso', [
+        'token' => $response['token'],
+        'user' => $response['user'] ?? []
+    ]);
 } else {
     responder(false, $response['message'], null, 401);
 }

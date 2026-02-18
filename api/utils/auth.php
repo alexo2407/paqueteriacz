@@ -53,7 +53,13 @@ class AuthController {
 
             return [
                 'success' => true,
-                'token' => $jwt
+                'token' => $jwt,
+                'user' => [
+                    'id' => $user['ID_Usuario'],
+                    'nombre' => $user['Usuario'],
+                    'rol' => $user['Rol'],
+                    'roles' => $user['RolesNombres'] ?? []
+                ]
             ];
         } else {
             return [
