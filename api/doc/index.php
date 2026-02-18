@@ -1171,6 +1171,21 @@
                                 <tr><td><code>activo</code></td><td>boolean</td><td>Filtrar por estado activo (1/0 o true/false)</td></tr>
                             </tbody>
                         </table>
+
+                        <h5 data-lang="en" class="mt-3">📝 Usage Examples</h5>
+                        <h5 data-lang="es" class="mt-3">📝 Ejemplos de Uso</h5>
+
+                        <pre class="code-block line-numbers"><code class="language-bash"># 1. List products created by client ID 15
+GET /api/productos/listar?id_cliente=15
+
+# 2. List only active products in category 8
+GET /api/productos/listar?activo=1&categoria_id=8
+
+# 3. Filter by brand
+GET /api/productos/listar?marca=Samsung
+
+# 4. Combined filter with pagination
+GET /api/productos/listar?id_cliente=15&activo=1&page=2&limit=10</code></pre>
                     </div>
 
                     <div class="mb-4">
