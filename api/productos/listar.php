@@ -27,6 +27,13 @@ try {
     if (isset($_GET['marca'])) $filtros['marca'] = $_GET['marca'];
     if (isset($_GET['activo'])) $filtros['activo'] = ($_GET['activo'] === '1' || $_GET['activo'] === 'true');
     
+    // Filtro por usuario creador (cliente)
+    if (isset($_GET['id_cliente'])) {
+        $filtros['id_usuario_creador'] = (int)$_GET['id_cliente'];
+    } elseif (isset($_GET['id_usuario'])) {
+        $filtros['id_usuario_creador'] = (int)$_GET['id_usuario'];
+    }
+    
     // Switch to listarConFiltros which supports pagination
     $productos = ProductoModel::listarConFiltros($filtros);
     $total = ProductoModel::contarConFiltros($filtros);

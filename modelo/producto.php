@@ -654,6 +654,12 @@ class ProductoModel
                 $where[] = 'p.activo = TRUE';
             }
             
+            // Filtro por usuario creador
+             if (!empty($filtros['id_usuario_creador'])) {
+                $where[] = 'p.id_usuario_creador = :id_usuario_creador';
+                $params[':id_usuario_creador'] = $filtros['id_usuario_creador'];
+            }
+            
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
             $havingClause = '';
             
@@ -768,6 +774,12 @@ class ProductoModel
             } else {
                  // Default only active? Mirroring listarConFiltros default
                  $where[] = 'p.activo = TRUE';
+            }
+
+             // Filtro por usuario creador
+             if (!empty($filtros['id_usuario_creador'])) {
+                $where[] = 'p.id_usuario_creador = :id_usuario_creador';
+                $params[':id_usuario_creador'] = $filtros['id_usuario_creador'];
             }
 
              if (!empty($filtros['nivel_stock'])) {
