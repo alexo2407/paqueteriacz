@@ -27,22 +27,26 @@ class PedidoQueryService
             return $pedidos;
         }
         
-        // Si es proveedor (Logística o CRM), filtrar solo sus pedidos
-        if (isProveedor() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_PROVEEDOR_CRM)) {
-            $userId = getCurrentUserId();
-            $filtered = array_filter($pedidos, function($pedido) use ($userId) {
-                $pedidoProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null;
-                return $pedidoProveedor === (int)$userId;
-            });
-            return array_values($filtered);
-        }
+        $roles = $_SESSION['roles_nombres'] ?? [];
+        $esClienteReal = in_array('Cliente', $roles, true) || in_array('cliente', $roles, true);
+        $esProveedorReal = in_array('Proveedor', $roles, true) || in_array('proveedor', $roles, true);
 
-        // Si es cliente (Logística o CRM), filtrar solo sus pedidos
-        if (isCliente() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_CLIENTE_CRM)) {
+        // Si es cliente real (Logística), filtrar solo sus pedidos
+        if ($esClienteReal || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_CLIENTE_CRM)) {
             $userId = getCurrentUserId();
             $filtered = array_filter($pedidos, function($pedido) use ($userId) {
                 $pedidoCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;
                 return $pedidoCliente === (int)$userId;
+            });
+            return array_values($filtered);
+        }
+
+        // Si es proveedor real (Logística), filtrar solo sus pedidos
+        if ($esProveedorReal || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_PROVEEDOR_CRM)) {
+            $userId = getCurrentUserId();
+            $filtered = array_filter($pedidos, function($pedido) use ($userId) {
+                $pedidoProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null;
+                return $pedidoProveedor === (int)$userId;
             });
             return array_values($filtered);
         }

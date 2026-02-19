@@ -14,6 +14,15 @@ $pedidoController = new PedidosController();
 
 // Redireccionar a vista restringida si es Proveedor de Logística (y no Admin)
 require_once __DIR__ . '/../../../utils/permissions.php';
+
+// Strict Check: Clients cannot edit, redirect to view
+if (isCliente() && !isSuperAdmin() && !isVendedor()) {
+    // Check if the user is the owner of the order (optional, but good for security, though 'ver' handles it too)
+    // For now, just redirect to 'ver' which has its own checks
+    header('Location: ' . RUTA_URL . 'pedidos/ver/' . $id_pedido);
+    exit;
+}
+
 if (isProveedor() && !isSuperAdmin()) {
     require __DIR__ . '/editar_proveedor.php';
     exit;

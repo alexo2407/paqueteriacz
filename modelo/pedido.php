@@ -824,7 +824,8 @@ class PedidosModel
                     pp.id_producto,
                     pp.cantidad,
                     pp.cantidad_devuelta,
-                    pr.nombre
+                    pr.nombre,
+                    pr.precio_usd
                 FROM pedidos_productos pp
                 INNER JOIN productos pr ON pr.id = pp.id_producto
                 WHERE pp.id_pedido = :id_pedido

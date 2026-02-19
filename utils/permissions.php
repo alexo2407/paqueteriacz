@@ -136,6 +136,12 @@ function isProveedor() {
     if (isset($_SESSION['roles']) && is_array($_SESSION['roles'])) {
         return in_array(ROL_PROVEEDOR, $_SESSION['roles']);
     }
+
+    // Verify by name explicitly
+    if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
+        return in_array(ROL_NOMBRE_PROVEEDOR, $_SESSION['roles_nombres'], true) 
+               || in_array('Proveedor', $_SESSION['roles_nombres'], true);
+    }
     
     return false;
 }
@@ -200,7 +206,10 @@ function isCliente() {
     }
 
     if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
-        return in_array(ROL_NOMBRE_CLIENTE, $_SESSION['roles_nombres'], true);
+        // Fix: Check for literal 'Cliente' or 'cliente' in addition to the constant
+        return in_array(ROL_NOMBRE_CLIENTE, $_SESSION['roles_nombres'], true) 
+            || in_array('Cliente', $_SESSION['roles_nombres'], true)
+            || in_array('cliente', $_SESSION['roles_nombres'], true);
     }
     
     return false;

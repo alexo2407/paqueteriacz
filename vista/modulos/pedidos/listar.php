@@ -444,7 +444,8 @@ foreach ($pedidos as $p) {
                     $rolesNombres = $_SESSION['roles_nombres'] ?? [];
                     $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
                     $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
-                    $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true);
+                    // FIX: Check for 'Cliente' string explicitly as config constant might be swapped/confusing
+                    $isCliente = in_array('Cliente', $rolesNombres, true) || in_array('cliente', $rolesNombres, true);
                     
                     // Solo deshabilitar si es Proveedor y NO es nada más (ni Admin ni Cliente ni Repartidor)
                     $isProveedorOnly = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) && !$isAdmin && !$isRepartidor && !$isCliente;
@@ -469,8 +470,8 @@ foreach ($pedidos as $p) {
 
                             <td>
                                 <!-- <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a> -->
-                                <?php if ($isCliente): ?>
-                                    <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-info btn-sm text-white"><i class="bi bi-eye"></i> Ver Detalle</a>
+                                <?php if ($isCliente && !$isAdmin): ?>
+                                    <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-info btn-sm text-white"><i class="bi bi-eye"></i> Ver Detalle</a>
                                 <?php else: ?>
                                     <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
                                 <?php endif; ?>

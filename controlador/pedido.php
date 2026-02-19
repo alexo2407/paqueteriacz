@@ -139,6 +139,72 @@ class PedidosController {
     
 
     /**
+     * Ver detalles del pedido (Read-Only).
+     * Accessible by: Admin, Repartidor, Proveedor (assigned), Cliente (owner).
+     */
+    public function ver($id = null)
+    {
+        // 1. Validate ID
+        if (!$id || !is_numeric($id)) {
+            $this->redirect('pedidos', 'ID de pedido inválido', 'error');
+            return;
+        }
+
+        // 2. Auth & Roles
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_once __DIR__ . '/../utils/session.php';
+        // start_secure_session(); // Already called in authorization?
+
+        $roles = $_SESSION['roles_nombres'] ?? [];
+        $userId = $_SESSION['user_id'] ?? 0;
+        
+        $isAdmin = in_array(ROL_NOMBRE_ADMIN, $roles);
+        $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $roles);
+        // Fix: Use literal string too
+        $isCliente = in_array(ROL_NOMBRE_CLIENTE, $roles) || in_array('Cliente', $roles);
+        $isProveedor = in_array(ROL_NOMBRE_PROVEEDOR, $roles);
+
+        // 3. Fetch Data
+        // Use verPedido helper which returns array of orders (compat with view)
+        $detallesPedido = $this->verPedido($id);
+        
+        if (empty($detallesPedido)) {
+            $this->redirect('pedidos', 'Pedido no encontrado', 'error');
+            return;
+        }
+
+        $pedido = $detallesPedido[0];
+
+        // 4. Strict Ownership Check
+        if ($isCliente && !$isAdmin && !$isRepartidor) {
+            // Must match ID Cliente
+            if ((int)$pedido['id_cliente'] !== (int)$userId) {
+               // Log unauthorized access attempt
+               error_log("Unauthorized access attempt to pedido $id by client user $userId");
+               http_response_code(403);
+               include "vista/modulos/errores/403.php"; // Assuming you have a 403 view, or just die
+               if (!file_exists("vista/modulos/errores/403.php")) die("403 Forbidden - No tienes permiso para ver este pedido.");
+               exit;
+            }
+        }
+
+        if ($isProveedor && !$isAdmin && !$isRepartidor && !$isCliente) {
+             // Must match ID Proveedor
+             if ((int)$pedido['id_proveedor'] !== (int)$userId) {
+                http_response_code(403);
+                die("403 Forbidden - No tienes permiso para ver este pedido.");
+             }
+        }
+        
+        // 5. Load View
+        // The view expects $detallesPedido variable
+        
+
+
+        include "vista/modulos/pedidos/ver.php";
+    }
+
+    /**
      * Validar la estructura mínima de un pedido recibido vía API o formulario.
      *
      * Comprueba la presencia de campos obligatorios y el formato de coordenadas.
