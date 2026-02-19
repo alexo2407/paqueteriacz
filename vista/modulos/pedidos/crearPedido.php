@@ -310,39 +310,54 @@ try {
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="proveedor" class="form-label">Proveedor de Servicio</label>
+                                            <label for="id_cliente" class="form-label">Cliente (Comercio)</label>
                                             <?php
                                             require_once __DIR__ . '/../../../utils/permissions.php';
-                                            $canSelect = canSelectAnyProveedor();
-                                            if ($canSelect): ?>
-                                                <select class="form-select select2-searchable" id="proveedor" name="proveedor" required data-placeholder="Buscar proveedor...">
-                                                    <option value="" disabled selected>Selecciona un proveedor</option>
-                                                    <?php foreach ($proveedores as $proveedor): ?>
-                                                        <option value="<?= $proveedor['id']; ?>" <?= (isset($old_posted['proveedor']) && (int)$old_posted['proveedor'] === (int)$proveedor['id']) ? 'selected' : '' ?> >
-                                                            <?= htmlspecialchars($proveedor['nombre']); ?><?= isset($proveedor['email']) && $proveedor['email'] ? ' — ' . htmlspecialchars($proveedor['email']) : '' ?>
-                                                        </option>
-                                                    <?php endforeach; ?>
-                                                </select>
-                                                <?php if (empty($proveedores)): ?>
-                                                    <div class="form-text text-warning">No hay proveedores activos.</div>
-                                                <?php endif; ?>
-                                                <div class="invalid-feedback">Por favor, selecciona un proveedor.</div>
-                                            <?php else: ?>
-                                                <!-- Usuario Proveedor: auto-asignado -->
-                                                <input type="hidden" id="proveedor" name="proveedor" value="<?= $_SESSION['user_id'] ?>">
-                                                <input type="text" class="form-control" value="<?= htmlspecialchars($_SESSION['nombre'] ?? 'Mi usuario') ?>" disabled>
-                                                <div class="form-text text-success">✓ Este pedido será asignado automáticamente a tu usuario.</div>
+                                            
+                                            // PRE-SELECCIÓN (Sin Bloqueo)
+                                            // Si es Cliente estricto, pre-seleccionar su usuario, pero permitir cambiarlo si se desea
+                                            // (Segun solicitud "evitar auto asignación" forzada)
+                                            
+                                            $isStrictClient = isCliente() && !isSuperAdmin() && !isVendedor();
+                                            $prevClientId = $old_posted['id_cliente'] ?? '';
+                                            
+                                            // Pre-seleccionar si es cliente estricto y no hay valor previo
+                                            $selectedClient = ($isStrictClient && !$prevClientId) ? $_SESSION['user_id'] : $prevClientId;
+                                            ?>
+                                            
+                                            <select class="form-select select2-searchable" id="id_cliente" name="id_cliente" required data-placeholder="Buscar cliente...">
+                                                <option value="" disabled <?= !$selectedClient ? 'selected' : '' ?>>Selecciona un cliente</option>
+                                                <?php foreach ($clientes as $cli): ?>
+                                                    <option value="<?= $cli['id']; ?>" <?= ((int)$selectedClient === (int)$cli['id']) ? 'selected' : '' ?> >
+                                                        <?= htmlspecialchars($cli['nombre']); ?><?= isset($cli['email']) && $cli['email'] ? ' — ' . htmlspecialchars($cli['email']) : '' ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <?php if (empty($clientes)): ?>
+                                                <div class="form-text text-warning">No hay clientes activos.</div>
                                             <?php endif; ?>
+                                            <div class="invalid-feedback">Por favor, selecciona un cliente.</div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <div class="mb-3">
-                                            <label for="cliente" class="form-label">Cliente (Opcional)</label>
-                                            <select class="form-select select2-searchable" id="cliente" name="id_cliente" data-placeholder="Buscar cliente...">
-                                                <option value="" selected>Sin Cliente asignado</option>
-                                                <?php foreach ($clientes as $cli): ?>
-                                                    <option value="<?= $cli['id']; ?>" <?= (isset($old_posted['id_cliente']) && (int)$old_posted['id_cliente'] === (int)$cli['id']) ? 'selected' : '' ?> >
-                                                        <?= htmlspecialchars($cli['nombre']); ?><?= isset($cli['email']) && $cli['email'] ? ' — ' . htmlspecialchars($cli['email']) : '' ?>
+                                            <label for="proveedor" class="form-label">Proveedor de Mensajería (Opcional)</label>
+                                            <?php
+                                            // PRE-SELECCIÓN (Sin Bloqueo)
+                                            // Si es Proveedor estricto, pre-seleccionar su usuario.
+                                            
+                                            $isStrictProvider = isProveedor() && !isSuperAdmin() && !isVendedor();
+                                            $prevProviderId = $old_posted['proveedor'] ?? '';
+                                            
+                                            // Pre-seleccionar si es proveedor estricto y no hay valor previo
+                                            $selectedProvider = ($isStrictProvider && !$prevProviderId) ? $_SESSION['user_id'] : $prevProviderId;
+                                            ?>
+
+                                            <select class="form-select select2-searchable" id="proveedor" name="proveedor" data-placeholder="Buscar proveedor...">
+                                                <option value="" <?= !$selectedProvider ? 'selected' : '' ?>>Sin Proveedor asignado</option>
+                                                <?php foreach ($proveedores as $prov): ?>
+                                                    <option value="<?= $prov['id']; ?>" <?= ((int)$selectedProvider === (int)$prov['id']) ? 'selected' : '' ?> >
+                                                        <?= htmlspecialchars($prov['nombre']); ?><?= isset($prov['email']) && $prov['email'] ? ' — ' . htmlspecialchars($prov['email']) : '' ?>
                                                     </option>
                                                 <?php endforeach; ?>
                                             </select>
@@ -351,13 +366,13 @@ try {
                                     <div class="col-md-4">
                                         <div class="mb-3">
                                             <label for="estado" class="form-label">Estado Inicial</label>
-                                            <select class="form-select select2-searchable" id="estado" name="estado" data-placeholder="Seleccionar estado...">
-                                                <option value="" disabled selected>Selecciona un estado</option>
-                                                <?php foreach ($estados as $estado): ?>
-                                                    <option value="<?= $estado['id']; ?>" <?= (isset($old_posted['estado']) && (int)$old_posted['estado'] === (int)$estado['id']) ? 'selected' : '' ?>><?= htmlspecialchars($estado['nombre_estado']); ?></option>
+                                            <select class="form-select select2-searchable" id="estado" name="estado" disabled>
+                                                <?php foreach ($estados as $est): ?>
+                                                    <option value="<?= $est['id']; ?>" <?= ((int)$est['id'] === 1) ? 'selected' : '' ?>><?= htmlspecialchars($est['nombre_estado']); ?></option>
                                                 <?php endforeach; ?>
                                             </select>
-                                            <div class="invalid-feedback">Por favor, selecciona un estado.</div>
+                                            <input type="hidden" name="estado" value="1">
+                                            <div class="form-text">El pedido se creará con estado "En Bodega".</div>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
@@ -675,11 +690,12 @@ try {
     }, $productos)); ?>;
     const oldPosted = <?php echo json_encode($old_posted ?? null); ?>;
     
-    // Detectar si el usuario actual es Admin
+    // Detectar si el usuario actual es Admin o Vendedor
     const esAdmin = <?php 
         require_once __DIR__ . '/../../../utils/permissions.php';
         echo isSuperAdmin() ? 'true' : 'false'; 
     ?>;
+    const isVendedor = <?php echo isVendedor() ? 'true' : 'false'; ?>;
     
     // Solo para proveedores: obtener su ID de usuario
     const usuarioProveedorId = <?php 
@@ -699,50 +715,62 @@ try {
         return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    const clienteSelect = document.getElementById('id_cliente');
+
     function makeProductOptions(selectedId) {
         let opts = '<option value="">Selecciona un producto</option>';
         
-        // Obtener el proveedor seleccionado o el del usuario logueado
-        const proveedorId = proveedorSelect ? parseInt(proveedorSelect.value) : null;
-        
-        // ADMIN ve TODOS los productos sin filtro
-        let productosDelProveedor;
-        if (esAdmin) {
-            // Admin: mostrar todos los productos siempre
-            productosDelProveedor = productos;
+        // Determinar el "Dueño" de los productos:
+        let clienteId = null;
+        if (clienteSelect) {
+            clienteId = clienteSelect.value ? parseInt(clienteSelect.value) : null;
         } else {
-            // Proveedor: filtrar solo sus productos y los legacy sin creador
-            productosDelProveedor = productos.filter(p => {
-                // Si no hay proveedor seleccionado, no mostrar nada
-                if (!proveedorId) return false;
-                
-                // Mostrar productos del proveedor seleccionado
-                if (p.id_usuario_creador && p.id_usuario_creador === proveedorId) {
-                    return true;
-                }
-                
-                // También mostrar productos legacy sin creador (disponibles para todos)
-                if (!p.id_usuario_creador || p.id_usuario_creador === null) {
-                    return true;
-                }
-                
-                return false;
-            });
+            // Intentar buscar input hidden si no hay select
+            const hiddenClient = document.querySelector('input[name="id_cliente"]');
+            if (hiddenClient) clienteId = parseInt(hiddenClient.value);
         }
         
-        productosDelProveedor.forEach(p => {
+        let productosFiltrados;
+        
+        if (esAdmin || isVendedor) { // Si tengo rol de ver todo (porque PHP me mandó todo)
+             if (!clienteId) {
+                 // Si no hay cliente seleccionado, no mostrar productos para evitar confusión.
+                 // "Solo debe mostrar los productos segun cliente... asignados"
+                 productosFiltrados = [];
+             } else {
+                 // Filtrar ESTRICTAMENTE por el cliente seleccionado
+                 productosFiltrados = productos.filter(p => {
+                      // Productos del cliente
+                      if (p.id_usuario_creador && parseInt(p.id_usuario_creador) === clienteId) return true;
+                      
+                      // OJO: El usuario pidió "sus productos asignados". 
+                      // Si hay productos globales (sin creador), técnicamente no están asignados a él.
+                      // Los ocultamos para cumplir estrictamente.
+                      // if (!p.id_usuario_creador) return true; 
+                      
+                      return false;
+                 });
+             }
+        } else {
+            // Soy Cliente o Proveedor logueado.
+            // PHP ya filtró mis productos (o los que puedo ver).
+            // Simplemente muestro lo que hay.
+            productosFiltrados = productos;
+        }
+        
+        productosFiltrados.forEach(p => {
             const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
-            // Mostrar nombre, marca/modelo y stock
             const marcaText = p.marca ? ` (${escapeHtml(p.marca)})` : '';
-            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${marcaText}${p.stock !== null ? ' — Stock: ' + p.stock : ''}</option>`;
+            // Mostrar stock si existe
+            const stockInfo = (p.stock !== null && p.stock !== undefined) ? ` — Stock: ${p.stock}` : '';
+            opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${marcaText}${stockInfo}</option>`;
         });
         
-        // Solo mostrar mensajes de error para usuarios no-admin
-        if (!esAdmin) {
-            if (productosDelProveedor.length === 0 && proveedorId) {
-                opts += '<option value="" disabled>No hay productos disponibles para este proveedor</option>';
-            } else if (!proveedorId) {
-                opts += '<option value="" disabled>Primero selecciona un proveedor</option>';
+        if (productosFiltrados.length === 0) {
+            if (esAdmin && !clienteId) {
+                 opts += '<option value="" disabled>Selecciona primero un cliente para ver sus productos</option>';
+            } else {
+                 opts += '<option value="" disabled>No hay productos disponibles</option>';
             }
         }
         
@@ -937,8 +965,9 @@ try {
     btnAdd.addEventListener('click', function(){ addProductRow('', 1); });
     
     // Recargar productos cuando cambie el proveedor
-    if (proveedorSelect) {
-        proveedorSelect.addEventListener('change', function() {
+    // Recargar productos cuando cambie el Cliente (para Admins/Vendedores)
+    if (clienteSelect) {
+        clienteSelect.addEventListener('change', function() {
             // Actualizar todas las filas de productos existentes
             const allRows = productosContainer.querySelectorAll('.producto-row');
             allRows.forEach(row => {

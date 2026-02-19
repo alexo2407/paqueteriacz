@@ -53,7 +53,10 @@ if ($nombre === '') {
 }
 
 // Crear producto
-$newId = ProductoModel::crear($nombre, $descripcion, $precioUsd);
+// Pasar id del usuario autenticado como creador
+$userId = $valid['data']['id'] ?? null;
+$newId = ProductoModel::crear($nombre, $descripcion, $precioUsd, $userId);
+
 if ($newId === null) {
     responder(false, 'Error al crear el producto.', null, 500);
 } else {

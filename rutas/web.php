@@ -365,7 +365,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
 
     if ($accion === 'guardar' || $accion === 'crear') {
         require_once __DIR__ . '/../utils/authorization.php';
-        require_role(['Administrador', 'Proveedor']);
+        require_role(['Administrador', 'Proveedor', 'Cliente']);
 
         require_once __DIR__ . '/../utils/image_upload.php';
         
@@ -409,7 +409,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
 
     if ($accion === 'actualizar') {
         require_once __DIR__ . '/../utils/authorization.php';
-        require_role(['Administrador', 'Proveedor']);
+        require_role(['Administrador', 'Proveedor', 'Cliente']);
 
         require_once __DIR__ . '/../utils/image_upload.php';
         

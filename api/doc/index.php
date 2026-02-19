@@ -783,6 +783,40 @@
                             <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
                         </div>
                         <p class="small text-muted">Returns paginated list of orders.</p>
+                        
+                        <h5 class="mt-3" data-lang="en">Query Parameters</h5>
+                        <h5 class="mt-3" data-lang="es">Parámetros de Consulta</h5>
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th><span data-lang="en">Parameter</span><span data-lang="es">Parámetro</span></th>
+                                    <th><span data-lang="en">Type</span><span data-lang="es">Tipo</span></th>
+                                    <th><span data-lang="en">Description</span><span data-lang="es">Descripción</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>page</code></td>
+                                    <td>int</td>
+                                    <td><span data-lang="en">Page number (default 1)</span><span data-lang="es">Número de página (defecto 1)</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>limit</code></td>
+                                    <td>int</td>
+                                    <td><span data-lang="en">Items per page (default 20)</span><span data-lang="es">Ítems por página (defecto 20)</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>numero_orden</code></td>
+                                    <td>string</td>
+                                    <td><span data-lang="en">Filter by order number (partial match)</span><span data-lang="es">Filtrar por número de orden (coincidencia parcial)</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>numero_cliente</code></td>
+                                    <td>int</td>
+                                    <td><span data-lang="en">Filter by client ID (exact match)</span><span data-lang="es">Filtrar por ID de cliente (coincidencia exacta)</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <div class="mb-4">

@@ -55,6 +55,11 @@
                         <i class="bi bi-truck"></i> Mis Pedidos
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?= RUTA_URL ?>productos/listar">
+                        <i class="bi bi-box-seam"></i> Mis Productos
+                    </a>
+                </li>
                 <?php endif; ?>
 
                 <!-- ========================================== -->

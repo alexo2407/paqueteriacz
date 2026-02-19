@@ -1581,69 +1581,94 @@ class PedidosModel
     }
 
     public static function obtenerProveedores()
-{
-    try {
-        $db = (new Conexion())->conectar();
-        
-        // Obtener proveedores de logística (empresas de mensajería)
-        // Después de migración 008 y swap de constantes:
-        // - Rol ID 5 en BD = "Proveedor" (nombre en BD) = Proveedores de servicio semánticamente
-        // - ROL_PROVEEDOR constante ahora apunta a ID 5
-        
-        $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
-                FROM usuarios u
-                INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-                WHERE ur.id_rol = 5  -- Proveedores de servicio (empresas de mensajería)
-                AND u.activo = 1
-                ORDER BY u.nombre";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Obtener usuarios con rol de Proveedor (Mensajería)
+            // Lógica ESTRICTA por nombres de roles autorizados
+            $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                    FROM usuarios u
+                    JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    JOIN roles r ON r.id = ur.id_rol
+                    WHERE r.nombre_rol IN ('Proveedor', 'Proveedor CRM', 'Proveedor Mensajeria', 'Proveedor Mensajería')
+                    AND u.activo = 1
+                    ORDER BY u.nombre";
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los proveedores: " . $e->getMessage());
+        }
     }
-}
+
     public static function obtenerClientes()
-{
-    try {
-        $db = (new Conexion())->conectar();
-        
-        // Obtener CLIENTES de logística (quienes solicitan el servicio de envío)
-        // Después de migración 008 y swap de constantes:
-        // - Rol ID 4 en BD = "Cliente" (nombre en BD) = Clientes semánticamente (quienes solicitan envíos)
-        // - Rol ID 7 = "Cliente CRM" = Clientes del sistema CRM
-        // - ROL_CLIENTE constante ahora apunta a ID 4
-        //
-        // Buscamos usuarios con rol ID 4 ("Cliente") y 7 ("Cliente CRM")
-        // Y excluimos usuarios que también tengan roles operativos:
-        // - ID 1: Administrador
-        // - ID 2: Vendedor  
-        // - ID 3: Repartidor
-        // - ID 5: Proveedor (de logística)
-        // - ID 6: Proveedor CRM
-        
-        $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
-                FROM usuarios u
-                INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-                WHERE ur.id_rol IN (4, 7)  -- 4='Cliente', 7='Cliente CRM'
-                AND u.activo = 1
-                AND u.id NOT IN (
-                    -- Excluir usuarios con roles operativos
-                    SELECT DISTINCT ur2.id_usuario
-                    FROM usuarios_roles ur2
-                    WHERE ur2.id_rol IN (1, 2, 3, 5, 6)  -- Admin, Vendedor, Repartidor, Proveedor, Proveedor CRM
-                )
-                ORDER BY u.nombre";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (Exception $e) {
-        throw new Exception("Error al obtener los clientes: " . $e->getMessage());
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // Obtener usuarios con rol de Cliente (Comercios)
+            // Lógica ESTRICTA por nombres de roles autorizados
+            $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
+                    FROM usuarios u
+                    JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    JOIN roles r ON r.id = ur.id_rol
+                    WHERE r.nombre_rol IN ('Cliente', 'Cliente CRM')
+                    AND u.activo = 1
+                    ORDER BY u.nombre";
+            
+            $stmt = $db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Error al obtener los clientes: " . $e->getMessage());
+        }
     }
-}
-    public static function obtenerMonedas()
+
+    /**
+     * Valida si un ID de usuario tiene rol de Proveedor.
+     * @param int $idUsuario
+     * @return bool
+     */
+    public static function esProveedor($idUsuario)
+    {
+        if (!$idUsuario || !is_numeric($idUsuario)) return false;
+        try {
+            $db = (new Conexion())->conectar();
+            $sql = "SELECT COUNT(*) FROM usuarios_roles ur 
+                    JOIN roles r ON ur.id_rol = r.id 
+                    WHERE ur.id_usuario = :id 
+                    AND r.nombre_rol IN ('Proveedor', 'Proveedor CRM', 'Proveedor Mensajeria', 'Proveedor Mensajería')";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':id' => $idUsuario]);
+            return $stmt->fetchColumn() > 0;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Valida si un ID de usuario tiene rol de Cliente.
+     * @param int $idUsuario
+     * @return bool
+     */
+    public static function esCliente($idUsuario)
+    {
+        if (!$idUsuario || !is_numeric($idUsuario)) return false;
+        try {
+            $db = (new Conexion())->conectar();
+            $sql = "SELECT COUNT(*) FROM usuarios_roles ur 
+                    JOIN roles r ON ur.id_rol = r.id 
+                    WHERE ur.id_usuario = :id 
+                    AND r.nombre_rol IN ('Cliente', 'Cliente CRM')";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':id' => $idUsuario]);
+            return $stmt->fetchColumn() > 0;
+        } catch (Exception $e) {
+            return false;
+        }
+    }public static function obtenerMonedas()
     {
         return MonedaModel::listar();
     }

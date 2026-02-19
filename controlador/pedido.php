@@ -97,6 +97,8 @@ class PedidosController {
         return;
     }
 
+
+
     /**
      * Buscar un pedido por su número de orden.
      * Devuelve un arreglo con la estructura: { success, message, data }
@@ -239,6 +241,10 @@ class PedidosController {
         // Add support for filters from GET if needed
         if (isset($_GET['estado'])) $filtros['id_estado'] = (int)$_GET['estado'];
         if (isset($_GET['destinatario'])) $filtros['destinatario'] = $_GET['destinatario']; 
+        
+        // Nuevos filtros
+        if (isset($_GET['numero_orden'])) $filtros['numero_orden'] = $_GET['numero_orden'];
+        if (isset($_GET['numero_cliente'])) $filtros['id_cliente'] = (int)$_GET['numero_cliente']; 
         
         $data = PedidosModel::obtenerConFiltros($filtros);
         $total = PedidosModel::contarConFiltros($filtros);
@@ -442,7 +448,11 @@ class PedidosController {
 
         $productoId = $parse_positive_int($data, 'producto_id');
         $cantidadProducto = $parse_positive_int($data, 'cantidad_producto');
-        $estado = $parse_positive_int($data, 'estado');
+        
+        // FORZAR ESTADO INICIAL "EN BODEGA" (ID 1)
+        // Regla de negocio estricta: todo pedido nuevo nace en bodega.
+        $estado = 1; 
+        
         $vendedor = $parse_positive_int($data, 'vendedor');
         
         // Leer valores de los campos del formulario
@@ -454,14 +464,44 @@ class PedidosController {
         $idCliente = $parse_positive_int($data, 'id_cliente');
         if (!$idCliente) $idCliente = $parse_positive_int($data, 'cliente');
         
-        // Aplicar auto-asignación según rol del usuario logueado
+        // Aplicar auto-asignación por defecto si no viene valor, pero permitir override
         require_once __DIR__ . '/../utils/permissions.php';
-        if (isProveedor()) {
-            // Usuario proveedor: auto-asignar como proveedor
-            $proveedor = $_SESSION['user_id'];
-        } elseif (isCliente()) {
-            // Usuario cliente: auto-asignar como cliente
-            $idCliente = $_SESSION['user_id'];
+        
+        $currentUserId = $_SESSION['user_id'];
+        
+        // 1. Validar ID Cliente
+        if ($idCliente) {
+            // Si viene un ID, solo validar que sea un Cliente válido
+            if (!PedidosModel::esCliente($idCliente)) {
+                $errores[] = "El usuario seleccionado como Cliente no tiene el rol adecuado.";
+            }
+        } else {
+             // Si no viene cliente, intentar auto-asignar si soy cliente
+             if (isCliente() && !isSuperAdmin() && !isVendedor()) {
+                 $idCliente = $currentUserId;
+             }
+        }
+        
+        // 2. Validar ID Proveedor
+        if ($proveedor) {
+            // Si viene un ID, solo validar que sea un Proveedor válido
+            if (!PedidosModel::esProveedor($proveedor)) {
+                $errores[] = "El usuario seleccionado como Proveedor no tiene el rol adecuado.";
+            }
+        } else {
+            // Si no viene proveedor...
+            // Antes auto-asignábamos forzosamente. Ahora permitimos que venga vacío.
+            // PERO si el usuario QUIERE auto-asignarse (porque el front lo pre-seleccionó), vendrá en el POST.
+            // Si viene vacío, asumimos que no quiere proveedor (o no seleccionó).
+            
+            // Opcional: Si es proveedor estricto y no mandó nada, ¿lo forzamos?
+            // El usuario dijo "evitar auto asignación". Así que si lo deja vacío, es vacío.
+        }
+        
+        // Regla de Negocio: Cliente no puede ser Proveedor de su propio pedido (generalmente)
+        // (Mantenemos esta validación lógica)
+        if ($idCliente && $proveedor && $idCliente == $proveedor) {
+             $errores[] = "El Cliente y el Proveedor no pueden ser el mismo usuario.";
         }
         
         // Validar que haya un proveedor (antes del swap)

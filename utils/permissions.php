@@ -247,11 +247,16 @@ function canViewProduct($producto) {
         return true;
     }
     
-    // Proveedor solo puede ver sus propios productos
+    // Proveedor y Cliente solo pueden ver sus propios productos
     $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
     if ($userId === null) {
         return false;
     }
+    
+    // Si es otro rol (ej. Vendedor), ver política. Por ahora asumimos que 
+    // si no es admin y tiene creador, solo el creador lo ve (privacy by default)
+    // O permitir si es Vendedor/Repartidor? 
+    // Por ahora mantenemos restricción estricta para Proveedor/Cliente
     
     return (int)$producto['id_usuario_creador'] === (int)$userId;
 }
@@ -264,18 +269,19 @@ function canViewProduct($producto) {
  * @return bool
  */
 function canEditProduct($producto) {
-    // Misma lógica que canViewProduct para proveedores
+    // Misma lógica que canViewProduct para proveedores/clientes
     // Solo admin y el creador pueden editar
     if (isSuperAdmin()) {
         return true;
     }
     
     // Si no hay creador asignado, solo admin puede editar (productos legacy)
+    // Esto evita que clientes se apropien de productos viejos
     if (!isset($producto['id_usuario_creador']) || $producto['id_usuario_creador'] === null) {
         return isSuperAdmin();
     }
     
-    // Proveedor solo puede editar sus propios productos
+    // Proveedor/Cliente solo puede editar sus propios productos
     $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
     if ($userId === null) {
         return false;
@@ -287,7 +293,7 @@ function canEditProduct($producto) {
 /**
  * Obtiene el ID de usuario para usar como filtro de productos.
  * Admin: null (sin filtro, ve todos)
- * Proveedor: su user_id (solo ve los suyos)
+ * Proveedor/Cliente: su user_id (solo ve los suyos)
  * 
  * @return int|null ID de usuario para filtrar, o null para ver todos
  */
@@ -297,8 +303,8 @@ function getIdUsuarioCreadorFilter() {
         return null;
     }
     
-    // Proveedor solo ve sus productos
-    if (isProveedor()) {
+    // Proveedor y Cliente solo ven sus productos
+    if (isProveedor() || isCliente()) {
         return $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
     }
     

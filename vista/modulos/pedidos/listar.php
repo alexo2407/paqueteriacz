@@ -469,7 +469,11 @@ foreach ($pedidos as $p) {
 
                             <td>
                                 <!-- <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a> -->
-                                <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
+                                <?php if ($isCliente): ?>
+                                    <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-info btn-sm text-white"><i class="bi bi-eye"></i> Ver Detalle</a>
+                                <?php else: ?>
+                                    <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
+                                <?php endif; ?>
                                 
 
                                 <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
