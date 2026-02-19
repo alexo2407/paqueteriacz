@@ -123,7 +123,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente','fecha_entrega'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -799,7 +799,7 @@ class PedidosModel
                 uP.nombre AS proveedor_nombre,
                 uC.nombre AS cliente_nombre,
                 (SELECT fecha_asignacion FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_asignacion,
-                    (SELECT fecha_entrega FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_entrega,
+                    (SELECT fecha_entrega FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as fecha_ultima_entrega,
                     (SELECT observaciones FROM entregas WHERE id_pedido = p.id ORDER BY id DESC LIMIT 1) as entrega_observaciones
                 FROM pedidos p
                 LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado

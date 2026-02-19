@@ -75,6 +75,7 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'es_combo' => isset($_POST['es_combo']) ? 1 : 0,
             'csrf_token' => $_POST['csrf_token'] ?? null,
             'id_cliente' => $_POST['id_cliente'] ?? null,
+            'fecha_entrega' => !empty($_POST['fecha_entrega']) ? $_POST['fecha_entrega'] : null,
         ];
         
         if (defined('DEBUG') && DEBUG) {

@@ -518,6 +518,10 @@ try {
                                         <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" placeholder="Ej: 10101, 17008..." value="<?= htmlspecialchars($old_posted['codigo_postal'] ?? '') ?>">
                                         <div class="form-text small">Se autocompleta según la zona seleccionada.</div>
                                     </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="fecha_entrega" class="form-label">Fecha de Entrega Estimada</label>
+                                        <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega" value="<?= htmlspecialchars($old_posted['fecha_entrega'] ?? '') ?>">
+                                    </div>
 
                                     <div class="col-12 mt-3">
                                         <label class="form-label">Geolocalización</label>

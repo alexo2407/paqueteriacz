@@ -753,6 +753,7 @@ class PedidosController {
             'id_municipio' => isset($data['id_municipio']) ? $data['id_municipio'] : ($data['municipio'] ?? null),
             'id_barrio' => isset($data['id_barrio']) ? $data['id_barrio'] : ($data['barrio'] ?? null),
             'codigo_postal' => $data['codigo_postal'] ?? null,
+            'fecha_entrega' => !empty($data['fecha_entrega']) ? $data['fecha_entrega'] : null,
             'municipio' => $data['municipio'] ?? null,
             'barrio' => $data['barrio'] ?? null,
             'zona' => $data['zona'] ?? null,

@@ -173,6 +173,20 @@ if ($pedido && $isCliente && !$isAdmin && !$isRepartidor) {
                                 <span><?= htmlspecialchars($pedido['comentario'] ?? 'Sin comentarios') ?></span>
                             </div>
 
+                            <?php if (!empty($pedido['fecha_entrega'])): ?>
+                            <div class="info-item">
+                                <label>Fecha de Entrega Estimada</label>
+                                <span><?= htmlspecialchars($pedido['fecha_entrega']) ?></span>
+                            </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($pedido['fecha_ultima_entrega'])): ?>
+                            <div class="info-item">
+                                <label>Última Entrega Registrada</label>
+                                <span><?= htmlspecialchars($pedido['fecha_ultima_entrega']) ?></span>
+                            </div>
+                            <?php endif; ?>
+
                             <div class="mt-4 pt-3 border-top">
                                 <div class="info-section-title mb-2">
                                     <i class="bi bi-person"></i> Cliente
