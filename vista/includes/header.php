@@ -3,6 +3,7 @@
     $rolesNombres = $_SESSION['roles_nombres'] ?? [];
     $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
     $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
+    $isVendedor = in_array(ROL_NOMBRE_VENDEDOR, $rolesNombres, true);
     $isProveedor = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true);  // Logística
     
     // CRM roles - usar constantes si están definidas, sino usar strings directos
@@ -149,7 +150,7 @@
                 <!-- ========================================== -->
                 <!-- 4. CATÁLOGOS - Datos geográficos y monedas -->
                 <!-- ========================================== -->
-                <?php if ($isAdmin || $isProveedor): ?>
+                <?php if ($isAdmin || $isProveedor || $isVendedor): ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarCatalogos" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-journal-text"></i> Catálogos
@@ -174,6 +175,11 @@
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>barrios/listar">
                                 <i class="bi bi-building"></i> Barrios
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>codigos_postales">
+                                <i class="bi bi-geo-fill"></i> Códigos Postales
                             </a>
                         </li>
                         <li><hr class="dropdown-divider"></li>

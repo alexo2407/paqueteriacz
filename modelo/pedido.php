@@ -6,6 +6,8 @@ include_once __DIR__ . '/usuario.php';
 include_once __DIR__ . '/pais.php';
 include_once __DIR__ . '/departamento.php';
 include_once __DIR__ . '/auditoria.php';
+include_once __DIR__ . '/../services/AddressService.php';
+include_once __DIR__ . '/codigos_postales.php';
 
 class PedidosModel
 {
@@ -41,10 +43,10 @@ class PedidosModel
         if (is_numeric($value)) return (int)$value;
         // Intentar resolver por nombre o codigo_iso
         $paises = PaisModel::listar();
-        $needle = mb_strtolower(trim((string)$value));
+        $needle = mb_strtolower(trim((string)$value), 'UTF-8');
         foreach ($paises as $p) {
-            if (mb_strtolower($p['nombre']) === $needle) return (int)$p['id'];
-            if (isset($p['codigo_iso']) && mb_strtolower($p['codigo_iso']) === $needle) return (int)$p['id'];
+            if (mb_strtolower(trim($p['nombre']), 'UTF-8') === $needle) return (int)$p['id'];
+            if (isset($p['codigo_iso']) && mb_strtolower(trim($p['codigo_iso']), 'UTF-8') === $needle) return (int)$p['id'];
         }
         return null;
     }
@@ -364,15 +366,26 @@ class PedidosModel
      * @return bool True si existe al menos un pedido con ese número, false en caso contrario.
      * @throws Exception En caso de error de consulta.
      */
-    public static function existeNumeroOrden($numeroOrden) {
+    /**
+     * Comprobar existencia de un número de orden para un cliente específico.
+     *
+     * @param int|string $numeroOrden Número de orden a comprobar.
+     * @param int|null $idCliente ID del cliente.
+     * @return bool True si existe, false en caso contrario.
+     */
+    public static function existeNumeroOrden($numeroOrden, $idCliente = null) {
         try {
             $db = (new Conexion())->conectar();
             $query = "SELECT COUNT(*) FROM pedidos WHERE numero_orden = :numero_orden";
+            if ($idCliente !== null) {
+                $query .= " AND id_cliente = :id_cliente";
+            }
             $stmt = $db->prepare($query);
             $stmt->bindParam(":numero_orden", $numeroOrden, PDO::PARAM_INT);
+            if ($idCliente !== null) {
+                $stmt->bindParam(":id_cliente", $idCliente, PDO::PARAM_INT);
+            }
             $stmt->execute();
-    
-            // Retorna true si hay al menos un pedido con ese número de orden
             return $stmt->fetchColumn() > 0;
     
         } catch (Exception $e) {
@@ -420,7 +433,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -449,8 +462,14 @@ class PedidosModel
             $precio_total_usd = $data['precio_total_usd'] ?? null;
             $tasa_conversion = $data['tasa_conversion_usd'] ?? null;
 
-            // Preparar parámetros según columnas
+            // Preparar parámetros según columnas, inicializando todos con null
             $params = [];
+            foreach ($columns as $col) {
+                if ($col !== 'fecha_ingreso' && $col !== 'coordenadas') {
+                    $params[':' . $col] = null;
+                }
+            }
+
             foreach ($columns as $col) {
                 switch ($col) {
                     case 'coordenadas':
@@ -488,11 +507,18 @@ class PedidosModel
                         // try to resolve departamento, optionally using provided pais hint
                         $params[':id_departamento'] = self::resolveDepartamentoId($data['departamento'] ?? null, $data['pais'] ?? null);
                         break;
+                    case 'id_municipio':
+                        $params[':id_municipio'] = $data['id_municipio'] ?? null;
+                        break;
+                    case 'id_barrio':
+                        $params[':id_barrio'] = $data['id_barrio'] ?? null;
+                        break;
                     case 'id_proveedor':
                         $params[':id_proveedor'] = !empty($data['id_proveedor']) ? $data['id_proveedor'] : null;
                         break;
                     case 'id_cliente':
-                        $params[':id_cliente'] = !empty($data['id_cliente']) ? $data['id_cliente'] : null;
+                        $idCliente = !empty($data['id_cliente']) ? $data['id_cliente'] : null;
+                        $params[':id_cliente'] = $idCliente;
                         break;
                     case 'id_vendedor':
                         $params[':id_vendedor'] = !empty($data['id_vendedor']) ? $data['id_vendedor'] : null;
@@ -512,6 +538,22 @@ class PedidosModel
                     case 'codigo_postal':
                         $params[':codigo_postal'] = $data['codigo_postal'] ?? null;
                         break;
+                    case 'id_codigo_postal':
+                        // Lógica de homologación
+                        $idPais = self::resolvePaisId($data['pais'] ?? null);
+                        $cp = $data['codigo_postal'] ?? null;
+                        $idCP = null;
+                        if ($idPais && $cp) {
+                            $homologacion = AddressService::resolverHomologacion($idPais, $cp, [
+                                'id_departamento' => self::resolveDepartamentoId($data['departamento'] ?? null, $idPais),
+                                'id_municipio' => $data['id_municipio'] ?? null,
+                                'id_barrio' => $data['id_barrio'] ?? null,
+                                'nombre_localidad' => $data['municipio'] ?? null
+                            ]);
+                            $idCP = $homologacion['id'] ?? null;
+                        }
+                        $params[':id_codigo_postal'] = $idCP;
+                        break;
                     case 'comentario':
                         $params[':comentario'] = $data['comentario'] ?? null;
                         break;
@@ -521,6 +563,7 @@ class PedidosModel
                 }
             }
 
+            // Ejecutar con los parámetros preparados
             $stmt->execute($params);
 
             $pedidoId = (int)$db->lastInsertId();
@@ -981,6 +1024,10 @@ class PedidosModel
                 $fields[] = 'codigo_postal = :codigo_postal';
                 $params[':codigo_postal'] = $data['codigo_postal'] !== '' ? $data['codigo_postal'] : null;
             }
+            if (isset($data['id_codigo_postal'])) {
+                $fields[] = 'id_codigo_postal = :id_codigo_postal';
+                $params[':id_codigo_postal'] = $data['id_codigo_postal'] !== '' ? (int)$data['id_codigo_postal'] : null;
+            }
 
             // Execute UPDATE if there are fields to update
             if (!empty($fields)) {
@@ -1378,7 +1425,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1432,7 +1479,8 @@ class PedidosModel
                 'id_moneda' => 'moneda',
                 'id_vendedor' => 'vendedor',
                 'id_proveedor' => 'proveedor',
-                'id_cliente' => 'id_cliente'
+                'id_cliente' => 'id_cliente',
+                'id_codigo_postal' => 'id_codigo_postal'
             ];
 
             foreach ($map as $col => $key) {

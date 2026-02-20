@@ -129,7 +129,18 @@ if ($id_pais_usuario) {
         // Silently fail
     }
 }
+// Configuración de Códigos Postales por Performance
+$idPaisEdicion = $pedido['id_pais'] ?? $id_pais_usuario;
+$cpConfig = $pedidoController->obtenerConfiguracionCP($idPaisEdicion);
+$useCpMap = $cpConfig['useCpMap'];
+$totalCp = $cpConfig['total'];
+$cpMapJson = json_encode($cpConfig['map']);
 
+// Autocompletado Universal (Mapa Global)
+$cpConfigGlobal = $pedidoController->obtenerConfiguracionCPGlobal();
+$useGlobalMap = $cpConfigGlobal['useGlobalMap'];
+$totalCpGlobal = $cpConfigGlobal['total'];
+$cpGlobalMapJson = json_encode($cpConfigGlobal['globalMap']);
 // If the previous non-AJAX edit submit failed, repopulate fields from session
 $old_edit = $_SESSION['old_pedido_edit_' . $id_pedido] ?? null;
 if (isset($_SESSION['old_pedido_edit_' . $id_pedido])) unset($_SESSION['old_pedido_edit_' . $id_pedido]);
@@ -341,8 +352,8 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="pills-asignacion-tab" data-bs-toggle="pill" data-bs-target="#pills-asignacion" type="button" role="tab">
-                        <i class="bi bi-gear"></i> Asignación y Estado
+                    <button class="nav-link" id="pills-destinatario-tab" data-bs-toggle="pill" data-bs-target="#pills-destinatario" type="button" role="tab">
+                        <i class="bi bi-person-badge"></i> Destinatario
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -351,8 +362,8 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="pills-destinatario-tab" data-bs-toggle="pill" data-bs-target="#pills-destinatario" type="button" role="tab">
-                        <i class="bi bi-person-badge"></i> Destinatario
+                    <button class="nav-link" id="pills-asignacion-tab" data-bs-toggle="pill" data-bs-target="#pills-asignacion" type="button" role="tab">
+                        <i class="bi bi-gear"></i> Asignación y Estado
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -417,11 +428,175 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                         </div>
                         <!-- Botones de Acción Globales (visible en cada tab o al final) -->
                         <div class="d-flex justify-content-end">
-                            <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-asignacion-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
+                            <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-destinatario-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
                         </div>
                     </div>
 
-                    <!-- TAB 2: ASIGNACIÓN Y ESTADO -->
+                    <!-- TAB: DESTINATARIO (2da en orden) -->
+                    <div class="tab-pane fade" id="pills-destinatario" role="tabpanel">
+                        <div class="card mb-4 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="mb-4 text-info"><i class="bi bi-geo-alt me-2"></i>Datos de Entrega</h5>
+                                <div class="row">
+                                    <!-- Fila 1: Contacto (Prioridad) -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="destinatario" class="form-label fw-bold">Nombre del Destinatario</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                            <input type="text" class="input-group-field form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="telefono" class="form-label fw-bold">Teléfono de Contacto</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="bi bi-telephone"></i></span>
+                                            <input type="tel" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($pedido['telefono']) ?>" required>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fila 2: Punto Exacto -->
+                                    <div class="col-12 mb-3">
+                                        <label for="direccion" class="form-label fw-bold">Dirección Exacta / Referencias</label>
+                                        <textarea class="form-control" id="direccion" name="direccion" rows="2" required><?= htmlspecialchars($pedido['direccion']) ?></textarea>
+                                    </div>
+
+                                    <!-- Fila 3: Localización Global -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="codigo_postal" class="form-label fw-bold">Código Postal 📮</label>
+                                        <input type="text" class="form-control form-control-lg border-primary border-opacity-25" id="codigo_postal" name="codigo_postal" placeholder="Ej: 10101, 17008..." value="<?= htmlspecialchars($pedido['codigo_postal'] ?? '') ?>">
+                                        <div id="cp_status_container" class="mt-1">
+                                            <span id="cp_badge" class="badge bg-secondary">Sin validar</span>
+                                            <div id="cp_conflict_selector" class="mt-2" style="display:none;">
+                                                <small class="text-info d-block mb-1">Este CP existe en varios países. Elige uno:</small>
+                                                <div id="cp_conflict_options" class="d-flex flex-wrap gap-1"></div>
+                                            </div>
+                                            <small id="cp_helper" class="text-muted d-block mt-1" style="font-size: 0.75rem;">Se normalizará automáticamente (Mayúsculas, sin espacios/guiones).</small>
+                                            <?php if (!$useGlobalMap && $totalCpGlobal > 2000): ?>
+                                                <small class="text-warning d-block mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-triangle"></i> Autocompletado universal desactivado (alto volumen); se validará al guardar.</small>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">País</label>
+                                        <select class="form-select select2-searchable" id="id_pais" name="id_pais">
+                                            <option value="">Selecciona</option>
+                                            <?php foreach ($paises as $p): ?>
+                                                <option value="<?= (int)$p['id'] ?>" <?= (!empty($pedido['id_pais']) && (int)$pedido['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
+                                    <!-- Fila 4: Estructura Geográfica -->
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label fw-bold">Departamento</label>
+                                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento">
+                                            <option value="">Selecciona</option>
+                                            <?php foreach ($departamentosAll as $d): ?>
+                                                <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_municipio" class="form-label fw-bold">Municipio</label>
+                                        <select class="form-select select2-searchable" id="id_municipio" name="id_municipio">
+                                            <option value="">Selecciona</option>
+                                            <!-- Dynamically populated -->
+                                        </select>
+                                    </div>
+
+                                    <!-- Fila 5: Detalle Local -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_barrio" class="form-label fw-bold">Barrio</label>
+                                        <select class="form-select select2-searchable" id="id_barrio" name="id_barrio">
+                                            <option value="">Selecciona</option>
+                                            <!-- Dynamically populated -->
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="zona" class="form-label fw-bold">Zona / Sector</label>
+                                        <input type="text" class="form-control" id="zona" name="zona" placeholder="Ej: Zona 1 / Residencial / Sector..." maxlength="100" value="<?= htmlspecialchars($pedido['zona'] ?? '') ?>">
+                                    </div>
+
+                                    <!-- Fila 6: Digital -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="latitud" class="form-label small text-muted">Latitud</label>
+                                        <input type="text" class="form-control form-control-sm bg-light" id="latitud" name="latitud" placeholder="Lat" value="<?= htmlspecialchars($pedido['latitud']) ?>">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="longitud" class="form-label small text-muted">Longitud</label>
+                                        <input type="text" class="form-control form-control-sm bg-light" id="longitud" name="longitud" placeholder="Lng" value="<?= htmlspecialchars($pedido['longitud']) ?>">
+                                    </div>
+
+                                    <!-- Fila 7: Visual -->
+                                    <div class="col-12 mt-2">
+                                        <div id="map" style="width: 100%; height: 350px; border-radius: 8px;" class="border shadow-sm"></div>
+                                        <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i> Puedes arrastrar el marcador en el mapa para ajustar la ubicación exacta.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                             <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-info-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
+                             <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-productos-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- TAB: PRODUCTOS Y PRECIOS (3ra en orden) -->
+                    <div class="tab-pane fade" id="pills-productos" role="tabpanel">
+                        <div class="card mb-4 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 class="mb-0 text-success"><i class="bi bi-bag me-2"></i>Detalle de Productos</h5>
+                                    <div>
+                                         <button type="button" id="btnAddProducto" class="btn btn-success btn-sm"><i class="bi bi-plus-lg"></i> Agregar Item</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="productosContainer" class="mb-4"></div>
+                                
+                                <hr class="my-4">
+                                
+                                <h5 class="mb-3 text-success"><i class="bi bi-cash-coin me-2"></i>Resumen Financiero</h5>
+                                
+                                <div class="alert alert-light border mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" <?= (!empty($pedido['es_combo']) && $pedido['es_combo'] == 1) ? 'checked' : '' ?>>
+                                        <label class="form-check-label user-select-none" for="es_combo">
+                                            <strong>Modo Combo / Precio Cerrado</strong>
+                                            <div class="text-muted small">Activar si se cobra un precio total único en lugar de por producto.</div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-bold">Total (Moneda Local)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-cash"></i></span>
+                                            <input type="number" class="form-control fw-bold" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Total (USD)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="bi bi-currency-dollar"></i></span>
+                                            <input type="number" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_total_usd'] ?? $pedido['precio_usd'] ?? '') ?>">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Tasa Cambio</label>
+                                        <input type="number" class="form-control bg-light text-muted" id="tasa_conversion_usd" name="tasa_conversion_usd" step="0.000001" readonly value="<?= htmlspecialchars($pedido['tasa_conversion_usd'] ?? '') ?>">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                             <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-destinatario-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
+                             <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-asignacion-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- TAB: ASIGNACIÓN Y ESTADO (4ta en orden) -->
                     <div class="tab-pane fade" id="pills-asignacion" role="tabpanel">
                         <div class="card mb-4 border-0 shadow-sm">
                             <div class="card-body p-4">
@@ -445,7 +620,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                             <select class="form-control select2-searchable" id="proveedor" name="proveedor" required>
                                                 <option value="">Selecciona un proveedor</option>
                                                 <?php foreach ($proveedores as $prov): ?>
-                                                    <option value="<?= $prov['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$prov['id']) ? 'selected' : '' ?> >
+                                                    <option value="<?= (int)$prov['id'] ?>" <?= ((int)$pedido['id_proveedor'] === (int)$prov['id']) ? 'selected' : '' ?> >
                                                         <?= htmlspecialchars($prov['nombre']) ?><?= isset($prov['email']) && $prov['email'] ? ' — ' . htmlspecialchars($prov['email']) : '' ?>
                                                     </option>
                                                 <?php endforeach; ?>
@@ -494,139 +669,6 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                             </div>
                         </div>
                         <div class="d-flex justify-content-between">
-                             <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-info-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
-                             <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-productos-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
-                        </div>
-                    </div>
-
-                    <!-- TAB 3: PRODUCTOS Y PRECIOS -->
-                    <div class="tab-pane fade" id="pills-productos" role="tabpanel">
-                        <div class="card mb-4 border-0 shadow-sm">
-                            <div class="card-body p-4">
-                                <div class="d-flex justify-content-between align-items-center mb-4">
-                                    <h5 class="mb-0 text-success"><i class="bi bi-bag me-2"></i>Detalle de Productos</h5>
-                                    <div>
-                                         <button type="button" id="btnAddProducto" class="btn btn-success btn-sm"><i class="bi bi-plus-lg"></i> Agregar Item</button>
-                                    </div>
-                                </div>
-                                
-                                <div id="productosContainer" class="mb-4"></div>
-                                
-                                <hr class="my-4">
-                                
-                                <h5 class="mb-3 text-success"><i class="bi bi-cash-coin me-2"></i>Resumen Financiero</h5>
-                                
-                                <div class="alert alert-light border mb-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="es_combo" name="es_combo" value="1" <?= (!empty($pedido['es_combo']) && $pedido['es_combo'] == 1) ? 'checked' : '' ?>>
-                                        <label class="form-check-label user-select-none" for="es_combo">
-                                            <strong>Modo Combo / Precio Cerrado</strong>
-                                            <div class="text-muted small">Activar si se cobra un precio total único en lugar de por producto.</div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label">Total (Moneda Local)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-white"><i class="bi bi-cash"></i></span>
-                                            <input type="number" class="form-control fw-bold" id="precio_total_local" name="precio_total_local" step="0.01" min="0" value="<?= htmlspecialchars($pedido['precio_total_local'] ?? $pedido['precio_local'] ?? '') ?>">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Total (USD)</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-light"><i class="bi bi-currency-dollar"></i></span>
-                                            <input type="number" class="form-control bg-light" id="precio_total_usd" name="precio_total_usd" step="0.01" readonly value="<?= htmlspecialchars($pedido['precio_total_usd'] ?? $pedido['precio_usd'] ?? '') ?>">
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Tasa Cambio</label>
-                                        <input type="number" class="form-control bg-light text-muted" id="tasa_conversion_usd" name="tasa_conversion_usd" step="0.000001" readonly value="<?= htmlspecialchars($pedido['tasa_conversion_usd'] ?? '') ?>">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                             <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-asignacion-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
-                             <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-destinatario-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
-                        </div>
-                    </div>
-
-                    <!-- TAB 4: DESTINATARIO -->
-                    <div class="tab-pane fade" id="pills-destinatario" role="tabpanel">
-                        <div class="card mb-4 border-0 shadow-sm">
-                            <div class="card-body p-4">
-                                <h5 class="mb-4 text-info"><i class="bi bi-geo-alt me-2"></i>Datos de Entrega</h5>
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="destinatario" class="form-label">Nombre Contacto</label>
-                                        <input type="text" class="form-control" id="destinatario" name="destinatario" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="telefono" class="form-label">Teléfono</label>
-                                        <input type="tel" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($pedido['telefono']) ?>" required>
-                                    </div>
-                                    <div class="col-12 mb-3">
-                                        <label for="direccion" class="form-label">Dirección Exacta</label>
-                                        <textarea class="form-control" id="direccion" name="direccion" rows="2" required><?= htmlspecialchars($pedido['direccion']) ?></textarea>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">País</label>
-                                        <select class="form-select select2-searchable" id="id_pais" name="id_pais">
-                                            <option value="">Selecciona</option>
-                                            <?php foreach ($paises as $p): ?>
-                                                <option value="<?= (int)$p['id'] ?>" <?= (!empty($pedido['id_pais']) && (int)$pedido['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label">Departamento</label>
-                                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento">
-                                            <option value="">Selecciona</option>
-                                            <?php foreach ($departamentosAll as $d): ?>
-                                                <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (!empty($pedido['id_departamento']) && (int)$pedido['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="id_municipio" class="form-label">Municipio</label>
-                                        <select class="form-select select2-searchable" id="id_municipio" name="id_municipio">
-                                            <option value="">Selecciona</option>
-                                            <!-- Dynamically populated -->
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="id_barrio" class="form-label">Barrio</label>
-                                        <select class="form-select select2-searchable" id="id_barrio" name="id_barrio">
-                                            <option value="">Selecciona</option>
-                                            <!-- Dynamically populated -->
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="codigo_postal" class="form-label">Código Postal</label>
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="bi bi-geo"></i></span>
-                                            <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" value="<?= htmlspecialchars($pedido['codigo_postal'] ?? '') ?>" placeholder="Ej: 1000">
-                                        </div>
-                                        <small class="text-muted" style="font-size: 0.75rem;">Se autocompleta según ubicación.</small>
-                                    </div>
-
-                                    <div class="col-12 mt-3">
-                                        <label class="form-label">Geolocalización</label>
-                                        <div class="row g-2 mb-2">
-                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="latitud" name="latitud" placeholder="Lat" value="<?= htmlspecialchars($pedido['latitud']) ?>"></div>
-                                            <div class="col-6"><input type="text" class="form-control form-control-sm" id="longitud" name="longitud" placeholder="Lng" value="<?= htmlspecialchars($pedido['longitud']) ?>"></div>
-                                        </div>
-                                        <div id="map" style="width: 100%; height: 350px; border-radius: 8px;" class="border"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Submit Section -->
-                        <div class="d-flex justify-content-between align-items-center mt-4 p-3 bg-light rounded border">
                              <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-productos-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
                              <div>
                                  <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-link text-decoration-none me-3">Cancelar</a>
@@ -635,7 +677,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                         </div>
                     </div>
 
-                    <!-- TAB 5: TRACKING -->
+                    <!-- TAB: TRACKING (5ta en orden) -->
                     <div class="tab-pane fade" id="pills-tracking" role="tabpanel">
                         <div class="p-4 border rounded bg-white shadow-sm">
                             <h5 class="mb-4 text-primary"><i class="bi bi-clock-history me-2"></i>Timeline de Actividad</h5>
@@ -1207,57 +1249,72 @@ document.addEventListener('DOMContentLoaded', function() {
 // Dependent selects for editar: departamento -> municipio -> barrio
 (function(){
     const deptSelect = document.getElementById('id_departamento');
+    const paisSelect = document.getElementById('id_pais');
     const munSelect = document.getElementById('id_municipio');
     const barrioSelect = document.getElementById('id_barrio');
     const cpInput = document.getElementById('codigo_postal');
+    
+    // data from PHP
+    const departamentos = <?php echo json_encode($departamentosAll); ?>;
     const municipios = <?php echo json_encode($municipiosAll); ?>;
     const barrios = <?php echo json_encode($barriosAll); ?>;
 
-    // Inicializar Select2 en los nuevos selects
-    function initSelect2ForLocationSelects() {
+    const initialDep = <?= json_encode($pedido['id_departamento'] ?? '') ?>;
+    const initialMun = <?= json_encode($pedido['id_municipio'] ?? '') ?>;
+    const initialBarrio = <?= json_encode($pedido['id_barrio'] ?? '') ?>;
+
+    function initSelect2ForLocationEdit() {
         if (typeof $ !== 'undefined' && $.fn.select2) {
-            if (!$(munSelect).hasClass('select2-hidden-accessible')) {
-                $(munSelect).select2({
-                    theme: 'bootstrap-5',
-                    placeholder: 'Buscar municipio...',
-                    allowClear: true,
-                    width: '100%'
-                });
-            }
-            if (!$(barrioSelect).hasClass('select2-hidden-accessible')) {
-                $(barrioSelect).select2({
-                    theme: 'bootstrap-5',
-                    placeholder: 'Buscar barrio...',
-                    allowClear: true,
-                    width: '100%'
-                });
-            }
+            $('.select2-searchable').each(function() {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        placeholder: $(this).data('placeholder') || 'Seleccionar...',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $(this).closest('.tab-pane')
+                    });
+                }
+            });
         }
     }
 
+    function populateDepartamentos(paisId, selectedDepId) {
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(deptSelect).hasClass('select2-hidden-accessible')) {
+            $(deptSelect).select2('destroy');
+        }
+        deptSelect.innerHTML = '<option value="" selected>Selecciona un departamento</option>';
+        departamentos.forEach(d => {
+            if (!paisId || parseInt(d.id_pais) === parseInt(paisId)) {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.nombre;
+                deptSelect.appendChild(opt);
+            }
+        });
+        if (selectedDepId) deptSelect.value = selectedDepId;
+        initSelect2ForLocationEdit();
+        populateMunicipios(deptSelect.value, initialMun);
+    }
+
     function populateMunicipios(depId, selectedMunId) {
-        // Destruir Select2 temporalmente para repoblar
         if (typeof $ !== 'undefined' && $.fn.select2 && $(munSelect).hasClass('select2-hidden-accessible')) {
             $(munSelect).select2('destroy');
         }
-        
         munSelect.innerHTML = '<option value="" selected>Selecciona un municipio</option>';
         municipios.forEach(m => {
-            if (!depId || depId === '' || parseInt(m.id_departamento) === parseInt(depId)) {
+            if (!depId || parseInt(m.id_departamento) === parseInt(depId)) {
                 const opt = document.createElement('option');
-                opt.value = m.id; 
-                opt.textContent = m.nombre; 
-                opt.setAttribute('data-id-departamento', m.id_departamento); 
+                opt.value = m.id;
+                opt.textContent = m.nombre;
                 opt.setAttribute('data-cp', m.codigo_postal || '');
-                if (selectedMunId && parseInt(selectedMunId) === parseInt(m.id)) opt.selected = true;
                 munSelect.appendChild(opt);
             }
         });
-        
-        // Reinicializar Select2
-        initSelect2ForLocationSelects();
-        
-        populateBarrios(munSelect.value, <?= json_encode($pedido['id_barrio'] ?? '') ?>);
+        if (selectedMunId) munSelect.value = selectedMunId;
+        initSelect2ForLocationEdit();
+        populateBarrios(munSelect.value, initialBarrio);
+        updatePostalCode();
     }
 
     function populateBarrios(munId, selectedBarrioId) {
@@ -1308,10 +1365,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Events - usar eventos de Select2 si está disponible
+    // Eventos
     if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(paisSelect).on('change.select2', function(){
+            populateDepartamentos(paisSelect.value);
+        });
         $(deptSelect).on('change.select2', function(){
-            populateMunicipios(deptSelect.value, <?= json_encode($pedido['id_municipio'] ?? '') ?>);
+            populateMunicipios(deptSelect.value);
         });
         $(munSelect).on('change.select2', function(){ 
             populateBarrios(munSelect.value); 
@@ -1321,9 +1381,11 @@ document.addEventListener('DOMContentLoaded', function() {
             updatePostalCode();
         });
     } else {
+        paisSelect.addEventListener('change', function(){
+            populateDepartamentos(paisSelect.value);
+        });
         deptSelect.addEventListener('change', function(){
-            const dep = deptSelect.value;
-            populateMunicipios(dep, <?= json_encode($pedido['id_municipio'] ?? '') ?>);
+            populateMunicipios(deptSelect.value);
         });
         munSelect.addEventListener('change', function(){ 
             populateBarrios(munSelect.value); 
@@ -1335,14 +1397,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     document.addEventListener('DOMContentLoaded', function(){
-        // trigger initial population and set selections based on pedido
-        const dep = <?= json_encode($pedido['id_departamento'] ?? '') ?>;
-        if (dep && dep !== '') {
-            // ensure department filter (if any) runs
-            const evt = new Event('change'); deptSelect.dispatchEvent(evt);
-        } else {
-            populateMunicipios('', <?= json_encode($pedido['id_municipio'] ?? '') ?>);
-        }
+        populateDepartamentos(paisSelect.value, initialDep);
     });
 })();
 </script>
@@ -1387,6 +1442,149 @@ document.getElementById('es_combo').addEventListener('change', function() {
         // Esto previene pérdida de datos si el usuario activa/desactiva accidentalmente
     }
 });
+</script>
+
+<!-- Logic for Zip Code Homologation & Performance -->
+<script>
+    (function() {
+        const useGlobalMap = <?= json_encode($useGlobalMap) ?>;
+        const globalMap = <?= $cpGlobalMapJson ?>;
+        const paisesArr = <?= json_encode($paises) ?>;
+        
+        const cpInput = document.getElementById('codigo_postal');
+        const badge = document.getElementById('cp_badge');
+        const conflictSelector = document.getElementById('cp_conflict_selector');
+        const conflictOptions = document.getElementById('cp_conflict_options');
+        
+        const idPaisSelect = document.getElementById('id_pais');
+        const idDeptoSelect = document.getElementById('id_departamento');
+        const idMuniSelect = document.getElementById('id_municipio');
+        const idBarrioSelect = document.getElementById('id_barrio');
+
+        let debounceTimer;
+
+        function normalizarCP(cp) {
+            return cp.toUpperCase().replace(/[\s-]/g, '');
+        }
+
+        function getNombrePais(id) {
+            const p = paisesArr.find(x => parseInt(x.id) === parseInt(id));
+            return p ? p.nombre : 'ID: ' + id;
+        }
+
+        function updateBadge(status, text) {
+            badge.textContent = text;
+            badge.className = 'badge';
+            switch(status) {
+                case 'homologado': badge.classList.add('bg-success'); break;
+                case 'pendiente': badge.classList.add('bg-warning', 'text-dark'); break;
+                case 'inactivo': badge.classList.add('bg-danger'); break;
+                case 'desconocido': badge.classList.add('bg-secondary'); break;
+                case 'multiple': badge.classList.add('bg-info', 'text-dark'); break;
+                default: badge.classList.add('bg-secondary'); break;
+            }
+        }
+
+        function handleCP() {
+            const rawVal = cpInput.value;
+            const normVal = normalizarCP(rawVal);
+            
+            // UI Feedback: Normalizar mientras escribe
+            if (cpInput.value !== normVal) {
+                cpInput.value = normVal;
+            }
+
+            // Reset UI
+            conflictSelector.style.display = 'none';
+            conflictOptions.innerHTML = '';
+
+            if (!normVal) {
+                updateBadge('default', 'Sin validar');
+                return;
+            }
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                // CASO A: Mapa local (Universal si useGlobalMap=true)
+                if (useGlobalMap) {
+                    const matches = globalMap.filter(item => item.codigo_postal === normVal);
+                    
+                    if (matches.length === 1) {
+                        applyMatch(matches[0]);
+                    } else if (matches.length > 1) {
+                        // Colisión detectada: múltiples países para el mismo CP
+                        updateBadge('multiple', 'CP en múltiples países');
+                        showConflictSelector(matches);
+                    } else {
+                        updateBadge('desconocido', 'Desconocido');
+                    }
+                } 
+                // CASO B: Alto volumen (No cargamos mapa global por performance)
+                else {
+                    updateBadge('pendiente', 'Se validará al guardar');
+                }
+            }, 350);
+        }
+
+        function showConflictSelector(matches) {
+            conflictSelector.style.display = 'block';
+            matches.forEach(m => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-xs btn-outline-info p-1';
+                btn.style.fontSize = '0.7rem';
+                btn.textContent = getNombrePais(m.id_pais);
+                btn.onclick = () => {
+                    applyMatch(m);
+                    conflictSelector.style.display = 'none';
+                };
+                conflictOptions.appendChild(btn);
+            });
+        }
+
+        function applyMatch(match) {
+            if (parseInt(match.activo) === 0) {
+                updateBadge('inactivo', 'Inactivo en ' + getNombrePais(match.id_pais));
+            } else {
+                updateBadge('homologado', 'Homologado');
+                
+                // 1. Seleccionar país
+                if (match.id_pais && idPaisSelect.value != match.id_pais) {
+                    $(idPaisSelect).val(match.id_pais).trigger('change');
+                }
+
+                // 2. Autocompletar ubicación con delays para Select2 dinámico
+                setTimeout(() => {
+                    if (match.id_departamento) {
+                        $(idDeptoSelect).val(match.id_departamento).trigger('change');
+                        setTimeout(() => {
+                            if (match.id_municipio) {
+                                $(idMuniSelect).val(match.id_municipio).trigger('change');
+                                setTimeout(() => {
+                                    if (match.id_barrio) {
+                                        $(idBarrioSelect).val(match.id_barrio).trigger('change');
+                                    }
+                                }, 150);
+                            }
+                        }, 150);
+                    }
+                }, 150);
+            }
+        }
+
+        if (cpInput) {
+            cpInput.addEventListener('input', handleCP);
+            // Run on load if there's a initial value
+            if (cpInput.value) handleCP();
+        }
+
+        // Limpieza por cascada: si cambia país manualmente, resetear aviso de colisión
+        if (idPaisSelect) {
+            $(idPaisSelect).on('change.select2', function() {
+                conflictSelector.style.display = 'none';
+            });
+        }
+    })();
 </script>
 
 <?php include("vista/includes/footer.php"); ?>

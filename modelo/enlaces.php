@@ -54,6 +54,7 @@ class EnlacesModel
             "auditoria",
             "crm",
             "logistica",
+            "codigos_postales",
             "salir"
         ];
 
@@ -69,9 +70,9 @@ class EnlacesModel
                 $archivo .= "/" . $accion . ".php";
             } else {
                 // Casos especiales: módulos sin acción que necesitan redirección
-                if ($modulo === 'seguimiento') {
-                    // Redirigir seguimiento sin acción a seguimiento/listar
-                    $archivo .= "/listar.php";
+                if ($modulo === 'seguimiento' || $modulo === 'codigos_postales') {
+                    // Redirigir módulos sin acción a su archivo index/listar
+                    $archivo .= ($modulo === 'seguimiento' ? "/listar.php" : "/index.php");
                 } else {
                     $archivo .= ".php";
                 }

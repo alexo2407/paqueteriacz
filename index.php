@@ -118,6 +118,7 @@ require_once "modelo/barrio.php";
 require_once "modelo/departamento.php";
 require_once "modelo/municipio.php";
 require_once "modelo/pais.php"; 
+require_once "modelo/codigos_postales.php";
 
 //controladores
 require_once "controlador/enlaces.php";
@@ -132,6 +133,7 @@ require_once "controlador/departamento.php";
 require_once "controlador/municipio.php";
 require_once "controlador/pais.php";
 require_once "controlador/dashboard.php";
+require_once "controlador/codigos_postales.php";
 
 
 

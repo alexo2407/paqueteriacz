@@ -11,6 +11,8 @@ require_once __DIR__ . '/../modelo/moneda.php';
 require_once __DIR__ . '/../modelo/municipio.php';
 require_once __DIR__ . '/../modelo/barrio.php';
 require_once __DIR__ . '/../modelo/pedido.php';
+require_once __DIR__ . '/../services/AddressService.php';
+require_once __DIR__ . '/../modelo/codigos_postales.php';
 
 class PedidosController {
 
@@ -434,6 +436,39 @@ class PedidosController {
     }
 
     /**
+     * Obtener configuración de CP para la vista (Performance Map)
+     */
+    public function obtenerConfiguracionCP($idPais) {
+        if (!$idPais) return ['useCpMap' => false, 'total' => 0, 'map' => []];
+
+        $total = CodigosPostalesModel::contarActivosPorPais($idPais);
+        $useCpMap = ($total <= 800);
+        $map = $useCpMap ? CodigosPostalesModel::obtenerMapaPorPais($idPais) : [];
+
+        return [
+            'useCpMap' => $useCpMap,
+            'total' => $total,
+            'map' => $map
+        ];
+    }
+
+    /**
+     * Obtener configuración global de CP para autocompletado universal (País -> Ubicación)
+     */
+    public function obtenerConfiguracionCPGlobal() {
+        $total = CodigosPostalesModel::contarActivosGlobal();
+        // Regla: <= 2000 para cargar mapa en vivo
+        $useGlobalMap = ($total <= 2000);
+        $map = $useGlobalMap ? CodigosPostalesModel::obtenerMapaGlobal() : [];
+
+        return [
+            'useGlobalMap' => $useGlobalMap,
+            'total' => $total,
+            'globalMap' => $map
+        ];
+    }
+
+    /**
      * Obtener detalles de un pedido para la vista ver.php
      * Retorna un array con un solo elemento para compatibilidad con la vista
      * @param int $id_pedido
@@ -764,7 +799,35 @@ class PedidosController {
             'precio_total_usd' => $precioTotalUsd,
             'tasa_conversion_usd' => $tasaConversionUsd,
             'es_combo' => $esCombo ? 1 : 0,
+            'id_codigo_postal' => null // Se resolverá abajo
         ];
+
+        // 3. Resolver Homologación de Código Postal
+        $cpVal = $data['codigo_postal'] ?? null;
+        if ($idPais && $cpVal) {
+            $cp_norm = AddressService::normalizarCP($cpVal);
+            $payload['codigo_postal'] = $cp_norm; // Guardar normalizado
+
+            $homologacion = AddressService::resolverHomologacion($idPais, $cp_norm, [
+                'id_departamento' => $idDepartamento,
+                'id_municipio' => $idMunicipio,
+                'id_barrio' => $idBarrio,
+                'nombre_localidad' => $data['municipio'] ?? null
+            ]);
+
+            if ($homologacion) {
+                $payload['id_codigo_postal'] = $homologacion['id'];
+                
+                // Si la homologación tiene ubicación completa, SOBRESCRIBIR para integridad
+                if (!empty($homologacion['id_departamento']) && !empty($homologacion['id_municipio'])) {
+                    $payload['id_departamento'] = (int)$homologacion['id_departamento'];
+                    $payload['id_municipio'] = (int)$homologacion['id_municipio'];
+                    if (!empty($homologacion['id_barrio'])) {
+                        $payload['id_barrio'] = (int)$homologacion['id_barrio'];
+                    }
+                }
+            }
+        }
 
 
         try {
@@ -914,6 +977,34 @@ class PedidosController {
             // Asegurar que es_combo se actualice correctamente (si no está en POST es 0)
             // Esto es necesario para permitir desmarcar el checkbox
             $data['es_combo'] = isset($data['es_combo']) ? 1 : 0;
+
+            // Integrar Homologación de Código Postal
+            $cpVal = $data['codigo_postal'] ?? null;
+            $idPais = $data['id_pais'] ?? null;
+            if ($idPais && $cpVal) {
+                $cp_norm = AddressService::normalizarCP($cpVal);
+                $data['codigo_postal'] = $cp_norm;
+
+                $homologacion = AddressService::resolverHomologacion($idPais, $cp_norm, [
+                    'id_departamento' => $data['id_departamento'] ?? null,
+                    'id_municipio' => $data['id_municipio'] ?? null,
+                    'id_barrio' => $data['id_barrio'] ?? null,
+                    'nombre_localidad' => $data['municipio'] ?? null
+                ]);
+
+                if ($homologacion) {
+                    $data['id_codigo_postal'] = $homologacion['id'];
+                    
+                    // Si tiene ubicación completa, sobrescribir para integridad
+                    if (!empty($homologacion['id_departamento']) && !empty($homologacion['id_municipio'])) {
+                        $data['id_departamento'] = (int)$homologacion['id_departamento'];
+                        $data['id_municipio'] = (int)$homologacion['id_municipio'];
+                        if (!empty($homologacion['id_barrio'])) {
+                            $data['id_barrio'] = (int)$homologacion['id_barrio'];
+                        }
+                    }
+                }
+            }
 
             // Llama al modelo para actualizar el pedido
             $resultado = PedidosModel::actualizarPedido($data);

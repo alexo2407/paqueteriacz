@@ -99,6 +99,18 @@ try {
 } catch (Exception $e) {
     $municipiosAll = [];
 }
+// Configuración de Códigos Postales por Performance
+$cpConfig = $pedidosController->obtenerConfiguracionCP($idPaisUsuario);
+$useCpMap = $cpConfig['useCpMap'];
+$totalCp = $cpConfig['total'];
+$cpMapJson = json_encode($cpConfig['map']);
+
+// Autocompletado Universal (Mapa Global)
+$cpConfigGlobal = $pedidosController->obtenerConfiguracionCPGlobal();
+$useGlobalMap = $cpConfigGlobal['useGlobalMap'];
+$totalCpGlobal = $cpConfigGlobal['total'];
+$cpGlobalMapJson = json_encode($cpConfigGlobal['globalMap']);
+
 try {
     $barriosAll = BarrioModel::listarPorMunicipio(null);
 } catch (Exception $e) {
@@ -194,6 +206,7 @@ try {
     transform: translateY(-2px);
 }
 .nav-pills .nav-link i { margin-right: 0.5rem; }
+</style>
 </style>
 
 <div class="container-fluid py-4">
@@ -475,6 +488,45 @@ try {
                             <div class="card-body p-4">
                                 <h5 class="mb-4 text-info"><i class="bi bi-geo-alt me-2"></i>Datos de Entrega</h5>
                                 <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="codigo_postal" class="form-label">Código Postal 📮</label>
+                                        <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" placeholder="Ej: 10101, 17008..." value="<?= htmlspecialchars($old_posted['codigo_postal'] ?? '') ?>">
+                                        <div id="cp_status_container" class="mt-1">
+                                            <span id="cp_badge" class="badge bg-secondary">Sin validar</span>
+                                            <div id="cp_conflict_selector" class="mt-2" style="display:none;">
+                                                <small class="text-info d-block mb-1">Este CP existe en varios países. Elige uno:</small>
+                                                <div id="cp_conflict_options" class="d-flex flex-wrap gap-1"></div>
+                                            </div>
+                                            <small id="cp_helper" class="text-muted d-block mt-1" style="font-size: 0.75rem;">Se normalizará automáticamente (Mayúsculas, sin espacios/guiones).</small>
+                                            <?php if (!$useGlobalMap && $totalCpGlobal > 2000): ?>
+                                                <small class="text-warning d-block mt-1" style="font-size: 0.75rem;"><i class="bi bi-exclamation-triangle"></i> Autocompletado universal desactivado (alto volumen); se validará al guardar.</small>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="zona" class="form-label">Zona / Sector</label>
+                                        <input type="text" class="form-control" id="zona" name="zona" placeholder="Ej: Zona 1 / Residencial / Sector..." maxlength="100" value="<?= htmlspecialchars($old_posted['zona'] ?? '') ?>">
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_pais" class="form-label">País</label>
+                                        <select class="form-select select2-searchable" id="id_pais" name="id_pais">
+                                            <option value="" selected>Selecciona un país</option>
+                                            <?php foreach ($paises as $p): ?>
+                                                        <option value="<?= (int)$p['id'] ?>" <?= (isset($old_posted['id_pais']) && (int)$old_posted['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="id_departamento" class="form-label">Departamento</label>
+                                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento">
+                                            <option value="" selected>Selecciona un departamento</option>
+                                            <?php foreach ($departamentosAll as $d): ?>
+                                                <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (isset($old_posted['id_departamento']) && (int)$old_posted['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+
                                     <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="destinatario" class="form-label">Nombre del Destinatario</label>
@@ -495,29 +547,6 @@ try {
                                         <div class="invalid-feedback">Por favor, proporciona una dirección válida.</div>
                                     </div>
                                     
-                                    <div class="col-md-6 mb-3">
-                                        <label for="id_pais" class="form-label">País</label>
-                                        <select class="form-select select2-searchable" id="id_pais" name="id_pais">
-                                            <option value="" selected>Selecciona un país</option>
-                                            <?php foreach ($paises as $p): ?>
-                                                        <option value="<?= (int)$p['id'] ?>" <?= (isset($old_posted['id_pais']) && (int)$old_posted['id_pais'] === (int)$p['id']) ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="id_departamento" class="form-label">Departamento</label>
-                                        <select class="form-select select2-searchable" id="id_departamento" name="id_departamento">
-                                            <option value="" selected>Selecciona un departamento</option>
-                                            <?php foreach ($departamentosAll as $d): ?>
-                                                <option value="<?= (int)$d['id'] ?>" data-id-pais="<?= (int)($d['id_pais'] ?? 0) ?>" <?= (isset($old_posted['id_departamento']) && (int)$old_posted['id_departamento'] === (int)$d['id']) ? 'selected' : '' ?>><?= htmlspecialchars($d['nombre']) ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="codigo_postal" class="form-label">Código Postal 📮</label>
-                                        <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" placeholder="Ej: 10101, 17008..." value="<?= htmlspecialchars($old_posted['codigo_postal'] ?? '') ?>">
-                                        <div class="form-text small">Se autocompleta según la zona seleccionada.</div>
-                                    </div>
                                     <div class="col-md-6 mb-3">
                                         <label for="fecha_entrega" class="form-label">Fecha de Entrega Estimada</label>
                                         <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega" value="<?= htmlspecialchars($old_posted['fecha_entrega'] ?? '') ?>">
@@ -1019,86 +1048,93 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
 (function(){
     const deptSelect = document.getElementById('id_departamento');
     const paisSelect = document.getElementById('id_pais');
-    // municipios and barrios data
+    // data from PHP
+    const departamentos = <?php echo json_encode($departamentosAll); ?>;
     const municipios = <?php echo json_encode($municipiosAll); ?>;
     const barrios = <?php echo json_encode($barriosAll); ?>;
 
-    // create municipio select
-    const munWrapper = document.createElement('div');
-    munWrapper.className = 'col-md-6 mb-3';
-    munWrapper.innerHTML = `
-        <label for="id_municipio" class="form-label">Municipio</label>
-        <select class="form-select select2-searchable" id="id_municipio" name="id_municipio" data-placeholder="Buscar municipio...">
-            <option value="" selected>Selecciona un municipio</option>
-        </select>`;
-    // insert before barrio placeholder (append to the row after departamento)
-    deptSelect.parentElement.parentElement.insertBefore(munWrapper, deptSelect.parentElement.nextSibling);
+    // create municipio select (si no existe)
+    let munSelect = document.getElementById('id_municipio');
+    if (!munSelect) {
+        const munWrapper = document.createElement('div');
+        munWrapper.className = 'col-md-6 mb-3';
+        munWrapper.innerHTML = `
+            <label for="id_municipio" class="form-label">Municipio</label>
+            <select class="form-select select2-searchable" id="id_municipio" name="id_municipio" data-placeholder="Buscar municipio...">
+                <option value="" selected>Selecciona un municipio</option>
+            </select>`;
+        deptSelect.parentElement.parentElement.insertBefore(munWrapper, deptSelect.parentElement.nextSibling);
+        munSelect = document.getElementById('id_municipio');
+    }
 
-    // create barrio select below municipio
-    const barrioWrapper = document.createElement('div');
-    barrioWrapper.className = 'col-md-6 mb-3';
-    barrioWrapper.innerHTML = `
-        <label for="id_barrio" class="form-label">Barrio</label>
-        <select class="form-select select2-searchable" id="id_barrio" name="id_barrio" data-placeholder="Buscar barrio...">
-            <option value="" selected>Selecciona un barrio</option>
-        </select>`;
-    munWrapper.parentElement.insertBefore(barrioWrapper, munWrapper.nextSibling);
+    // create barrio select (si no existe)
+    let barrioSelect = document.getElementById('id_barrio');
+    if (!barrioSelect) {
+        const barrioWrapper = document.createElement('div');
+        barrioWrapper.className = 'col-md-6 mb-3';
+        barrioWrapper.innerHTML = `
+            <label for="id_barrio" class="form-label">Barrio</label>
+            <select class="form-select select2-searchable" id="id_barrio" name="id_barrio" data-placeholder="Buscar barrio...">
+                <option value="" selected>Selecciona un barrio</option>
+            </select>`;
+        munSelect.parentElement.parentElement.insertBefore(barrioWrapper, munSelect.parentElement.nextSibling);
+        barrioSelect = document.getElementById('id_barrio');
+    }
 
-    const munSelect = document.getElementById('id_municipio');
-    const barrioSelect = document.getElementById('id_barrio');
+    const initialDep = (OLD_POSTED && OLD_POSTED.id_departamento) ? OLD_POSTED.id_departamento : null;
     const initialMun = (OLD_POSTED && OLD_POSTED.id_municipio) ? OLD_POSTED.id_municipio : null;
     const initialBarrio = (OLD_POSTED && OLD_POSTED.id_barrio) ? OLD_POSTED.id_barrio : null;
 
-    // Inicializar Select2 en los nuevos selects
     function initSelect2ForLocationSelects() {
         if (typeof $ !== 'undefined' && $.fn.select2) {
-            // Inicializar Select2 si aún no está inicializado
-            if (!$(munSelect).hasClass('select2-hidden-accessible')) {
-                $(munSelect).select2({
-                    theme: 'bootstrap-5',
-                    placeholder: 'Buscar municipio...',
-                    allowClear: true,
-                    width: '100%'
-                });
-            }
-            if (!$(barrioSelect).hasClass('select2-hidden-accessible')) {
-                $(barrioSelect).select2({
-                    theme: 'bootstrap-5',
-                    placeholder: 'Buscar barrio...',
-                    allowClear: true,
-                    width: '100%'
-                });
-            }
+            $('.select2-searchable').each(function() {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        placeholder: $(this).data('placeholder') || 'Seleccionar...',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $(this).closest('.tab-pane') // Fix for Select2 in tabs/modals
+                    });
+                }
+            });
         }
     }
 
+    function populateDepartamentos(paisId, selectedDepId) {
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(deptSelect).hasClass('select2-hidden-accessible')) {
+            $(deptSelect).select2('destroy');
+        }
+        deptSelect.innerHTML = '<option value="" selected>Selecciona un departamento</option>';
+        departamentos.forEach(d => {
+            if (!paisId || parseInt(d.id_pais) === parseInt(paisId)) {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.nombre;
+                deptSelect.appendChild(opt);
+            }
+        });
+        if (selectedDepId) deptSelect.value = selectedDepId;
+        initSelect2ForLocationSelects();
+        populateMunicipios(deptSelect.value, initialMun);
+    }
+
     function populateMunicipios(depId, selectedMunId) {
-        // Destruir Select2 temporalmente para repoblar
         if (typeof $ !== 'undefined' && $.fn.select2 && $(munSelect).hasClass('select2-hidden-accessible')) {
             $(munSelect).select2('destroy');
         }
-        
         munSelect.innerHTML = '<option value="" selected>Selecciona un municipio</option>';
         municipios.forEach(m => {
-            if (!depId || depId === '' || parseInt(m.id_departamento) === parseInt(depId)) {
+            if (!depId || parseInt(m.id_departamento) === parseInt(depId)) {
                 const opt = document.createElement('option');
                 opt.value = m.id;
                 opt.textContent = m.nombre;
-                opt.setAttribute('data-id-departamento', m.id_departamento);
                 opt.setAttribute('data-cp', m.codigo_postal || '');
                 munSelect.appendChild(opt);
             }
         });
-        // If a selectedMunId was provided, set it; otherwise use initialMun from oldPosted
-        const sel = selectedMunId || initialMun;
-        if (sel) {
-            const opt = munSelect.querySelector('option[value="' + sel + '"]');
-            if (opt) opt.selected = true;
-        }
-        
-        // Reinicializar Select2
+        if (selectedMunId) munSelect.value = selectedMunId;
         initSelect2ForLocationSelects();
-        
         populateBarrios(munSelect.value, initialBarrio);
         updatePostalCode();
     }
@@ -1130,8 +1166,11 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
         initSelect2ForLocationSelects();
     }
 
-    // Events - usar eventos de Select2 si está disponible
+    // Eventos
     if (typeof $ !== 'undefined' && $.fn.select2) {
+        $(paisSelect).on('change.select2', function(){
+            populateDepartamentos(paisSelect.value);
+        });
         $(deptSelect).on('change.select2', function(){
             populateMunicipios(deptSelect.value);
         });
@@ -1140,9 +1179,11 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
             updatePostalCode();
         });
     } else {
+        paisSelect.addEventListener('change', function(){
+            populateDepartamentos(paisSelect.value);
+        });
         deptSelect.addEventListener('change', function(){
-            const dep = deptSelect.value;
-            populateMunicipios(dep);
+            populateMunicipios(deptSelect.value);
         });
         munSelect.addEventListener('change', function(){
             populateBarrios(munSelect.value);
@@ -1189,9 +1230,7 @@ const OLD_POSTED = <?php echo json_encode($old_posted ?? null); ?>;
 
     // initialize on load
     document.addEventListener('DOMContentLoaded', function(){
-        // run existing department filter first
-        const event = new Event('change');
-        deptSelect.dispatchEvent(event);
+        populateDepartamentos(paisSelect.value, initialDep);
     });
 })();
 </script>
@@ -1234,5 +1273,148 @@ document.getElementById('es_combo').addEventListener('change', function() {
         </div><!-- card-body -->
     </div><!-- card crear-pedido-card -->
 </div><!-- container-fluid -->
+
+<!-- Logic for Zip Code Homologation & Performance -->
+<script>
+    (function() {
+        const useGlobalMap = <?= json_encode($useGlobalMap) ?>;
+        const globalMap = <?= $cpGlobalMapJson ?>;
+        const paisesArr = <?= json_encode($paises) ?>;
+        
+        const cpInput = document.getElementById('codigo_postal');
+        const badge = document.getElementById('cp_badge');
+        const conflictSelector = document.getElementById('cp_conflict_selector');
+        const conflictOptions = document.getElementById('cp_conflict_options');
+        
+        const idPaisSelect = document.getElementById('id_pais');
+        const idDeptoSelect = document.getElementById('id_departamento');
+        const idMuniSelect = document.getElementById('id_municipio');
+        const idBarrioSelect = document.getElementById('id_barrio');
+
+        let debounceTimer;
+
+        function normalizarCP(cp) {
+            return cp.toUpperCase().replace(/[\s-]/g, '');
+        }
+
+        function getNombrePais(id) {
+            const p = paisesArr.find(x => parseInt(x.id) === parseInt(id));
+            return p ? p.nombre : 'ID: ' + id;
+        }
+
+        function updateBadge(status, text) {
+            badge.textContent = text;
+            badge.className = 'badge';
+            switch(status) {
+                case 'homologado': badge.classList.add('bg-success'); break;
+                case 'pendiente': badge.classList.add('bg-warning', 'text-dark'); break;
+                case 'inactivo': badge.classList.add('bg-danger'); break;
+                case 'desconocido': badge.classList.add('bg-secondary'); break;
+                case 'multiple': badge.classList.add('bg-info', 'text-dark'); break;
+                default: badge.classList.add('bg-secondary'); break;
+            }
+        }
+
+        function handleCP() {
+            const rawVal = cpInput.value;
+            const normVal = normalizarCP(rawVal);
+            
+            // UI Feedback: Normalizar mientras escribe
+            if (cpInput.value !== normVal) {
+                cpInput.value = normVal;
+            }
+
+            // Reset UI
+            conflictSelector.style.display = 'none';
+            conflictOptions.innerHTML = '';
+
+            if (!normVal) {
+                updateBadge('default', 'Sin validar');
+                return;
+            }
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                // CASO A: Mapa local (Universal si useGlobalMap=true)
+                if (useGlobalMap) {
+                    const matches = globalMap.filter(item => item.codigo_postal === normVal);
+                    
+                    if (matches.length === 1) {
+                        applyMatch(matches[0]);
+                    } else if (matches.length > 1) {
+                        // Colisión detectada: múltiples países para el mismo CP
+                        updateBadge('multiple', 'CP en múltiples países');
+                        showConflictSelector(matches);
+                    } else {
+                        updateBadge('desconocido', 'Desconocido');
+                    }
+                } 
+                // CASO B: Alto volumen (No cargamos mapa global por performance)
+                else {
+                    updateBadge('pendiente', 'Se validará al guardar');
+                }
+            }, 350);
+        }
+
+        function showConflictSelector(matches) {
+            conflictSelector.style.display = 'block';
+            matches.forEach(m => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-xs btn-outline-info p-1';
+                btn.style.fontSize = '0.7rem';
+                btn.textContent = getNombrePais(m.id_pais);
+                btn.onclick = () => {
+                    applyMatch(m);
+                    conflictSelector.style.display = 'none';
+                };
+                conflictOptions.appendChild(btn);
+            });
+        }
+
+        function applyMatch(match) {
+            if (parseInt(match.activo) === 0) {
+                updateBadge('inactivo', 'Inactivo en ' + getNombrePais(match.id_pais));
+            } else {
+                updateBadge('homologado', 'Homologado');
+                
+                // 1. Seleccionar país
+                if (match.id_pais && idPaisSelect.value != match.id_pais) {
+                    $(idPaisSelect).val(match.id_pais).trigger('change');
+                }
+
+                // 2. Autocompletar ubicación con delays para Select2 dinámico
+                setTimeout(() => {
+                    if (match.id_departamento) {
+                        $(idDeptoSelect).val(match.id_departamento).trigger('change');
+                        setTimeout(() => {
+                            if (match.id_municipio) {
+                                $(idMuniSelect).val(match.id_municipio).trigger('change');
+                                setTimeout(() => {
+                                    if (match.id_barrio) {
+                                        $(idBarrioSelect).val(match.id_barrio).trigger('change');
+                                    }
+                                }, 150);
+                            }
+                        }, 150);
+                    }
+                }, 150);
+            }
+        }
+
+        if (cpInput) {
+            cpInput.addEventListener('input', handleCP);
+            // Run on load if there's a initial value (not likely in create but for compatibility)
+            if (cpInput.value) handleCP();
+        }
+
+        // Limpieza por cascada: si cambia país manualmente, resetear aviso de colisión
+        if (idPaisSelect) {
+            $(idPaisSelect).on('change.select2', function() {
+                conflictSelector.style.display = 'none';
+            });
+        }
+    })();
+</script>
 
 <?php include("vista/includes/footer.php"); ?>

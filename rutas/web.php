@@ -174,6 +174,24 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
     }
 }
 
+// Handler para codigos_postales GET (AJAX lookup)
+if (isset($ruta[0]) && $ruta[0] === 'codigos_postales' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+
+    if ($accion === 'buscar') {
+        require_once __DIR__ . '/../modelo/codigos_postales.php';
+        require_once __DIR__ . '/../controlador/codigos_postales.php';
+        
+        $ctrl = new CodigosPostalesController();
+        $idPais = $_GET['id_pais'] ?? null;
+        $cp = $_GET['cp'] ?? null;
+        
+        header('Content-Type: application/json');
+        echo json_encode($ctrl->buscarPorCodigo($idPais, $cp));
+        exit;
+    }
+}
+
 // -----------------------
 // Manejo de monedas (POST a ?enlace=monedas/<accion>)
 // -----------------------
@@ -317,6 +335,73 @@ if (isset($ruta[0]) && $ruta[0] === 'municipios' && $_SERVER['REQUEST_METHOD'] =
     }
 
     if ($accion === 'eliminar') { $id = isset($ruta[2]) ? (int)$ruta[2] : 0; $response = $ctrl->eliminar($id); set_flash($response['success'] ? 'success' : 'error', $response['message']); header('Location: '.RUTA_URL.'municipios/listar'); exit; }
+}
+
+// -----------------------
+// Manejo de codigos_postales (POST a ?enlace=codigos_postales/<accion>)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'codigos_postales' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $accion = isset($ruta[1]) ? $ruta[1] : '';
+    require_once __DIR__ . '/../controlador/codigos_postales.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    $ctrl = new CodigosPostalesController();
+
+    if ($accion === 'guardar' || $accion === 'crear') {
+        $payload = [
+            'id_pais' => $_POST['id_pais'] ?? null,
+            'codigo_postal' => $_POST['codigo_postal'] ?? '',
+            'id_departamento' => $_POST['id_departamento'] ?? null,
+            'id_municipio' => $_POST['id_municipio'] ?? null,
+            'id_barrio' => $_POST['id_barrio'] ?? null,
+            'nombre_localidad' => $_POST['nombre_localidad'] ?? '',
+            'activo' => $_POST['activo'] ?? 0
+        ];
+        $response = $ctrl->crear($payload);
+        if ($response['success']) {
+            set_flash('success', $response['message']);
+            header('Location: ' . RUTA_URL . 'codigos_postales');
+        } else {
+            $_SESSION['old_cp'] = $payload; // Repoblar en caso de error
+            set_flash('error', $response['message']);
+            header('Location: ' . RUTA_URL . 'codigos_postales/crear');
+        }
+        exit;
+    }
+
+    if ($accion === 'actualizar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        if ($id <= 0) { set_flash('error', 'ID inválido'); header('Location: ' . RUTA_URL . 'codigos_postales'); exit; }
+        
+        $payload = [
+            'id_pais' => $_POST['id_pais'] ?? null,
+            'codigo_postal' => $_POST['codigo_postal'] ?? '',
+            'id_departamento' => $_POST['id_departamento'] ?? null,
+            'id_municipio' => $_POST['id_municipio'] ?? null,
+            'id_barrio' => $_POST['id_barrio'] ?? null,
+            'nombre_localidad' => $_POST['nombre_localidad'] ?? '',
+            'activo' => $_POST['activo'] ?? 0
+        ];
+        $response = $ctrl->actualizar($id, $payload);
+        if ($response['success']) {
+            set_flash('success', $response['message']);
+            header('Location: ' . RUTA_URL . 'codigos_postales');
+        } else {
+            $_SESSION['old_cp'] = $payload;
+            set_flash('error', $response['message']);
+            header('Location: ' . RUTA_URL . 'codigos_postales/editar/' . $id);
+        }
+        exit;
+    }
+
+    if ($accion === 'toggle') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $response = $ctrl->toggle($id);
+        header('Content-Type: application/json');
+        echo json_encode($response);
+        exit;
+    }
 }
 
 // -----------------------

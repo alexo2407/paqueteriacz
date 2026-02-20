@@ -105,6 +105,7 @@ class EnlacesController
                 'auditoria' => [ROL_NOMBRE_ADMIN],
                 'crm' => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'], // CRM-specific roles
                 'logistica' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE],
+                'codigos_postales' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_VENDEDOR, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
             ];
 
             $userRoleNames = $_SESSION['roles_nombres'] ?? [];
