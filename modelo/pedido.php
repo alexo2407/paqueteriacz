@@ -1826,6 +1826,101 @@ class PedidosModel
     }
 
     /**
+     * Actualizar estado de pedido con restricciones de Cliente.
+     * 
+     * @param int $id_pedido
+     * @param int $id_cliente_auth ID del usuario autenticado (debe ser el id_cliente del pedido)
+     * @param int $nuevo_estado 4 (Reprogramado) o 7 (Devuelto)
+     * @param string|null $motivo
+     * @return array
+     */
+    public static function actualizarEstadoCliente($id_pedido, $id_cliente_auth, $nuevo_estado, $motivo = null) {
+        $ID_REPROGRAMADO = 4;
+        $ID_DEVUELTO = 7;
+        $ID_ENTREGADO = 3;
+
+        // 1. Validar estados permitidos
+        if (!in_array($nuevo_estado, [$ID_REPROGRAMADO, $ID_DEVUELTO])) {
+            return ["success" => false, "message" => "Estado no permitido para clientes. Solo Reprogramado o Devuelto.", "code" => 403];
+        }
+
+        // 2. Validar motivo obligatorio para Devuelto
+        if ($nuevo_estado == $ID_DEVUELTO && empty(trim($motivo))) {
+            return ["success" => false, "message" => "Es obligatorio indicar el motivo para una devolución.", "code" => 400];
+        }
+
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
+            // 3. Bloquear fila y cargar datos para validación (concurrency control)
+            $stmt = $db->prepare("SELECT id_estado, id_cliente FROM pedidos WHERE id = :id FOR UPDATE");
+            $stmt->execute([':id' => $id_pedido]);
+            $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$pedido) {
+                $db->rollBack();
+                return ["success" => false, "message" => "Pedido no encontrado.", "code" => 404];
+            }
+
+            // 4. Validar pertenencia
+            if ((int)$pedido['id_cliente'] !== (int)$id_cliente_auth) {
+                $db->rollBack();
+                return ["success" => false, "message" => "No tienes permiso sobre este pedido.", "code" => 403];
+            }
+
+            // 5. Validar estado actual (no permitir cambios si ya es final)
+            $estadoAnterior = (int)$pedido['id_estado'];
+            if ($estadoAnterior === $ID_ENTREGADO) {
+                $db->rollBack();
+                return ["success" => false, "message" => "No se puede cambiar el estado de un pedido que ya ha sido entregado.", "code" => 409];
+            }
+
+            // Si el estado es el mismo, no hacemos nada pero informamos éxito
+            if ($estadoAnterior === $nuevo_estado) {
+                $db->rollBack();
+                return ["success" => true, "message" => "El pedido ya se encuentra en el estado indicado."];
+            }
+
+            // 6. Ejecutar actualización
+            $upd = $db->prepare("UPDATE pedidos SET id_estado = :nuevo, updated_at = NOW() WHERE id = :id");
+            $upd->execute([':nuevo' => $nuevo_estado, ':id' => $id_pedido]);
+
+            // 7. Registrar en historial de estados
+            $histQuery = "INSERT INTO pedidos_historial_estados 
+                         (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at) 
+                         VALUES (:id_pedido, :ant, :nuevo, :user, :obs, NOW())";
+            $histStmt = $db->prepare($histQuery);
+            $histStmt->execute([
+                ':id_pedido' => $id_pedido,
+                ':ant'       => $estadoAnterior,
+                ':nuevo'     => $nuevo_estado,
+                ':user'      => $id_cliente_auth,
+                ':obs'       => $motivo
+            ]);
+
+            // 8. Registrar auditoría
+            AuditoriaModel::registrar(
+                'pedidos',
+                $id_pedido,
+                'actualizar_estado_cliente',
+                $id_cliente_auth,
+                ['id_estado' => $estadoAnterior],
+                ['id_estado' => $nuevo_estado]
+            );
+
+            $db->commit();
+            return ["success" => true, "message" => "Estado actualizado a " . ($nuevo_estado == $ID_REPROGRAMADO ? "Reprogramado" : "Devuelto") . " correctamente."];
+
+        } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            return ["success" => false, "message" => "Error en servidor: " . $e->getMessage(), "code" => 500];
+        }
+    }
+
+    /**
      * Obtener el historial de cambios de estado de un pedido
      * @param int $id_pedido
      * @return array

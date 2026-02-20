@@ -20,12 +20,11 @@ try {
     require_once __DIR__ . '/../../utils/autenticacion.php';
     require_once __DIR__ . '/../../modelo/pedido.php';
 
-    // Verificar autenticación
+    // 1. Verificar autenticación
     $token = AuthMiddleware::obtenerTokenDeHeaders();
-
     if (!$token) {
         http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Token requerido']);
+        echo json_encode(['success' => false, 'message' => 'Token de autenticación requerido']);
         exit;
     }
 
@@ -34,62 +33,59 @@ try {
     
     if (!$validacion['success']) {
         http_response_code(401);
-        echo json_encode(['success' => false, 'message' => $validacion['message']]);
+        echo json_encode(['success' => false, 'message' => 'Token inválido o expirado']);
         exit;
     }
 
     $userData = $validacion['data'];
-    $clientId = (int)$userData['id'];
+    $clientId = (int)($userData['id'] ?? 0);
+    $userRole = (int)($userData['rol'] ?? 0);
 
-    // Leer input
+    // 2. Verificar Rol (Solo Cliente)
+    // De acuerdo a config.php: ROL_CLIENTE = 5
+    if ($userRole !== ROL_CLIENTE) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Tu rol no tiene permiso para realizar esta acción']);
+        exit;
+    }
+
+    // 3. Leer y validar input
     $data = json_decode(file_get_contents("php://input"), true);
     if (!$data) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'JSON inválido']);
+        echo json_encode(['success' => false, 'message' => 'Formato JSON inválido']);
         exit;
     }
 
     $idPedido = isset($data['id_pedido']) ? (int)$data['id_pedido'] : 0;
     $nuevoEstado = isset($data['estado']) ? (int)$data['estado'] : 0;
-    $observaciones = isset($data['observaciones']) ? trim($data['observaciones']) : null;
+    $observaciones = isset($data['motivo']) ? trim($data['motivo']) : 
+                    (isset($data['observaciones']) ? trim($data['observaciones']) : null);
 
     if ($idPedido <= 0 || $nuevoEstado <= 0) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Faltan datos (id_pedido, estado)']);
+        echo json_encode(['success' => false, 'message' => 'Faltan parámetros obligatorios: id_pedido y estado']);
         exit;
     }
 
-    // Verificar que el pedido pertenezca al cliente
-    $pedido = PedidosModel::obtenerPedidoPorId($idPedido);
-    if (!$pedido) {
-        http_response_code(404);
-        echo json_encode(['success' => false, 'message' => 'Pedido no encontrado']);
-        exit;
-    }
+    // 4. Delegar lógica de negocio al Modelo (Robusto)
+    $resultado = PedidosModel::actualizarEstadoCliente($idPedido, $clientId, $nuevoEstado, $observaciones);
 
-    if ((int)$pedido['id_cliente'] !== $clientId) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'No tienes permiso para modificar este pedido']);
-        exit;
-    }
-
-    // Validar transiciones permitidas (opcional, pero recomendado)
-    // Por ahora permitimos cualquier cambio si es el dueño
-    
-    // Actualizar estado
-    $resultado = PedidosModel::actualizarEstado($idPedido, $nuevoEstado, $observaciones);
-
-    if ($resultado === true || (is_array($resultado) && $resultado['success'])) {
-         echo json_encode(['success' => true, 'message' => 'Estado actualizado correctamente']);
+    if ($resultado['success']) {
+        http_response_code(200);
+        echo json_encode($resultado);
     } else {
-         $msg = is_array($resultado) ? $resultado['message'] : 'No se pudo actualizar el estado';
-         echo json_encode(['success' => false, 'message' => $msg]);
+        $httpCode = isset($resultado['code']) ? $resultado['code'] : 400;
+        http_response_code($httpCode);
+        unset($resultado['code']); // Limpiar código interno antes de enviar
+        echo json_encode($resultado);
     }
 
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error interno: ' . $e->getMessage()
+        'message' => 'Error crítico en el servidor',
+        'debug'   => DEBUG ? $e->getMessage() : null
     ]);
 }

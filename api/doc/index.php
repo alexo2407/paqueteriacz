@@ -1859,29 +1859,63 @@ municipalitySelect.addEventListener('change', (e) => {
 
                     <!-- Client Status Update -->
                     <div class="mb-4">
-                        <h4 data-lang="en">Change Order Status</h4>
-                        <h4 data-lang="es">Cambiar Estado de Pedido</h4>
-                        <p data-lang="en">Allows clients to mark orders as delivered or returned (if permitted).</p>
-                        <p data-lang="es">Permite a los clientes marcar pedidos como entregados o devueltos (si está permitido).</p>
+                        <h4 data-lang="en">Change Order Status (Client Restriction)</h4>
+                        <h4 data-lang="es">Cambiar Estado de Pedido (Restricción Cliente)</h4>
+                        <p data-lang="en">Allows clients to change order status <strong>ONLY</strong> to Reprogramado (4) or Devuelto (7).</p>
+                        <p data-lang="es">Permite a los clientes cambiar el estado del pedido <strong>SOLO</strong> a Reprogramado (4) o Devuelto (7).</p>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span data-lang="en"><strong>Rules:</strong> Status changes are forbidden if the current status is "Delivered" (3). Motive is REQUIRED for returns.</span>
+                            <span data-lang="es"><strong>Reglas:</strong> No se permite cambiar el estado si el pedido ya está "Entregado" (3). El motivo es OBLIGATORIO para devoluciones.</span>
+                        </div>
 
                         <div class="code-block">
                             <span class="badge-endpoint badge-post">POST</span> /api/cliente/cambiar_estado
-                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider</span><span data-lang="es">Rol: Proveedor</span></span>
+                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                         </div>
                         
                         <table class="table table-sm table-bordered mt-2">
-                             <thead><tr><th>Field</th><th>Required</th><th>Description</th></tr></thead>
+                             <thead><tr><th>Field / Campo</th><th>Req.</th><th>Allowed Values / Valores Permitidos</th><th>Description</th></tr></thead>
                              <tbody>
-                                 <tr><td><code>id_pedido</code></td><td>Yes</td><td>Internal Order ID</td></tr>
-                                 <tr><td><code>estado</code></td><td>Yes</td><td>New Status ID (e.g., 3 for Delivered)</td></tr>
-                                 <tr><td><code>motivo</code></td><td>No</td><td>Reason/Comment</td></tr>
+                                 <tr><td><code>id_pedido</code></td><td>Yes</td><td>integer (ID)</td><td><span data-lang="en">Internal Order ID</span><span data-lang="es">ID interno del pedido</span></td></tr>
+                                 <tr><td><code>estado</code></td><td>Yes</td><td><code>4</code> o <code>7</code></td><td>
+                                    <span data-lang="en">4: Reprogramado (Rescheduled)<br>7: Devuelto (Returned)</span>
+                                    <span data-lang="es">4: Reprogramado<br>7: Devuelto</span>
+                                 </td></tr>
+                                 <tr><td><code>motivo</code></td><td>Cond.</td><td>string</td><td>
+                                    <span data-lang="en">Reason. <strong>Mandatory</strong> if status=7.</span>
+                                    <span data-lang="es">Motivo. <strong>Obligatorio</strong> si estado=7.</span>
+                                 </td></tr>
                              </tbody>
                         </table>
 
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 data-lang="en">Example: Reschedule</h5>
+                                <h5 data-lang="es">Ejemplo: Reprogramar</h5>
+                                <pre class="code-block line-numbers"><code class="language-json">{
+    "id_pedido": 150,
+    "estado": 4,
+    "motivo": "Cliente solicita entrega mañana"
+}</code></pre>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 data-lang="en">Example: Return</h5>
+                                <h5 data-lang="es">Ejemplo: Devolver</h5>
+                                <pre class="code-block line-numbers"><code class="language-json">{
+    "id_pedido": 150,
+    "estado": 7,
+    "motivo": "Producto defectuoso o rechazado"
+}</code></pre>
+                            </div>
+                        </div>
+
+                        <h5 data-lang="en">Error Response (Forbidden transition)</h5>
+                        <h5 data-lang="es">Respuesta de Error (Transición prohibida)</h5>
                         <pre class="code-block line-numbers"><code class="language-json">{
-    "id_pedido": 100,
-    "estado": 3,
-    "motivo": "Recibido conforme"
+    "success": false,
+    "message": "No se puede cambiar el estado de un pedido que ya ha sido entregado."
 }</code></pre>
                     </div>
                 </div>
