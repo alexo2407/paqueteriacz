@@ -6,6 +6,12 @@
  * Responsabilidad: Manejar requests API y devolver respuestas JSON.
  */
 
+require_once __DIR__ . '/../../modelo/usuario.php';
+require_once __DIR__ . '/../../modelo/departamento.php';
+require_once __DIR__ . '/../../modelo/municipio.php';
+require_once __DIR__ . '/../../modelo/moneda.php';
+require_once __DIR__ . '/../../modelo/barrio.php';
+
 class PedidoApiController
 {
     public function crear(array $jsonData, bool $autoEnqueue = false, int $authUserId = 0, $authUserRole = ''): array
@@ -39,16 +45,43 @@ class PedidoApiController
         // Validar la estructura del pedido
         $validacion = $this->validar($data);
         if (!$validacion["success"]) {
-            $msg = $validacion["message"];
-            if (isset($validacion["data"]) && is_array($validacion["data"])) {
-                $msg .= " Detalles: " . implode(", ", $validacion["data"]);
-            }
-            throw new Exception($msg, 400);
+            return [
+                "success" => false,
+                "message" => "VALIDATION_ERROR",
+                "fields" => $validacion["fields"] ?? []
+            ];
         }
 
-        // Verificar si el número de orden ya existe
-        if (PedidosModel::existeNumeroOrden($data["numero_orden"])) {
-            throw new Exception("El número de orden ya existe en la base de datos.", 400);
+        // Normalización de Código Postal y Homologación
+        if (!empty($data['codigo_postal'])) {
+             require_once __DIR__ . '/../../services/AddressService.php';
+             $cp_norm = AddressService::normalizarCP($data['codigo_postal']);
+             $data['codigo_postal'] = $cp_norm;
+             
+             // Intentar resolver id_codigo_postal
+             $homologacion = AddressService::resolverHomologacion(
+                 (int)$data['id_pais'],
+                 $cp_norm,
+                 [
+                     'id_departamento' => $data['id_departamento'] ?? null,
+                     'id_municipio' => $data['id_municipio'] ?? null,
+                     'zona' => $data['zona'] ?? null
+                 ]
+             );
+             
+             if ($homologacion && isset($homologacion['id'])) {
+                 $data['id_codigo_postal'] = $homologacion['id'];
+             }
+        }
+
+        // El chequeo de existeNumeroOrden ahora está dentro de validar(), 
+        // pero por seguridad si por alguna razón fallara allí:
+        if (PedidosModel::existeNumeroOrden($data["numero_orden"], $data['id_cliente'])) {
+            return [
+                "success" => false,
+                "message" => "VALIDATION_ERROR",
+                "fields" => ["numero_orden" => "El número de orden ya existe para este cliente."]
+            ];
         }
 
         // Procesar productos
@@ -115,7 +148,37 @@ class PedidoApiController
             // Validación básica
             $valid = $this->validar($pedido);
             if (!$valid['success']) {
-                $itemResult['error'] = is_string($valid['message']) ? $valid['message'] : json_encode($valid['data']);
+                $itemResult['error'] = "VALIDATION_ERROR";
+                $itemResult['fields'] = $valid['fields'] ?? [];
+                $results[] = $itemResult;
+                continue;
+            }
+
+            // Normalización de Código Postal y Homologación
+            if (!empty($pedido['codigo_postal'])) {
+                 require_once __DIR__ . '/../../services/AddressService.php';
+                 $cp_norm = AddressService::normalizarCP($pedido['codigo_postal']);
+                 $pedido['codigo_postal'] = $cp_norm;
+                 
+                 $homologacion = AddressService::resolverHomologacion(
+                     (int)$pedido['id_pais'],
+                     $cp_norm,
+                     [
+                         'id_departamento' => $pedido['id_departamento'] ?? null,
+                         'id_municipio' => $pedido['id_municipio'] ?? null,
+                         'zona' => $pedido['zona'] ?? null
+                     ]
+                 );
+                 
+                 if ($homologacion && isset($homologacion['id'])) {
+                     $pedido['id_codigo_postal'] = $homologacion['id'];
+                 }
+            }
+
+            // Unicidad
+            if (PedidosModel::existeNumeroOrden($pedido["numero_orden"], $pedido['id_cliente'])) {
+                $itemResult['error'] = "VALIDATION_ERROR";
+                $itemResult['fields'] = ["numero_orden" => "El número de orden ya existe para este cliente."];
                 $results[] = $itemResult;
                 continue;
             }
@@ -167,44 +230,116 @@ class PedidoApiController
     {
         $errores = [];
 
-        // Campos obligatorios
-        $camposObligatorios = ["numero_orden", "destinatario"];
-        foreach ($camposObligatorios as $campo) {
-            if (!isset($data[$campo]) || $data[$campo] === '') {
-                $errores[] = "El campo '$campo' es obligatorio.";
+        // 1. Campos obligatorios y sus reglas básicas (STRICT REQUIRED)
+        $rules = [
+            'numero_orden' => ['required' => true, 'numeric' => true, 'min' => 1],
+            'destinatario' => ['required' => true, 'min_len' => 2],
+            'id_cliente'   => ['required' => true, 'numeric' => true],
+            'telefono'     => ['required' => true, 'min_len' => 7],
+            'direccion'    => ['required' => true, 'min_len' => 5],
+            'comentario'   => ['required' => true, 'min_len' => 1],
+            'id_pais'      => ['required' => true, 'numeric' => true],
+            'id_departamento' => ['required' => true, 'numeric' => true],
+            'id_municipio' => ['required' => true, 'numeric' => true],
+            'zona'         => ['required' => true, 'max_len' => 100],
+            'codigo_postal'=> ['required' => true],
+            'precio_total_local' => ['required' => true, 'numeric' => true, 'min_val' => 0.01],
+            'es_combo'     => ['required' => true, 'in' => [0, 1]]
+        ];
+
+        foreach ($rules as $field => $config) {
+            $val = isset($data[$field]) ? $data[$field] : null;
+
+            if ($config['required'] && ($val === null || $val === '')) {
+                $errores[$field] = "El campo '$field' es obligatorio.";
+                continue;
+            }
+
+            if (isset($config['numeric']) && !is_numeric($val)) {
+                $errores[$field] = "El campo '$field' debe ser numérico.";
+                continue;
+            }
+
+            if (isset($config['min']) && (int)$val < $config['min']) {
+                $errores[$field] = "El campo '$field' debe ser al menos " . $config['min'] . ".";
+            }
+
+            if (isset($config['min_val']) && (float)$val < $config['min_val']) {
+                $errores[$field] = "El campo '$field' debe ser mayor a 0.";
+            }
+
+            if (isset($config['min_len']) && strlen(trim((string)$val)) < $config['min_len']) {
+                $errores[$field] = "El campo '$field' debe tener al menos " . $config['min_len'] . " caracteres.";
+            }
+
+            if (isset($config['max_len']) && strlen((string)$val) > $config['max_len']) {
+                $errores[$field] = "El campo '$field' no debe exceder los " . $config['max_len'] . " caracteres.";
+            }
+
+            if (isset($config['in']) && !in_array((int)$val, $config['in'], true)) {
+                $errores[$field] = "El campo '$field' solo acepta los valores: " . implode(', ', $config['in']) . ".";
             }
         }
 
-        // Validar productos
+        // 2. Validar productos (producto_id como array o con al menos 1 elemento)
         $hasProductsArray = isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0;
         $hasSingleProductId = isset($data['producto_id']) && is_numeric($data['producto_id']);
         
         if (!$hasSingleProductId && !$hasProductsArray) {
-            $errores[] = "El campo 'producto_id' o 'productos' es obligatorio.";
+            $errores['producto_id'] = "El campo 'producto_id' o 'productos' es obligatorio y debe contener al menos 1 producto.";
         }
 
-        // Validar estructura de productos array
         if ($hasProductsArray) {
             foreach ($data['productos'] as $i => $pi) {
                 if (!isset($pi['producto_id']) || !is_numeric($pi['producto_id'])) {
-                    $errores[] = "El elemento productos[$i] debe incluir 'producto_id' numérico.";
+                    $errores["productos[$i][producto_id]"] = "Debe ser numérico.";
                 }
                 if (!isset($pi['cantidad']) || !is_numeric($pi['cantidad']) || (int)$pi['cantidad'] <= 0) {
-                    $errores[] = "El elemento productos[$i] debe incluir 'cantidad' mayor a cero.";
+                    $errores["productos[$i][cantidad]"] = "Debe ser mayor a cero.";
                 }
             }
         }
 
-        // Validar coordenadas
-        if (isset($data["coordenadas"]) && $data["coordenadas"] !== '') {
-            $coords = explode(',', $data["coordenadas"]);
-            if (count($coords) !== 2 || !is_numeric($coords[0]) || !is_numeric($coords[1])) {
-                $errores[] = "El campo 'coordenadas' debe estar en el formato 'latitud,longitud'.";
+        // 3. Validar existencia de cliente
+        if (!isset($errores['id_cliente'])) {
+            $cliente = (new UsuarioModel())->obtenerPorId((int)$data['id_cliente']);
+            if (!$cliente) {
+                $errores['id_cliente'] = "El cliente especificado no existe.";
+            }
+        }
+
+        // 4. Validar unicidad de numero_orden por cliente
+        if (!isset($errores['numero_orden']) && !isset($errores['id_cliente'])) {
+            if (PedidosModel::existeNumeroOrden($data['numero_orden'], $data['id_cliente'])) {
+                $errores['numero_orden'] = "El número de orden ya existe para este cliente.";
+            }
+        }
+
+        // 5. Validar Jerarquía Geográfica y Existencia
+        if (!isset($errores['id_pais'])) {
+             // Asumimos que id_pais existe si no hay error anterior, pero podemos validar si queremos
+        }
+
+        if (!isset($errores['id_departamento']) && !isset($errores['id_pais'])) {
+            $depto = DepartamentoModel::obtenerPorId((int)$data['id_departamento']);
+            if (!$depto) {
+                $errores['id_departamento'] = "El departamento especificado no existe.";
+            } elseif ((int)$depto['id_pais'] !== (int)$data['id_pais']) {
+                $errores['id_departamento'] = "El departamento no pertenece al país seleccionado.";
+            }
+        }
+
+        if (!isset($errores['id_municipio']) && !isset($errores['id_departamento'])) {
+            $muni = MunicipioModel::obtenerPorId((int)$data['id_municipio']);
+            if (!$muni) {
+                $errores['id_municipio'] = "El municipio especificado no existe.";
+            } elseif ((int)$muni['id_departamento'] !== (int)$data['id_departamento']) {
+                $errores['id_municipio'] = "El municipio no pertenece al departamento seleccionado.";
             }
         }
 
         if (!empty($errores)) {
-            return ["success" => false, "message" => "Datos inválidos.", "data" => $errores];
+            return ["success" => false, "message" => "VALIDATION_ERROR", "fields" => $errores];
         }
 
         return ["success" => true];
@@ -410,6 +545,7 @@ class PedidoApiController
             'municipio' => $data['municipio_nombre'] ?? null,
             'barrio' => $data['barrio_nombre'] ?? null,
             'zona' => $data['zona'] ?? null,
+            'codigo_postal' => $data['codigo_postal'] ?? null,
             'precio_local' => $precioLocal,
             'precio_usd' => $precioUsd,
             // Combo pricing fields
@@ -417,6 +553,7 @@ class PedidoApiController
             'precio_total_usd' => $precioTotalUsd,
             'tasa_conversion_usd' => $tasaConversionUsd,
             'es_combo' => $esCombo,
+            'id_codigo_postal' => $data['id_codigo_postal'] ?? null,
         ];
 
         // Normalizar valores 0 a null
@@ -485,6 +622,7 @@ class PedidoApiController
             'municipio' => $pedido['municipio_nombre'] ?? null,
             'barrio' => $pedido['barrio_nombre'] ?? null,
             'zona' => $pedido['zona'] ?? null,
+            'codigo_postal' => $pedido['codigo_postal'] ?? null,
             'precio_local' => $pedido['precio_local'] ?? $pedido['precio'] ?? null,
             'precio_usd' => $pedido['precio_usd'] ?? null,
             // Combo pricing fields
@@ -492,6 +630,7 @@ class PedidoApiController
             'precio_total_usd' => $pedido['precio_total_usd'] ?? null,
             'tasa_conversion_usd' => $pedido['tasa_conversion_usd'] ?? null,
             'es_combo' => $esCombo,
+            'id_codigo_postal' => $pedido['id_codigo_postal'] ?? null,
         ];
     }
 

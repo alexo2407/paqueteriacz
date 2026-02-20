@@ -2159,13 +2159,20 @@ class PedidosModel
             }
             
             if (!empty($filtros['prioridad'])) {
-                $where[] = 'p.prioridad = :prioridad';
-                $params[':prioridad'] = $filtros['prioridad'];
+                // p.prioridad was dropped in migration 004
+                // $where[] = 'p.prioridad = :prioridad';
+                // $params[':prioridad'] = $filtros['prioridad'];
             }
 
             if (!empty($filtros['id_cliente'])) {
                 $where[] = 'p.id_cliente = :id_cliente';
                 $params[':id_cliente'] = $filtros['id_cliente'];
+            }
+
+            if (!empty($filtros['id_usuario_propietario'])) {
+                $where[] = '(p.id_proveedor = :id_prop_prov OR p.id_cliente = :id_prop_cli)';
+                $params[':id_prop_prov'] = $filtros['id_usuario_propietario'];
+                $params[':id_prop_cli'] = $filtros['id_usuario_propietario'];
             }
             
             if (!empty($filtros['fecha_desde'])) {
@@ -2269,6 +2276,12 @@ class PedidosModel
                 $where[] = 'p.id_cliente = :id_cliente';
                 $params[':id_cliente'] = $filtros['id_cliente'];
             }
+
+            if (!empty($filtros['id_usuario_propietario'])) {
+                $where[] = '(p.id_proveedor = :id_prop_prov OR p.id_cliente = :id_prop_cli)';
+                $params[':id_prop_prov'] = $filtros['id_usuario_propietario'];
+                $params[':id_prop_cli'] = $filtros['id_usuario_propietario'];
+            }
             if (!empty($filtros['fecha_desde'])) {
                 $where[] = 'p.fecha_ingreso >= :fecha_desde';
                 $params[':fecha_desde'] = $filtros['fecha_desde'];
@@ -2317,17 +2330,9 @@ class PedidosModel
             $stmt->execute([':id_pedido' => $idPedido]);
             $subtotal = (float)$stmt->fetchColumn();
             
-            // Obtener descuento e impuestos actuales del pedido
-            $stmt = $db->prepare('
-                SELECT descuento_usd, impuestos_usd
-                FROM pedidos
-                WHERE id = :id_pedido
-            ');
-            $stmt->execute([':id_pedido' => $idPedido]);
-            $datos = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            $descuento = (float)($datos['descuento_usd'] ?? 0);
-            $impuestos = (float)($datos['impuestos_usd'] ?? 0);
+            // Descuento e impuestos fueron eliminados en limpieza de columnas (migración 004)
+            $descuento = 0;
+            $impuestos = 0;
             $total = $subtotal - $descuento + $impuestos;
             
             return [

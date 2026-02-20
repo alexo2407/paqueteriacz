@@ -491,6 +491,7 @@ try {
                                     <div class="col-md-6 mb-3">
                                         <label for="codigo_postal" class="form-label">Código Postal 📮</label>
                                         <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" placeholder="Ej: 10101, 17008..." value="<?= htmlspecialchars($old_posted['codigo_postal'] ?? '') ?>">
+                                        <input type="hidden" name="id_codigo_postal" id="id_codigo_postal" value="<?= htmlspecialchars($old_posted['id_codigo_postal'] ?? '') ?>">
                                         <div id="cp_status_container" class="mt-1">
                                             <span id="cp_badge" class="badge bg-secondary">Sin validar</span>
                                             <div id="cp_conflict_selector" class="mt-2" style="display:none;">
@@ -736,6 +737,10 @@ try {
     ?>;
 
     const productosContainer = document.getElementById('productosContainer');
+    if (!productosContainer) {
+        console.error("Critical Error: productosContainer not found in DOM.");
+        return;
+    }
     const btnAdd = document.getElementById('btnAddProducto');
     const precioUsdInput = document.getElementById('precio_usd');
     const precioLocalInput = document.getElementById('precio_local');
@@ -1274,147 +1279,7 @@ document.getElementById('es_combo').addEventListener('change', function() {
     </div><!-- card crear-pedido-card -->
 </div><!-- container-fluid -->
 
-<!-- Logic for Zip Code Homologation & Performance -->
-<script>
-    (function() {
-        const useGlobalMap = <?= json_encode($useGlobalMap) ?>;
-        const globalMap = <?= $cpGlobalMapJson ?>;
-        const paisesArr = <?= json_encode($paises) ?>;
-        
-        const cpInput = document.getElementById('codigo_postal');
-        const badge = document.getElementById('cp_badge');
-        const conflictSelector = document.getElementById('cp_conflict_selector');
-        const conflictOptions = document.getElementById('cp_conflict_options');
-        
-        const idPaisSelect = document.getElementById('id_pais');
-        const idDeptoSelect = document.getElementById('id_departamento');
-        const idMuniSelect = document.getElementById('id_municipio');
-        const idBarrioSelect = document.getElementById('id_barrio');
 
-        let debounceTimer;
 
-        function normalizarCP(cp) {
-            return cp.toUpperCase().replace(/[\s-]/g, '');
-        }
-
-        function getNombrePais(id) {
-            const p = paisesArr.find(x => parseInt(x.id) === parseInt(id));
-            return p ? p.nombre : 'ID: ' + id;
-        }
-
-        function updateBadge(status, text) {
-            badge.textContent = text;
-            badge.className = 'badge';
-            switch(status) {
-                case 'homologado': badge.classList.add('bg-success'); break;
-                case 'pendiente': badge.classList.add('bg-warning', 'text-dark'); break;
-                case 'inactivo': badge.classList.add('bg-danger'); break;
-                case 'desconocido': badge.classList.add('bg-secondary'); break;
-                case 'multiple': badge.classList.add('bg-info', 'text-dark'); break;
-                default: badge.classList.add('bg-secondary'); break;
-            }
-        }
-
-        function handleCP() {
-            const rawVal = cpInput.value;
-            const normVal = normalizarCP(rawVal);
-            
-            // UI Feedback: Normalizar mientras escribe
-            if (cpInput.value !== normVal) {
-                cpInput.value = normVal;
-            }
-
-            // Reset UI
-            conflictSelector.style.display = 'none';
-            conflictOptions.innerHTML = '';
-
-            if (!normVal) {
-                updateBadge('default', 'Sin validar');
-                return;
-            }
-
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                // CASO A: Mapa local (Universal si useGlobalMap=true)
-                if (useGlobalMap) {
-                    const matches = globalMap.filter(item => item.codigo_postal === normVal);
-                    
-                    if (matches.length === 1) {
-                        applyMatch(matches[0]);
-                    } else if (matches.length > 1) {
-                        // Colisión detectada: múltiples países para el mismo CP
-                        updateBadge('multiple', 'CP en múltiples países');
-                        showConflictSelector(matches);
-                    } else {
-                        updateBadge('desconocido', 'Desconocido');
-                    }
-                } 
-                // CASO B: Alto volumen (No cargamos mapa global por performance)
-                else {
-                    updateBadge('pendiente', 'Se validará al guardar');
-                }
-            }, 350);
-        }
-
-        function showConflictSelector(matches) {
-            conflictSelector.style.display = 'block';
-            matches.forEach(m => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'btn btn-xs btn-outline-info p-1';
-                btn.style.fontSize = '0.7rem';
-                btn.textContent = getNombrePais(m.id_pais);
-                btn.onclick = () => {
-                    applyMatch(m);
-                    conflictSelector.style.display = 'none';
-                };
-                conflictOptions.appendChild(btn);
-            });
-        }
-
-        function applyMatch(match) {
-            if (parseInt(match.activo) === 0) {
-                updateBadge('inactivo', 'Inactivo en ' + getNombrePais(match.id_pais));
-            } else {
-                updateBadge('homologado', 'Homologado');
-                
-                // 1. Seleccionar país
-                if (match.id_pais && idPaisSelect.value != match.id_pais) {
-                    $(idPaisSelect).val(match.id_pais).trigger('change');
-                }
-
-                // 2. Autocompletar ubicación con delays para Select2 dinámico
-                setTimeout(() => {
-                    if (match.id_departamento) {
-                        $(idDeptoSelect).val(match.id_departamento).trigger('change');
-                        setTimeout(() => {
-                            if (match.id_municipio) {
-                                $(idMuniSelect).val(match.id_municipio).trigger('change');
-                                setTimeout(() => {
-                                    if (match.id_barrio) {
-                                        $(idBarrioSelect).val(match.id_barrio).trigger('change');
-                                    }
-                                }, 150);
-                            }
-                        }, 150);
-                    }
-                }, 150);
-            }
-        }
-
-        if (cpInput) {
-            cpInput.addEventListener('input', handleCP);
-            // Run on load if there's a initial value (not likely in create but for compatibility)
-            if (cpInput.value) handleCP();
-        }
-
-        // Limpieza por cascada: si cambia país manualmente, resetear aviso de colisión
-        if (idPaisSelect) {
-            $(idPaisSelect).on('change.select2', function() {
-                conflictSelector.style.display = 'none';
-            });
-        }
-    })();
-</script>
-
+<script src="<?= RUTA_URL ?>vista/js/codigos_postales_autocomplete.js?v=<?= time() ?>"></script>
 <?php include("vista/includes/footer.php"); ?>

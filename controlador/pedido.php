@@ -300,10 +300,8 @@ class PedidosController {
         
         // Ownership Security Filters
         require_once __DIR__ . '/../utils/permissions.php';
-        if (isProveedor() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_PROVEEDOR_CRM)) {
-            $filtros['id_proveedor'] = getCurrentUserId();
-        } elseif (isCliente() || (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_CLIENTE_CRM)) {
-            $filtros['id_cliente'] = getCurrentUserId();
+        if (!isAdmin()) {
+            $filtros['id_usuario_propietario'] = getCurrentUserId();
         }
 
         // Add support for filters from GET if needed
@@ -314,6 +312,11 @@ class PedidosController {
         if (isset($_GET['numero_orden'])) $filtros['numero_orden'] = $_GET['numero_orden'];
         if (isset($_GET['numero_cliente'])) $filtros['id_cliente'] = (int)$_GET['numero_cliente']; 
         
+        // Filtros adicionales soportados por el modelo
+        if (isset($_GET['fecha_desde'])) $filtros['fecha_desde'] = $_GET['fecha_desde'];
+        if (isset($_GET['fecha_hasta'])) $filtros['fecha_hasta'] = $_GET['fecha_hasta'];
+        if (isset($_GET['id_proveedor'])) $filtros['id_proveedor'] = (int)$_GET['id_proveedor'];
+        if (isset($_GET['id_vendedor'])) $filtros['id_vendedor'] = (int)$_GET['id_vendedor'];
         $data = PedidosModel::obtenerConFiltros($filtros);
         $total = PedidosModel::contarConFiltros($filtros);
         $totalPages = ceil($total / $limit);

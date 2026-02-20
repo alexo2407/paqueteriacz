@@ -779,44 +779,36 @@
                         <h4 data-lang="en">List Orders</h4>
                         <h4 data-lang="es">Listar Pedidos</h4>
                         <div class="code-block">
-                            <span class="badge-endpoint badge-get">GET</span> /api/pedidos/listar?page=1&limit=20
+                            <span class="badge-endpoint badge-get">GET</span> /api/pedidos/listar
                             <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
                         </div>
-                        <p class="small text-muted">Returns paginated list of orders.</p>
+                        <p data-lang="en">Retrieve a list of orders with advanced filtering and pagination. Use these parameters to refine your results.</p>
+                        <p data-lang="es">Obtén una lista de pedidos con filtrado avanzado y paginación. Usa estos parámetros para refinar tus resultados.</p>
                         
-                        <h5 class="mt-3" data-lang="en">Query Parameters</h5>
-                        <h5 class="mt-3" data-lang="es">Parámetros de Consulta</h5>
-                        <table class="table table-bordered table-sm">
-                            <thead>
-                                <tr>
-                                    <th><span data-lang="en">Parameter</span><span data-lang="es">Parámetro</span></th>
-                                    <th><span data-lang="en">Type</span><span data-lang="es">Tipo</span></th>
-                                    <th><span data-lang="en">Description</span><span data-lang="es">Descripción</span></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>page</code></td>
-                                    <td>int</td>
-                                    <td><span data-lang="en">Page number (default 1)</span><span data-lang="es">Número de página (defecto 1)</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>limit</code></td>
-                                    <td>int</td>
-                                    <td><span data-lang="en">Items per page (default 20)</span><span data-lang="es">Ítems por página (defecto 20)</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>numero_orden</code></td>
-                                    <td>string</td>
-                                    <td><span data-lang="en">Filter by order number (partial match)</span><span data-lang="es">Filtrar por número de orden (coincidencia parcial)</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>numero_cliente</code></td>
-                                    <td>int</td>
-                                    <td><span data-lang="en">Filter by client ID (exact match)</span><span data-lang="es">Filtrar por ID de cliente (coincidencia exacta)</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <h5 class="mt-4" data-lang="en">Query Parameters (Filters)</h5>
+                        <h5 class="mt-4" data-lang="es">Parámetros de Consulta (Filtros)</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead>
+                                    <tr>
+                                        <th><span data-lang="en">Parameter</span><span data-lang="es">Parámetro</span></th>
+                                        <th><span data-lang="en">Type</span><span data-lang="es">Tipo</span></th>
+                                        <th><span data-lang="en">Description</span><span data-lang="es">Descripción</span></th>
+                                        <th><span data-lang="en">Example</span><span data-lang="es">Ejemplo</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td><code>page</code></td><td>int</td><td><span data-lang="en">Page number (default: 1)</span><span data-lang="es">Número de página (defecto: 1)</span></td><td><code>1</code></td></tr>
+                                    <tr><td><code>limit</code></td><td>int</td><td><span data-lang="en">Results per page (max: 100)</span><span data-lang="es">Resultados por página (máx: 100)</span></td><td><code>20</code></td></tr>
+                                    <tr><td><code>numero_orden</code></td><td>string</td><td><span data-lang="en">Order number</span><span data-lang="es">Número de orden externo</span></td><td><code>88002</code></td></tr>
+                                    <tr><td><code>numero_cliente</code></td><td>int</td><td><span data-lang="en">Client ID</span><span data-lang="es">ID del cliente</span></td><td><code>10</code></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h5 class="mt-4" data-lang="en">Sample Request</h5>
+                        <h5 class="mt-4" data-lang="es">Ejemplo de Uso</h5>
+                        <pre class="code-block"><code>GET /api/pedidos/listar?numero_orden=88002&numero_cliente=10</code></pre>
                     </div>
 
                     <div class="mb-4">
@@ -838,30 +830,59 @@
                     <p data-lang="en">Create a new delivery order. The system automatically validates stock, calculates pricing, and enforces security rules based on user role.</p>
                     <p data-lang="es">Crea un nuevo pedido de entrega. El sistema valida automáticamente el stock, calcula precios y aplica reglas de seguridad según el rol del usuario.</p>
 
+                    <div class="alert alert-danger mt-3">
+                        <strong data-lang="en">⚠️ Strict Required Fields:</strong>
+                        <strong data-lang="es">⚠️ Campos estrictos (obligatorios):</strong>
+                        <p class="mb-0 mt-2" data-lang="en">These fields are <strong>REQUIRED/STRICT</strong>. If any is missing, empty, or incorrect, the order <strong>WILL NOT</strong> be created and an HTTP 400 error will be returned with field-specific details.</p>
+                        <p class="mb-0 mt-2" data-lang="es">Estos campos son <strong>REQUIRED/STRICT</strong>. Si falta alguno o viene vacío/incorrecto, el pedido <strong>NO</strong> se crea y se retorna HTTP 400 con detalle por campo.</p>
+                    </div>
+
                     <div class="code-block">
                         <span class="badge-endpoint badge-post">POST</span> /api/pedidos/crear
                         <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
                         <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                     </div>
 
-                    <h4 data-lang="en">🔑 Required Fields</h4>
-                    <h4 data-lang="es">🔑 Campos Obligatorios</h4>
+                    <h4 data-lang="en">🔑 Required Fields (Strict)</h4>
+                    <h4 data-lang="es">🔑 Campos Obligatorios (Estrictos)</h4>
                     
                      <table class="table table-sm table-bordered" data-lang="en">
                         <thead><tr><th>Field</th><th>Type</th><th>Validation</th><th>Description</th></tr></thead>
                         <tbody>
-                            <tr><td><code>numero_orden</code></td><td>integer</td><td>Unique, positive</td><td>Unique external order ID</td></tr>
-                            <tr><td><code>destinatario</code></td><td>string</td><td>Not empty</td><td>Recipient's full name</td></tr>
-                            <tr><td><code>producto_id</code> or <code>productos</code></td><td>int/array</td><td>Must exist in DB</td><td>Single product ID or array of products</td></tr>
+                            <tr><td><code>numero_orden</code></td><td>integer/string</td><td>STRICT</td><td>External order ID</td></tr>
+                            <tr><td><code>destinatario</code></td><td>string</td><td>STRICT</td><td>Recipient's full name</td></tr>
+                            <tr><td><code>producto_id</code></td><td>array</td><td>STRICT, not empty</td><td>Array of product objects/IDs</td></tr>
+                            <tr><td><code>id_cliente</code></td><td>integer</td><td>STRICT, exists</td><td>Client ID owner</td></tr>
+                            <tr><td><code>telefono</code></td><td>string</td><td>STRICT</td><td>Contact phone</td></tr>
+                            <tr><td><code>direccion</code></td><td>string</td><td>STRICT</td><td>Full delivery address</td></tr>
+                            <tr><td><code>comentario</code></td><td>string</td><td>STRICT</td><td>Delivery notes</td></tr>
+                            <tr><td><code>id_pais</code></td><td>integer</td><td>STRICT, exists</td><td>Country ID</td></tr>
+                            <tr><td><code>id_departamento</code></td><td>integer</td><td>STRICT, in country</td><td>Department ID</td></tr>
+                            <tr><td><code>id_municipio</code></td><td>integer</td><td>STRICT, in dept</td><td>Municipality ID</td></tr>
+                            <tr><td><code>zona</code></td><td>string</td><td>STRICT</td><td>Neighborhood/Zone</td></tr>
+                            <tr><td><code>codigo_postal</code></td><td>string</td><td>STRICT</td><td>Postal code</td></tr>
+                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>STRICT, > 0</td><td>Total local price</td></tr>
+                            <tr><td><code>es_combo</code></td><td>integer</td><td>STRICT (0 or 1)</td><td>1 for combo, 0 for standard</td></tr>
                         </tbody>
                     </table>
                     
                     <table class="table table-sm table-bordered" data-lang="es">
                         <thead><tr><th>Campo</th><th>Tipo</th><th>Validación</th><th>Descripción</th></tr></thead>
                         <tbody>
-                            <tr><td><code>numero_orden</code></td><td>entero</td><td>Único, positivo</td><td>ID externo único del pedido</td></tr>
-                            <tr><td><code>destinatario</code></td><td>string</td><td>No vacío</td><td>Nombre completo del destinatario</td></tr>
-                            <tr><td><code>producto_id</code> o <code>productos</code></td><td>int/array</td><td>Debe existir en BD</td><td>ID de producto único o array de productos</td></tr>
+                            <tr><td><code>numero_orden</code></td><td>integer/string</td><td>ESTRICTO</td><td>ID externo del pedido</td></tr>
+                            <tr><td><code>destinatario</code></td><td>string</td><td>ESTRICTO</td><td>Nombre del destinatario</td></tr>
+                            <tr><td><code>producto_id</code></td><td>array</td><td>ESTRICTO, no vacío</td><td>Array de productos (objetos o IDs)</td></tr>
+                            <tr><td><code>id_cliente</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del cliente dueño</td></tr>
+                            <tr><td><code>telefono</code></td><td>string</td><td>ESTRICTO</td><td>Teléfono de contacto</td></tr>
+                            <tr><td><code>direccion</code></td><td>string</td><td>ESTRICTO</td><td>Dirección completa</td></tr>
+                            <tr><td><code>comentario</code></td><td>string</td><td>ESTRICTO</td><td>Notas de entrega</td></tr>
+                            <tr><td><code>id_pais</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del país</td></tr>
+                            <tr><td><code>id_departamento</code></td><td>entero</td><td>ESTRICTO, en país</td><td>ID del departamento</td></tr>
+                            <tr><td><code>id_municipio</code></td><td>entero</td><td>ESTRICTO, en depto</td><td>ID del municipio</td></tr>
+                            <tr><td><code>zona</code></td><td>string</td><td>ESTRICTO</td><td>Zona o barrio</td></tr>
+                            <tr><td><code>codigo_postal</code></td><td>string</td><td>ESTRICTO</td><td>Código postal</td></tr>
+                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>ESTRICTO, > 0</td><td>Precio total local</td></tr>
+                            <tr><td><code>es_combo</code></td><td>entero</td><td>ESTRICTO (0 o 1)</td><td>1 si es combo, 0 si estándar</td></tr>
                         </tbody>
                     </table>
                     
@@ -881,30 +902,26 @@
                         <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                     </div>
 
-                    <h4 data-lang="en">📋 Optional Fields - Contact & Delivery</h4>
-                    <h4 data-lang="es">📋 Campos Opcionales - Contacto y Entrega</h4>
+                    <h4 data-lang="en">📋 Optional Details (Automatic)</h4>
+                    <h4 data-lang="es">📋 Detalles Opcionales (Automáticos)</h4>
                     
                     <table class="table table-sm table-bordered" data-lang="en">
                         <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
                         <tbody>
-                            <tr><td><code>telefono</code></td><td>string</td><td>''</td><td>Contact phone number</td></tr>
-                            <tr><td><code>direccion</code></td><td>string</td><td>''</td><td>Full delivery address</td></tr>
-                            <tr><td><code>comentario</code></td><td>string</td><td>null</td><td>Additional delivery notes</td></tr>
                             <tr><td><code>coordenadas</code></td><td>string</td><td>null</td><td>GPS format: "lat,long" (e.g. "14.6349,-90.5069")</td></tr>
                             <tr><td><code>latitud</code></td><td>float</td><td>null</td><td>Latitude (alternative to coordenadas)</td></tr>
                             <tr><td><code>longitud</code></td><td>float</td><td>null</td><td>Longitude (alternative to coordenadas)</td></tr>
+                            <tr><td><code>id_barrio</code></td><td>integer</td><td>null</td><td>Neighborhood/District ID (if known)</td></tr>
                         </tbody>
                     </table>
                     
                     <table class="table table-sm table-bordered" data-lang="es">
                         <thead><tr><th>Campo</th><th>Tipo</th><th>Defecto</th><th>Descripción</th></tr></thead>
                         <tbody>
-                            <tr><td><code>telefono</code></td><td>string</td><td>''</td><td>Teléfono de contacto</td></tr>
-                            <tr><td><code>direccion</code></td><td>string</td><td>''</td><td>Dirección completa de entrega</td></tr>
-                            <tr><td><code>comentario</code></td><td>string</td><td>null</td><td>Notas adicionales de entrega</td></tr>
                             <tr><td><code>coordenadas</code></td><td>string</td><td>null</td><td>Formato GPS: "lat,long" (ej. "14.6349,-90.5069")</td></tr>
                             <tr><td><code>latitud</code></td><td>float</td><td>null</td><td>Latitud (alternativa a coordenadas)</td></tr>
                             <tr><td><code>longitud</code></td><td>float</td><td>null</td><td>Longitud (alternativa a coordenadas)</td></tr>
+                            <tr><td><code>id_barrio</code></td><td>entero</td><td>null</td><td>ID del barrio/distrito (si se conoce)</td></tr>
                         </tbody>
                     </table>
 
@@ -980,25 +997,39 @@
                         </tbody>
                     </table>
 
+                    <h4 data-lang="en">❌ Error Response (Validation Error)</h4>
+                    <h4 data-lang="es">❌ Respuesta de Error (Falla de Validación)</h4>
+                    
+                    <p data-lang="en">When strict rules are not met, a <code>400 Bad Request</code> is returned with a <code>VALIDATION_ERROR</code> message and a <code>fields</code> object mapping each field to its specific error.</p>
+                    <p data-lang="es">Cuando no se cumplen las reglas estrictas, se devuelve <code>400 Bad Request</code> con el mensaje <code>VALIDATION_ERROR</code> y un objeto <code>fields</code> que detalla el error por cada campo.</p>
+                    
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "success": false,
+    "message": "VALIDATION_ERROR",
+    "fields": {
+        "numero_orden": "El número de orden ya existe para este cliente.",
+        "id_departamento": "El departamento no pertenece al país seleccionado.",
+        "telefono": "El campo 'telefono' debe tener al menos 7 caracteres."
+    }
+}</code></pre>
+
                     <h4 data-lang="en">✅ Automatic Validations</h4>
                     <h4 data-lang="es">✅ Validaciones Automáticas</h4>
                     
                     <ul data-lang="en">
-                        <li><strong>Stock validation:</strong> Ensures sufficient inventory before creating order</li>
-                        <li><strong>Unique order number:</strong> Prevents duplicate numero_orden</li>
-                        <li><strong>Coordinate format:</strong> Validates "lat,long" format</li>
-                        <li><strong>Valid products:</strong> Verifies product IDs exist in database</li>
-                        <li><strong>Positive quantities:</strong> All quantities must be > 0</li>
-                        <li><strong>Foreign key validation:</strong> Checks vendor, provider, client, currency exist</li>
+                        <li><strong>Geography Hierarchy:</strong> Rejects if Department doesn't match Country, or Municipality doesn't match Department.</li>
+                        <li><strong>CP Normalization:</strong> Postal codes are converted to uppercase and stripped of spaces/dashes before saving.</li>
+                        <li><strong>Order Uniqueness:</strong> Scoped by <code>id_cliente</code> to prevent collision between different clients' numbering.</li>
+                        <li><strong>Stock validation:</strong> Ensures sufficient inventory before creating order.</li>
+                        <li><strong>Foreign key validation:</strong> Verifies that all IDs (vendor, provider, client, currency) exist in database.</li>
                     </ul>
                     
                     <ul data-lang="es">
-                        <li><strong>Validación de stock:</strong> Asegura inventario suficiente antes de crear</li>
-                        <li><strong>Número único:</strong> Previene numero_orden duplicados</li>
-                        <li><strong>Formato coordenadas:</strong> Valida formato "lat,long"</li>
-                        <li><strong>Productos válidos:</strong> Verifica que IDs de productos existan en BD</li>
-                        <li><strong>Cantidades positivas:</strong> Todas las cantidades deben ser > 0</li>
-                        <li><strong>Validación FK:</strong> Verifica que vendedor, proveedor, cliente, moneda existan</li>
+                        <li><strong>Jerarquía Geográfica:</strong> Rechaza si el Depto no coincide con el País, o el Muni no coincide con el Depto.</li>
+                        <li><strong>Normalización de CP:</strong> Los códigos postales se convierten a mayúsculas y se limpian de espacios/guiones.</li>
+                        <li><strong>Unicidad de Orden:</strong> Validada por <code>id_cliente</code> para evitar colisiones entre numeración de distintos clientes.</li>
+                        <li><strong>Validación de stock:</strong> Asegura inventario suficiente antes de crear.</li>
+                        <li><strong>Validación FK:</strong> Verifica que todos los IDs (vendedor, proveedor, cliente, moneda) existan en BD.</li>
                     </ul>
 
                     <h4 data-lang="en">🔐 Security Rules</h4>
@@ -1007,50 +1038,46 @@
                     <p data-lang="en"><strong>Provider Role:</strong> If authenticated user is a Provider (role 4), the system automatically sets <code>id_proveedor</code> to their user ID, ignoring any value sent in the request.</p>
                     <p data-lang="es"><strong>Rol Proveedor:</strong> Si el usuario autenticado es Proveedor (rol 4), el sistema automáticamente asigna <code>id_proveedor</code> a su ID de usuario, ignorando cualquier valor enviado en la petición.</p>
 
-                    <h4 data-lang="en">📝 Example: Minimal Order</h4>
-                    <h4 data-lang="es">📝 Ejemplo: Pedido Mínimo</h4>
+                    <h4 data-lang="en">📝 Example: Valid Order with Minimal Fields</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Pedido Válido con Campos Mínimos</h4>
                     <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 12345,
     "destinatario": "Juan Pérez",
+    "id_cliente": 7,
+    "telefono": "50212345678",
+    "direccion": "Avenida 1-23 Zona 1",
+    "comentario": "Sin comentario",
+    "id_pais": 1,
+    "id_departamento": 1,
+    "id_municipio": 1,
+    "zona": "Zona 1",
+    "codigo_postal": "01001",
+    "precio_total_local": 100.00,
+    "es_combo": 0,
     "producto_id": 10,
     "cantidad": 2
 }</code></pre>
 
-                    <h4 data-lang="en">📝 Example: Complete Order with Combo Pricing</h4>
-                    <h4 data-lang="es">📝 Ejemplo: Pedido Completo con Precio Combo</h4>
+                    <h4 data-lang="en">📝 Example: Complete Multi-Product Combo</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Pedido Completo con Múltiples Productos y Combo</h4>
                     <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 12346,
     "destinatario": "María García",
-    "telefono": "50212345678",
+    "id_cliente": 15,
+    "telefono": "50298765432",
     "direccion": "Calle Principal #123",
-    "coordenadas": "14.6349,-90.5069",
     "comentario": "Entregar en horario de oficina",
     "id_pais": 1,
     "id_departamento": 5,
     "id_municipio": 25,
-    "id_proveedor": 8,
-    "id_cliente": 15,
+    "zona": "Candelaria",
+    "codigo_postal": "01005",
     "id_moneda": 2,
     "es_combo": 1,
-    "precio_total_local": 150.00,
+    "precio_total_local": 250.00,
     "productos": [
         { "producto_id": 10, "cantidad": 2 },
         { "producto_id": 15, "cantidad": 1 }
-    ]
-}</code></pre>
-
-                    <h4 data-lang="en">📝 Example: Multi-Product Standard Order</h4>
-                    <h4 data-lang="es">📝 Ejemplo: Pedido Estándar Multi-Producto</h4>
-                    <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": 10050,
-    "destinatario": "Maria Gonzalez",
-    "telefono": "8888-8888",
-    "direccion": "Bello Horizonte C-4",
-    "es_combo": 0,
-    "coordenadas": "12.1345,-86.2456",
-    "productos": [
-        { "producto_id": 1, "cantidad": 2 },
-        { "producto_id": 5, "cantidad": 1 }
     ]
 }</code></pre>
                  </div>
@@ -1509,6 +1536,66 @@ GET /api/productos/listar?id_cliente=15&activo=1&page=2&limit=10</code></pre>
                     </div>
                 </div>
                 
+                <!-- Postal Codes Endpoints -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">📮 Postal Codes (Códigos Postales)</h2>
+                    <h2 class="section-title" data-lang="es">📮 Códigos Postales</h2>
+                    
+                    <p data-lang="en">Resolve postal codes to geographic locations or find postal codes by zone.</p>
+                    <p data-lang="es">Resolver códigos postales a ubicaciones geográficas o buscar códigos postales por zona.</p>
+                    
+                    <div class="mb-5">
+                        <h4 data-lang="en">Resolve Postal Code</h4>
+                        <h4 data-lang="es">Resolver Código Postal</h4>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/codigos_postales?action=resolve&cp=<strong>&lt;cp&gt;</strong>[&amp;id_pais=<strong>&lt;id&gt;</strong>]
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                        
+                        <table class="table table-sm table-bordered mt-3">
+                            <thead><tr><th><span data-lang="en">Parameter</span><span data-lang="es">Parámetro</span></th><th><span data-lang="en">Type</span><span data-lang="es">Tipo</span></th><th><span data-lang="en">Req.</span><span data-lang="es">Req.</span></th><th><span data-lang="en">Description</span><span data-lang="es">Descripción</span></th></tr></thead>
+                            <tbody>
+                                <tr><td><code>cp</code></td><td>string</td><td>✅</td><td><span data-lang="en">Postal code to search</span><span data-lang="es">Código postal a buscar</span></td></tr>
+                                <tr><td><code>id_pais</code></td><td>integer</td><td>❌</td><td><span data-lang="en">Filter by specific country ID</span><span data-lang="es">Filtrar por ID de país específico</span></td></tr>
+                            </tbody>
+                        </table>
+                        
+                        <pre class="code-block line-numbers mt-3"><code class="language-json">// Response Example (Single Match/Specific)
+{
+    "ok": true,
+    "data": {
+        "normalized_cp": "08001",
+        "matches": [
+            {
+                "id_codigo_postal": 542,
+                "id_pais": 1,
+                "pais": "España",
+                "codigo_postal": "08001",
+                "id_departamento": 8,
+                "departamento": "Barcelona",
+                "id_municipio": 12,
+                "municipio": "Barcelona",
+                "id_barrio": null,
+                "barrio": null,
+                "partial": false
+            }
+        ]
+    }
+}</code></pre>
+                    </div>
+
+                    <div class="mb-4">
+                        <h4 data-lang="en">Find by Zone</h4>
+                        <h4 data-lang="es">Buscar por Zona</h4>
+                        <p data-lang="en">Get the postal code for a specific neighborhood.</p>
+                        <p data-lang="es">Obtener el código postal para un barrio específico.</p>
+                        <div class="code-block">
+                            <span class="badge-endpoint badge-get">GET</span> /api/geoinfo/codigos_postales?action=find_by_zone&id_pais=<strong>&lt;id&gt;</strong>&id_barrio=<strong>&lt;id&gt;</strong>
+                            <span class="badge bg-success float-end">🔓 <span data-lang="en">Public</span><span data-lang="es">Público</span></span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Search Endpoint -->
                 <div class="section-container">
                     <h2 class="section-title" data-lang="en">🔍 Unified Search</h2>

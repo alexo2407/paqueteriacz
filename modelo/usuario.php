@@ -446,6 +446,7 @@ class UsuarioModel {
                 }
             }
 
+            /* 
             // Fallback: si no se encontraron roles en pivot, usar el campo simple de usuarios
             if (empty($ids)) {
                 $q2 = $db->prepare('SELECT u.id_rol, r.nombre_rol FROM usuarios u LEFT JOIN roles r ON r.id = u.id_rol WHERE u.id = :uid');
@@ -458,6 +459,7 @@ class UsuarioModel {
                     }
                 }
             }
+            */
         } catch (PDOException $e) {
             error_log('Error obtenerRolesDeUsuario: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
         }

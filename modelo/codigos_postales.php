@@ -268,4 +268,60 @@ class CodigosPostalesModel {
             return [];
         }
     }
+
+    /**
+     * Búsqueda global por CP (para detectar colisiones) con nombres
+     */
+    public static function buscarGlobal($codigo_postal) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT cp.*, 
+                                         p.nombre as nombre_pais,
+                                         d.nombre as nombre_departamento, 
+                                         m.nombre as nombre_municipio, 
+                                         b.nombre as nombre_barrio 
+                                  FROM codigos_postales cp
+                                  INNER JOIN paises p ON cp.id_pais = p.id
+                                  LEFT JOIN departamentos d ON cp.id_departamento = d.id
+                                  LEFT JOIN municipios m ON cp.id_municipio = m.id
+                                  LEFT JOIN barrios b ON cp.id_barrio = b.id
+                                  WHERE cp.codigo_postal = :cp");
+            $stmt->execute([':cp' => strtoupper(trim((string)$codigo_postal))]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error en CodigosPostalesModel::buscarGlobal: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Buscar CP por zona (barrio) - Búsqueda inversa
+     */
+    public static function buscarPorZona($id_pais, $id_barrio) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT cp.*, 
+                                         p.nombre as nombre_pais,
+                                         d.nombre as nombre_departamento, 
+                                         m.nombre as nombre_municipio, 
+                                         b.nombre as nombre_barrio 
+                                  FROM codigos_postales cp
+                                  INNER JOIN paises p ON cp.id_pais = p.id
+                                  LEFT JOIN departamentos d ON cp.id_departamento = d.id
+                                  LEFT JOIN municipios m ON cp.id_municipio = m.id
+                                  LEFT JOIN barrios b ON cp.id_barrio = b.id
+                                  WHERE cp.id_pais = :id_pais 
+                                  AND cp.id_barrio = :id_barrio
+                                  AND cp.activo = 1
+                                  LIMIT 5");
+            $stmt->execute([
+                ':id_pais' => (int)$id_pais,
+                ':id_barrio' => (int)$id_barrio
+            ]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error en CodigosPostalesModel::buscarPorZona: " . $e->getMessage());
+            return [];
+        }
+    }
 }
