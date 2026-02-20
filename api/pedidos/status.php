@@ -31,21 +31,19 @@ try {
     require_once __DIR__ . '/../../controlador/pedido.php';
     require_once __DIR__ . '/../../services/LogisticsQueueService.php';
 
+    require_once __DIR__ . '/../utils/responder.php';
+
     // Verificar autenticación
     $token = AuthMiddleware::obtenerTokenDeHeaders();
     if (!$token) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Token requerido']);
-        exit;
+        responder(false, 'Token requerido', null, 401);
     }
 
     $auth = new AuthMiddleware();
     $validacion = $auth->validarToken($token);
     
     if (!$validacion['success']) {
-        http_response_code(401);
-        echo json_encode(['success' => false, 'message' => $validacion['message']]);
-        exit;
+        responder(false, $validacion['message'], null, 401);
     }
 
     // 2. Validar parámetros (numero_orden O numeros_orden) OR return summary
@@ -73,22 +71,17 @@ try {
         $userId = $validacion['data']['id'] ?? 0;
         
         if (!$userId) {
-             http_response_code(400);
-             echo json_encode(['success' => false, 'message' => 'No se pudo identificar al usuario para el resumen']);
-             exit;
+             responder(false, 'No se pudo identificar al usuario para el resumen', null, 400);
         }
 
         $summary = LogisticsQueueService::obtenerResumenPorProveedor($userId);
         $recentFailures = LogisticsQueueService::obtenerFallidosRecientesPorProveedor($userId, 10);
         
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
+        responder(true, "Dashboard resumen", [
             'mode' => 'provider_dashboard',
             'summary' => $summary,
             'recent_failures' => $recentFailures
-        ]);
-        exit;
+        ], 200);
     }
 
     // --> MODO CONSULTA (Single o Batch)
@@ -130,34 +123,22 @@ try {
         $results[] = $itemStatus;
     }
 
-    http_response_code(200);
-    
     if ($isBatch) {
-        echo json_encode([
-            'success' => true,
-            'results' => $results
-        ]);
+        responder(true, "Resultados batch", ['results' => $results], 200);
     } else {
         // Mantener formato original para single request
         $single = $results[0];
         if (!$single['found']) {
-             http_response_code(404);
-             echo json_encode(['success' => false, 'message' => 'Pedido no encontrado']);
-             exit;
+             responder(false, 'Pedido no encontrado', null, 404);
         }
-        echo json_encode([
-            'success' => true,
+        responder(true, "Estado trabajos pedido", [
             'numero_orden' => $single['numero_orden'],
             'has_jobs' => count($single['jobs']) > 0,
             'jobs' => $single['jobs']
-        ]);
+        ], 200);
     }
 
 } catch (Throwable $e) {
     error_log("Error en api/pedidos/status.php: " . $e->getMessage());
-    http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'message' => 'Error interno del servidor'
-    ]);
+    responder(false, 'Error interno del servidor', null, 500);
 }

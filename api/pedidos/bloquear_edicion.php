@@ -27,7 +27,7 @@ $isAdmin = (is_numeric($userRole) && (int)$userRole === 1) ||
            (is_string($userRole) && strcasecmp(trim($userRole), 'Admin') === 0);
 
 if (!$isAdmin) {
-    responder(false, "Solo administradores pueden bloquear/desbloquear pedidos", null, 403);
+    responder(false, "ERROR_PERMISOS", ["detail" => "Solo administradores pueden bloquear/desbloquear pedidos"], 403);
     exit;
 }
 

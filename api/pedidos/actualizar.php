@@ -43,7 +43,7 @@ try {
     );
     
     if (!$validacion['permitido']) {
-        responder(false, $validacion['mensaje'], null, 403);
+        responder(false, "ERROR_PERMISOS", ["detail" => $validacion['mensaje']], 403);
         exit;
     }
     

@@ -1,9 +1,9 @@
 <?php
 /**
- * GET /api/cliente/pedidos
+ * GET /api/mensajeria/pedidos
  *
- * Endpoint protegido para clientes.
- * Lista los pedidos asignados al cliente autenticado.
+ * Endpoint protegido para proveedores de mensajería.
+ * Lista los pedidos asignados al proveedor autenticado.
  */
 
 header('Access-Control-Allow-Origin: *');
@@ -40,17 +40,21 @@ try {
     }
 
     $userData = $validacion['data']; 
-    // $userData debería tener 'id' y 'rol' (o 'role')
+    $userId = (int)$userData['id'];
+    $userRole = (int)($userData['rol'] ?? 0);
 
-    // Verificar que sea Rol Cliente (según DB, id_rol=5 o nombre="Cliente")
-    // Aquí asumimos seguridad básica: si tiene token válido y es cliente, puede ver sus pedidos.
-    // Podríamos validar $userData['role_id'] == 5 si fuera estricto, pero confiamos en la lógica general.
-    
-    $clientId = (int)$userData['id'];
+    // Verificar Rol (Admin, Proveedor o Cliente/Comercio)
+    // En este proyecto: Roles 1 (Admin), 4 (Comercio/Creador), 5 (Mensajería)
+    // Aunque el usuario ID 10 tenga rol 4, semánticamente es del equipo de mensajería.
+    if ($userRole !== ROL_CLIENTE && $userRole !== ROL_PROVEEDOR && $userRole !== ROL_ADMIN) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'ERROR_PERMISOS', 'detail' => 'Tu rol no tiene acceso a esta sección']);
+        exit;
+    }
 
-    // Obtener pedidos del cliente
+    // Obtener pedidos donde el usuario sea el creador o el asignado
     $filtros = [
-        'id_cliente' => $clientId
+        'id_usuario_propietario' => $userId
     ];
     
     // Filtros opcionales por query param

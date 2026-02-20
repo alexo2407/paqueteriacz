@@ -55,6 +55,11 @@ RewriteCond %{REQUEST_URI} ^/[^/]+/api/productos/.*\.php$
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
+# Permitir acceso directo a archivos .php en mensajeria/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} /api/mensajeria/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
 # Permitir acceso directo a archivos .php en utils/ (sin pasar por router)
 RewriteCond %{REQUEST_URI} ^/[^/]+/api/utils/.*\.php$
 RewriteCond %{REQUEST_FILENAME} -f

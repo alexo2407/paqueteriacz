@@ -510,8 +510,8 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="client-tab" data-bs-toggle="tab" data-bs-target="#client" type="button" role="tab">
-                    <span data-lang="en">📱 Client App</span><span data-lang="es">📱 App Cliente</span>
+                <button class="nav-link" id="mensajeria-tab" data-bs-toggle="tab" data-bs-target="#mensajeria" type="button" role="tab">
+                    <span data-lang="en">📱 Messenger App</span><span data-lang="es">📱 App Mensajería</span>
                 </button>
             </li>
         </ul>
@@ -853,6 +853,7 @@
                             <tr><td><code>destinatario</code></td><td>string</td><td>STRICT</td><td>Recipient's full name</td></tr>
                             <tr><td><code>producto_id</code></td><td>array</td><td>STRICT, not empty</td><td>Array of product objects/IDs</td></tr>
                             <tr><td><code>id_cliente</code></td><td>integer</td><td>STRICT, exists</td><td>Client ID owner</td></tr>
+                            <tr><td><code>id_proveedor</code></td><td>integer</td><td>STRICT, exists</td><td>Messenger/Provider ID assigned</td></tr>
                             <tr><td><code>telefono</code></td><td>string</td><td>STRICT</td><td>Contact phone</td></tr>
                             <tr><td><code>direccion</code></td><td>string</td><td>STRICT</td><td>Full delivery address</td></tr>
                             <tr><td><code>comentario</code></td><td>string</td><td>STRICT</td><td>Delivery notes</td></tr>
@@ -873,6 +874,7 @@
                             <tr><td><code>destinatario</code></td><td>string</td><td>ESTRICTO</td><td>Nombre del destinatario</td></tr>
                             <tr><td><code>producto_id</code></td><td>array</td><td>ESTRICTO, no vacío</td><td>Array de productos (objetos o IDs)</td></tr>
                             <tr><td><code>id_cliente</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del cliente dueño</td></tr>
+                            <tr><td><code>id_proveedor</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del proveedor de mensajería asignado</td></tr>
                             <tr><td><code>telefono</code></td><td>string</td><td>ESTRICTO</td><td>Teléfono de contacto</td></tr>
                             <tr><td><code>direccion</code></td><td>string</td><td>ESTRICTO</td><td>Dirección completa</td></tr>
                             <tr><td><code>comentario</code></td><td>string</td><td>ESTRICTO</td><td>Notas de entrega</td></tr>
@@ -957,7 +959,7 @@
                         <tbody>
                             <tr><td><code>id_estado</code></td><td>integer</td><td>1</td><td>Order status (see Status Reference)</td></tr>
                             <tr><td><code>id_vendedor</code></td><td>integer</td><td>null</td><td>Assigned delivery person</td></tr>
-                            <tr><td><code>id_proveedor</code></td><td>integer</td><td>null</td><td>Provider ID (auto-set for Provider role)</td></tr>
+                            <tr><td><code>id_proveedor</code></td><td>integer</td><td>✅ Yes</td><td>Messenger/Provider ID assigned to the order</td></tr>
                             <tr><td><code>id_cliente</code></td><td>integer</td><td>null</td><td>Client ID</td></tr>
                             <tr><td><code>id_moneda</code></td><td>integer</td><td>null</td><td>Currency ID (auto-detected from provider's country if not provided)</td></tr>
                         </tbody>
@@ -968,7 +970,7 @@
                         <tbody>
                             <tr><td><code>id_estado</code></td><td>entero</td><td>1</td><td>Estado del pedido (ver Referencia de Estados)</td></tr>
                             <tr><td><code>id_vendedor</code></td><td>entero</td><td>null</td><td>Repartidor asignado</td></tr>
-                            <tr><td><code>id_proveedor</code></td><td>entero</td><td>null</td><td>ID del proveedor (auto-asignado para rol Proveedor)</td></tr>
+                            <tr><td><code>id_proveedor</code></td><td>entero</td><td>✅ Sí</td><td>ID del usuario de mensajería (Proveedor) asignado</td></tr>
                             <tr><td><code>id_cliente</code></td><td>entero</td><td>null</td><td>ID del cliente</td></tr>
                             <tr><td><code>id_moneda</code></td><td>entero</td><td>null</td><td>ID de la moneda (auto-detectada del país del proveedor si no se envía)</td></tr>
                         </tbody>
@@ -1035,8 +1037,8 @@
                     <h4 data-lang="en">🔐 Security Rules</h4>
                     <h4 data-lang="es">🔐 Reglas de Seguridad</h4>
                     
-                    <p data-lang="en"><strong>Provider Role:</strong> If authenticated user is a Provider (role 4), the system automatically sets <code>id_proveedor</code> to their user ID, ignoring any value sent in the request.</p>
-                    <p data-lang="es"><strong>Rol Proveedor:</strong> Si el usuario autenticado es Proveedor (rol 4), el sistema automáticamente asigna <code>id_proveedor</code> a su ID de usuario, ignorando cualquier valor enviado en la petición.</p>
+                    <p data-lang="en"><strong>Provider Assignment:</strong> This field is strict. You must explicitly provide the ID of the user (role Provider) who will handle the delivery.</p>
+                    <p data-lang="es"><strong>Asignación de Proveedor:</strong> Este campo es estricto. Debes proporcionar explícitamente el ID del usuario (rol Proveedor) que gestionará la entrega.</p>
 
                     <h4 data-lang="en">📝 Example: Valid Order with Minimal Fields</h4>
                     <h4 data-lang="es">📝 Ejemplo: Pedido Válido con Campos Mínimos</h4>
@@ -1216,7 +1218,8 @@
                                 <tr><td><code>limit</code></td><td>integer</td><td>Items per page (default 50)</td></tr>
                                 <tr><td><code>id_cliente</code></td><td>integer</td><td>Filter by Creator/Client ID</td></tr>
                                 <tr><td><code>categoria_id</code></td><td>integer</td><td>Filter by Category ID</td></tr>
-                                <tr><td><code>marca</code></td><td>string</td><td>Filter by Brand name (exact match)</td></tr>
+                                 <tr><td><code>marca</code></td><td>string</td><td>Filter by Brand name (exact match)</td></tr>
+                                <tr><td><code>sku</code></td><td>string</td><td>Filter by exact SKU</td></tr>
                                 <tr><td><code>activo</code></td><td>boolean</td><td>Filter by active status (1/0 or true/false)</td></tr>
                             </tbody>
                         </table>
@@ -1229,6 +1232,7 @@
                                 <tr><td><code>id_cliente</code></td><td>entero</td><td>Filtrar por ID de Cliente/Creador</td></tr>
                                 <tr><td><code>categoria_id</code></td><td>entero</td><td>Filtrar por ID de Categoría</td></tr>
                                 <tr><td><code>marca</code></td><td>string</td><td>Filtrar por Marca (coincidencia exacta)</td></tr>
+                                <tr><td><code>sku</code></td><td>string</td><td>Filtrar por SKU exacto</td></tr>
                                 <tr><td><code>activo</code></td><td>boolean</td><td>Filtrar por estado activo (1/0 o true/false)</td></tr>
                             </tbody>
                         </table>
@@ -1255,7 +1259,28 @@ GET /api/productos/listar?id_cliente=15&activo=1&page=2&limit=10</code></pre>
                             <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
                             <span class="badge bg-warning text-dark float-end me-1">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                         </div>
+                         <p data-lang="en" class="mt-2">Create a new product.</p>
                          <p data-lang="es" class="mt-2">Crear un nuevo producto.</p>
+                         
+                         <h5 data-lang="en" class="mt-3">Request Body</h5>
+                         <h5 data-lang="es" class="mt-3">Cuerpo de la Petición</h5>
+                         <table class="table table-sm table-bordered mt-2">
+                             <thead>
+                                 <tr>
+                                     <th><span data-lang="en">Field</span><span data-lang="es">Campo</span></th>
+                                     <th><span data-lang="en">Type</span><span data-lang="es">Tipo</span></th>
+                                     <th><span data-lang="en">Req.</span><span data-lang="es">Req.</span></th>
+                                     <th><span data-lang="en">Description</span><span data-lang="es">Descripción</span></th>
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                 <tr><td><code>nombre</code></td><td>string</td><td>✅</td><td><span data-lang="en">Product name</span><span data-lang="es">Nombre del producto</span></td></tr>
+                                 <tr><td><code>sku</code></td><td>string</td><td>❌</td><td><span data-lang="en">Unique identifier (SKU)</span><span data-lang="es">Identificador único (SKU)</span></td></tr>
+                                 <tr><td><code>descripcion</code></td><td>string</td><td>❌</td><td><span data-lang="en">Product description</span><span data-lang="es">Descripción del producto</span></td></tr>
+                                 <tr><td><code>precio_usd</code></td><td>number</td><td>❌</td><td><span data-lang="en">Price in USD</span><span data-lang="es">Precio en USD</span></td></tr>
+                                 <tr><td><code>stock</code></td><td>integer</td><td>❌</td><td><span data-lang="en">Initial stock level</span><span data-lang="es">Nivel de stock inicial</span></td></tr>
+                             </tbody>
+                         </table>
                     </div>
                     
                     <h4 data-lang="en">Product Object Model</h4>
@@ -1263,6 +1288,7 @@ GET /api/productos/listar?id_cliente=15&activo=1&page=2&limit=10</code></pre>
                      <pre class="code-block line-numbers"><code class="language-json">{
     "id": 1,
     "nombre": "Protein Shake",
+    "sku": "PROT-SHK-001",
     "precio_usd": "45.00",
     "stock_total": 150,
     "descripcion": "High quality whey protein"
@@ -1286,6 +1312,7 @@ GET /api/productos/listar?id_cliente=15&activo=1&page=2&limit=10</code></pre>
                         <pre class="code-block line-numbers"><code class="language-json">{
     "id": 1,
     "nombre": "Protein Shake V2",
+    "sku": "PROT-SHK-001-B",
     "precio_usd": 48.00,
     "descripcion": "New formula"
 }</code></pre>
@@ -1825,55 +1852,80 @@ municipalitySelect.addEventListener('change', (e) => {
 
 
             <!-- Tab: Client App -->
-            <div class="tab-pane fade" id="client" role="tabpanel" aria-labelledby="client-tab">
+            <div class="tab-pane fade" id="mensajeria" role="tabpanel" aria-labelledby="mensajeria-tab">
                 <div class="section-container">
-                    <h2 class="section-title" data-lang="en">Client Application API</h2>
-                    <h2 class="section-title" data-lang="es">API App Cliente</h2>
+                    <h2 class="section-title" data-lang="en">Messenger Application API</h2>
+                    <h2 class="section-title" data-lang="es">API App de Mensajería</h2>
                     
-                    <p data-lang="en">Specialized endpoints for the end-customer mobile/web app.</p>
-                    <p data-lang="es">Endpoints especializados para la app móvil/web del cliente final.</p>
-                
-                    <!-- Client Orders -->
-                    <div class="mb-5">
-                        <h4 data-lang="en">My Orders</h4>
-                        <h4 data-lang="es">Mis Pedidos</h4>
-                        <p data-lang="en">Get list of orders belonging to the authenticated client.</p>
-                        <p data-lang="es">Obtener lista de pedidos pertenecientes al cliente autenticado.</p>
+                        <p data-lang="en">Specialized endpoints for the delivery provider app.</p>
+                        <p data-lang="es">Endpoints especializados para la app de los proveedores de mensajería (logística).</p>
+                    
+                        <!-- Messenger Orders -->
+                        <div class="mb-5">
+                            <h4 data-lang="en">Assigned Orders</h4>
+                            <h4 data-lang="es">Mis Asignaciones</h4>
+                            <p data-lang="en">Get list of orders assigned to the authenticated provider.</p>
+                            <p data-lang="es">Obtener lista de pedidos asignados al proveedor autenticado.</p>
+    
+                            <div class="code-block">
+                                <span class="badge-endpoint badge-get">GET</span> /api/mensajeria/pedidos?page=1&limit=20
+                                <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Messenger</span><span data-lang="es">Rol: Mensajería</span></span>
+                            </div>
 
-                        <div class="code-block">
-                            <span class="badge-endpoint badge-get">GET</span> /api/cliente/pedidos
-                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Provider</span><span data-lang="es">Rol: Proveedor</span></span>
-                        </div>
+                         <table class="table table-sm table-bordered mt-2">
+                             <thead><tr><th>Field / Campo</th><th>Req.</th><th>Type</th><th>Description</th></tr></thead>
+                             <tbody>
+                                 <tr><td><code>page</code></td><td>No</td><td>integer</td><td>
+                                    <span data-lang="en">Page number (default: 1).</span>
+                                    <span data-lang="es">Número de página (por defecto: 1).</span>
+                                 </td></tr>
+                                 <tr><td><code>limit</code></td><td>No</td><td>integer</td><td>
+                                    <span data-lang="en">Items per page (default: 20, max: 100).</span>
+                                    <span data-lang="es">Items por página (por defecto: 20, máx: 100).</span>
+                                 </td></tr>
+                                 <tr><td><code>estado</code></td><td>No</td><td>integer</td><td>
+                                    <span data-lang="en">Filter by status ID.</span>
+                                    <span data-lang="es">Filtrar por ID de estado.</span>
+                                 </td></tr>
+                             </tbody>
+                        </table>
+
                         <pre class="code-block line-numbers"><code class="language-json">{
     "success": true,
     "data": [
         {
-            "id": 100,
-            "numero_orden": "ORD-2025-001",
-            "estado": "En ruta",
-            "productos": "Producto A (x2)"
+            "ID_Pedido": 100,
+            "Numero_Orden": "ORD-2025-001",
+            "Estado": "En ruta",
+            "Cliente": "Juan Pérez"
         }
-    ]
+    ],
+    "pagination": {
+        "total": 45,
+        "page": 1,
+        "limit": 20,
+        "total_pages": 3
+    }
 }</code></pre>
                     </div>
 
-                    <!-- Client Status Update -->
-                    <div class="mb-4">
-                        <h4 data-lang="en">Change Order Status (Client Restriction)</h4>
-                        <h4 data-lang="es">Cambiar Estado de Pedido (Restricción Cliente)</h4>
-                        <p data-lang="en">Allows clients to change order status <strong>ONLY</strong> to Reprogramado (4) or Devuelto (7).</p>
-                        <p data-lang="es">Permite a los clientes cambiar el estado del pedido <strong>SOLO</strong> a Reprogramado (4) o Devuelto (7).</p>
-
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <span data-lang="en"><strong>Rules:</strong> Status changes are forbidden if the current status is "Delivered" (3). Motive is REQUIRED for returns.</span>
-                            <span data-lang="es"><strong>Reglas:</strong> No se permite cambiar el estado si el pedido ya está "Entregado" (3). El motivo es OBLIGATORIO para devoluciones.</span>
-                        </div>
-
-                        <div class="code-block">
-                            <span class="badge-endpoint badge-post">POST</span> /api/cliente/cambiar_estado
-                            <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
-                        </div>
+                        <!-- Messenger Status Update -->
+                        <div class="mb-4">
+                            <h4 data-lang="en">Change Order Status</h4>
+                            <h4 data-lang="es">Cambiar Estado de Pedido</h4>
+                            <p data-lang="en">Allows providers to update delivery progress states.</p>
+                            <p data-lang="es">Permite a los proveedores actualizar los estados de progreso de entrega.</p>
+    
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <span data-lang="en"><strong>Rules:</strong> Status changes are audited and some transitions might be restricted based on current state.</span>
+                                <span data-lang="es"><strong>Reglas:</strong> Los cambios de estado son auditados y algunas transiciones pueden estar restringidas según el estado actual.</span>
+                            </div>
+    
+                            <div class="code-block">
+                                <span class="badge-endpoint badge-post">POST</span> /api/mensajeria/cambiar_estado
+                                <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Messenger</span><span data-lang="es">Rol: Mensajería</span></span>
+                            </div>
                         
                          <table class="table table-sm table-bordered mt-2">
                              <thead><tr><th>Field / Campo</th><th>Req.</th><th>Allowed Values / Valores Permitidos</th><th>Description</th></tr></thead>
@@ -1886,9 +1938,9 @@ municipalitySelect.addEventListener('change', (e) => {
                                     <span data-lang="en">External Order Number. <strong>Required</strong> if <code>id_pedido</code> not provided.</span>
                                     <span data-lang="es">Número de orden externo. <strong>Requerido</strong> si no se envía <code>id_pedido</code>.</span>
                                  </td></tr>
-                                 <tr><td><code>estado</code></td><td>Yes</td><td><code>4</code> o <code>7</code></td><td>
-                                    <span data-lang="en">4: Reprogramado (Rescheduled)<br>7: Devuelto (Returned)</span>
-                                    <span data-lang="es">4: Reprogramado<br>7: Devuelto</span>
+                                 <tr><td><code>estado</code></td><td>Yes</td><td>integer</td><td>
+                                    <span data-lang="en">Target Status ID (e.g., 3: Delivered, 4: Rescheduled, 7: Returned).</span>
+                                    <span data-lang="es">ID del estado destino (ej: 3: Entregado, 4: Reprogramado, 7: Devuelto).</span>
                                  </td></tr>
                                  <tr><td><code>motivo</code></td><td>Cond.</td><td>string</td><td>
                                     <span data-lang="en">Reason. <strong>Mandatory</strong> if status=7.</span>

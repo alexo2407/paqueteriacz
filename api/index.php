@@ -63,7 +63,14 @@ set_exception_handler(function ($e) {
 
 // Normalizar la ruta solicitada (sin query string) y quitar slash final
 $rawPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$path = rtrim($rawPath, '/');
+
+// Si estamos en un subdirectorio, normalizar la ruta quitando el prefijo antes de /api
+if ($apiPos = strrpos($rawPath, '/api/')) {
+    $path = substr($rawPath, $apiPos);
+} else {
+    $path = $rawPath;
+}
+$path = rtrim($path, '/');
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Rutas explícitas mínimas (usar includes relativos correctos)
@@ -242,30 +249,30 @@ if (preg_match('/\/api\/crm\/updates_datatable\.php$/', $path) && ($method === '
 }
 
 // -----------------------
-// Rutas Cliente (App/Web)
+// Rutas Mensajería (App/Web)
 // -----------------------
 
-// GET /api/cliente/pedidos - Listar pedidos del cliente
-if (preg_match('/\/api\/cliente\/pedidos$/', $path) && $method === 'GET') {
-    require_once __DIR__ . '/cliente/pedidos.php';
+// GET /api/mensajeria/pedidos - Listar pedidos del proveedor
+if (preg_match('/\/api\/mensajeria\/pedidos$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/mensajeria/pedidos.php';
     exit;
 }
 
-// POST /api/cliente/cambiar_estado - Actualizar estado
-if (preg_match('/\/api\/cliente\/cambiar_estado$/', $path) && $method === 'POST') {
-    require_once __DIR__ . '/cliente/cambiar_estado.php';
+// POST /api/mensajeria/cambiar_estado - Actualizar estado
+if (preg_match('/\/api\/mensajeria\/cambiar_estado$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/mensajeria/cambiar_estado.php';
     exit;
 }
 
 
-// Si la ruta está bajo /api/ devolvemos JSON 404 para APIs
-if (strpos($path, '/api/') === 0) {
+// Si la ruta está bajo /api/ o no se encontró arriba, devolvemos JSON 404
+if (strpos($path, '/api/') === 0 || strpos($rawPath, '/api/') !== false) {
     // Inteligencia Adicional: Si no hubo match explícito arriba, intentar buscar el archivo físicamente
     // Esto previene errores de 404 si el archivo existe pero olvidamos registrarlo en el router.
-    $relativePart = substr($path, 5); // Quitar '/api/'
-    $possibleFile = __DIR__ . '/' . $relativePart . '.php';
+    $relativePart = strpos($path, '/api/') === 0 ? substr($path, 5) : substr($path, strpos($path, '/api/') + 5);
+    $possibleFile = __DIR__ . '/' . trim($relativePart, '/') . '.php';
     
-    if (file_exists($possibleFile) && is_file($possibleFile)) {
+    if (!empty($relativePart) && file_exists($possibleFile) && is_file($possibleFile)) {
         require_once $possibleFile;
         exit;
     }
@@ -285,5 +292,5 @@ if (strpos($path, '/api/') === 0) {
 
 // No es una ruta API: redirigir a la página 404 del sitio
 http_response_code(404);
-header("Location: 404/");
+header("Location: " . (defined('BASE_URL') ? BASE_URL : '/') . "404/");
 exit;

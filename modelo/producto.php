@@ -222,12 +222,13 @@ class ProductoModel
      * Automáticamente asigna el id_usuario_creador del usuario actual.
      * 
      * @param string $nombre
+     * @param string|null $sku
      * @param string|null $descripcion
      * @param float|null $precioUsd
      * @param int|null $idUsuarioCreador ID del usuario creador (si null, se obtiene automáticamente)
      * @return int|null ID creado o null en error
      */
-    public static function crear($nombre, $descripcion = null, $precioUsd = null, $idUsuarioCreador = null)
+    public static function crear($nombre, $sku = null, $descripcion = null, $precioUsd = null, $idUsuarioCreador = null)
     {
         try {
             // Si no se especifica el creador, obtenerlo del contexto actual
@@ -236,8 +237,13 @@ class ProductoModel
             }
             
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('INSERT INTO productos (nombre, descripcion, precio_usd, id_usuario_creador) VALUES (:nombre, :descripcion, :precio_usd, :id_usuario_creador)');
+            $stmt = $db->prepare('INSERT INTO productos (nombre, sku, descripcion, precio_usd, id_usuario_creador) VALUES (:nombre, :sku, :descripcion, :precio_usd, :id_usuario_creador)');
             $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
+            if ($sku === null || $sku === '') {
+                $stmt->bindValue(':sku', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':sku', $sku, PDO::PARAM_STR);
+            }
             if ($descripcion === null || $descripcion === '') {
                 $stmt->bindValue(':descripcion', null, PDO::PARAM_NULL);
             } else {
@@ -263,7 +269,7 @@ class ProductoModel
                 'crear',
                 $idUsuarioCreador,
                 null,
-                ['nombre' => $nombre, 'descripcion' => $descripcion, 'precio_usd' => $precioUsd, 'id_usuario_creador' => $idUsuarioCreador]
+                ['nombre' => $nombre, 'sku' => $sku, 'descripcion' => $descripcion, 'precio_usd' => $precioUsd, 'id_usuario_creador' => $idUsuarioCreador]
             );
             
             return $nuevoId;

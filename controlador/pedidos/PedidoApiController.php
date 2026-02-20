@@ -22,23 +22,13 @@ class PedidoApiController
         $isProvider = (is_numeric($authUserRole) && (int)$authUserRole === 4) || 
                       (is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0);
 
-        // Si el usuario es Proveedor, forzar su ID como proveedor del pedido
+        // Auto-detectar moneda del proveedor si no se envió id_moneda y el usuario es proveedor
         if ($isProvider && $authUserId > 0) {
-            $data['id_proveedor'] = $authUserId;
-            $data['proveedor'] = $authUserId;
-            
-            // Auto-detectar moneda del proveedor si no se envió id_moneda
             if (!isset($data['id_moneda']) || $data['id_moneda'] === '' || $data['id_moneda'] === 0) {
-                error_log("DEBUG - Auto-detectando moneda para proveedor: $authUserId");
                 $monedaProveedor = $this->obtenerMonedaDeProveedor($authUserId);
                 if ($monedaProveedor) {
                     $data['id_moneda'] = $monedaProveedor;
-                    error_log("DEBUG - Moneda auto-detectada y asignada: $monedaProveedor");
-                } else {
-                    error_log("DEBUG - No se pudo auto-detectar moneda");
                 }
-            } else {
-                error_log("DEBUG - Moneda ya proporcionada en request: " . $data['id_moneda']);
             }
         }
 
@@ -139,12 +129,6 @@ class PedidoApiController
         foreach ($payload['pedidos'] as $pedido) {
             $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
 
-            // Si el usuario es Proveedor, forzar su ID
-            if ($isProvider && $authUserId > 0) {
-                $pedido['id_proveedor'] = $authUserId;
-                $pedido['proveedor'] = $authUserId;
-            }
-
             // Validación básica
             $valid = $this->validar($pedido);
             if (!$valid['success']) {
@@ -235,6 +219,7 @@ class PedidoApiController
             'numero_orden' => ['required' => true, 'numeric' => true, 'min' => 1],
             'destinatario' => ['required' => true, 'min_len' => 2],
             'id_cliente'   => ['required' => true, 'numeric' => true],
+            'id_proveedor' => ['required' => true, 'numeric' => true],
             'telefono'     => ['required' => true, 'min_len' => 7],
             'direccion'    => ['required' => true, 'min_len' => 5],
             'comentario'   => ['required' => true, 'min_len' => 1],

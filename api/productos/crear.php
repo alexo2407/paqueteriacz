@@ -3,7 +3,7 @@
  * POST /api/productos/crear
  *
  * Crea un producto. Requiere Authorization: Bearer <JWT>.
- * Request JSON: { nombre: string (required), descripcion?: string, precio_usd?: number }
+ * Request JSON: { nombre: string (required), sku?: string, descripcion?: string, precio_usd?: number }
  * Response: { success, message, id }
  */
 
@@ -42,6 +42,7 @@ if (!is_array($body)) {
 }
 
 $nombre = trim($body['nombre'] ?? '');
+$sku = isset($body['sku']) ? trim($body['sku']) : null;
 $descripcion = isset($body['descripcion']) ? trim($body['descripcion']) : null;
 $precioUsd = isset($body['precio_usd']) && $body['precio_usd'] !== '' ? $body['precio_usd'] : null;
 // Optional initial stock provided in payload
@@ -55,7 +56,7 @@ if ($nombre === '') {
 // Crear producto
 // Pasar id del usuario autenticado como creador
 $userId = $valid['data']['id'] ?? null;
-$newId = ProductoModel::crear($nombre, $descripcion, $precioUsd, $userId);
+$newId = ProductoModel::crear($nombre, $sku, $descripcion, $precioUsd, $userId);
 
 if ($newId === null) {
     responder(false, 'Error al crear el producto.', null, 500);

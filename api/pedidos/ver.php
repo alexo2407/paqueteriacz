@@ -31,14 +31,27 @@ if (!$idPedido) {
 }
 
 try {
+    $userId = (int)($validacion['data']['id'] ?? 0);
+    $userRole = (int)($validacion['data']['rol'] ?? 0);
+
     $controller = new PedidosController();
     $pedido = $controller->obtenerPedido($idPedido);
 
-    if ($pedido) {
-        responder(true, "Detalle del pedido", $pedido, 200);
-    } else {
+    if (!$pedido) {
         responder(false, "Pedido no encontrado", null, 404);
+        exit;
     }
+
+    // Ownership verification
+    $isAdmin = ($userRole === 1); // ROL_ADMIN
+    $isOwner = ((int)$pedido['id_cliente'] === $userId || (int)$pedido['id_proveedor'] === $userId);
+
+    if (!$isAdmin && !$isOwner) {
+        responder(false, "ERROR_PERMISOS", ["detail" => "No tienes permiso para ver este pedido."], 403);
+        exit;
+    }
+
+    responder(true, "Detalle del pedido", $pedido, 200);
 } catch (Exception $e) {
     responder(false, "Error: " . $e->getMessage(), null, 500);
 }

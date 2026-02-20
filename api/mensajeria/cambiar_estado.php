@@ -1,9 +1,9 @@
 <?php
 /**
- * POST /api/cliente/cambiar_estado
+ * POST /api/mensajeria/cambiar_estado
  *
- * Endpoint protegido para clientes.
- * Permite cambiar el estado de un pedido asignado al cliente.
+ * Endpoint protegido para proveedores de mensajería.
+ * Permite cambiar el estado de un pedido.
  */
 
 header('Access-Control-Allow-Origin: *');
@@ -41,11 +41,11 @@ try {
     $clientId = (int)($userData['id'] ?? 0);
     $userRole = (int)($userData['rol'] ?? 0);
 
-    // 2. Verificar Rol (Permitir Cliente y Proveedor de Logística)
+    // 2. Verificar Rol (Permitir Admin, Proveedor de Logística y Mensajería)
     // Nota: Los IDs 4 y 5 están intercambiados semánticamente en este proyecto.
-    if ($userRole !== ROL_CLIENTE && $userRole !== ROL_PROVEEDOR) {
+    if ($userRole !== ROL_CLIENTE && $userRole !== ROL_PROVEEDOR && $userRole !== ROL_ADMIN) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Tu rol no tiene permiso para realizar esta acción']);
+        echo json_encode(['success' => false, 'message' => 'ERROR_PERMISOS', 'detail' => 'Tu rol no tiene permiso para acceder a la API de Mensajería']);
         exit;
     }
 

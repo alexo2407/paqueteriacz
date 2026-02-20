@@ -1840,9 +1840,16 @@ class PedidosModel
         $ID_DEVUELTO = 7;
         $ID_ENTREGADO = 3;
 
+        $userRole = (int)($GLOBALS['API_USER_ROLE'] ?? 0);
+        $isAdmin = ($userRole === ROL_ADMIN);
+
         // 1. Validar estados permitidos
-        if (!in_array($nuevo_estado, [$ID_REPROGRAMADO, $ID_DEVUELTO])) {
-            return ["success" => false, "message" => "Estado no permitido para clientes. Solo Reprogramado o Devuelto.", "code" => 403];
+        // Si es Admin o Mensajería (ID 5), permitimos todos los estados. 
+        // Si es Cliente (ID 4), restringimos a Reprogramado o Devuelto.
+        if (!$isAdmin && $userRole !== ROL_CLIENTE) {
+            if (!in_array($nuevo_estado, [$ID_REPROGRAMADO, $ID_DEVUELTO])) {
+                return ["success" => false, "message" => "ERROR_PERMISOS", "detail" => "Tu rol solo puede reprogramar o devolver pedidos.", "code" => 403];
+            }
         }
 
         // 2. Validar motivo obligatorio para Devuelto
@@ -1877,21 +1884,19 @@ class PedidosModel
 
             $realPedidoId = (int)$pedido['id'];
 
-            // 4. Validar pertenencia según Rol
-            // ID 4 (ROL_PROVEEDOR constant) -> id_cliente
-            // ID 5 (ROL_CLIENTE constant) -> id_proveedor
-            $userRole = (int)($GLOBALS['API_USER_ROLE'] ?? 0);
+            // 4. Validar pertenencia según Rol / Asignación
             $hasAccess = false;
 
-            if ($userRole === ROL_PROVEEDOR) { // ID 4 - Quien crea pedidos
-                 $hasAccess = ((int)$pedido['id_cliente'] === (int)$id_cliente_auth);
-            } elseif ($userRole === ROL_CLIENTE) { // ID 5 - Quien rastrea/proveedor mensajería
-                 $hasAccess = ((int)$pedido['id_cliente'] === (int)$id_cliente_auth || (int)$pedido['id_proveedor'] === (int)$id_cliente_auth);
+            if ($isAdmin) {
+                $hasAccess = true;
+            } else {
+                // Acceso si es el cliente creador (id_cliente) o el proveedor/mensajería asignado (id_proveedor)
+                $hasAccess = ((int)$pedido['id_cliente'] === (int)$id_cliente_auth || (int)$pedido['id_proveedor'] === (int)$id_cliente_auth);
             }
 
             if (!$hasAccess) {
                 $db->rollBack();
-                return ["success" => false, "message" => "No tienes permiso sobre este pedido.", "code" => 403];
+                return ["success" => false, "message" => "ERROR_PERMISOS", "detail" => "No tienes permiso sobre este pedido.", "code" => 403];
             }
 
             // 5. Validar estado actual
