@@ -41,9 +41,9 @@ try {
     $clientId = (int)($userData['id'] ?? 0);
     $userRole = (int)($userData['rol'] ?? 0);
 
-    // 2. Verificar Rol (Solo Cliente)
-    // De acuerdo a config.php: ROL_CLIENTE = 5
-    if ($userRole !== ROL_CLIENTE) {
+    // 2. Verificar Rol (Permitir Cliente y Proveedor de Logística)
+    // Nota: Los IDs 4 y 5 están intercambiados semánticamente en este proyecto.
+    if ($userRole !== ROL_CLIENTE && $userRole !== ROL_PROVEEDOR) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Tu rol no tiene permiso para realizar esta acción']);
         exit;

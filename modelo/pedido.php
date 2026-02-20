@@ -1860,12 +1860,12 @@ class PedidosModel
 
             // 3. Bloquear fila y cargar datos para validación
             if ($id_pedido) {
-                $stmt = $db->prepare("SELECT id, id_estado, id_cliente FROM pedidos WHERE id = :id FOR UPDATE");
+                $stmt = $db->prepare("SELECT id, id_estado, id_cliente, id_proveedor FROM pedidos WHERE id = :id FOR UPDATE");
                 $stmt->execute([':id' => $id_pedido]);
             } else {
                 // Si buscamos por numero_orden, DEBEMOS filtrar por id_cliente_auth para evitar colisiones entre clientes
-                $stmt = $db->prepare("SELECT id, id_estado, id_cliente FROM pedidos WHERE numero_orden = :num AND id_cliente = :cli FOR UPDATE");
-                $stmt->execute([':num' => $numero_orden, ':cli' => $id_cliente_auth]);
+                $stmt = $db->prepare("SELECT id, id_estado, id_cliente, id_proveedor FROM pedidos WHERE numero_orden = :num AND (id_cliente = :cli OR id_proveedor = :cli2) FOR UPDATE");
+                $stmt->execute([':num' => $numero_orden, ':cli' => $id_cliente_auth, ':cli2' => $id_cliente_auth]);
             }
             
             $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -1877,8 +1877,19 @@ class PedidosModel
 
             $realPedidoId = (int)$pedido['id'];
 
-            // 4. Validar pertenencia (doble check por seguridad)
-            if ((int)$pedido['id_cliente'] !== (int)$id_cliente_auth) {
+            // 4. Validar pertenencia según Rol
+            // ID 4 (ROL_PROVEEDOR constant) -> id_cliente
+            // ID 5 (ROL_CLIENTE constant) -> id_proveedor
+            $userRole = (int)($GLOBALS['API_USER_ROLE'] ?? 0);
+            $hasAccess = false;
+
+            if ($userRole === ROL_PROVEEDOR) { // ID 4 - Quien crea pedidos
+                 $hasAccess = ((int)$pedido['id_cliente'] === (int)$id_cliente_auth);
+            } elseif ($userRole === ROL_CLIENTE) { // ID 5 - Quien rastrea/proveedor mensajería
+                 $hasAccess = ((int)$pedido['id_cliente'] === (int)$id_cliente_auth || (int)$pedido['id_proveedor'] === (int)$id_cliente_auth);
+            }
+
+            if (!$hasAccess) {
                 $db->rollBack();
                 return ["success" => false, "message" => "No tienes permiso sobre este pedido.", "code" => 403];
             }
