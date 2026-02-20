@@ -1,7 +1,8 @@
 # =====================================================
 # Configuración y Datos Sensibles
 # =====================================================
-config/
+config/*
+!config/config.example.php
 *.env
 .env
 .env.local

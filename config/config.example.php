@@ -3,11 +3,19 @@
 // Example config file for Appcz
 // Copy this file to config.php and edit values for your environment.
 
-// Base URL detection (do not include trailing slash)
-$protocolo = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-$servidor = $_SERVER['SERVER_NAME'] ?? 'localhost';
-$puerto = isset($_SERVER['SERVER_PORT']) ? ':' . $_SERVER['SERVER_PORT'] : '';
-define('RUTA_URL', $protocolo . $servidor . $puerto . '/Appcz/');
+// Determinar dinámicamente la ruta base del proyecto
+$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+$basePath = str_replace('\\', '/', dirname($scriptName));
+if ($basePath !== '/') {
+    $basePath = rtrim($basePath, '/') . '/';
+}
+// Ajuste para scripts en subcarpetas
+if (str_contains($basePath, '/api/')) $basePath = explode('/api/', $basePath)[0] . '/';
+if (str_contains($basePath, '/controlador/')) $basePath = explode('/controlador/', $basePath)[0] . '/';
+if (str_contains($basePath, '/cli/')) $basePath = explode('/cli/', $basePath)[0] . '/';
+
+$puerto = isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] != 80 && $_SERVER['SERVER_PORT'] != 443 ? ':' . $_SERVER['SERVER_PORT'] : '';
+define('RUTA_URL', $protocolo . $servidor . $puerto . $basePath);
 
 // API keys / secrets (replace with your real secret in local config.php)
 define('JWT_SECRET_KEY', 'CHANGE_ME_REPLACE_WITH_SECURE_RANDOM');

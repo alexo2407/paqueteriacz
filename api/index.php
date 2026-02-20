@@ -270,7 +270,10 @@ if (strpos($path, '/api/') === 0 || strpos($rawPath, '/api/') !== false) {
     // Inteligencia Adicional: Si no hubo match explícito arriba, intentar buscar el archivo físicamente
     // Esto previene errores de 404 si el archivo existe pero olvidamos registrarlo en el router.
     $relativePart = strpos($path, '/api/') === 0 ? substr($path, 5) : substr($path, strpos($path, '/api/') + 5);
-    $possibleFile = __DIR__ . '/' . trim($relativePart, '/') . '.php';
+    $possibleFile = __DIR__ . '/' . trim($relativePart, '/');
+    if (!str_ends_with(strtolower($possibleFile), '.php')) {
+        $possibleFile .= '.php';
+    }
     
     if (!empty($relativePart) && file_exists($possibleFile) && is_file($possibleFile)) {
         require_once $possibleFile;
