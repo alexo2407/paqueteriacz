@@ -58,18 +58,19 @@ try {
     }
 
     $idPedido = isset($data['id_pedido']) ? (int)$data['id_pedido'] : 0;
+    $numeroOrden = isset($data['numero_orden']) ? trim($data['numero_orden']) : null;
     $nuevoEstado = isset($data['estado']) ? (int)$data['estado'] : 0;
     $observaciones = isset($data['motivo']) ? trim($data['motivo']) : 
                     (isset($data['observaciones']) ? trim($data['observaciones']) : null);
 
-    if ($idPedido <= 0 || $nuevoEstado <= 0) {
+    if (($idPedido <= 0 && empty($numeroOrden)) || $nuevoEstado <= 0) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Faltan parámetros obligatorios: id_pedido y estado']);
+        echo json_encode(['success' => false, 'message' => 'Faltan parámetros obligatorios: id_pedido o numero_orden, y estado']);
         exit;
     }
 
     // 4. Delegar lógica de negocio al Modelo (Robusto)
-    $resultado = PedidosModel::actualizarEstadoCliente($idPedido, $clientId, $nuevoEstado, $observaciones);
+    $resultado = PedidosModel::actualizarEstadoCliente($idPedido ?: null, $clientId, $nuevoEstado, $observaciones, $numeroOrden);
 
     if ($resultado['success']) {
         http_response_code(200);

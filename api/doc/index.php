@@ -1875,10 +1875,17 @@ municipalitySelect.addEventListener('change', (e) => {
                             <span class="badge bg-info text-dark float-end">👤 <span data-lang="en">Role: Client</span><span data-lang="es">Rol: Cliente</span></span>
                         </div>
                         
-                        <table class="table table-sm table-bordered mt-2">
+                         <table class="table table-sm table-bordered mt-2">
                              <thead><tr><th>Field / Campo</th><th>Req.</th><th>Allowed Values / Valores Permitidos</th><th>Description</th></tr></thead>
                              <tbody>
-                                 <tr><td><code>id_pedido</code></td><td>Yes</td><td>integer (ID)</td><td><span data-lang="en">Internal Order ID</span><span data-lang="es">ID interno del pedido</span></td></tr>
+                                 <tr><td><code>id_pedido</code></td><td>Cond.</td><td>integer (ID)</td><td>
+                                    <span data-lang="en">Internal Order ID. <strong>Required</strong> if <code>numero_orden</code> not provided.</span>
+                                    <span data-lang="es">ID interno del pedido. <strong>Requerido</strong> si no se envía <code>numero_orden</code>.</span>
+                                 </td></tr>
+                                 <tr><td><code>numero_orden</code></td><td>Cond.</td><td>string</td><td>
+                                    <span data-lang="en">External Order Number. <strong>Required</strong> if <code>id_pedido</code> not provided.</span>
+                                    <span data-lang="es">Número de orden externo. <strong>Requerido</strong> si no se envía <code>id_pedido</code>.</span>
+                                 </td></tr>
                                  <tr><td><code>estado</code></td><td>Yes</td><td><code>4</code> o <code>7</code></td><td>
                                     <span data-lang="en">4: Reprogramado (Rescheduled)<br>7: Devuelto (Returned)</span>
                                     <span data-lang="es">4: Reprogramado<br>7: Devuelto</span>
@@ -1891,22 +1898,31 @@ municipalitySelect.addEventListener('change', (e) => {
                         </table>
 
                         <div class="row">
-                            <div class="col-md-6">
-                                <h5 data-lang="en">Example: Reschedule</h5>
-                                <h5 data-lang="es">Ejemplo: Reprogramar</h5>
+                            <div class="col-md-4">
+                                <h5 data-lang="en">By ID</h5>
+                                <h5 data-lang="es">Por ID</h5>
                                 <pre class="code-block line-numbers"><code class="language-json">{
     "id_pedido": 150,
     "estado": 4,
-    "motivo": "Cliente solicita entrega mañana"
+    "motivo": "Reprogramar"
 }</code></pre>
                             </div>
-                            <div class="col-md-6">
-                                <h5 data-lang="en">Example: Return</h5>
-                                <h5 data-lang="es">Ejemplo: Devolver</h5>
+                            <div class="col-md-4">
+                                <h5 data-lang="en">By Order Num</h5>
+                                <h5 data-lang="es">Por Núm. Orden</h5>
                                 <pre class="code-block line-numbers"><code class="language-json">{
-    "id_pedido": 150,
+    "numero_orden": "EXT-88002",
+    "estado": 4,
+    "motivo": "Reprogramar"
+}</code></pre>
+                            </div>
+                            <div class="col-md-4">
+                                <h5 data-lang="en">Return (Mandatory Motive)</h5>
+                                <h5 data-lang="es">Devolución (Motivo Oblig.)</h5>
+                                <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": "EXT-88002",
     "estado": 7,
-    "motivo": "Producto defectuoso o rechazado"
+    "motivo": "Dirección incorrecta"
 }</code></pre>
                             </div>
                         </div>

@@ -1828,13 +1828,14 @@ class PedidosModel
     /**
      * Actualizar estado de pedido con restricciones de Cliente.
      * 
-     * @param int $id_pedido
-     * @param int $id_cliente_auth ID del usuario autenticado (debe ser el id_cliente del pedido)
+     * @param int|null $id_pedido ID interno (opcional si se provee numero_orden)
+     * @param int $id_cliente_auth ID del usuario autenticado
      * @param int $nuevo_estado 4 (Reprogramado) o 7 (Devuelto)
      * @param string|null $motivo
+     * @param string|null $numero_orden Número de orden externo (opcional si se provee id_pedido)
      * @return array
      */
-    public static function actualizarEstadoCliente($id_pedido, $id_cliente_auth, $nuevo_estado, $motivo = null) {
+    public static function actualizarEstadoCliente($id_pedido, $id_cliente_auth, $nuevo_estado, $motivo = null, $numero_orden = null) {
         $ID_REPROGRAMADO = 4;
         $ID_DEVUELTO = 7;
         $ID_ENTREGADO = 3;
@@ -1849,34 +1850,46 @@ class PedidosModel
             return ["success" => false, "message" => "Es obligatorio indicar el motivo para una devolución.", "code" => 400];
         }
 
+        if (!$id_pedido && !$numero_orden) {
+            return ["success" => false, "message" => "Debe proporcionar id_pedido o numero_orden.", "code" => 400];
+        }
+
         try {
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
-            // 3. Bloquear fila y cargar datos para validación (concurrency control)
-            $stmt = $db->prepare("SELECT id_estado, id_cliente FROM pedidos WHERE id = :id FOR UPDATE");
-            $stmt->execute([':id' => $id_pedido]);
+            // 3. Bloquear fila y cargar datos para validación
+            if ($id_pedido) {
+                $stmt = $db->prepare("SELECT id, id_estado, id_cliente FROM pedidos WHERE id = :id FOR UPDATE");
+                $stmt->execute([':id' => $id_pedido]);
+            } else {
+                // Si buscamos por numero_orden, DEBEMOS filtrar por id_cliente_auth para evitar colisiones entre clientes
+                $stmt = $db->prepare("SELECT id, id_estado, id_cliente FROM pedidos WHERE numero_orden = :num AND id_cliente = :cli FOR UPDATE");
+                $stmt->execute([':num' => $numero_orden, ':cli' => $id_cliente_auth]);
+            }
+            
             $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$pedido) {
                 $db->rollBack();
-                return ["success" => false, "message" => "Pedido no encontrado.", "code" => 404];
+                return ["success" => false, "message" => "Pedido no encontrado o no pertenece a su cuenta.", "code" => 404];
             }
 
-            // 4. Validar pertenencia
+            $realPedidoId = (int)$pedido['id'];
+
+            // 4. Validar pertenencia (doble check por seguridad)
             if ((int)$pedido['id_cliente'] !== (int)$id_cliente_auth) {
                 $db->rollBack();
                 return ["success" => false, "message" => "No tienes permiso sobre este pedido.", "code" => 403];
             }
 
-            // 5. Validar estado actual (no permitir cambios si ya es final)
+            // 5. Validar estado actual
             $estadoAnterior = (int)$pedido['id_estado'];
             if ($estadoAnterior === $ID_ENTREGADO) {
                 $db->rollBack();
                 return ["success" => false, "message" => "No se puede cambiar el estado de un pedido que ya ha sido entregado.", "code" => 409];
             }
 
-            // Si el estado es el mismo, no hacemos nada pero informamos éxito
             if ($estadoAnterior === $nuevo_estado) {
                 $db->rollBack();
                 return ["success" => true, "message" => "El pedido ya se encuentra en el estado indicado."];
@@ -1884,7 +1897,7 @@ class PedidosModel
 
             // 6. Ejecutar actualización
             $upd = $db->prepare("UPDATE pedidos SET id_estado = :nuevo, updated_at = NOW() WHERE id = :id");
-            $upd->execute([':nuevo' => $nuevo_estado, ':id' => $id_pedido]);
+            $upd->execute([':nuevo' => $nuevo_estado, ':id' => $realPedidoId]);
 
             // 7. Registrar en historial de estados
             $histQuery = "INSERT INTO pedidos_historial_estados 
@@ -1892,7 +1905,7 @@ class PedidosModel
                          VALUES (:id_pedido, :ant, :nuevo, :user, :obs, NOW())";
             $histStmt = $db->prepare($histQuery);
             $histStmt->execute([
-                ':id_pedido' => $id_pedido,
+                ':id_pedido' => $realPedidoId,
                 ':ant'       => $estadoAnterior,
                 ':nuevo'     => $nuevo_estado,
                 ':user'      => $id_cliente_auth,
@@ -1902,7 +1915,7 @@ class PedidosModel
             // 8. Registrar auditoría
             AuditoriaModel::registrar(
                 'pedidos',
-                $id_pedido,
+                $realPedidoId,
                 'actualizar_estado_cliente',
                 $id_cliente_auth,
                 ['id_estado' => $estadoAnterior],
