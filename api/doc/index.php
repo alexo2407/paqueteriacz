@@ -837,6 +837,13 @@
                         <p class="mb-0 mt-2" data-lang="es">Estos campos son <strong>REQUIRED/STRICT</strong>. Si falta alguno o viene vacío/incorrecto, el pedido <strong>NO</strong> se crea y se retorna HTTP 400 con detalle por campo.</p>
                     </div>
 
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">📮 Auto-fill from Postal Code:</strong>
+                        <strong data-lang="es">📮 Autocompletado desde Código Postal:</strong>
+                        <p class="mb-0 mt-2" data-lang="en">If you send <code>codigo_postal</code>, the system will automatically resolve and fill <code>id_pais</code>, <code>id_departamento</code>, <code>id_municipio</code> and <code>id_barrio</code> from the postal code database — these fields become <strong>optional</strong> when the CP is recognized.</p>
+                        <p class="mb-0 mt-2" data-lang="es">Si envías <code>codigo_postal</code>, el sistema resolverá y completará automáticamente <code>id_pais</code>, <code>id_departamento</code>, <code>id_municipio</code> e <code>id_barrio</code> desde la base de códigos postales. Estos campos se vuelven <strong>opcionales</strong> cuando el CP es reconocido.</p>
+                    </div>
+
                     <div class="code-block">
                         <span class="badge-endpoint badge-post">POST</span> /api/pedidos/crear
                         <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
@@ -857,11 +864,6 @@
                             <tr><td><code>telefono</code></td><td>string</td><td>STRICT</td><td>Contact phone</td></tr>
                             <tr><td><code>direccion</code></td><td>string</td><td>STRICT</td><td>Full delivery address</td></tr>
                             <tr><td><code>comentario</code></td><td>string</td><td>STRICT</td><td>Delivery notes</td></tr>
-                            <tr><td><code>id_pais</code></td><td>integer</td><td>STRICT, exists</td><td>Country ID</td></tr>
-                            <tr><td><code>id_departamento</code></td><td>integer</td><td>STRICT, in country</td><td>Department ID</td></tr>
-                            <tr><td><code>id_municipio</code></td><td>integer</td><td>STRICT, in dept</td><td>Municipality ID</td></tr>
-                            <tr><td><code>zona</code></td><td>string</td><td>STRICT</td><td>Neighborhood/Zone</td></tr>
-                            <tr><td><code>codigo_postal</code></td><td>string</td><td>STRICT</td><td>Postal code</td></tr>
                             <tr><td><code>precio_total_local</code></td><td>decimal</td><td>STRICT, > 0</td><td>Total local price</td></tr>
                             <tr><td><code>es_combo</code></td><td>integer</td><td>STRICT (0 or 1)</td><td>1 for combo, 0 for standard</td></tr>
                         </tbody>
@@ -878,11 +880,6 @@
                             <tr><td><code>telefono</code></td><td>string</td><td>ESTRICTO</td><td>Teléfono de contacto</td></tr>
                             <tr><td><code>direccion</code></td><td>string</td><td>ESTRICTO</td><td>Dirección completa</td></tr>
                             <tr><td><code>comentario</code></td><td>string</td><td>ESTRICTO</td><td>Notas de entrega</td></tr>
-                            <tr><td><code>id_pais</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del país</td></tr>
-                            <tr><td><code>id_departamento</code></td><td>entero</td><td>ESTRICTO, en país</td><td>ID del departamento</td></tr>
-                            <tr><td><code>id_municipio</code></td><td>entero</td><td>ESTRICTO, en depto</td><td>ID del municipio</td></tr>
-                            <tr><td><code>zona</code></td><td>string</td><td>ESTRICTO</td><td>Zona o barrio</td></tr>
-                            <tr><td><code>codigo_postal</code></td><td>string</td><td>ESTRICTO</td><td>Código postal</td></tr>
                             <tr><td><code>precio_total_local</code></td><td>decimal</td><td>ESTRICTO, > 0</td><td>Precio total local</td></tr>
                             <tr><td><code>es_combo</code></td><td>entero</td><td>ESTRICTO (0 o 1)</td><td>1 si es combo, 0 si estándar</td></tr>
                         </tbody>
@@ -927,28 +924,30 @@
                         </tbody>
                     </table>
 
-                    <h4 data-lang="en">🌍 Optional Fields - Geographic</h4>
-                    <h4 data-lang="es">🌍 Campos Opcionales - Geográficos</h4>
+                    <h4 data-lang="en">🌍 Optional Fields - Geographic <span class="badge bg-info text-dark">Auto-fill from CP</span></h4>
+                    <h4 data-lang="es">🌍 Campos Opcionales - Geográficos <span class="badge bg-info text-dark">Auto desde CP</span></h4>
                     
                     <table class="table table-sm table-bordered" data-lang="en">
                         <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
                         <tbody>
-                            <tr><td><code>id_pais</code> or <code>pais</code></td><td>integer</td><td>Country ID</td></tr>
-                            <tr><td><code>id_departamento</code> or <code>departamento</code></td><td>integer</td><td>State/Department ID</td></tr>
-                            <tr><td><code>id_municipio</code> or <code>municipio</code></td><td>integer</td><td>City/Municipality ID</td></tr>
-                            <tr><td><code>id_barrio</code> or <code>barrio</code></td><td>integer</td><td>Neighborhood/District ID</td></tr>
-                            <tr><td><code>zona</code></td><td>string</td><td>Zone name</td></tr>
+                            <tr><td><code>codigo_postal</code></td><td>string</td><td>Postal code. When provided, auto-fills country, dept, municipality and neighborhood.</td></tr>
+                            <tr><td><code>id_pais</code> or <code>pais</code></td><td>integer</td><td>Country ID. Optional if <code>codigo_postal</code> is recognized.</td></tr>
+                            <tr><td><code>id_departamento</code> or <code>departamento</code></td><td>integer</td><td>State/Department ID. Optional if <code>codigo_postal</code> is recognized.</td></tr>
+                            <tr><td><code>id_municipio</code> or <code>municipio</code></td><td>integer</td><td>City/Municipality ID. Optional if <code>codigo_postal</code> is recognized.</td></tr>
+                            <tr><td><code>id_barrio</code> or <code>barrio</code></td><td>integer</td><td>Neighborhood/District ID. Optional, auto-filled from CP if available.</td></tr>
+                            <tr><td><code>zona</code></td><td>string</td><td>Zone name. Optional.</td></tr>
                         </tbody>
                     </table>
                     
                     <table class="table table-sm table-bordered" data-lang="es">
                         <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
                         <tbody>
-                            <tr><td><code>id_pais</code> o <code>pais</code></td><td>entero</td><td>ID del país</td></tr>
-                            <tr><td><code>id_departamento</code> o <code>departamento</code></td><td>entero</td><td>ID del departamento/estado</td></tr>
-                            <tr><td><code>id_municipio</code> o <code>municipio</code></td><td>entero</td><td>ID del municipio/ciudad</td></tr>
-                            <tr><td><code>id_barrio</code> o <code>barrio</code></td><td>entero</td><td>ID del barrio/zona</td></tr>
-                            <tr><td><code>zona</code></td><td>string</td><td>Nombre de la zona</td></tr>
+                            <tr><td><code>codigo_postal</code></td><td>string</td><td>Código postal. Al enviarlo, el sistema auto-rellena país, depto, municipio y barrio.</td></tr>
+                            <tr><td><code>id_pais</code> o <code>pais</code></td><td>entero</td><td>ID del país. Opcional si el <code>codigo_postal</code> es reconocido.</td></tr>
+                            <tr><td><code>id_departamento</code> o <code>departamento</code></td><td>entero</td><td>ID del departamento. Opcional si el <code>codigo_postal</code> es reconocido.</td></tr>
+                            <tr><td><code>id_municipio</code> o <code>municipio</code></td><td>entero</td><td>ID del municipio. Opcional si el <code>codigo_postal</code> es reconocido.</td></tr>
+                            <tr><td><code>id_barrio</code> o <code>barrio</code></td><td>entero</td><td>ID del barrio. Opcional, se auto-rellena desde CP si está disponible.</td></tr>
+                            <tr><td><code>zona</code></td><td>string</td><td>Nombre de la zona. Opcional.</td></tr>
                         </tbody>
                     </table>
                     <h4 data-lang="en">👥 Optional Fields - Assignments</h4>
@@ -1040,96 +1039,71 @@
                     <p data-lang="en"><strong>Provider Assignment:</strong> This field is strict. You must explicitly provide the ID of the user (role Provider) who will handle the delivery.</p>
                     <p data-lang="es"><strong>Asignación de Proveedor:</strong> Este campo es estricto. Debes proporcionar explícitamente el ID del usuario (rol Proveedor) que gestionará la entrega.</p>
 
-                    <h4 data-lang="en">📝 Example: Valid Order with Minimal Fields</h4>
-                    <h4 data-lang="es">📝 Ejemplo: Pedido Válido con Campos Mínimos</h4>
+                    <h4 data-lang="en">📝 Example: Minimal Order (auto-fill from postal code)</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Pedido Mínimo (auto-relleno desde código postal)</h4>
                     <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": 12345,
-    "destinatario": "Juan Pérez",
-    "id_cliente": 7,
-    "telefono": "50212345678",
-    "direccion": "Avenida 1-23 Zona 1",
-    "comentario": "Sin comentario",
+    "numero_orden": 697896,
+    "destinatario": "Carlos Mendoza",
+    "id_cliente": 9,
+    "telefono": "(502) 5555-1234",
+    "direccion": "6 Avenida 12-34 Zona 3",
+    "comentario": "Dejar con el guardia si no hay nadie.",
+    "id_proveedor": 12,
+    "zona": "Zona 3 Centro",
+    "codigo_postal": "46400",
+    "precio_total_local": 250.75,
+    "es_combo": 1,
+    "productos": [
+        { "producto_id": 49, "cantidad": 10 }
+    ]
+    // id_pais, id_departamento, id_municipio se auto-rellenan desde el CP
+}</code></pre>
+
+                    <h4 data-lang="en">📝 Example: Manual location fields (no postal code)</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Campos de ubicación manuales (sin código postal)</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 697897,
+    "destinatario": "Ana Sofia Ramos",
+    "id_cliente": 9,
+    "telefono": "(502) 4444-9876",
+    "direccion": "18 Calle 2-10 Zona 15",
+    "comentario": "Llamar antes de entregar.",
+    "id_proveedor": 12,
     "id_pais": 1,
     "id_departamento": 1,
     "id_municipio": 1,
-    "zona": "Zona 1",
-    "codigo_postal": "01001",
-    "precio_total_local": 100.00,
-    "es_combo": 0,
-    "producto_id": 10,
-    "cantidad": 2
+    "zona": "Vista Hermosa",
+    "precio_total_local": 320.00,
+    "es_combo": 1,
+    "productos": [
+        { "producto_id": 49, "cantidad": 5 }
+    ]
 }</code></pre>
 
                     <h4 data-lang="en">📝 Example: Complete Multi-Product Combo</h4>
                     <h4 data-lang="es">📝 Ejemplo: Pedido Completo con Múltiples Productos y Combo</h4>
                     <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": 12346,
-    "destinatario": "María García",
-    "id_cliente": 15,
-    "telefono": "50298765432",
-    "direccion": "Calle Principal #123",
-    "comentario": "Entregar en horario de oficina",
-    "id_pais": 1,
-    "id_departamento": 5,
-    "id_municipio": 25,
-    "zona": "Candelaria",
-    "codigo_postal": "01005",
+    "numero_orden": 697898,
+    "destinatario": "Roberto Fuentes",
+    "id_cliente": 9,
+    "telefono": "(502) 3333-5678",
+    "direccion": "Diagonal 12 8-55 Zona 10",
+    "comentario": "Entregar en horario de oficina.",
+    "id_proveedor": 12,
+    "zona": "Pradera",
+    "codigo_postal": "01010",
     "id_moneda": 2,
     "es_combo": 1,
-    "precio_total_local": 250.00,
+    "precio_total_local": 780.50,
     "productos": [
-        { "producto_id": 10, "cantidad": 2 },
-        { "producto_id": 15, "cantidad": 1 }
+        { "producto_id": 49, "cantidad": 3 },
+        { "producto_id": 50, "cantidad": 2 }
     ]
 }</code></pre>
                  </div>
 
-                 <!-- Order Types Explanation -->
-                 <div class="section-container">
-                    <h2 class="section-title" data-lang="en">Standard vs. Combo Orders</h2>
-                    <h2 class="section-title" data-lang="es">Pedidos Estándar vs. Combos</h2>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h4 data-lang="en">🛒 Standard Order</h4>
-                            <h4 data-lang="es">🛒 Pedido Estándar</h4>
-                            <p data-lang="en">
-                                <strong>When to use:</strong> Regular sales where items are sold at their list price.<br>
-                                <strong>Logic:</strong> The system automatically sums up <code>(product_price × quantity)</code>.<br>
-                                <strong>Don't send:</strong> <code>precio_total</code> (it will be ignored/overwritten).
-                            </p>
-                            <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": "STD-101",
-    "es_combo": 0,
-    "productos": [
-        { "producto_id": 1, "cantidad": 2 }
-    ]
-    // Total calculated by system:
-    // (Price of ID 1 × 2)
-}</code></pre>
-                        </div>
-                        <div class="col-md-6">
-                            <h4 data-lang="en">🎁 Combo / Promo</h4>
-                            <h4 data-lang="es">🎁 Combo / Promoción</h4>
-                            <p data-lang="en">
-                                <strong>When to use:</strong> Special offers, bundles, or fixed-price packages.<br>
-                                <strong>Logic:</strong> You MUST define the <code>precio_total_local</code> explicitly.<br>
-                                <strong>Important:</strong> Set <code>es_combo: 1</code> so the system respects your total.
-                            </p>
-                            <pre class="code-block line-numbers"><code class="language-json">{
-    "numero_orden": "PROMO-500",
-    "es_combo": 1,
-    "precio_total_local": 999.00,
-    "productos": [
-        { "producto_id": 1, "cantidad": 1 },
-        { "producto_id": 5, "cantidad": 1 }
-    ]
-    // System accepts 999.00
-    // ignoring individual prices.
-}</code></pre>
-                        </div>
-                    </div>
-                 </div>
+
+
                  
                  <!-- Bulk Orders -->
                  <div class="section-container">
@@ -1161,31 +1135,35 @@
                     <pre class="code-block line-numbers"><code class="language-json">{
     "pedidos": [
         {
-            // Pedido multiproducto estándar
-            "numero_orden": 20001,
-            "destinatario": "Juan Perez",
-            "telefono": "5555-5555",
-            "direccion": "Calle Principal #123",
-            "coordenadas": "12.1234,-86.1234",
+            "numero_orden": 697901,
+            "destinatario": "Luis Herrera",
+            "id_cliente": 9,
+            "telefono": "(502) 1111-2222",
+            "direccion": "Ruta Nacional 9 Km 45",
+            "comentario": "Entregar en recepción.",
+            "id_proveedor": 12,
+            "codigo_postal": "46400",
+            "precio_total_local": 250.75,
+            "es_combo": 1,
             "productos": [
-                { "producto_id": 1, "cantidad": 2 },
-                { "producto_id": 5, "cantidad": 1 }
+                { "producto_id": 49, "cantidad": 5 },
+                { "producto_id": 50, "cantidad": 3 }
             ]
         },
         {
-            // Pedido tipo COMBO (Precio fijo total)
-            "numero_orden": 20002,
-            "destinatario": "Ana Lopez",
-            "telefono": "7777-7777",
-            "direccion": "Residencial Los Arcos, Casa 5",
-            "coordenadas": "12.1255,-86.1255",
-            "es_combo": 1, 
-            "precio_total_local": 1500.00,  // Precio fijo total
-            "precio_total_usd": 40.50,      // Opcional si se calcula, pero recomendado en combos
+            "numero_orden": 697902,
+            "destinatario": "Marta Lopez",
+            "id_cliente": 9,
+            "telefono": "(502) 3333-4444",
+            "direccion": "Colonia El Naranjo Mz. 4",
+            "comentario": "Tocar timbre dos veces.",
+            "id_proveedor": 12,
+            "codigo_postal": "46400",
+            "precio_total_local": 480.00,
+            "es_combo": 1,
             "productos": [
-                { "producto_id": 10, "cantidad": 1 },
-                { "producto_id": 11, "cantidad": 1 },
-                { "producto_id": 12, "cantidad": 1 }
+                { "producto_id": 49, "cantidad": 2 },
+                { "producto_id": 51, "cantidad": 1 }
             ]
         }
     ]

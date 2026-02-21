@@ -18,6 +18,9 @@ class PedidoApiController
     {
         $data = $jsonData;
 
+        // Autocompletar ubicación desde código postal antes de validar
+        $this->autoCompletarDesdeCP($data);
+
         // Determinar si el usuario es proveedor
         $isProvider = (is_numeric($authUserRole) && (int)$authUserRole === 4) || 
                       (is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0);
@@ -129,6 +132,16 @@ class PedidoApiController
         foreach ($payload['pedidos'] as $pedido) {
             $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
 
+            // Autocompletar ubicación desde código postal antes de validar
+            $this->autoCompletarDesdeCP($pedido);
+
+            // Si el usuario es Proveedor, forzar su ID
+            if ($isProvider && $authUserId > 0) {
+                $pedido['id_proveedor'] = $authUserId;
+                $pedido['proveedor'] = $authUserId;
+            }
+
+
             // Validación básica
             $valid = $this->validar($pedido);
             if (!$valid['success']) {
@@ -205,6 +218,49 @@ class PedidoApiController
     }
 
     /**
+     * Autocompletar campos de ubicación (país, depto, municipio) desde CP
+     */
+    private function autoCompletarDesdeCP(&$data) {
+        if (empty($data['codigo_postal'])) return;
+
+        require_once __DIR__ . '/../../services/AddressService.php';
+        $cp_norm = AddressService::normalizarCP($data['codigo_postal']);
+        
+        $cp_info = null;
+
+        // 1. Si tenemos id_pais, buscar específico
+        if (!empty($data['id_pais']) && is_numeric($data['id_pais'])) {
+            $cp_info = CodigosPostalesModel::buscar((int)$data['id_pais'], $cp_norm);
+        } else {
+            // 2. Si no tenemos id_pais, buscar globalmente
+            $global_results = CodigosPostalesModel::buscarGlobal($cp_norm);
+            if (count($global_results) > 0) {
+                // Si hay resultados, e.g. todos pertenecen al mismo país o solo hay uno, lo tomamos
+                $first = $global_results[0];
+                $all_same_location = true;
+                foreach ($global_results as $res) {
+                    if ($res['id_pais'] != $first['id_pais'] || 
+                        $res['id_departamento'] != $first['id_departamento'] || 
+                        $res['id_municipio'] != $first['id_municipio']) {
+                        $all_same_location = false;
+                        break;
+                    }
+                }
+                if ($all_same_location) {
+                    $cp_info = $first;
+                }
+            }
+        }
+
+        if ($cp_info) {
+            if (empty($data['id_pais'])) $data['id_pais'] = $cp_info['id_pais'];
+            if (empty($data['id_departamento'])) $data['id_departamento'] = $cp_info['id_departamento'];
+            if (empty($data['id_municipio'])) $data['id_municipio'] = $cp_info['id_municipio'];
+            if (empty($data['id_barrio']) && !empty($cp_info['id_barrio'])) $data['id_barrio'] = $cp_info['id_barrio'];
+        }
+    }
+
+    /**
      * Validar datos de pedido
      * 
      * @param array $data
@@ -223,11 +279,11 @@ class PedidoApiController
             'telefono'     => ['required' => true, 'min_len' => 7],
             'direccion'    => ['required' => true, 'min_len' => 5],
             'comentario'   => ['required' => true, 'min_len' => 1],
-            'id_pais'      => ['required' => true, 'numeric' => true],
-            'id_departamento' => ['required' => true, 'numeric' => true],
-            'id_municipio' => ['required' => true, 'numeric' => true],
-            'zona'         => ['required' => true, 'max_len' => 100],
-            'codigo_postal'=> ['required' => true],
+            'id_pais'      => ['required' => false, 'numeric' => true],
+            'id_departamento' => ['required' => false, 'numeric' => true],
+            'id_municipio' => ['required' => false, 'numeric' => true],
+            'zona'         => ['required' => false, 'max_len' => 100],
+            'codigo_postal'=> ['required' => false],
             'precio_total_local' => ['required' => true, 'numeric' => true, 'min_val' => 0.01],
             'es_combo'     => ['required' => true, 'in' => [0, 1]]
         ];
@@ -300,12 +356,8 @@ class PedidoApiController
             }
         }
 
-        // 5. Validar Jerarquía Geográfica y Existencia
-        if (!isset($errores['id_pais'])) {
-             // Asumimos que id_pais existe si no hay error anterior, pero podemos validar si queremos
-        }
-
-        if (!isset($errores['id_departamento']) && !isset($errores['id_pais'])) {
+        // 5. Validar Jerarquía Geográfica (solo si se proporcionan los campos)
+        if (!isset($errores['id_departamento']) && !empty($data['id_departamento']) && !empty($data['id_pais'])) {
             $depto = DepartamentoModel::obtenerPorId((int)$data['id_departamento']);
             if (!$depto) {
                 $errores['id_departamento'] = "El departamento especificado no existe.";
@@ -314,7 +366,7 @@ class PedidoApiController
             }
         }
 
-        if (!isset($errores['id_municipio']) && !isset($errores['id_departamento'])) {
+        if (!isset($errores['id_municipio']) && !empty($data['id_municipio']) && !empty($data['id_departamento'])) {
             $muni = MunicipioModel::obtenerPorId((int)$data['id_municipio']);
             if (!$muni) {
                 $errores['id_municipio'] = "El municipio especificado no existe.";
