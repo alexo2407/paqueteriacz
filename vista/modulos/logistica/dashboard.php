@@ -21,12 +21,12 @@ $controller = new LogisticaController();
 // Obtener datos (filtros se aplican solo al historial)
 $data = $controller->dashboard();
 
-$notificaciones = $data['notificaciones'];
-$historialTotal = $data['historial']; // Ya viene filtrado sin estados finales
-$filtros = $data['filtros'];
-$estadosDisponibles = $data['estados'] ?? [];
+$notificaciones     = $data['notificaciones'];
+$historialTotal     = $data['historial'];
+$filtros            = $data['filtros'];
+$estadosDisponibles = $data['estados']   ?? [];
+$clientesLista      = $data['clientes']  ?? [];
 
-// Los pedidos activos ya vienen filtrados desde el controlador/modelo
 $pedidosActivos = $historialTotal;
 
 // Mapa de Colores Estandarizado y Vibrante
@@ -274,13 +274,52 @@ include "vista/includes/header.php";
                 </div>
             <?php else: ?>
                 
-                <!-- Buscador simple JS -->
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                            <input type="text" id="searchActivos" class="form-control" placeholder="Buscar pedido activo (Orden, nombre)...">
-                        </div>
+                <!-- Barra de Filtros + Excel (Tab Pedidos Activos) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body bg-light rounded">
+                        <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-2 align-items-end" id="formFiltrosPedidos">
+                            <input type="hidden" name="tab" value="pedidos">
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-1">Desde</label>
+                                <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_desde']) ?>">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-1">Hasta</label>
+                                <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_hasta']) ?>">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-1">Cliente</label>
+                                <select name="id_cliente" class="form-select form-select-sm">
+                                    <option value="0">Todos</option>
+                                    <?php foreach ($clientesLista as $cli): ?>
+                                        <option value="<?= (int)$cli['id'] ?>" <?= (int)$filtros['id_cliente'] === (int)$cli['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($cli['nombre']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-1">Estado</label>
+                                <select name="id_estado" class="form-select form-select-sm">
+                                    <option value="0">Todos</option>
+                                    <?php foreach ($estadosDisponibles as $est): ?>
+                                        <option value="<?= (int)$est['id'] ?>" <?= (int)$filtros['id_estado'] === (int)$est['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($est['nombre_estado']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold mb-1">Buscar</label>
+                                <input type="text" name="search" class="form-control form-control-sm" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtros['search']) ?>">
+                            </div>
+                            <div class="col-md-2 d-flex gap-1">
+                                <button class="btn btn-primary btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
+                                <a href="<?= RUTA_URL ?>logistica/dashboard?tab=pedidos" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-circle"></i></a>
+                                <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=pedidos&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>" 
+                                   class="btn btn-success btn-sm" title="Descargar Excel"><i class="bi bi-file-earmark-excel"></i></a>
+                            </div>
+                        </form>
                     </div>
                 </div>
 
@@ -344,12 +383,14 @@ include "vista/includes/header.php";
                 $start = (($currentPage - 1) * $perPage) + 1;
                 $end = min($currentPage * $perPage, $total);
                 
-                // Construir URL base con filtros
-                $baseUrl = RUTA_URL . 'logistica/dashboard?';
+                // Construir URL base con todos los filtros activos
+                $baseUrl = RUTA_URL . 'logistica/dashboard?tab=pedidos&';
                 $params = [];
-                if (!empty($filtros['fecha_desde'])) $params[] = 'fecha_desde=' . urlencode($filtros['fecha_desde']);
-                if (!empty($filtros['fecha_hasta'])) $params[] = 'fecha_hasta=' . urlencode($filtros['fecha_hasta']);
-                if (!empty($filtros['search'])) $params[] = 'search=' . urlencode($filtros['search']);
+                if (!empty($filtros['fecha_desde']))  $params[] = 'fecha_desde='  . urlencode($filtros['fecha_desde']);
+                if (!empty($filtros['fecha_hasta']))  $params[] = 'fecha_hasta='  . urlencode($filtros['fecha_hasta']);
+                if (!empty($filtros['search']))       $params[] = 'search='       . urlencode($filtros['search']);
+                if (!empty($filtros['id_cliente']))   $params[] = 'id_cliente='   . (int)$filtros['id_cliente'];
+                if (!empty($filtros['id_estado']))    $params[] = 'id_estado='    . (int)$filtros['id_estado'];
                 $baseUrl .= implode('&', $params) . (count($params) > 0 ? '&' : '');
             ?>
                 <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
@@ -433,25 +474,50 @@ include "vista/includes/header.php";
         <!-- TAB: HISTORIAL COMPLETO -->
         <div class="tab-pane fade <?= $paneAll ?>" id="pills-all" role="tabpanel">
             
-            <!-- Filtros (Visible solo en historial) -->
+            <!-- Barra de Filtros Avanzados + Excel (Tab Historial Completo) -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body bg-light rounded">
-                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-3">
+                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-2 align-items-end">
                         <input type="hidden" name="tab" value="all">
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold">Fecha Desde</label>
-                            <input type="date" name="fecha_desde" class="form-control" value="<?= htmlspecialchars($filtros['fecha_desde']) ?>">
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Desde</label>
+                            <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_desde']) ?>">
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold">Fecha Hasta</label>
-                            <input type="date" name="fecha_hasta" class="form-control" value="<?= htmlspecialchars($filtros['fecha_hasta']) ?>">
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Hasta</label>
+                            <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_hasta']) ?>">
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Buscar</label>
-                            <div class="input-group">
-                                <input type="text" name="search" class="form-control" placeholder="Orden, cliente..." value="<?= htmlspecialchars($filtros['search']) ?>">
-                                <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i></button>
-                            </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Cliente</label>
+                            <select name="id_cliente" class="form-select form-select-sm">
+                                <option value="0">Todos</option>
+                                <?php foreach ($clientesLista as $cli): ?>
+                                    <option value="<?= (int)$cli['id'] ?>" <?= (int)$filtros['id_cliente'] === (int)$cli['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($cli['nombre']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Estado</label>
+                            <select name="id_estado" class="form-select form-select-sm">
+                                <option value="0">Todos</option>
+                                <?php foreach ($estadosDisponibles as $est): ?>
+                                    <option value="<?= (int)$est['id'] ?>" <?= (int)$filtros['id_estado'] === (int)$est['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($est['nombre_estado']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Buscar</label>
+                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtros['search']) ?>">
+                        </div>
+                        <div class="col-md-2 d-flex gap-1">
+                            <button class="btn btn-primary btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
+                            <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-circle"></i></a>
+                            <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>" 
+                               class="btn btn-success btn-sm" title="Descargar Excel"><i class="bi bi-file-earmark-excel"></i></a>
                         </div>
                     </form>
                 </div>
