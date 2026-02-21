@@ -53,7 +53,7 @@ class PedidoApiController
              
              // Intentar resolver id_codigo_postal
              $homologacion = AddressService::resolverHomologacion(
-                 (int)$data['id_pais'],
+                 isset($data['id_pais']) ? (int)$data['id_pais'] : 0,
                  $cp_norm,
                  [
                      'id_departamento' => $data['id_departamento'] ?? null,
@@ -125,9 +125,9 @@ class PedidoApiController
 
         $results = [];
         
-        // Determinar si el usuario es proveedor
-        $isProvider = (is_numeric($authUserRole) && (int)$authUserRole === 4) || 
-                      (is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0);
+        // Determinar si el usuario es proveedor (comparar SOLO por nombre, no por ID numérico
+        // porque el ID numérico de rol varía entre sistemas y puede colisionar con otros roles)
+        $isProvider = is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0;
 
         foreach ($payload['pedidos'] as $pedido) {
             $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
@@ -135,10 +135,22 @@ class PedidoApiController
             // Autocompletar ubicación desde código postal antes de validar
             $this->autoCompletarDesdeCP($pedido);
 
-            // Si el usuario es Proveedor, forzar su ID
+            // Si el usuario es Proveedor, forzar su ID (seguridad: un proveedor no puede crear
+            // pedidos bajo otro proveedor)
             if ($isProvider && $authUserId > 0) {
                 $pedido['id_proveedor'] = $authUserId;
                 $pedido['proveedor'] = $authUserId;
+            }
+
+            // Auto-detectar moneda del proveedor si no se envió id_moneda
+            if (!isset($pedido['id_moneda']) || $pedido['id_moneda'] === '' || (int)($pedido['id_moneda'] ?? 0) === 0) {
+                $provId = $pedido['id_proveedor'] ?? $pedido['proveedor'] ?? null;
+                if ($provId) {
+                    $monedaAuto = $this->obtenerMonedaDeProveedor((int)$provId);
+                    if ($monedaAuto) {
+                        $pedido['id_moneda'] = $monedaAuto;
+                    }
+                }
             }
 
 
@@ -158,7 +170,7 @@ class PedidoApiController
                  $pedido['codigo_postal'] = $cp_norm;
                  
                  $homologacion = AddressService::resolverHomologacion(
-                     (int)$pedido['id_pais'],
+                     isset($pedido['id_pais']) ? (int)$pedido['id_pais'] : 0,
                      $cp_norm,
                      [
                          'id_departamento' => $pedido['id_departamento'] ?? null,
@@ -293,6 +305,10 @@ class PedidoApiController
 
             if ($config['required'] && ($val === null || $val === '')) {
                 $errores[$field] = "El campo '$field' es obligatorio.";
+                continue;
+            }
+
+            if (!$config['required'] && ($val === null || $val === '')) {
                 continue;
             }
 
@@ -642,7 +658,7 @@ class PedidoApiController
             'telefono' => $pedido['telefono'] ?? null,
             'direccion' => $pedido['direccion'] ?? null,
             'comentario' => $pedido['comentario'] ?? null,
-            'estado' => isset($pedido['estado']) ? (int)$pedido['estado'] : null,
+            'estado' => isset($pedido['id_estado']) ? (int)$pedido['id_estado'] : (isset($pedido['estado']) ? (int)$pedido['estado'] : 1),
             'id_moneda' => isset($pedido['id_moneda']) ? (int)$pedido['id_moneda'] : (isset($pedido['moneda']) ? (int)$pedido['moneda'] : null),
             'moneda' => isset($pedido['id_moneda']) ? (int)$pedido['id_moneda'] : (isset($pedido['moneda']) ? (int)$pedido['moneda'] : null),
             'id_vendedor' => isset($pedido['id_vendedor']) ? (int)$pedido['id_vendedor'] : (isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null),
