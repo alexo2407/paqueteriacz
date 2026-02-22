@@ -128,11 +128,9 @@ class CSVPedidoValidator
             $advertencias = array_merge($advertencias, $resultadoProducto['advertencias']);
         }
         
-        // 4. Validar cantidad
-        $cantidad = $row['cantidad'] ?? null;
-        if ($cantidad === null || $cantidad === '') {
-            $errores[] = "cantidad vacía";
-        } elseif (!is_numeric($cantidad) || (int)$cantidad < 1) {
+        // 4. Validar cantidad (Opcional, default 1)
+        $cantidad = $row['cantidad'] ?? $row['qty'] ?? 1; // Default a 1 si no viene en el CSV
+        if ($cantidad !== '' && (!is_numeric($cantidad) || (int)$cantidad < 1)) {
             $errores[] = "cantidad debe ser un número entero mayor a 0";
         }
         
@@ -172,14 +170,9 @@ class CSVPedidoValidator
         if (is_string($lat)) $lat = str_replace(',', '.', $lat);
         if (is_string($lng)) $lng = str_replace(',', '.', $lng);
         
-        if ($lat === null || $lat === '') {
-            $errores[] = "latitud vacía";
-            return ['errores' => $errores, 'advertencias' => $advertencias];
-        }
-        
-        if ($lng === null || $lng === '') {
-            $errores[] = "longitud vacía";
-            return ['errores' => $errores, 'advertencias' => $advertencias];
+        if (empty($lat) || empty($lng)) {
+            // Coordenadas opcionales ahora
+            return ['errores' => [], 'advertencias' => []];
         }
         
         if (!is_numeric($lat) || !is_numeric($lng)) {
@@ -220,7 +213,7 @@ class CSVPedidoValidator
         $errores = [];
         $advertencias = [];
         
-        $productoId = $row['id_producto'] ?? null;
+        $productoId = $row['id_producto'] ?? $row['producto_id'] ?? null;
         $productoNombre = trim($row['producto'] ?? $row['producto_nombre'] ?? '');
         
         // Si viene id_producto, validar que existe

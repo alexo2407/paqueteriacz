@@ -1,6 +1,7 @@
 <?php include("vista/includes/header.php"); ?>
 
 <?php
+$usaDataTables = true;
 $ctrl = new PaisesController();
 $paises = $ctrl->listar();
 

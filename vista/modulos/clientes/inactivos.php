@@ -1,6 +1,7 @@
 <?php include("vista/includes/header.php"); ?>
 
 <?php
+$usaDataTables = true;
 // Instanciar el controlador
 $clienteController = new ClientesController();
 

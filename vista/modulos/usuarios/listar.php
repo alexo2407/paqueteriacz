@@ -1,6 +1,7 @@
 <?php include("vista/includes/header.php") ?>
 
 <?php
+$usaDataTables = true;
 $listarUsuarios = new UsuariosController();
 $resultadoUsuarios = $listarUsuarios->mostrarUsuariosController();
 

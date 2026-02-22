@@ -1,6 +1,7 @@
 <?php include("vista/includes/header.php"); ?>
 
 <?php
+$usaDataTables = true;
 require_once __DIR__ . '/../../../controlador/departamento.php';
 require_once __DIR__ . '/../../../controlador/pais.php';
 $paisCtrl = new PaisesController();

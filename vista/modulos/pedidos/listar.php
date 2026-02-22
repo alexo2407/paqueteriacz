@@ -1,4 +1,5 @@
 <?php
+$usaDataTables = true;
 require_once "utils/authorization.php";
 require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
 
@@ -141,16 +142,119 @@ endif;
                     </div>
                     <div id="uploadStatus" class="small text-muted mt-1 d-none"></div>
 
-                    <!-- Información -->
-                    <div class="alert alert-info mt-3">
-                        <h6 class="alert-heading"><i class="bi bi-info-circle"></i> Instrucciones</h6>
-                        <ul class="mb-0 small">
-                            <li><strong>Columnas mínimas:</strong> numero_orden, latitud, longitud</li>
-                            <li><strong>Columnas opcionales:</strong> destinatario, telefono, id_producto o producto_nombre, cantidad, direccion, etc.</li>
-                            <li>Usa la <strong>Vista Previa</strong> para validar antes de importar</li>
-                            <li>Si hay errores, se generará un CSV descargable con las filas problemáticas</li>
-                        </ul>
+                    <!-- Documentación de campos al estilo API -->
+                    <div class="mt-3 border rounded overflow-hidden" style="font-size:0.82rem;">
+                        <!-- Header -->
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 text-white" style="background:linear-gradient(135deg,#667eea,#764ba2)">
+                            <span class="fw-bold"><i class="bi bi-table me-1"></i> Referencia de Campos CSV</span>
+                            <a href="<?= RUTA_URL ?>Pedidos/referencia" target="_blank" class="text-white small opacity-75">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Ver IDs disponibles
+                            </a>
+                        </div>
+
+                        <div class="p-3">
+                            <!-- Tabla de campos -->
+                            <table class="table table-sm table-bordered mb-2" style="font-size:0.8rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="min-width:130px">Campo CSV</th>
+                                        <th>Tipo</th>
+                                        <th>Descripción / Valores aceptados</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- REQUERIDOS (ESTRICTOS) -->
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>numero_orden</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>ID externo del pedido. Único por cliente.</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>destinatario</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Nombre completo del destinatario.</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>id_producto</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>ID del producto (ver Referencia).</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>id_cliente</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>ID del cliente dueño del pedido. Se auto-completa en la plantilla.</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>id_proveedor</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>ID del proveedor de mensajería asignado.</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>telefono</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Teléfono de contacto (mínimo 7 dígitos).</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>direccion</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Dirección completa de entrega (mínimo 5 caracteres).</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>comentario</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Notas de entrega obligatorias.</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>precio_total_local</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">decimal</td>
+                                        <td>Precio total local (debe ser mayor a 0).</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td><code>es_combo</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>1 si es combo, 0 si es estándar.</td>
+                                    </tr>
+                                    <tr class="table-info bg-opacity-25">
+                                        <td><code>codigo_postal</code></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Código postal de la zona de entrega.</td>
+                                    </tr>
+                                    <tr class="table-info bg-opacity-25">
+                                        <td><code>cantidad</code></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>Cantidad del producto solicitado (default 1).</td>
+                                    </tr>
+                                    <tr class="table-info bg-opacity-25">
+                                        <td><code>id_estado</code></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>ID del estado inicial (1=Pendiente, etc).</td>
+                                    </tr>
+                                    <tr class="table-info bg-opacity-25">
+                                        <td><code>zona</code></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Nombre de la zona de entrega.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <!-- Ejemplo mínimo (Campos Estrictos) -->
+                            <div class="bg-dark rounded px-3 py-2" style="font-family:monospace;font-size:0.75rem;color:#e8e8e8;overflow-x:auto;white-space:nowrap;">
+                                <span class="text-success"># Ejemplo con los campos principales (Incluido en la descarga):</span><br>
+                                <span class="text-warning">numero_orden</span>,<span class="text-warning">destinatario</span>,<span class="text-warning">id_producto</span>,<span class="text-warning">id_cliente</span>,<span class="text-warning">id_proveedor</span>,<span class="text-warning">telefono</span>,<span class="text-warning">direccion</span>,<span class="text-warning">comentario</span>,<span class="text-warning">precio_total_local</span>,<span class="text-warning">es_combo</span>,<span class="text-warning">codigo_postal</span>,<span class="text-warning">cantidad</span>,<span class="text-warning">id_estado</span>,<span class="text-warning">zona</span><br>
+                                1001,Juan Pérez,1,<?= $_SESSION['user_id'] ?? '7' ?>,1,88112233,Colinas C-14,Entregar hoy,150.00,0,10000,1,1,Norte
+                            </div>
+
+                            <div class="d-flex gap-2 mt-2 flex-wrap align-items-center">
+                                <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-lightbulb me-1"></i>Descarga la plantilla oficial (Incluye ejemplos y tu ID):</span>
+                                <a href="<?= RUTA_URL ?>public/pedidos_template.php" class="btn btn-xs btn-outline-success btn-sm py-1 px-3" style="font-size:0.8rem;" download>
+                                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>Descargar Plantilla CSV (14 Campos)
+                                </a>
+                                <span class="badge bg-warning text-dark ms-1"><i class="bi bi-exclamation-triangle me-1"></i>Usa Vista Previa antes de importar</span>
+                            </div>
+                        </div>
                     </div>
+
+
 
                 </form>
             </div>

@@ -1,4 +1,5 @@
 <?php
+$usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -301,12 +302,43 @@ sort($marcasUnicas);
                                         <a href="<?php echo RUTA_URL; ?>productos/editar/<?php echo $prod['id']; ?>" class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                                             <i class="bi bi-pencil"></i>
                                         </a>
+                                        <button type="button"
+                                            class="btn btn-danger btn-square btn-eliminar-producto"
+                                            title="Eliminar"
+                                            data-id="<?php echo $prod['id']; ?>"
+                                            data-nombre="<?php echo htmlspecialchars($prod['nombre']); ?>"
+                                            style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Confirmación Eliminar -->
+<div class="modal fade" id="modalEliminarProducto" tabindex="-1" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalEliminarLabel"><i class="bi bi-exclamation-triangle me-2"></i>Eliminar Producto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">¿Estás seguro de que deseas eliminar el producto:</p>
+                <p class="fw-bold fs-6" id="nombreProductoEliminar"></p>
+                <div class="alert alert-warning py-2 mb-0"><i class="bi bi-info-circle me-1"></i>Esta acción no se puede deshacer.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarEliminar">
+                    <i class="bi bi-trash me-1"></i>Sí, eliminar
+                </button>
             </div>
         </div>
     </div>
@@ -326,13 +358,51 @@ sort($marcasUnicas);
                  '<"row"<"col-sm-12"tr>>' +
                  '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
             initComplete: function() {
-                // Style pagination and length
                 $('.dataTables_length select').addClass('form-select form-select-sm border-2 w-auto d-inline-block');
             }
         });
 
         $('#busquedaTabla').on('keyup', function() {
             $('#tablaProductos').DataTable().search(this.value).draw();
+        });
+
+        // --- Eliminar producto ---
+        let productoIdAEliminar = null;
+        let filaAEliminar = null;
+        const csrfToken = '<?php
+            require_once __DIR__ . "/../../../utils/csrf.php";
+            echo csrf_token();
+        ?>';
+
+        $(document).on('click', '.btn-eliminar-producto', function() {
+            productoIdAEliminar = $(this).data('id');
+            filaAEliminar = $(this).closest('tr');
+            $('#nombreProductoEliminar').text($(this).data('nombre'));
+            var modalEl = document.getElementById('modalEliminarProducto');
+            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        });
+
+        $('#btnConfirmarEliminar').on('click', function() {
+            if (!productoIdAEliminar) return;
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Eliminando...');
+
+            $.post('<?php echo RUTA_URL; ?>productos/eliminar/' + productoIdAEliminar, {
+                csrf_token: csrfToken
+            }, function(resp) {
+                if (resp.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('modalEliminarProducto')).hide();
+                    $('#tablaProductos').DataTable().row(filaAEliminar).remove().draw();
+                    productoIdAEliminar = null;
+                } else {
+                    alert('Error: ' + (resp.message || 'No se pudo eliminar el producto.'));
+                }
+            }, 'json').fail(function() {
+                location.reload();
+            }).always(function() {
+                $btn.prop('disabled', false).html('<i class="bi bi-trash me-1"></i>Sí, eliminar');
+            });
         });
     });
 </script>

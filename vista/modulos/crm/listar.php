@@ -1,4 +1,5 @@
 <?php 
+$usaDataTables = true;
 
 start_secure_session();
 

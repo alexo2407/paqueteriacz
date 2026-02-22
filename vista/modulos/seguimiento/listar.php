@@ -1,4 +1,5 @@
 <?php
+$usaDataTables = true;
 include("vista/includes/header.php");
 require_once __DIR__ . '/../../../utils/session.php';
 start_secure_session();

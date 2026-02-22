@@ -1,6 +1,7 @@
 <?php include("vista/includes/header.php") ?>
 
 <?php
+$usaDataTables = true;
 // Instanciar el controlador y obtener la lista de clientes
 $listarClientes = new ClientesController();
 $clientes = $listarClientes->mostrarClientesController();

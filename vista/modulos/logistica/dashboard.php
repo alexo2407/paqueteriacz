@@ -266,16 +266,9 @@ include "vista/includes/header.php";
         
         <!-- TAB: PEDIDOS ACTIVOS (GRID DE CARDS) -->
         <div class="tab-pane fade <?= $panePedidos ?>" id="pills-pedidos" role="tabpanel">
-            <?php if (empty($pedidosActivos)): ?>
-                <div class="text-center py-5 border rounded bg-light">
-                    <i class="bi bi-box2 display-1 text-muted opacity-25"></i>
-                    <h5 class="mt-3 text-muted">Sin pedidos activos</h5>
-                    <p class="text-muted">No tienes pedidos en tránsito o pendientes por el momento.</p>
-                </div>
-            <?php else: ?>
-                
-                <!-- Barra de Filtros + Excel (Tab Pedidos Activos) -->
-                <div class="card border-0 shadow-sm mb-4">
+            
+            <!-- Barra de Filtros + Excel (Tab Pedidos Activos) -->
+            <div class="card border-0 shadow-sm mb-4">
                     <div class="card-body bg-light rounded">
                         <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-2 align-items-end" id="formFiltrosPedidos">
                             <input type="hidden" name="tab" value="pedidos">
@@ -323,6 +316,13 @@ include "vista/includes/header.php";
                     </div>
                 </div>
 
+            <?php if (empty($pedidosActivos)): ?>
+                <div class="text-center py-5 border rounded bg-light">
+                    <i class="bi bi-box2 display-1 text-muted opacity-25"></i>
+                    <h5 class="mt-3 text-muted">Sin pedidos activos</h5>
+                    <p class="text-muted">No tienes pedidos en tránsito o pendientes por el momento.</p>
+                </div>
+            <?php else: ?>
                 <div class="row" id="gridActivos">
                 <?php foreach ($pedidosActivos as $p): 
                      $color = getBadgeColor($p['estado'], $estadoColores);

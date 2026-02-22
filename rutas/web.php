@@ -607,10 +607,21 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
 
         $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
         $response = $ctrl->eliminar($id);
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+        if ($isAjax) {
+            header('Content-Type: application/json');
+            echo json_encode($response, JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
         header('Location: ' . RUTA_URL . 'productos/listar');
         exit;
     }
+
 }
 
 // -----------------------

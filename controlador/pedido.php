@@ -1232,7 +1232,7 @@ class PedidosController {
             $cols = CSVHelper::normalizeHeaders($header);
             
             // Validar columnas mínimas requeridas
-            $required = ['numero_orden', 'latitud', 'longitud'];
+            $required = ['numero_orden'];
             $missing = [];
             foreach ($required as $r) {
                 if (!in_array($r, $cols)) $missing[] = $r;

@@ -1,6 +1,7 @@
 <?php include("vista/includes/header.php"); ?>
 
 <?php
+$usaDataTables = true;
 require_once __DIR__ . '/../../../controlador/barrio.php';
 require_once __DIR__ . '/../../../controlador/municipio.php';
 $munCtrl = new MunicipiosController();

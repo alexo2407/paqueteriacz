@@ -64,8 +64,8 @@ try {
             <div class="col-md-12 mb-3">
                 <div class="alert alert-info py-2 px-3 mb-0 small border-0 shadow-sm">
                     <i class="bi bi-info-circle-fill me-2"></i>
-                    Puedes usar el <strong>ID</strong> (numérico) o el <strong>Nombre</strong> (texto) en tu archivo CSV.
-                    Ejemplo: <code>id_estado=1</code> es igual a <code>estado_nombre=Pendiente</code>.
+                    Puedes usar el <strong>ID</strong> (numérico) o el <strong>Nombre</strong> (texto exacto) en tu archivo CSV.
+                    Ejemplo: <code>id_estado=1</code> es equivalente a <code>estado_nombre=En bodega</code> (consulta la tabla <strong>Estados</strong> para ver todos los IDs y nombres disponibles).
                     <br>
                     <i class="bi bi-geo-alt-fill me-2 text-primary"></i>
                     <strong>Códigos Postales:</strong> Pueden estar asignados al <strong>Barrio</strong> o al <strong>Municipio</strong> según el país. 

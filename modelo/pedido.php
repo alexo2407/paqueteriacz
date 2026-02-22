@@ -180,9 +180,10 @@ class PedidosModel
                             $lng = $parts[1];
                         }
                     }
-                    if ($lat === null || $lng === null) {
-                        throw new Exception('Coordenadas inválidas para fila index ' . $idx);
-                    }
+                    
+                    // Si no se proporcionan, usar 0.0 (por defecto ahora son opcionales)
+                    if ($lat === null || $lat === '' || !is_numeric($lat)) $lat = 0.0;
+                    if ($lng === null || $lng === '' || !is_numeric($lng)) $lng = 0.0;
 
                     $precio_local = $row['precio'] ?? $row['precio_local'] ?? null;
                     if ($precio_local === '') $precio_local = null;
@@ -272,6 +273,23 @@ class PedidosModel
                             case 'es_combo':
                                 $val = $row['es_combo'] ?? 0;
                                 $params[':es_combo'] = !empty($val) ? 1 : 0;
+                                break;
+                            case 'fecha_entrega':
+                                $val = $row['fecha_entrega'] ?? null;
+                                // Normalizar: string vacío → null, validar formato YYYY-MM-DD
+                                if ($val === '' || $val === null) {
+                                    $params[':fecha_entrega'] = null;
+                                } else {
+                                    // Intentar parsear la fecha para asegurar formato válido
+                                    $fecha = date_create($val);
+                                    $params[':fecha_entrega'] = $fecha ? date_format($fecha, 'Y-m-d') : null;
+                                }
+                                break;
+                            case 'id_municipio':
+                                $params[':id_municipio'] = $row['id_municipio'] ?? null;
+                                break;
+                            case 'id_barrio':
+                                $params[':id_barrio'] = $row['id_barrio'] ?? null;
                                 break;
                         }
                     }
