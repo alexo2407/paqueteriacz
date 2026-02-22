@@ -176,21 +176,56 @@ $puedeEditar = in_array('Administrador', $rolesNombres, true) || in_array('Vende
                 </table>
             </div>
 
-            <!-- Paginación Simple -->
-            <?php if ($paginas > 1): ?>
-                <nav class="mt-4">
-                    <ul class="pagination justify-content-center">
-                        <?php for ($i = 1; $i <= $paginas; $i++): 
-                                $params = array_merge($filtros, ['pagina' => $i, 'enlace' => 'codigos_postales']);
-                                $query = http_build_query($params);
-                        ?>
-                            <li class="page-item <?= $i == $pagina ? 'active' : '' ?>">
-                                <a class="page-link" href="?<?= $query ?>"><?= $i ?></a>
-                            </li>
-                        <?php endfor; ?>
-                    </ul>
-                </nav>
+            <!-- Paginación mejorada -->
+            <?php if ($paginas > 1):
+                $window   = 2;              // páginas a cada lado de la actual
+                $baseParams = array_merge($filtros, ['enlace' => 'codigos_postales']);
+
+                function cpPageUrl($baseParams, $p) {
+                    return '?' . http_build_query(array_merge($baseParams, ['pagina' => $p]));
+                }
+
+                // Construir set de páginas visibles
+                $visible = [];
+                $visible[] = 1;
+                for ($i = max(2, $pagina - $window); $i <= min($paginas - 1, $pagina + $window); $i++) $visible[] = $i;
+                $visible[] = $paginas;
+                $visible = array_unique($visible);
+                sort($visible);
+            ?>
+            <nav class="mt-4" aria-label="Paginación">
+              <ul class="pagination pagination-sm justify-content-center flex-wrap gap-1 mb-0">
+
+                <!-- Anterior -->
+                <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
+                  <a class="page-link rounded" href="<?= cpPageUrl($baseParams, $pagina - 1) ?>">
+                    <i class="bi bi-chevron-left"></i>
+                  </a>
+                </li>
+
+                <?php $prev = null; foreach ($visible as $p):
+                    if ($prev !== null && $p - $prev > 1): ?>
+                      <li class="page-item disabled"><span class="page-link border-0 bg-transparent">…</span></li>
+                    <?php endif; ?>
+                    <li class="page-item <?= $p == $pagina ? 'active' : '' ?>">
+                      <a class="page-link rounded" href="<?= cpPageUrl($baseParams, $p) ?>"><?= $p ?></a>
+                    </li>
+                <?php $prev = $p; endforeach; ?>
+
+                <!-- Siguiente -->
+                <li class="page-item <?= $pagina >= $paginas ? 'disabled' : '' ?>">
+                  <a class="page-link rounded" href="<?= cpPageUrl($baseParams, $pagina + 1) ?>">
+                    <i class="bi bi-chevron-right"></i>
+                  </a>
+                </li>
+
+              </ul>
+              <p class="text-center text-muted small mt-2 mb-0">
+                Página <?= $pagina ?> de <?= $paginas ?> &nbsp;·&nbsp; <?= number_format($total) ?> registros
+              </p>
+            </nav>
             <?php endif; ?>
+
         </div>
     </div>
 </div>
