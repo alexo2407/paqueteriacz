@@ -265,4 +265,142 @@ class LogisticaController {
         }
         exit;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bulk update — preview
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function bulkPreview(): void
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente(); // ROL_CLIENTE = proveedor logístico
+
+        // Solo Cliente (proveedor) o Admin
+        if (!$isProveedor && !isSuperAdmin()) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
+            exit;
+        }
+
+        if (empty($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'No se recibió ningún archivo.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../utils/BulkParser.php';
+        require_once __DIR__ . '/../modelo/logistica.php';
+
+        try {
+            $parsed = BulkParser::parseFile($_FILES['archivo']);
+        } catch (RuntimeException $e) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+            exit;
+        }
+
+        // Validar encabezados
+        $headerError = BulkParser::validateHeaders($parsed['headers']);
+        if ($headerError) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => $headerError]);
+            exit;
+        }
+
+        if (empty($parsed['rows'])) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'El archivo no contiene filas de datos.']);
+            exit;
+        }
+
+        $preview = LogisticaModel::bulkPreview($parsed['rows'], $userId, $isProveedor);
+
+        // Guardar las filas validadas en sesión para el commit
+        $jobId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+        $_SESSION['bulk_job_' . $jobId] = [
+            'rows'    => $preview['rows_validadas'],
+            'user_id' => $userId,
+            'archivo' => $_FILES['archivo']['name'] ?? 'bulk',
+            'ts'      => time(),
+        ];
+
+        ob_clean();
+        echo json_encode([
+            'ok'           => true,
+            'job_id'       => $jobId,
+            'summary'      => $preview['summary'],
+            'errores'      => $preview['errores'],
+            'advertencias' => $preview['advertencias'],
+            'preview_rows' => array_slice($preview['rows_validadas'], 0, 30),
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bulk update — commit
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function bulkCommit(): void
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        if (!$isProveedor && !isSuperAdmin()) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $jobId = trim($input['job_id'] ?? '');
+
+        if (empty($jobId) || !isset($_SESSION['bulk_job_' . $jobId])) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Job no encontrado o expirado. Suba el archivo nuevamente.']);
+            exit;
+        }
+
+        $job  = $_SESSION['bulk_job_' . $jobId];
+
+        // Expirar job tras 30 minutos
+        if (time() - ($job['ts'] ?? 0) > 1800) {
+            unset($_SESSION['bulk_job_' . $jobId]);
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'La sesión expiró. Suba el archivo nuevamente.']);
+            exit;
+        }
+
+        // Verificar que el job pertenece al usuario actual
+        if ((int)($job['user_id'] ?? 0) !== (int)$userId) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Job no válido para este usuario.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../modelo/logistica.php';
+
+        $result = LogisticaModel::bulkCommit($job['rows'], $userId, $job['archivo'] ?? 'bulk');
+
+        // Limpiar sesión
+        unset($_SESSION['bulk_job_' . $jobId]);
+
+        ob_clean();
+        echo json_encode([
+            'ok'      => true,
+            'summary' => $result,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }

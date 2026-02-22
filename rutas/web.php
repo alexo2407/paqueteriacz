@@ -1317,10 +1317,26 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] ==
     }
     
     $ctrl = new LogisticaController();
-    
+
     if ($accion === 'cambiarEstado') {
         $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
         $ctrl->cambiarEstado($id);
         exit;
     }
+
+    // Bulk update — comentario y/o estado
+    if ($accion === 'bulk') {
+        require_once __DIR__ . '/../utils/permissions.php';
+        $sub = $ruta[2] ?? '';
+        if ($sub === 'preview') {
+            $ctrl->bulkPreview();
+            exit;
+        }
+        if ($sub === 'commit') {
+            $ctrl->bulkCommit();
+            exit;
+        }
+    }
 }
+
+

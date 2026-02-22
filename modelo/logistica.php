@@ -130,7 +130,12 @@ class LogisticaModel {
             }
             
             if ($excluirEstadosFinales) {
-                $sql .= " AND (ep.nombre_estado IS NULL OR ep.nombre_estado NOT IN ('Entregado', 'Devuelto', 'Cancelado'))";
+                $sql .= " AND (ep.nombre_estado IS NULL OR LOWER(ep.nombre_estado) NOT IN (
+                    'entregado',
+                    'devuelto',
+                    'rechazado',
+                    'no puede pagar recaudo'
+                ))";
             }
 
             $sql .= " ORDER BY p.fecha_ingreso DESC";
@@ -199,7 +204,12 @@ class LogisticaModel {
             }
             
             if ($excluirEstadosFinales) {
-                $sql .= " AND (ep.nombre_estado IS NULL OR ep.nombre_estado NOT IN ('Entregado', 'Devuelto', 'Cancelado'))";
+                $sql .= " AND (ep.nombre_estado IS NULL OR LOWER(ep.nombre_estado) NOT IN (
+                    'entregado',
+                    'devuelto',
+                    'rechazado',
+                    'no puede pagar recaudo'
+                ))";
             }
 
             $stmt = $db->prepare($sql);
@@ -336,5 +346,310 @@ class LogisticaModel {
             error_log("Error actualizarEstado logistica: " . $e->getMessage());
             return false;
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bulk update — comentario y/o estado
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Valida un conjunto de filas sin modificar la BD.
+     *
+     * @param  array $rows          Filas parseadas por BulkParser::parseFile()
+     * @param  int   $userId        ID del usuario actual
+     * @param  bool  $isProveedor   true si el usuario es Cliente (Proveedor logístico)
+     * @return array {rows_validadas, errores, advertencias, summary}
+     */
+    public static function bulkPreview(array $rows, int $userId, bool $isProveedor): array
+    {
+        $db = (new Conexion())->conectar();
+
+        // ── 1. Recopilar identificadores de las filas ──────────────────────
+        $idPedidos    = [];
+        $numOrden     = [];
+
+        foreach ($rows as $row) {
+            $ip = isset($row['id_pedido'])    && $row['id_pedido']    !== null ? (int)$row['id_pedido']    : null;
+            $no = isset($row['numero_orden']) && $row['numero_orden'] !== null ? (string)$row['numero_orden'] : null;
+            if ($ip) $idPedidos[] = $ip;
+            if ($no) $numOrden[]  = $no;
+        }
+
+        // ── 2. Consulta batch a pedidos ────────────────────────────────────
+        $pedidosById    = [];
+        $pedidosByOrden = [];
+
+        if (!empty($idPedidos)) {
+            $ph   = implode(',', array_fill(0, count($idPedidos), '?'));
+            $stmt = $db->prepare("SELECT id, numero_orden, id_proveedor, id_cliente, id_estado, comentario FROM pedidos WHERE id IN ($ph)");
+            $stmt->execute($idPedidos);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                $pedidosById[(int)$p['id']] = $p;
+            }
+        }
+
+        if (!empty($numOrden)) {
+            $ph   = implode(',', array_fill(0, count($numOrden), '?'));
+            $sql  = "SELECT id, numero_orden, id_proveedor, id_cliente, id_estado, comentario FROM pedidos WHERE CAST(numero_orden AS CHAR) IN ($ph)";
+            if ($isProveedor) {
+                $sql .= ' AND id_proveedor = ?';
+                $params = array_merge($numOrden, [$userId]);
+            } else {
+                $params = $numOrden;
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                $key = (string)$p['numero_orden'];
+                if (isset($pedidosByOrden[$key])) {
+                    $pedidosByOrden[$key] = 'AMBIGUO'; // más de un pedido con ese número
+                } else {
+                    $pedidosByOrden[$key] = $p;
+                }
+            }
+        }
+
+        // ── 3. Cargar todos los estados en memoria ─────────────────────────
+        $estadosByNombre = [];
+        $estadosById     = [];
+        $stmtE = $db->query("SELECT id, nombre_estado FROM estados_pedidos");
+        foreach ($stmtE->fetchAll(PDO::FETCH_ASSOC) as $e) {
+            $estadosByNombre[strtolower(trim($e['nombre_estado']))] = (int)$e['id'];
+            $estadosById[(int)$e['id']] = trim($e['nombre_estado']);
+        }
+
+        // ── 4. Validar cada fila ───────────────────────────────────────────
+        $rowsValidadas = [];
+        $errores       = [];
+        $advertencias  = [];
+
+        foreach ($rows as $row) {
+            $line = $row['_line'] ?? '?';
+            $ip   = isset($row['id_pedido'])    && $row['id_pedido']    !== null ? (int)$row['id_pedido'] : null;
+            $no   = isset($row['numero_orden']) && $row['numero_orden'] !== null ? (string)$row['numero_orden'] : null;
+            $comentario  = $row['comentario']  ?? null;
+            $estadoNombre = isset($row['estado']) ? strtolower(trim((string)$row['estado'])) : null;
+            $idEstadoRaw  = isset($row['id_estado']) && $row['id_estado'] !== null ? (int)$row['id_estado'] : null;
+            $motivo       = $row['motivo'] ?? null;
+
+            // Sin identificador
+            if ($ip === null && $no === null) {
+                $errores[] = "Línea {$line}: Falta id_pedido y numero_orden.";
+                continue;
+            }
+
+            // Sin campo a actualizar
+            if ($comentario === null && $estadoNombre === null && $idEstadoRaw === null) {
+                $errores[] = "Línea {$line}: Debe incluir al menos comentario, estado o id_estado.";
+                continue;
+            }
+
+            // Resolver pedido
+            $pedido = null;
+            if ($ip !== null) {
+                $pedido = $pedidosById[$ip] ?? null;
+                if ($pedido === null) {
+                    $errores[] = "Línea {$line}: id_pedido {$ip} no existe.";
+                    continue;
+                }
+            } else {
+                $match = $pedidosByOrden[$no] ?? null;
+                if ($match === null) {
+                    $errores[] = "Línea {$line}: numero_orden {$no} no existe.";
+                    continue;
+                }
+                if ($match === 'AMBIGUO') {
+                    $errores[] = "Línea {$line}: numero_orden {$no} pertenece a más de un pedido — use id_pedido.";
+                    continue;
+                }
+                $pedido = $match;
+            }
+
+            // Verificar propiedad si es proveedor
+            if ($isProveedor && (int)$pedido['id_proveedor'] !== $userId) {
+                $errores[] = "Línea {$line}: El pedido {$pedido['id']} no pertenece a su cuenta.";
+                continue;
+            }
+
+            // Validar comentario
+            $nuevoComentario = null;
+            if ($comentario !== null) {
+                if (strlen($comentario) > 500) {
+                    $errores[] = "Línea {$line}: Comentario excede 500 caracteres (" . strlen($comentario) . ").";
+                    continue;
+                }
+                $nuevoComentario = $comentario;
+                if ($nuevoComentario === (string)($pedido['comentario'] ?? '')) {
+                    $advertencias[] = "Línea {$line}: Comentario idéntico al actual (sin cambio).";
+                }
+            }
+
+            // Validar estado
+            $nuevoIdEstado = null;
+            if ($idEstadoRaw !== null) {
+                if (!isset($estadosById[$idEstadoRaw])) {
+                    $validos = implode(', ', array_values($estadosById));
+                    $errores[] = "Línea {$line}: id_estado {$idEstadoRaw} no existe. IDs válidos: {$validos}";
+                    continue;
+                }
+                $nuevoIdEstado = $idEstadoRaw;
+            } elseif ($estadoNombre !== null && $estadoNombre !== '') {
+                if (!isset($estadosByNombre[$estadoNombre])) {
+                    $validos = implode(', ', array_keys($estadosByNombre));
+                    $errores[] = "Línea {$line}: Estado \"{$row['estado']}\" no reconocido. Válidos: {$validos}";
+                    continue;
+                }
+                $nuevoIdEstado = $estadosByNombre[$estadoNombre];
+            }
+
+            if ($nuevoIdEstado !== null && $nuevoIdEstado === (int)$pedido['id_estado']) {
+                $advertencias[] = "Línea {$line}: Estado idéntico al actual (sin cambio).";
+            }
+
+            $rowsValidadas[] = [
+                '_line'        => $line,
+                'id_pedido'    => (int)$pedido['id'],
+                'numero_orden' => $pedido['numero_orden'],
+                'comentario_anterior' => $pedido['comentario'],
+                'estado_anterior_id'  => $pedido['id_estado'],
+                'nuevo_comentario'    => $nuevoComentario,
+                'nuevo_id_estado'     => $nuevoIdEstado,
+                'motivo'              => $motivo,
+            ];
+        }
+
+        $totalFilas = count($rows);
+        $totalErr   = count($errores);
+        $totalWarn  = count($advertencias);
+        $totalOk    = count($rowsValidadas);
+
+        return [
+            'rows_validadas' => $rowsValidadas,
+            'errores'        => $errores,
+            'advertencias'   => $advertencias,
+            'summary'        => [
+                'total'        => $totalFilas,
+                'validas'      => $totalOk,
+                'errores'      => $totalErr,
+                'advertencias' => $totalWarn,
+            ],
+        ];
+    }
+
+    /**
+     * Aplica las actualizaciones validadas en una transacción atómica.
+     *
+     * @param  array  $rowsValidadas  Salida de bulkPreview()['rows_validadas']
+     * @param  int    $userId
+     * @param  string $archivoNombre  Nombre original del archivo (para log)
+     * @return array  {total, actualizados, sin_cambios, fallidos, failed_rows}
+     */
+    public static function bulkCommit(array $rowsValidadas, int $userId, string $archivoNombre = 'bulk'): array
+    {
+        require_once __DIR__ . '/auditoria.php';
+
+        $db = (new Conexion())->conectar();
+        $db->beginTransaction();
+
+        $actualizados = 0;
+        $sinCambios   = 0;
+        $fallidos     = 0;
+        $failedRows   = [];
+
+        try {
+            foreach ($rowsValidadas as $row) {
+                $idPedido       = (int)$row['id_pedido'];
+                $nuevoComentario = $row['nuevo_comentario'];
+                $nuevoIdEstado   = $row['nuevo_id_estado'];
+
+                // Determinar si hay cambios reales
+                $hayCambio = ($nuevoComentario !== null && $nuevoComentario !== (string)($row['comentario_anterior'] ?? ''))
+                          || ($nuevoIdEstado  !== null && $nuevoIdEstado  !== (int)($row['estado_anterior_id'] ?? 0));
+
+                if (!$hayCambio) {
+                    $sinCambios++;
+                    continue;
+                }
+
+                // Construir SET dinámico
+                $sets   = [];
+                $params = [];
+
+                if ($nuevoComentario !== null) {
+                    $sets[]             = 'comentario = :comentario';
+                    $params[':comentario'] = $nuevoComentario;
+                }
+                if ($nuevoIdEstado !== null) {
+                    $sets[]               = 'id_estado = :id_estado';
+                    $params[':id_estado']  = $nuevoIdEstado;
+                }
+
+                $params[':id'] = $idPedido;
+                $sql = 'UPDATE pedidos SET ' . implode(', ', $sets) . ' WHERE id = :id';
+
+                $stmt = $db->prepare($sql);
+                $ok   = $stmt->execute($params);
+
+                if ($ok && $stmt->rowCount() > 0) {
+                    $actualizados++;
+                    // Auditoría
+                    $antes  = [];
+                    $nuevos = [];
+                    if ($nuevoComentario !== null) {
+                        $antes['comentario']  = $row['comentario_anterior'];
+                        $nuevos['comentario'] = $nuevoComentario;
+                    }
+                    if ($nuevoIdEstado !== null) {
+                        $antes['id_estado']  = $row['estado_anterior_id'];
+                        $nuevos['id_estado'] = $nuevoIdEstado;
+                    }
+                    if (!empty($row['motivo'])) {
+                        $nuevos['motivo'] = $row['motivo'];
+                    }
+                    AuditoriaModel::registrar('pedidos', $idPedido, 'actualizar', $userId, $antes, $nuevos);
+                } else {
+                    $fallidos++;
+                    $failedRows[] = "Fila {$row['_line']}: pedido {$idPedido} — sin filas afectadas.";
+                }
+            }
+
+            $db->commit();
+
+            // Registrar en importaciones_csv
+            try {
+                $ins = $db->prepare("INSERT INTO importaciones_csv
+                    (id_usuario, archivo_nombre, filas_totales, filas_exitosas, filas_error, estado)
+                    VALUES (:uid, :arch, :total, :ok, :err, 'completado')");
+                $total = count($rowsValidadas);
+                $ins->execute([
+                    ':uid'   => $userId,
+                    ':arch'  => 'bulk_pedidos_' . $archivoNombre,
+                    ':total' => $total,
+                    ':ok'    => $actualizados,
+                    ':err'   => $fallidos,
+                ]);
+            } catch (Exception $e) {
+                error_log('BulkCommit log error: ' . $e->getMessage());
+            }
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('BulkCommit error: ' . $e->getMessage());
+            return [
+                'total'        => count($rowsValidadas),
+                'actualizados' => 0,
+                'sin_cambios'  => 0,
+                'fallidos'     => count($rowsValidadas),
+                'failed_rows'  => ['Error interno: ' . $e->getMessage()],
+            ];
+        }
+
+        return [
+            'total'        => count($rowsValidadas),
+            'actualizados' => $actualizados,
+            'sin_cambios'  => $sinCambios,
+            'fallidos'     => $fallidos,
+            'failed_rows'  => $failedRows,
+        ];
     }
 }

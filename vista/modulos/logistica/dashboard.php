@@ -311,6 +311,11 @@ include "vista/includes/header.php";
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=pedidos" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-circle"></i></a>
                                 <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=pedidos&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>" 
                                    class="btn btn-success btn-sm" title="Descargar Excel"><i class="bi bi-file-earmark-excel"></i></a>
+                                <?php if (isCliente() || isSuperAdmin()): ?>
+                                <button type="button" class="btn btn-warning btn-sm" id="btnAbrirBulk" title="Actualizar comentarios/estado masivamente" onclick="abrirModalBulk()">
+                                    <i class="bi bi-file-earmark-arrow-up"></i> Actualizar
+                                </button>
+                                <?php endif; ?>
                             </div>
                         </form>
                     </div>
@@ -728,3 +733,355 @@ include "vista/includes/header.php";
     }
 </script>
 
+<?php if (isCliente() || isSuperAdmin()): ?>
+<!-- ===== MODAL: ACTUALIZACIÓN MASIVA ===== -->
+<div class="modal fade" id="modalBulkUpdate" tabindex="-1" aria-labelledby="modalBulkLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalBulkLabel">
+          <i class="bi bi-file-earmark-arrow-up text-warning me-2"></i>Actualización Masiva de Pedidos
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Indicador de pasos -->
+        <div class="d-flex align-items-center mb-4" id="bulkStepsIndicator">
+          <span class="badge rounded-pill bg-warning text-dark me-2" id="bulkStep1Badge">1</span>
+          <span class="fw-semibold me-3" id="bulkStep1Label">Subir archivo</span>
+          <div class="flex-grow-1 border-top mx-2"></div>
+          <span class="badge rounded-pill bg-secondary me-2" id="bulkStep2Badge">2</span>
+          <span class="text-muted me-3" id="bulkStep2Label">Vista previa</span>
+          <div class="flex-grow-1 border-top mx-2"></div>
+          <span class="badge rounded-pill bg-secondary me-2" id="bulkStep3Badge">3</span>
+          <span class="text-muted" id="bulkStep3Label">Confirmado</span>
+        </div>
+
+        <!-- PASO 1: Subir archivo -->
+        <div id="bulkPaso1">
+          <div class="alert alert-info">
+            <strong>Columnas reconocidas:</strong>
+            <code>id_pedido</code> o <code>numero_orden</code> (al menos uno), 
+            <code>comentario</code> y/o <code>estado</code> (al menos uno de los dos),
+            <code>motivo</code> (opcional).
+          </div>
+
+          <!-- Plantillas de descarga -->
+          <div class="mb-3">
+            <p class="fw-bold mb-1"><i class="bi bi-download me-1"></i>Descargar plantilla de ejemplo:</p>
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('comentario')">
+                <i class="bi bi-file-earmark-text"></i> Solo comentario
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('estado')">
+                <i class="bi bi-file-earmark-text"></i> Solo estado
+              </button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('completa')">
+                <i class="bi bi-file-earmark-text"></i> Completa (todos los campos)
+              </button>
+            </div>
+            <small class="text-muted">Las plantillas se descargan como <code>.csv</code> listas para editar en Excel.</small>
+          </div>
+
+          <!-- Estados válidos del sistema -->
+          <div class="mb-3">
+            <p class="fw-bold mb-1 small"><i class="bi bi-info-circle me-1"></i>Nombres de estado aceptados (columna <code>estado</code>):</p>
+            <div class="d-flex flex-wrap gap-1">
+              <?php foreach ($estadosDisponibles as $est): ?>
+                <span class="badge bg-light text-dark border"><?= htmlspecialchars($est['nombre_estado']) ?></span>
+              <?php endforeach; ?>
+            </div>
+            <small class="text-muted">Escríbelos exactamente así (sin importar mayúsculas).</small>
+          </div>
+
+
+          <div class="mb-3">
+            <label for="bulkFileInput" class="form-label fw-bold">Seleccionar archivo (.csv o .xlsx)</label>
+            <input type="file" class="form-control" id="bulkFileInput" accept=".csv,.xlsx,.xls">
+            <div class="form-text">Máximo 10,000 filas. El estado puede escribirse como nombre (ej. <em>EN RUTA</em>) o como id.</div>
+          </div>
+          <div id="bulkUploadError" class="alert alert-danger d-none"></div>
+        </div>
+
+
+        <!-- PASO 2: Vista previa -->
+        <div id="bulkPaso2" class="d-none">
+          <!-- Resumen -->
+          <div class="row g-3 mb-4" id="bulkSummaryCards">
+            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#f0f0f0"><div class="card-body py-2"><div class="fs-4 fw-bold text-dark" id="bulkTotalCount">0</div><small class="text-secondary">Total</small></div></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#d6f0e0"><div class="card-body py-2"><div class="fs-4 fw-bold" style="color:#1a6e3c" id="bulkValidCount">0</div><small style="color:#1a6e3c">Válidas</small></div></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#fadadd"><div class="card-body py-2"><div class="fs-4 fw-bold" style="color:#8b1a2a" id="bulkErrorCount">0</div><small style="color:#8b1a2a">Errores</small></div></div></div>
+            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#fff4cc"><div class="card-body py-2"><div class="fs-4 fw-bold" style="color:#7a5c00" id="bulkWarnCount">0</div><small style="color:#7a5c00">Advertencias</small></div></div></div>
+
+          </div>
+
+          <!-- Errores / advertencias -->
+          <div id="bulkErrorList" class="mb-3"></div>
+          <div id="bulkWarnList" class="mb-3"></div>
+
+          <!-- Tabla preview -->
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover" id="bulkPreviewTable">
+              <thead class="table-dark">
+                <tr>
+                  <th>#Línea</th><th>ID Pedido</th><th># Orden</th>
+                  <th>Nuevo Comentario</th><th>Nuevo Estado ID</th>
+                </tr>
+              </thead>
+              <tbody id="bulkPreviewBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PASO 3: Resultado -->
+        <div id="bulkPaso3" class="d-none">
+          <div id="bulkResultContent"></div>
+        </div>
+
+      </div><!-- /modal-body -->
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="bulkBtnCerrar">Cerrar</button>
+        <button type="button" class="btn btn-warning" id="bulkBtnPreview" onclick="enviarPreview()">
+          <i class="bi bi-eye"></i> Vista previa
+        </button>
+        <button type="button" class="btn btn-success d-none" id="bulkBtnConfirmar" onclick="confirmarBulk()" disabled>
+          <i class="bi bi-check-circle"></i> Confirmar y aplicar
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  let _bulkJobId = null;
+
+  // Plantillas descargables — estados tomados de la BD en tiempo real
+  <?php
+    $__estados = array_column($estadosDisponibles, 'nombre_estado');
+    $__e0 = addslashes($__estados[0] ?? 'EN RUTA');
+    $__e1 = addslashes($__estados[1] ?? 'ENTREGADO');
+    $__e2 = addslashes($__estados[2] ?? $__estados[0] ?? 'CANCELADO');
+  ?>
+  const _plantillas = {
+    comentario: {
+      nombre: 'plantilla_comentario.csv',
+      contenido: [
+        'id_pedido,numero_orden,comentario,motivo',
+        '101,,Paquete entregado al vecino,Ausencia del destinatario',
+        ',280001234,En camino reprogramado,Dirección incorrecta',
+        '102,,Devuelto al remitente,No se encontró la dirección',
+      ].join('\r\n')
+    },
+    estado: {
+      nombre: 'plantilla_estado.csv',
+      contenido: [
+        'id_pedido,numero_orden,estado,motivo',
+        '101,,<?= $__e0 ?>,Salió a ruta hoy',
+        ',280001234,<?= $__e1 ?>,Recibido por familiar',
+        '102,,<?= $__e2 ?>,Solicitud del cliente',
+      ].join('\r\n')
+    },
+    completa: {
+      nombre: 'plantilla_completa.csv',
+      contenido: [
+        'id_pedido,numero_orden,comentario,estado,motivo',
+        '101,,Entregado con retraso,<?= $__e1 ?>,Tráfico en zona norte',
+        ',280001234,Cliente ausente al primer intento,<?= $__e0 ?>,Se reprogramó para mañana',
+        '102,,,<?= $__e2 ?>,Solicitud del cliente por teléfono',
+        '103,,Dirección actualizada,,Cambió a Avenida 5 N°22',
+      ].join('\r\n')
+    }
+  };
+
+  window.descargarPlantilla = function(tipo) {
+    const p = _plantillas[tipo];
+    if (!p) return;
+    const blob = new Blob(['\uFEFF' + p.contenido], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = p.nombre;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Exponer funciones al scope global
+  window.abrirModalBulk = function() {
+
+    _bulkJobId = null;
+    // Reset pasos
+    document.getElementById('bulkPaso1').classList.remove('d-none');
+    document.getElementById('bulkPaso2').classList.add('d-none');
+    document.getElementById('bulkPaso3').classList.add('d-none');
+    document.getElementById('bulkBtnPreview').classList.remove('d-none');
+    document.getElementById('bulkBtnConfirmar').classList.add('d-none');
+    document.getElementById('bulkFileInput').value = '';
+    document.getElementById('bulkUploadError').classList.add('d-none');
+    actualizarPasoIndicador(1);
+    const modal = new bootstrap.Modal(document.getElementById('modalBulkUpdate'));
+    modal.show();
+  };
+
+  window.enviarPreview = function() {
+    const fileInput = document.getElementById('bulkFileInput');
+    const errDiv    = document.getElementById('bulkUploadError');
+    errDiv.classList.add('d-none');
+
+    if (!fileInput.files.length) {
+      errDiv.textContent = 'Selecciona un archivo primero.';
+      errDiv.classList.remove('d-none');
+      return;
+    }
+
+    const btn = document.getElementById('bulkBtnPreview');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+
+    const fd = new FormData();
+    fd.append('archivo', fileInput.files[0]);
+
+    fetch('<?= RUTA_URL ?>logistica/bulk/preview', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
+
+        if (!data.ok) {
+          errDiv.textContent = data.error || 'Error al procesar el archivo.';
+          errDiv.classList.remove('d-none');
+          return;
+        }
+
+        _bulkJobId = data.job_id;
+        renderPreview(data);
+      })
+      .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
+        errDiv.textContent = 'Error de red. Intenta de nuevo.';
+        errDiv.classList.remove('d-none');
+      });
+  };
+
+  function renderPreview(data) {
+    const s = data.summary || {};
+    document.getElementById('bulkTotalCount').textContent = s.total       || 0;
+    document.getElementById('bulkValidCount').textContent = s.validas     || 0;
+    document.getElementById('bulkErrorCount').textContent = s.errores     || 0;
+    document.getElementById('bulkWarnCount').textContent  = s.advertencias || 0;
+
+    // Lista de errores
+    const errList  = document.getElementById('bulkErrorList');
+    const warnList = document.getElementById('bulkWarnList');
+    errList.innerHTML  = '';
+    warnList.innerHTML = '';
+
+    if (data.errores && data.errores.length) {
+      errList.innerHTML = '<div class="alert alert-danger"><strong>Errores (' + data.errores.length + '):</strong><ul class="mb-0 mt-1">' +
+        data.errores.map(e => '<li>' + escHtml(e) + '</li>').join('') + '</ul></div>';
+    }
+    if (data.advertencias && data.advertencias.length) {
+      warnList.innerHTML = '<div class="alert alert-warning"><strong>Advertencias (' + data.advertencias.length + '):</strong><ul class="mb-0 mt-1">' +
+        data.advertencias.map(w => '<li>' + escHtml(w) + '</li>').join('') + '</ul></div>';
+    }
+
+    // Tabla de muestra
+    const tbody = document.getElementById('bulkPreviewBody');
+    tbody.innerHTML = '';
+    (data.preview_rows || []).forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + escHtml(row._line) + '</td>' +
+                     '<td>' + escHtml(row.id_pedido) + '</td>' +
+                     '<td>' + escHtml(row.numero_orden) + '</td>' +
+                     '<td>' + escHtml(row.nuevo_comentario || '—') + '</td>' +
+                     '<td>' + escHtml(row.nuevo_id_estado !== null ? row.nuevo_id_estado : '—') + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    // Mostrar paso 2
+    document.getElementById('bulkPaso1').classList.add('d-none');
+    document.getElementById('bulkPaso2').classList.remove('d-none');
+    document.getElementById('bulkBtnPreview').classList.add('d-none');
+
+    const btnConfirmar = document.getElementById('bulkBtnConfirmar');
+    btnConfirmar.classList.remove('d-none');
+    // Solo habilitar si no hay errores
+    btnConfirmar.disabled = (s.errores > 0);
+    if (s.errores > 0) {
+      btnConfirmar.title = 'Corrija los errores antes de confirmar.';
+    }
+
+    actualizarPasoIndicador(2);
+  }
+
+  window.confirmarBulk = function() {
+    if (!_bulkJobId) return;
+    const btn = document.getElementById('bulkBtnConfirmar');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aplicando...';
+
+    fetch('<?= RUTA_URL ?>logistica/bulk/commit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: _bulkJobId })
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
+
+      document.getElementById('bulkPaso2').classList.add('d-none');
+      document.getElementById('bulkBtnConfirmar').classList.add('d-none');
+      document.getElementById('bulkPaso3').classList.remove('d-none');
+      actualizarPasoIndicador(3);
+
+      if (data.ok && data.summary) {
+        const s = data.summary;
+        document.getElementById('bulkResultContent').innerHTML =
+          '<div class="alert alert-success"><h5><i class="bi bi-check-circle-fill"></i> Operación completada</h5>' +
+          '<ul class="mb-0">' +
+          '<li><strong>Total procesadas:</strong> ' + s.total + '</li>' +
+          '<li><strong>Actualizadas:</strong> <span class="text-success">' + s.actualizados + '</span></li>' +
+          '<li><strong>Sin cambios (omitidas):</strong> ' + s.sin_cambios + '</li>' +
+          (s.fallidos > 0 ? '<li><strong>Fallidas:</strong> <span class="text-danger">' + s.fallidos + '</span></li>' : '') +
+          '</ul></div>' +
+          (s.failed_rows && s.failed_rows.length ? '<div class="alert alert-warning"><strong>Detalle de fallos:</strong><ul class="mb-0">' + s.failed_rows.map(r => '<li>' + escHtml(r) + '</li>').join('') + '</ul></div>' : '');
+      } else {
+        document.getElementById('bulkResultContent').innerHTML =
+          '<div class="alert alert-danger"><strong>Error:</strong> ' + escHtml(data.error || 'Error desconocido') + '</div>';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
+      document.getElementById('bulkResultContent').innerHTML =
+        '<div class="alert alert-danger">Error de red al aplicar los cambios.</div>';
+      document.getElementById('bulkPaso2').classList.add('d-none');
+      document.getElementById('bulkPaso3').classList.remove('d-none');
+    });
+  };
+
+  function actualizarPasoIndicador(paso) {
+    [1, 2, 3].forEach(n => {
+      const badge = document.getElementById('bulkStep' + n + 'Badge');
+      const label = document.getElementById('bulkStep' + n + 'Label');
+      if (n < paso)  { badge.className = 'badge rounded-pill bg-success me-2'; label.className = 'text-muted me-3'; }
+      if (n === paso){ badge.className = 'badge rounded-pill bg-warning text-dark me-2'; label.className = 'fw-semibold me-3'; }
+      if (n > paso)  { badge.className = 'badge rounded-pill bg-secondary me-2'; label.className = 'text-muted me-3'; }
+    });
+  }
+
+  function escHtml(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
+</script>
+<?php endif; ?>
