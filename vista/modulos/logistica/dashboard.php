@@ -524,6 +524,11 @@ include "vista/includes/header.php";
                             <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-circle"></i></a>
                             <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtrosHistorial['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtrosHistorial['fecha_hasta']) ?>&id_cliente=<?= (int)$filtrosHistorial['id_cliente'] ?>&id_estado=<?= (int)$filtrosHistorial['id_estado'] ?>&search=<?= urlencode($filtrosHistorial['search']) ?>" 
                                class="btn btn-success btn-sm" title="Descargar Excel"><i class="bi bi-file-earmark-excel"></i></a>
+                            <?php if (isCliente() || isSuperAdmin()): ?>
+                            <button type="button" class="btn btn-warning btn-sm" title="Actualizar comentarios/estado masivamente" onclick="abrirModalBulk()">
+                                <i class="bi bi-file-earmark-arrow-up"></i> Actualizar
+                            </button>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>
@@ -838,6 +843,20 @@ include "vista/includes/header.php";
             <small class="text-muted">Las plantillas se descargan como <code>.csv</code> listas para editar en Excel.</small>
           </div>
 
+          <!-- Plantilla pre-rellena con pedidos filtrados -->
+          <div class="mb-3 p-3 border rounded bg-light">
+            <p class="fw-bold mb-1 text-success">
+              <i class="bi bi-table me-1"></i>Descargar mis pedidos filtrados como plantilla:
+            </p>
+            <p class="small text-muted mb-2">
+              Descarga un CSV con los pedidos que tienes filtrados actualmente (<code>numero_orden</code>, <code>estado_actual</code>) 
+              y columnas vacías para que solo edites los estados/comentarios que necesites cambiar.
+            </p>
+            <button type="button" class="btn btn-success btn-sm" onclick="descargarPlantillaFiltrada()">
+              <i class="bi bi-cloud-download me-1"></i> Descargar pedidos actuales
+            </button>
+          </div>
+
           <!-- Estados válidos del sistema -->
           <div class="mb-3">
             <p class="fw-bold mb-1 small"><i class="bi bi-info-circle me-1"></i>Nombres de estado aceptados (columna <code>estado</code>):</p>
@@ -963,6 +982,43 @@ include "vista/includes/header.php";
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  /**
+   * Construye la URL del endpoint plantilla_csv tomando los filtros
+   * del formulario del tab activo (En Proceso o Historial Completo).
+   */
+  window.descargarPlantillaFiltrada = function() {
+    // Detectar tab activo
+    const pillAll     = document.getElementById('pills-all-tab');
+    const isHistorial = pillAll && pillAll.classList.contains('active');
+    const tab         = isHistorial ? 'all' : 'pedidos';
+
+    // Leer filtros del formulario visible
+    const formId = isHistorial ? null : 'formFiltrosPedidos';
+    let params   = { tab };
+
+    if (formId) {
+      // Tab "En Proceso" — tiene id en el form
+      const form = document.getElementById(formId);
+      if (form) {
+        new FormData(form).forEach((v, k) => { if (k !== 'tab') params[k] = v; });
+      }
+    } else {
+      // Tab "Historial" — leer campos del segundo formulario (no tiene id)
+      const forms = document.querySelectorAll('#pills-all form');
+      if (forms.length) {
+        new FormData(forms[0]).forEach((v, k) => { if (k !== 'tab') params[k] = v; });
+      }
+    }
+
+    // Construir query string
+    const qs  = Object.entries(params)
+      .filter(([, v]) => v !== '' && v !== '0')
+      .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+      .join('&');
+
+    window.location.href = '<?= RUTA_URL ?>logistica/plantilla_csv?' + qs;
   };
 
   // Exponer funciones al scope global

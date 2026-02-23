@@ -432,4 +432,80 @@ class LogisticaController {
         ], JSON_UNESCAPED_UNICODE);
         exit;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Exportar plantilla CSV pre-rellena con pedidos filtrados (para bulk update)
+    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * GET logistica/plantilla_csv?tab=...&fecha_desde=...&fecha_hasta=...&id_cliente=...&id_estado=...&search=...
+     * Descarga un CSV con los pedidos filtrados listos para editar:
+     *   numero_orden | destinatario | estado_actual | estado | comentario | motivo
+     * Las columnas "estado" y "comentario" van vacías para que el usuario las complete y
+     * suba el archivo al bulk-update.
+     */
+    public function exportarPlantillaCSV(): void
+    {
+        require_once 'modelo/logistica.php';
+        require_once __DIR__ . '/../utils/permissions.php';
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        // Sólo cliente logístico o admin
+        if (!$isProveedor && !isSuperAdmin()) {
+            http_response_code(403);
+            echo 'Sin permiso.';
+            exit;
+        }
+
+        // Sanitizar filtros (idéntico a exportarExcel)
+        $filtros = [
+            'fecha_desde' => $_GET['fecha_desde'] ?? '',
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
+            'search'      => $_GET['search']      ?? '',
+            'id_cliente'  => isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0,
+            'id_estado'   => isset($_GET['id_estado'])  && is_numeric($_GET['id_estado'])  ? (int)$_GET['id_estado']  : 0,
+        ];
+
+        // Decidir si el tab activo excluye estados finales o no
+        $soloActivos = (($_GET['tab'] ?? 'all') === 'pedidos');
+
+        // Obtener TODOS los pedidos que coincidan (sin paginación), límite 10 000
+        $pedidos = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, 10001, 0, $soloActivos);
+
+        if (count($pedidos) > 10000) {
+            http_response_code(400);
+            echo 'El resultado excede 10,000 filas. Aplica más filtros.';
+            exit;
+        }
+
+        // Construir CSV en memoria
+        $timestamp = date('Ymd_Hi');
+        $filename  = "plantilla_bulk_{$timestamp}.csv";
+
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: text/csv; charset=utf-8');
+        header("Content-Disposition: attachment; filename=\"{$filename}\"");
+        header('Cache-Control: max-age=0');
+
+        $out = fopen('php://output', 'w');
+        // BOM para que Excel abra bien en Windows con UTF-8
+        fputs($out, "\xEF\xBB\xBF");
+
+        // Encabezado: columnas reconocidas por BulkParser + referencias de solo lectura
+        fputcsv($out, ['numero_orden', 'estado_actual', 'estado', 'comentario', 'motivo']);
+
+        foreach ($pedidos as $p) {
+            fputcsv($out, [
+                $p['numero_orden']  ?? '',
+                $p['estado']        ?? '',   // referencia — NO se sube de vuelta
+                '',                           // <-- usuario edita aquí el nuevo estado
+                '',                           // <-- comentario opcional
+                '',                           // <-- motivo opcional
+            ]);
+        }
+
+        fclose($out);
+        exit;
+    }
 }
