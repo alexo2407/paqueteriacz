@@ -15,11 +15,16 @@ class LogisticaController {
         // IMPORTANTE: isCliente() verifica ROL_CLIENTE (ID 5) que en BD se llama "Proveedor"
         $isProveedor = isCliente();
         
-        // Paginación
-        $page = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        // Paginación — tab "En Proceso"
+        $page    = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
         $perPage = 20;
-        $offset = ($page - 1) * $perPage;
-        
+        $offset  = ($page - 1) * $perPage;
+
+        // Paginación — tab "Historial Completo" (parámetro page_h para no conflictuar)
+        $pageH      = isset($_GET['page_h']) && is_numeric($_GET['page_h']) ? max(1, (int)$_GET['page_h']) : 1;
+        $perPageH   = 20;
+        $offsetH    = ($pageH - 1) * $perPageH;
+
         // Filtros — todos los parámetros GET sanitizados
         // Tab "En Proceso": defaults a últimos 30 días
         $fechaDesde = isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== ''
@@ -52,16 +57,16 @@ class LogisticaController {
         $notificaciones = LogisticaModel::obtenerNotificacionesCliente($userId, 10, $isProveedor);
         
         // 2. Pedidos activos paginados (tab "En Proceso" — excluye estados finales)
-        $historial = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, $perPage, $offset, true);
-        
-        // 3. Contar total para paginación (activos)
+        $historial    = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, $perPage, $offset, true);
         $totalPedidos = LogisticaModel::contarPedidos($userId, $filtros, $isProveedor, true);
         $totalPages   = max(1, ceil($totalPedidos / $perPage));
 
-        // 4. Historial completo: TODOS los estados, sin paginación, sin filtro de fecha por defecto
-        $historialCompleto = LogisticaModel::obtenerHistorialCliente($userId, $filtrosHistorial, $isProveedor, null, 0, false);
+        // 3. Historial completo: TODOS los estados, con paginación independiente
+        $historialCompleto     = LogisticaModel::obtenerHistorialCliente($userId, $filtrosHistorial, $isProveedor, $perPageH, $offsetH, false);
+        $totalHistorial        = LogisticaModel::contarPedidos($userId, $filtrosHistorial, $isProveedor, false);
+        $totalPagesH           = max(1, ceil($totalHistorial / $perPageH));
 
-        // 5. Datos para dropdowns
+        // 4. Datos para dropdowns
         $estados  = LogisticaModel::obtenerEstados();
         $clientes = LogisticaModel::obtenerClientesDelProveedor($userId, $isProveedor);
 
@@ -78,6 +83,12 @@ class LogisticaController {
                 'per_page'     => $perPage,
                 'total'        => $totalPedidos,
                 'total_pages'  => $totalPages,
+            ],
+            'paginationH'       => [
+                'current_page' => $pageH,
+                'per_page'     => $perPageH,
+                'total'        => $totalHistorial,
+                'total_pages'  => $totalPagesH,
             ],
         ];
     }

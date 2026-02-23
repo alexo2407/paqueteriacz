@@ -26,6 +26,7 @@ $pedidosActivos     = $data['historial'];        // Tab "En Proceso" (sin estado
 $historialCompleto  = $data['historialCompleto']; // Tab "Historial Completo" (todos los estados)
 $filtros            = $data['filtros'];           // Filtros tab "En Proceso"
 $filtrosHistorial   = $data['filtrosHistorial'];  // Filtros tab "Historial Completo"
+$paginationH        = $data['paginationH'];       // Paginación Historial Completo
 $estadosDisponibles = $data['estados']   ?? [];
 $clientesLista      = $data['clientes']  ?? [];
 
@@ -580,6 +581,57 @@ include "vista/includes/header.php";
                     </tbody>
                 </table>
             </div>
+
+            <?php
+            // Paginación Historial Completo
+            if (!empty($paginationH) && $paginationH['total_pages'] > 1):
+                $curH     = $paginationH['current_page'];
+                $totPH    = $paginationH['total_pages'];
+                $totalH   = $paginationH['total'];
+                $perH     = $paginationH['per_page'];
+                $startH   = (($curH - 1) * $perH) + 1;
+                $endH     = min($curH * $perH, $totalH);
+
+                // URL base conservando todos los filtros del historial
+                $baseUrlH = RUTA_URL . 'logistica/dashboard?tab=all&';
+                $paramsH  = [];
+                if (!empty($filtrosHistorial['fecha_desde'])) $paramsH[] = 'fecha_desde=' . urlencode($filtrosHistorial['fecha_desde']);
+                if (!empty($filtrosHistorial['fecha_hasta'])) $paramsH[] = 'fecha_hasta=' . urlencode($filtrosHistorial['fecha_hasta']);
+                if (!empty($filtrosHistorial['search']))      $paramsH[] = 'search='      . urlencode($filtrosHistorial['search']);
+                if (!empty($filtrosHistorial['id_cliente']))  $paramsH[] = 'id_cliente='  . (int)$filtrosHistorial['id_cliente'];
+                if (!empty($filtrosHistorial['id_estado']))   $paramsH[] = 'id_estado='   . (int)$filtrosHistorial['id_estado'];
+                $baseUrlH .= implode('&', $paramsH) . (count($paramsH) > 0 ? '&' : '');
+            ?>
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                    <div class="text-muted small">
+                        Mostrando <strong><?= $startH ?></strong> - <strong><?= $endH ?></strong> de <strong><?= $totalH ?></strong> pedidos
+                    </div>
+                    <nav aria-label="Paginación historial">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item <?= $curH == 1 ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrlH ?>page_h=1"><i class="bi bi-chevron-double-left"></i></a>
+                            </li>
+                            <li class="page-item <?= $curH == 1 ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrlH ?>page_h=<?= max(1, $curH - 1) ?>"><i class="bi bi-chevron-left"></i></a>
+                            </li>
+                            <?php
+                            $spH = max(1, $curH - 2);
+                            $epH = min($totPH, $curH + 2);
+                            for ($i = $spH; $i <= $epH; $i++): ?>
+                                <li class="page-item <?= $i == $curH ? 'active' : '' ?>">
+                                    <a class="page-link" href="<?= $baseUrlH ?>page_h=<?= $i ?>"><?= $i ?></a>
+                                </li>
+                            <?php endfor; ?>
+                            <li class="page-item <?= $curH == $totPH ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrlH ?>page_h=<?= min($totPH, $curH + 1) ?>"><i class="bi bi-chevron-right"></i></a>
+                            </li>
+                            <li class="page-item <?= $curH == $totPH ? 'disabled' : '' ?>">
+                                <a class="page-link" href="<?= $baseUrlH ?>page_h=<?= $totPH ?>"><i class="bi bi-chevron-double-right"></i></a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            <?php endif; ?>
 
         </div>
     </div>
