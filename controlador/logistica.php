@@ -147,7 +147,12 @@ class LogisticaController {
             'N1' => 'Moneda',
             'O1' => 'Cliente',
             'P1' => 'Proveedor',
+            'Q1' => 'Productos',
         ];
+
+        // Obtener productos de todos los pedidos en una sola query batch
+        $pedidoIds = array_column($pedidos, 'id');
+        $productosPorPedido = LogisticaModel::obtenerProductosPorPedidos(array_map('intval', $pedidoIds));
 
         $boldStyle = [
             'font' => ['bold' => true],
@@ -165,30 +170,36 @@ class LogisticaController {
         // Datos
         $row = 2;
         foreach ($pedidos as $p) {
-            $fechaFmt = !empty($p['fecha_ingreso']) ? date('d/m/Y', strtotime($p['fecha_ingreso'])) : '';
-            $sheet->setCellValue("A{$row}", $p['numero_orden']     ?? '');
+            $fechaFmt  = !empty($p['fecha_ingreso']) ? date('d/m/Y', strtotime($p['fecha_ingreso'])) : '';
+            $productos = $productosPorPedido[(int)$p['id']] ?? '';
+            $sheet->setCellValue("A{$row}", $p['numero_orden']        ?? '');
             $sheet->setCellValue("B{$row}", $fechaFmt);
-            $sheet->setCellValue("C{$row}", $p['destinatario']     ?? '');
-            $sheet->setCellValue("D{$row}", $p['telefono']         ?? '');
-            $sheet->setCellValue("E{$row}", $p['direccion']        ?? '');
-            $sheet->setCellValue("F{$row}", $p['zona']             ?? '');
-            $sheet->setCellValue("G{$row}", $p['codigo_postal']    ?? '');
-            $sheet->setCellValue("H{$row}", $p['nombre_pais']      ?? '');
+            $sheet->setCellValue("C{$row}", $p['destinatario']        ?? '');
+            $sheet->setCellValue("D{$row}", $p['telefono']            ?? '');
+            $sheet->setCellValue("E{$row}", $p['direccion']           ?? '');
+            $sheet->setCellValue("F{$row}", $p['zona']                ?? '');
+            $sheet->setCellValue("G{$row}", $p['codigo_postal']       ?? '');
+            $sheet->setCellValue("H{$row}", $p['nombre_pais']         ?? '');
             $sheet->setCellValue("I{$row}", $p['nombre_departamento'] ?? '');
-            $sheet->setCellValue("J{$row}", $p['nombre_municipio'] ?? '');
-            $sheet->setCellValue("K{$row}", $p['nombre_barrio']    ?? '');
-            $sheet->setCellValue("L{$row}", $p['estado']           ?? '');
-            $sheet->setCellValue("M{$row}", $p['precio_total_local'] ?? 0);
-            $sheet->setCellValue("N{$row}", $p['moneda']           ?? '');
-            $sheet->setCellValue("O{$row}", $p['nombre_cliente']   ?? '');
-            $sheet->setCellValue("P{$row}", $p['nombre_proveedor'] ?? '');
+            $sheet->setCellValue("J{$row}", $p['nombre_municipio']    ?? '');
+            $sheet->setCellValue("K{$row}", $p['nombre_barrio']       ?? '');
+            $sheet->setCellValue("L{$row}", $p['estado']              ?? '');
+            $sheet->setCellValue("M{$row}", $p['precio_total_local']  ?? 0);
+            $sheet->setCellValue("N{$row}", $p['moneda']              ?? '');
+            $sheet->setCellValue("O{$row}", $p['nombre_cliente']      ?? '');
+            $sheet->setCellValue("P{$row}", $p['nombre_proveedor']    ?? '');
+            $sheet->setCellValue("Q{$row}", $productos);
             $row++;
         }
 
-        // Auto-size columnas
-        foreach (range('A', 'P') as $col) {
+        // Auto-size columnas A–Q
+        foreach (range('A', 'Q') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
+
+        // Limitar ancho máximo de la columna Productos para que no se estire demasiado
+        $sheet->getColumnDimension('Q')->setAutoSize(false);
+        $sheet->getColumnDimension('Q')->setWidth(60);
 
         // Nombre del archivo
         $timestamp = date('Ymd_Hi');

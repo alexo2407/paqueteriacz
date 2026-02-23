@@ -658,4 +658,44 @@ class LogisticaModel {
             'failed_rows'  => $failedRows,
         ];
     }
+
+    /**
+     * Obtener productos de un conjunto de pedidos en una sola query (sin N+1).
+     *
+     * @param  int[] $pedidoIds  Array con los IDs de pedidos a consultar
+     * @return array             Mapa [pedido_id => "Producto A (x2), Producto B (x1)"]
+     */
+    public static function obtenerProductosPorPedidos(array $pedidoIds): array
+    {
+        if (empty($pedidoIds)) return [];
+
+        try {
+            $db  = (new Conexion())->conectar();
+            $ph  = implode(',', array_fill(0, count($pedidoIds), '?'));
+            $sql = "SELECT pp.id_pedido, pr.nombre, pp.cantidad
+                    FROM pedidos_productos pp
+                    INNER JOIN productos pr ON pr.id = pp.id_producto
+                    WHERE pp.id_pedido IN ($ph)
+                    ORDER BY pp.id_pedido, pr.nombre";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute(array_values($pedidoIds));
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Agrupar por pedido y concatenar "Nombre (xCant)"
+            $mapa = [];
+            foreach ($rows as $r) {
+                $pid   = (int)$r['id_pedido'];
+                $texto = $r['nombre'] . ' (x' . (int)$r['cantidad'] . ')';
+                $mapa[$pid][] = $texto;
+            }
+
+            // Convertir arrays a string
+            return array_map(fn($items) => implode(', ', $items), $mapa);
+
+        } catch (Exception $e) {
+            error_log('Error obtenerProductosPorPedidos: ' . $e->getMessage());
+            return [];
+        }
+    }
 }
