@@ -21,11 +21,16 @@ class LogisticaController {
         $offset = ($page - 1) * $perPage;
         
         // Filtros — todos los parámetros GET sanitizados
-        $fechaDesde = $_GET['fecha_desde'] ?? date('Y-m-d', strtotime('-30 days'));
-        $fechaHasta = $_GET['fecha_hasta'] ?? date('Y-m-d');
-        $search     = $_GET['search'] ?? '';
-        $idCliente  = isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0;
-        $idEstado   = isset($_GET['id_estado'])  && is_numeric($_GET['id_estado'])  ? (int)$_GET['id_estado']  : 0;
+        // Tab "En Proceso": defaults a últimos 30 días
+        $fechaDesde = isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== ''
+            ? $_GET['fecha_desde']
+            : date('Y-m-d', strtotime('-30 days'));
+        $fechaHasta = isset($_GET['fecha_hasta']) && $_GET['fecha_hasta'] !== ''
+            ? $_GET['fecha_hasta']
+            : date('Y-m-d');
+        $search    = trim($_GET['search']    ?? '');
+        $idCliente = isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0;
+        $idEstado  = isset($_GET['id_estado'])  && is_numeric($_GET['id_estado'])  ? (int)$_GET['id_estado']  : 0;
 
         $filtros = [
             'fecha_desde' => $fechaDesde,
@@ -34,28 +39,41 @@ class LogisticaController {
             'id_cliente'  => $idCliente,
             'id_estado'   => $idEstado,
         ];
+        // Tab "Historial Completo": sin default de fechas — muestra TODOS los pedidos
+        $filtrosHistorial = [
+            'fecha_desde' => isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== '' ? $_GET['fecha_desde'] : '',
+            'fecha_hasta' => isset($_GET['fecha_hasta']) && $_GET['fecha_hasta'] !== '' ? $_GET['fecha_hasta'] : '',
+            'search'      => $search,
+            'id_cliente'  => $idCliente,
+            'id_estado'   => $idEstado,
+        ];
 
         // 1. Notificaciones
         $notificaciones = LogisticaModel::obtenerNotificacionesCliente($userId, 10, $isProveedor);
         
-        // 2. Historial paginado (tab "En Proceso" excluye finales)
+        // 2. Pedidos activos paginados (tab "En Proceso" — excluye estados finales)
         $historial = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, $perPage, $offset, true);
         
-        // 3. Contar total para paginación
+        // 3. Contar total para paginación (activos)
         $totalPedidos = LogisticaModel::contarPedidos($userId, $filtros, $isProveedor, true);
         $totalPages   = max(1, ceil($totalPedidos / $perPage));
 
-        // 4. Datos para dropdowns
+        // 4. Historial completo: TODOS los estados, sin paginación, sin filtro de fecha por defecto
+        $historialCompleto = LogisticaModel::obtenerHistorialCliente($userId, $filtrosHistorial, $isProveedor, null, 0, false);
+
+        // 5. Datos para dropdowns
         $estados  = LogisticaModel::obtenerEstados();
         $clientes = LogisticaModel::obtenerClientesDelProveedor($userId, $isProveedor);
 
         return [
-            'notificaciones' => $notificaciones,
-            'historial'      => $historial,
-            'estados'        => $estados,
-            'clientes'       => $clientes,
-            'filtros'        => $filtros,
-            'pagination'     => [
+            'notificaciones'    => $notificaciones,
+            'historial'         => $historial,
+            'historialCompleto' => $historialCompleto,
+            'estados'           => $estados,
+            'clientes'          => $clientes,
+            'filtros'           => $filtros,
+            'filtrosHistorial'  => $filtrosHistorial,
+            'pagination'        => [
                 'current_page' => $page,
                 'per_page'     => $perPage,
                 'total'        => $totalPedidos,

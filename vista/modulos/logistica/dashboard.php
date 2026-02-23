@@ -22,12 +22,12 @@ $controller = new LogisticaController();
 $data = $controller->dashboard();
 
 $notificaciones     = $data['notificaciones'];
-$historialTotal     = $data['historial'];
-$filtros            = $data['filtros'];
+$pedidosActivos     = $data['historial'];        // Tab "En Proceso" (sin estados finales)
+$historialCompleto  = $data['historialCompleto']; // Tab "Historial Completo" (todos los estados)
+$filtros            = $data['filtros'];           // Filtros tab "En Proceso"
+$filtrosHistorial   = $data['filtrosHistorial'];  // Filtros tab "Historial Completo"
 $estadosDisponibles = $data['estados']   ?? [];
 $clientesLista      = $data['clientes']  ?? [];
-
-$pedidosActivos = $historialTotal;
 
 // Mapa de Colores Estandarizado y Vibrante
 $estadoColores = [
@@ -486,18 +486,18 @@ include "vista/includes/header.php";
                         <input type="hidden" name="tab" value="all">
                         <div class="col-md-2">
                             <label class="form-label small fw-bold mb-1">Desde</label>
-                            <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_desde']) ?>">
+                            <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_desde']) ?>">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold mb-1">Hasta</label>
-                            <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_hasta']) ?>">
+                            <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_hasta']) ?>">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold mb-1">Cliente</label>
                             <select name="id_cliente" class="form-select form-select-sm">
                                 <option value="0">Todos</option>
                                 <?php foreach ($clientesLista as $cli): ?>
-                                    <option value="<?= (int)$cli['id'] ?>" <?= (int)$filtros['id_cliente'] === (int)$cli['id'] ? 'selected' : '' ?>>
+                                    <option value="<?= (int)$cli['id'] ?>" <?= (int)$filtrosHistorial['id_cliente'] === (int)$cli['id'] ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($cli['nombre']) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -508,7 +508,7 @@ include "vista/includes/header.php";
                             <select name="id_estado" class="form-select form-select-sm">
                                 <option value="0">Todos</option>
                                 <?php foreach ($estadosDisponibles as $est): ?>
-                                    <option value="<?= (int)$est['id'] ?>" <?= (int)$filtros['id_estado'] === (int)$est['id'] ? 'selected' : '' ?>>
+                                    <option value="<?= (int)$est['id'] ?>" <?= (int)$filtrosHistorial['id_estado'] === (int)$est['id'] ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($est['nombre_estado']) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -516,12 +516,12 @@ include "vista/includes/header.php";
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold mb-1">Buscar</label>
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtros['search']) ?>">
+                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtrosHistorial['search']) ?>">
                         </div>
                         <div class="col-md-2 d-flex gap-1">
                             <button class="btn btn-primary btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
                             <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-circle"></i></a>
-                            <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>" 
+                            <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtrosHistorial['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtrosHistorial['fecha_hasta']) ?>&id_cliente=<?= (int)$filtrosHistorial['id_cliente'] ?>&id_estado=<?= (int)$filtrosHistorial['id_estado'] ?>&search=<?= urlencode($filtrosHistorial['search']) ?>" 
                                class="btn btn-success btn-sm" title="Descargar Excel"><i class="bi bi-file-earmark-excel"></i></a>
                         </div>
                     </form>
@@ -541,10 +541,10 @@ include "vista/includes/header.php";
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (empty($historialTotal)): ?>
+                        <?php if (empty($historialCompleto)): ?>
                             <tr><td colspan="6" class="text-center py-4">No se encontraron registros.</td></tr>
                         <?php else: ?>
-                            <?php foreach ($historialTotal as $p): 
+                            <?php foreach ($historialCompleto as $p): 
                                 $color = getBadgeColor($p['estado'], $estadoColores);
                             ?>
                                 <tr>

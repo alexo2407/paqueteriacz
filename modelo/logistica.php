@@ -117,8 +117,11 @@ class LogisticaModel {
                 $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
             }
             if (!empty($filtros['search'])) {
-                $sql .= " AND (p.numero_orden LIKE :search OR p.destinatario LIKE :search OR p.telefono LIKE :search)";
-                $params[':search'] = '%' . $filtros['search'] . '%';
+                $sql .= " AND (CAST(p.numero_orden AS CHAR) LIKE :search1 OR p.destinatario LIKE :search2 OR p.telefono LIKE :search3)";
+                $searchVal = '%' . $filtros['search'] . '%';
+                $params[':search1'] = $searchVal;
+                $params[':search2'] = $searchVal;
+                $params[':search3'] = $searchVal;
             }
             if (!empty($filtros['id_cliente']) && (int)$filtros['id_cliente'] > 0) {
                 $sql .= " AND p.id_cliente = :id_cliente";
@@ -191,8 +194,11 @@ class LogisticaModel {
                 $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
             }
             if (!empty($filtros['search'])) {
-                $sql .= " AND (p.numero_orden LIKE :search OR p.destinatario LIKE :search OR p.telefono LIKE :search)";
-                $params[':search'] = '%' . $filtros['search'] . '%';
+                $sql .= " AND (CAST(p.numero_orden AS CHAR) LIKE :search1 OR p.destinatario LIKE :search2 OR p.telefono LIKE :search3)";
+                $searchVal = '%' . $filtros['search'] . '%';
+                $params[':search1'] = $searchVal;
+                $params[':search2'] = $searchVal;
+                $params[':search3'] = $searchVal;
             }
             if (!empty($filtros['id_cliente']) && (int)$filtros['id_cliente'] > 0) {
                 $sql .= " AND p.id_cliente = :id_cliente";
