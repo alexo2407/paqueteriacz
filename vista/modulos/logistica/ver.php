@@ -143,20 +143,6 @@ include("vista/includes/header.php");
                             <label class="small text-muted fw-bold text-uppercase">Fecha Creación</label>
                             <div><?= date('d/m/Y H:i', strtotime($pedido['fecha_ingreso'])) ?></div>
                         </div>
-
-                        <div class="col-md-6">
-                            <label class="small text-muted fw-bold text-uppercase">Fecha de Entrega</label>
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="fw-bold fs-5">
-                                    <?= !empty($pedido['fecha_entrega']) ? date('d/m/Y', strtotime($pedido['fecha_entrega'])) : '---' ?>
-                                </span>
-                                <?php if (!empty($fechaAlertaLabel)): ?>
-                                    <span class="badge bg-<?= $fechaBadgeColor ?> rounded-pill px-2 py-1 small">
-                                        <?= $fechaAlertaLabel ?>
-                                    </span>
-                                <?php endif; ?>
-                            </div>
-                        </div>
                         
                         <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Destinatario</label>
@@ -187,9 +173,40 @@ include("vista/includes/header.php");
             </div>
         </div>
 
-        <!-- Columna Derecha: Productos -->
+        <!-- Columna Derecha: Entrega y Productos -->
         <div class="col-lg-4 mb-4">
-            <div class="card shadow border-0 h-100">
+            
+            <!-- TARJETA DEDICADA: FECHA DE ENTREGA -->
+            <div class="card shadow border-0 mb-4 overflow-hidden">
+                <div class="card-header bg-<?= explode(' ', $fechaBadgeColor)[0] ?> text-white py-3">
+                    <h6 class="m-0 fw-bold"><i class="bi bi-calendar-check me-2"></i>Fecha de Entrega</h6>
+                </div>
+                <div class="card-body text-center py-4">
+                    <?php if (empty($fechaEntregaRaw)): ?>
+                        <div class="text-muted">
+                            <i class="bi bi-calendar-x fs-1 mb-2 d-block"></i>
+                            <span class="fw-bold fs-5">Pendiente de programación</span>
+                        </div>
+                    <?php else: ?>
+                        <div class="mb-2">
+                            <span class="badge bg-<?= $fechaBadgeColor ?> rounded-pill px-3 py-2 fs-6 mb-3">
+                                <?= $fechaAlertaLabel ?>
+                            </span>
+                        </div>
+                        <div class="display-5 fw-bold text-dark border-bottom pb-2 mb-2 mx-auto" style="max-width: fit-content;">
+                            <?= date('d', strtotime($fechaEntregaRaw)) ?>
+                        </div>
+                        <div class="fs-4 text-uppercase text-muted fw-light">
+                            <?= date('M Y', strtotime($fechaEntregaRaw)) ?>
+                        </div>
+                        <div class="mt-3 small text-secondary">
+                             <i class="bi bi-clock me-1"></i> Entrega estimada durante el día
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <div class="card shadow border-0 mb-4 ">
                 <div class="card-header bg-success text-white py-3">
                     <h6 class="m-0 fw-bold"><i class="bi bi-box-seam me-2"></i>Productos</h6>
                 </div>
