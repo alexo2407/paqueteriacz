@@ -304,7 +304,7 @@ class LogisticaModel {
     /**
      * Actualizar estado de un pedido con auditoría
      */
-    public static function actualizarEstado($pedidoId, $nuevoEstado, $observaciones, $usuarioId) {
+    public static function actualizarEstado($pedidoId, $nuevoEstado, $observaciones, $usuarioId, $fechaEntrega = null) {
         try {
             $db = (new Conexion())->conectar();
             
@@ -312,21 +312,31 @@ class LogisticaModel {
             if (!$idEstadoNuevo) {
                 throw new Exception("Estado inválido: $nuevoEstado");
             }
-
+ 
             $pedidoActual = PedidosModel::obtenerPedidoPorId($pedidoId);
             if (!$pedidoActual) {
                 throw new Exception("Pedido no encontrado");
             }
-
+ 
             $db->beginTransaction();
-
-            $sql = "UPDATE pedidos SET id_estado = :id_estado WHERE id = :id";
+ 
+            // 1. Actualizar estado (+ fecha si aplica)
+            $sql = "UPDATE pedidos SET id_estado = :id_estado";
+            $params = [':id_estado' => $idEstadoNuevo, ':id' => $pedidoId];
+            
+            if (!empty($fechaEntrega)) {
+                $sql .= ", fecha_entrega = :fecha_entrega";
+                $params[':fecha_entrega'] = $fechaEntrega;
+            }
+            
+            $sql .= " WHERE id = :id";
             $stmt = $db->prepare($sql);
-            $stmt->execute([':id_estado' => $idEstadoNuevo, ':id' => $pedidoId]);
-
+            $stmt->execute($params);
+ 
             $datosAnteriores = [
                 'id_estado' => $pedidoActual['id_estado'],
-                'estado' => $pedidoActual['nombre_estado']
+                'estado' => $pedidoActual['nombre_estado'],
+                'fecha_entrega' => $pedidoActual['fecha_entrega']
             ];
             
             $datosNuevos = [
@@ -334,7 +344,11 @@ class LogisticaModel {
                 'estado' => $nuevoEstado,
                 'observaciones' => $observaciones
             ];
-
+            
+            if (!empty($fechaEntrega)) {
+                $datosNuevos['fecha_entrega'] = $fechaEntrega;
+            }
+ 
             AuditoriaModel::registrar(
                 'pedidos',
                 $pedidoId,
@@ -343,7 +357,7 @@ class LogisticaModel {
                 $datosAnteriores,
                 $datosNuevos
             );
-
+ 
             $db->commit();
             return true;
 

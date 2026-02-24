@@ -86,7 +86,7 @@ if (!empty($fechaEntregaRaw)) {
         $fechaAlertaLabel = 'PROGRAMADO';
         $fechaSubLabel = 'Entrega programada para esta fecha';
     } elseif ($dias < 0) {
-        $fechaBadgeColor = 'dark';
+        $fechaBadgeColor = 'danger';
         $fechaAlertaLabel = 'ATRASADO';
         $fechaSubLabel = 'La entrega se encuentra demorada';
     }
@@ -342,6 +342,13 @@ include("vista/includes/header.php");
                         </select>
                         <div class="form-text text-muted">Seleccione el nuevo estado para esta orden.</div>
                     </div>
+                    
+                    <!-- Campo de Fecha (Solo para Reprogramado) -->
+                    <div id="reprogramarFechaSection" class="mb-3" style="display: none;">
+                        <label class="form-label fw-bold"><i class="bi bi-calendar-event me-1"></i>Nueva Fecha de Entrega</label>
+                        <input type="date" name="fecha_entrega" class="form-control" value="<?= $pedido['fecha_entrega'] ? date('Y-m-d', strtotime($pedido['fecha_entrega'])) : '' ?>">
+                        <div class="form-text">Indique la nueva fecha estimada para la entrega.</div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Observaciones</label>
                         <textarea name="observaciones" class="form-control" rows="3" placeholder="Razón del cambio..." required></textarea>
@@ -362,6 +369,20 @@ include("vista/includes/header.php");
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('#cambiarEstadoModal form');
     const submitBtn = form.querySelector('button[type="submit"]');
+    const estadoSelect = form.querySelector('select[name="estado"]');
+    const fechaSection = document.getElementById('reprogramarFechaSection');
+    const fechaInput = fechaSection.querySelector('input[name="fecha_entrega"]');
+
+    // Lógica para mostrar/ocultar fecha de reprogramación
+    estadoSelect.addEventListener('change', function() {
+        if (this.value.toUpperCase() === 'REPROGRAMADO') {
+            fechaSection.style.display = 'block';
+            fechaInput.required = true;
+        } else {
+            fechaSection.style.display = 'none';
+            fechaInput.required = false;
+        }
+    });
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();

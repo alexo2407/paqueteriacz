@@ -280,12 +280,13 @@ class LogisticaController {
             exit;
         }
 
-        $nuevoEstado  = $_POST['estado']       ?? '';
-        $observaciones = $_POST['observaciones'] ?? '';
+        $nuevoEstado   = $_POST['estado']        ?? '';
+        $observaciones  = $_POST['observaciones'] ?? '';
+        $fechaEntrega   = $_POST['fecha_entrega'] ?? null;
 
         $success = false;
         if (!empty($nuevoEstado)) {
-            $success = LogisticaModel::actualizarEstado($id, $nuevoEstado, $observaciones, $userId);
+            $success = LogisticaModel::actualizarEstado($id, $nuevoEstado, $observaciones, $userId, $fechaEntrega);
         }
 
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {

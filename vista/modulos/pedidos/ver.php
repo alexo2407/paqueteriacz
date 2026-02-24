@@ -82,7 +82,7 @@ if (!empty($fechaEntregaRaw)) {
         $fechaAlertaLabel = 'PROGRAMADO';
         $fechaSubLabel = 'Entrega programada para esta fecha';
     } elseif ($dias < 0) {
-        $fechaBadgeColor = 'dark';
+        $fechaBadgeColor = 'danger';
         $fechaAlertaLabel = 'ATRASADO';
         $fechaSubLabel = 'La entrega se encuentra demorada';
     }

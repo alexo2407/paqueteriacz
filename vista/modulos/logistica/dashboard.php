@@ -667,6 +667,13 @@ include "vista/includes/header.php";
                         </select>
                         <div class="form-text text-muted">Seleccione el nuevo estado.</div>
                     </div>
+
+                    <!-- Campo de Fecha (Solo para Reprogramado) -->
+                    <div id="reprogramarFechaSection" class="mb-3" style="display: none;">
+                        <label class="form-label fw-bold"><i class="bi bi-calendar-event me-1"></i>Nueva Fecha de Entrega</label>
+                        <input type="date" name="fecha_entrega" class="form-control">
+                        <div class="form-text">Indique la nueva fecha estimada para la entrega.</div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Observaciones</label>
                         <textarea name="observaciones" class="form-control" rows="3" placeholder="Razón del cambio..." required></textarea>
@@ -710,6 +717,26 @@ include "vista/includes/header.php";
         
         const modalEl = document.getElementById('cambiarEstadoModal');
         const modal = new bootstrap.Modal(modalEl);
+        
+        const estadoSelect = form.querySelector('select[name="estado"]');
+        const fechaSection = document.getElementById('reprogramarFechaSection');
+        const fechaInput = fechaSection.querySelector('input[name="fecha_entrega"]');
+
+        // Reset display of date section on open
+        fechaSection.style.display = 'none';
+        fechaInput.required = false;
+
+        // Lógica para mostrar/ocultar fecha de reprogramación
+        estadoSelect.onchange = function() {
+            if (this.value.toUpperCase() === 'REPROGRAMADO') {
+                fechaSection.style.display = 'block';
+                fechaInput.required = true;
+            } else {
+                fechaSection.style.display = 'none';
+                fechaInput.required = false;
+            }
+        };
+
         modal.show();
 
         // Manejar el submit del formulario con AJAX
