@@ -52,6 +52,38 @@ if ($pedido && $isCliente && !$isAdmin && !$isRepartidor) {
         exit;
     }
 }
+
+// --- Lógica de Alerta de Fecha de Entrega ---
+$fechaAlertaBadge = '';
+$fechaAlertaLabel = '';
+$fechaBadgeColor = 'secondary';
+$fechaEntregaRaw = $pedido['fecha_entrega'] ?? null;
+
+if (!empty($fechaEntregaRaw)) {
+    $hoy = new DateTime(date('Y-m-d'));
+    $entrega = new DateTime($fechaEntregaRaw);
+    $intervalo = $hoy->diff($entrega);
+    $dias = (int)$intervalo->format('%r%a');
+
+    if (strtoupper($pedido['nombre_estado'] ?? '') === 'ENTREGADO') {
+       $fechaBadgeColor = 'outline-success';
+       $fechaAlertaLabel = 'Entregado';
+    } elseif ($dias === 0) {
+        $fechaBadgeColor = 'danger';
+        $fechaAlertaLabel = '¡HOY!';
+    } elseif ($dias === 1) {
+        $fechaBadgeColor = 'warning text-dark';
+        $fechaAlertaLabel = '¡MAÑANA!';
+    } elseif ($dias > 1) {
+        $fechaBadgeColor = 'success';
+        $fechaAlertaLabel = 'PROGRAMADO';
+    } elseif ($dias < 0) {
+        $fechaBadgeColor = 'dark';
+        $fechaAlertaLabel = 'ATRASADO';
+    }
+} else {
+    $fechaAlertaLabel = 'No programada';
+}
 ?>
 
 <style>
@@ -173,13 +205,6 @@ if ($pedido && $isCliente && !$isAdmin && !$isRepartidor) {
                                 <span><?= htmlspecialchars($pedido['comentario'] ?? 'Sin comentarios') ?></span>
                             </div>
 
-                            <?php if (!empty($pedido['fecha_entrega'])): ?>
-                            <div class="info-item">
-                                <label>Fecha de Entrega Estimada</label>
-                                <span><?= htmlspecialchars($pedido['fecha_entrega']) ?></span>
-                            </div>
-                            <?php endif; ?>
-
                             <div class="info-item">
                                 <label>Precio Total Local</label>
                                 <span class="fw-bold text-primary">
@@ -219,9 +244,40 @@ if ($pedido && $isCliente && !$isAdmin && !$isRepartidor) {
                         </div>
                     </div>
 
-                    <!-- Columna Derecha: Ubicación -->
+                     <!-- Columna Derecha: Entrega y Ubicación -->
                     <div class="col-md-6">
-                        <div class="info-section h-100">
+                        
+                        <!-- TARJETA DEDICADA: FECHA DE ENTREGA (High Visibility) -->
+                        <div class="card shadow-sm border-0 mb-4 overflow-hidden" style="border-radius: 12px;">
+                            <div class="card-header bg-<?= explode(' ', $fechaBadgeColor)[0] ?> text-white py-2">
+                                <h6 class="m-0 fw-bold small text-uppercase"><i class="bi bi-calendar-check me-2"></i>Fecha de Entrega</h6>
+                            </div>
+                            <div class="card-body text-center py-4 bg-light bg-opacity-50">
+                                <?php if (empty($fechaEntregaRaw)): ?>
+                                    <div class="text-muted py-2">
+                                        <i class="bi bi-calendar-x fs-2 mb-2 d-block opacity-50"></i>
+                                        <span class="fw-bold">Pendiente de programación</span>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="mb-2">
+                                        <span class="badge bg-<?= $fechaBadgeColor ?> rounded-pill px-3 py-1 small mb-3">
+                                            <?= $fechaAlertaLabel ?>
+                                        </span>
+                                    </div>
+                                    <div class="display-6 fw-bold text-dark border-bottom border-2 pb-1 mb-1 mx-auto" style="max-width: fit-content; line-height: 1;">
+                                        <?= date('d', strtotime($fechaEntregaRaw)) ?>
+                                    </div>
+                                    <div class="fs-5 text-uppercase text-muted fw-bold">
+                                        <?= date('M Y', strtotime($fechaEntregaRaw)) ?>
+                                    </div>
+                                    <div class="mt-3 small text-secondary">
+                                         <i class="bi bi-clock me-1"></i> Entrega estimada hoy
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="info-section h-100 mt-n2">
                             <div class="info-section-title">
                                 <i class="bi bi-geo-alt"></i>
                                 Ubicación
