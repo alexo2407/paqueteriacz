@@ -72,21 +72,27 @@ if (!empty($fechaEntregaRaw)) {
     if (strtoupper($pedido['nombre_estado']) === 'ENTREGADO') {
        $fechaBadgeColor = 'outline-success';
        $fechaAlertaLabel = 'Entregado';
+       $fechaSubLabel = 'Fecha de entrega registrada';
     } elseif ($dias === 0) {
         $fechaBadgeColor = 'danger';
         $fechaAlertaLabel = '¡HOY!';
+        $fechaSubLabel = 'Entrega estimada durante el día';
     } elseif ($dias === 1) {
         $fechaBadgeColor = 'warning text-dark';
         $fechaAlertaLabel = '¡MAÑANA!';
+        $fechaSubLabel = 'Entrega programada para mañana';
     } elseif ($dias > 1) {
         $fechaBadgeColor = 'success';
         $fechaAlertaLabel = 'PROGRAMADO';
+        $fechaSubLabel = 'Entrega programada para esta fecha';
     } elseif ($dias < 0) {
         $fechaBadgeColor = 'dark';
         $fechaAlertaLabel = 'ATRASADO';
+        $fechaSubLabel = 'La entrega se encuentra demorada';
     }
 } else {
     $fechaAlertaLabel = 'No programada';
+    $fechaSubLabel = 'Pendiente de definir fecha';
 }
 
 
@@ -207,7 +213,7 @@ include("vista/includes/header.php");
                             <?= date('M Y', strtotime($fechaEntregaRaw)) ?>
                         </div>
                         <div class="mt-3 small text-secondary">
-                             <i class="bi bi-clock me-1"></i> Entrega estimada durante el día
+                             <i class="bi bi-clock me-1"></i> <?= $fechaSubLabel ?>
                         </div>
                     <?php endif; ?>
                 </div>
