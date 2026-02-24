@@ -145,18 +145,40 @@ if (!empty($fechaEntregaRaw)) {
 }
 .products-table thead th {
     background: #667eea;
-    color: white;
-    font-weight: 600;
+    color: white !important;
+    font-weight: 700;
     border: none;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    padding: 1rem 0.75rem;
 }
 .products-table tbody td {
     vertical-align: middle;
+    padding: 1rem 0.75rem;
+    color: #4a5568;
+}
+.products-table tfoot th {
+    padding: 1rem 0.75rem;
+}
+.info-section-title i {
+    color: #667eea;
+    font-size: 1.25rem;
+}
+.order-badge {
+    background: rgba(255,255,255,0.15);
+    padding: 0.6rem 1.25rem;
+    border-radius: 50px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.3);
+    backdrop-filter: blur(4px);
 }
 </style>
 
 <div class="container-fluid py-4">
     <div class="card pedido-view-card">
         <?php if ($pedido): ?>
+            <div class="pedido-view-header">
                 <div class="row align-items-center">
                     <div class="col-md-5">
                         <div class="d-flex align-items-center gap-3">
@@ -173,12 +195,12 @@ if (!empty($fechaEntregaRaw)) {
                         </div>
                     </div>
                     <div class="col-md-7 text-md-end mt-3 mt-md-0">
-                        <span class="badge bg-white text-primary fs-6 px-3 py-2">
+                        <span class="order-badge">
                             Estado: <?= htmlspecialchars($pedido['nombre_estado'] ?? $pedido['estado'] ?? 'Desconocido') ?>
                         </span>
                     </div>
-                </div>
-            </div>
+                </div> <!-- .row -->
+            </div> <!-- .pedido-view-header -->
             
             <div class="card-body p-4">
                 <div class="row">
@@ -277,10 +299,10 @@ if (!empty($fechaEntregaRaw)) {
                             </div>
                         </div>
 
-                        <div class="info-section h-100 mt-n2">
+                            <div class="info-section h-100">
                             <div class="info-section-title">
-                                <i class="bi bi-geo-alt"></i>
-                                Ubicación
+                                <i class="bi bi-geo-alt-fill"></i>
+                                Ubicación de Entrega
                             </div>
                             
                             <div class="row">
