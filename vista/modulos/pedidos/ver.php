@@ -142,36 +142,43 @@ if (!empty($fechaEntregaRaw)) {
 .products-table {
     border-radius: 12px;
     overflow: hidden;
+    border: 1px solid #e2e8f0;
 }
 .products-table thead th {
-    background: #667eea;
+    background: #667eea !important;
     color: white !important;
     font-weight: 700;
     border: none;
     text-transform: uppercase;
-    font-size: 0.8rem;
-    padding: 1rem 0.75rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.25rem;
 }
 .products-table tbody td {
     vertical-align: middle;
-    padding: 1rem 0.75rem;
-    color: #4a5568;
+    padding: 1rem 1.25rem;
+    color: #2d3748;
+    border-bottom: 1px solid #edf2f7;
 }
 .products-table tfoot th {
-    padding: 1rem 0.75rem;
+    padding: 1rem 1.25rem;
+    border: none;
 }
-.info-section-title i {
-    color: #667eea;
-    font-size: 1.25rem;
-}
-.order-badge {
-    background: rgba(255,255,255,0.15);
-    padding: 0.6rem 1.25rem;
-    border-radius: 50px;
-    font-size: 0.95rem;
+.col-money { width: 160px; }
+.col-qty { width: 100px; }
+
+/* Grid de Ubicación */
+.location-grid dt {
     font-weight: 600;
-    border: 1px solid rgba(255,255,255,0.3);
-    backdrop-filter: blur(4px);
+    color: #718096;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    margin-bottom: 0.1rem;
+}
+.location-grid dd {
+    color: #2d3748;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
 }
 </style>
 
@@ -299,66 +306,51 @@ if (!empty($fechaEntregaRaw)) {
                             </div>
                         </div>
 
-                            <div class="info-section h-100">
-                            <div class="info-section-title">
-                                <i class="bi bi-geo-alt-fill"></i>
-                                Ubicación de Entrega
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-6">
-                                    <div class="info-item">
-                                        <label>Zona</label>
-                                        <span><?= htmlspecialchars($pedido['zona'] ?? '—') ?></span>
-                                    </div>
+                            <div class="info-section">
+                                <div class="info-section-title mb-3">
+                                    <i class="bi bi-geo-alt-fill"></i>
+                                    Ubicación de Entrega
                                 </div>
-                                <div class="col-6">
-                                    <div class="info-item">
-                                        <label>Departamento</label>
-                                        <!-- Need to fetch department name if only ID is present, usually model does join or we just show what we have -->
-                                        <span><?= htmlspecialchars($pedido['departamento'] ?? $pedido['id_departamento'] ?? '—') ?></span>
+                                
+                                <dl class="row location-grid mb-0">
+                                    <div class="col-6">
+                                        <dt>Zona</dt>
+                                        <dd><?= htmlspecialchars($pedido['zona'] ?? '—') ?></dd>
                                     </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="info-item">
-                                        <label>Municipio</label>
-                                        <span><?= htmlspecialchars($pedido['municipio'] ?? $pedido['id_municipio'] ?? '—') ?></span>
+                                    <div class="col-6">
+                                        <dt>Departamento</dt>
+                                        <dd><?= htmlspecialchars($pedido['departamento'] ?? $pedido['id_departamento'] ?? '—') ?></dd>
                                     </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="info-item">
-                                        <label>Barrio</label>
-                                        <span><?= htmlspecialchars($pedido['barrio'] ?? $pedido['id_barrio'] ?? '—') ?></span>
+                                    <div class="col-6">
+                                        <dt>Municipio</dt>
+                                        <dd><?= htmlspecialchars($pedido['municipio'] ?? $pedido['id_municipio'] ?? '—') ?></dd>
                                     </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="info-item">
-                                        <label>Código Postal</label>
-                                        <span><?= htmlspecialchars($pedido['codigo_postal'] ?? '—') ?></span>
+                                    <div class="col-6">
+                                        <dt>Barrio</dt>
+                                        <dd><?= htmlspecialchars($pedido['barrio'] ?? $pedido['id_barrio'] ?? '—') ?></dd>
                                     </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="info-item">
-                                        <label>Dirección Completa</label>
-                                        <span><?= htmlspecialchars($pedido['direccion'] ?? '—') ?></span>
+                                    <div class="col-12">
+                                        <dt>Código Postal</dt>
+                                        <dd><?= htmlspecialchars($pedido['codigo_postal'] ?? '—') ?></dd>
                                     </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="info-item">
-                                        <label>Coordenadas</label>
-                                        <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
-                                            <span>
-                                                <a href="https://maps.google.com/?q=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>" target="_blank" class="text-decoration-none">
-                                                    <?= htmlspecialchars($pedido['latitud']) ?>, <?= htmlspecialchars($pedido['longitud']) ?> <i class="bi bi-box-arrow-up-right small"></i>
+                                    <div class="col-12">
+                                        <dt>Dirección Completa</dt>
+                                        <dd class="p-2 bg-white rounded border border-light"><?= htmlspecialchars($pedido['direccion'] ?? '—') ?></dd>
+                                    </div>
+                                    <div class="col-12 mb-0">
+                                        <dt>Coordenadas</dt>
+                                        <dd class="mb-0">
+                                            <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
+                                                <a href="https://maps.google.com/?q=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>" target="_blank" class="text-decoration-none fw-bold">
+                                                    <i class="bi bi-map me-1"></i>Ver en Mapa
                                                 </a>
-                                            </span>
-                                        <?php else: ?>
-                                            <span>—</span>
-                                        <?php endif; ?>
+                                            <?php else: ?>
+                                                <span class="text-muted italic">— No disponibles —</span>
+                                            <?php endif; ?>
+                                        </dd>
                                     </div>
-                                </div>
+                                </dl>
                             </div>
-                        </div>
                     </div>
                 </div>
                 
@@ -369,19 +361,18 @@ if (!empty($fechaEntregaRaw)) {
                         Productos del Pedido
                     </div>
                     <div class="table-responsive">
-                        <table class="table products-table">
+                        <table class="table products-table mb-0">
                             <thead>
                                 <tr>
                                     <th>Producto</th>
-                                    <th class="text-center">Cantidad</th>
-                                    <th class="text-end">Precio Unitario (USD)</th>
-                                    <th class="text-end">Total</th>
+                                    <th class="text-center col-qty">Cantidad</th>
+                                    <th class="text-end col-money">Unitario (USD)</th>
+                                    <th class="text-end col-money">Subtotal</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php 
                                 $totalPedido = 0;
-                                // Fix: Iterate over productos array, check if exists
                                 $productosList = $pedido['productos'] ?? [];
                                 foreach ($productosList as $producto): 
                                     $precio = $producto["precio_usd"] ?? 0;
@@ -390,21 +381,21 @@ if (!empty($fechaEntregaRaw)) {
                                     $totalPedido += $subtotal;
                                 ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($producto["nombre"] ?? 'Producto sin nombre') ?></td>
+                                    <td class="fw-bold"><?= htmlspecialchars($producto["nombre"] ?? 'Producto sin nombre') ?></td>
                                     <td class="text-center"><?= htmlspecialchars($cantidad) ?></td>
                                     <td class="text-end">$<?= number_format($precio, 2) ?></td>
-                                    <td class="text-end">$<?= number_format($subtotal, 2) ?></td>
+                                    <td class="text-end fw-bold">$<?= number_format($subtotal, 2) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
-                             <tfoot>
-                                <tr class="table-light">
-                                    <th colspan="3" class="text-end text-muted small">Subtotal Pedido (USD):</th>
-                                    <th class="text-end text-muted small">$<?= number_format($totalPedido, 2) ?></th>
+                             <tfoot class="bg-light">
+                                <tr>
+                                    <th colspan="3" class="text-end text-muted small py-2">Subtotal Pedido (USD):</th>
+                                    <th class="text-end text-muted small py-2">$<?= number_format($totalPedido, 2) ?></th>
                                 </tr>
-                                <tr class="table-primary bg-opacity-10">
-                                    <th colspan="3" class="text-end fs-5">Total del Pedido (<?= htmlspecialchars($pedido['moneda_codigo'] ?? 'Local') ?>):</th>
-                                    <th class="text-end fs-5 text-primary">
+                                <tr class="table-primary bg-opacity-10 border-top">
+                                    <th colspan="3" class="text-end fs-5 py-3">Total (<?= htmlspecialchars($pedido['moneda_codigo'] ?? 'Local') ?>):</th>
+                                    <th class="text-end fs-5 text-primary py-3">
                                         <?= htmlspecialchars($pedido['moneda_codigo'] ?? 'GTQ') ?> 
                                         <?= number_format($pedido['precio_total_local'] ?? 0, 2) ?>
                                     </th>
