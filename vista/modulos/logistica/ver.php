@@ -138,7 +138,14 @@ include("vista/includes/header.php");
                                 <i class="bi bi-shop me-1"></i>
                                 <?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'No asignado') ?>
                             </div>
-                         </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small text-muted fw-bold text-uppercase">Cliente</label>
+                            <div class="text-dark">
+                                <i class="bi bi-person me-1"></i>
+                                <?= htmlspecialchars($pedido['cliente_nombre'] ?? 'No asignado') ?>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Fecha Creación</label>
                             <div><?= date('d/m/Y H:i', strtotime($pedido['fecha_ingreso'])) ?></div>
