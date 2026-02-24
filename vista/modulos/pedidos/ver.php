@@ -180,6 +180,14 @@ if ($pedido && $isCliente && !$isAdmin && !$isRepartidor) {
                             </div>
                             <?php endif; ?>
 
+                            <div class="info-item">
+                                <label>Precio Total Local</label>
+                                <span class="fw-bold text-primary">
+                                    <?= htmlspecialchars($pedido['moneda_codigo'] ?? 'GTQ') ?> 
+                                    <?= number_format($pedido['precio_total_local'] ?? 0, 2) ?>
+                                </span>
+                            </div>
+
                             <?php if (!empty($pedido['fecha_ultima_entrega'])): ?>
                             <div class="info-item">
                                 <label>Última Entrega Registrada</label>
@@ -311,10 +319,17 @@ if ($pedido && $isCliente && !$isAdmin && !$isRepartidor) {
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
-                            <tfoot>
+                             <tfoot>
                                 <tr class="table-light">
-                                    <th colspan="3" class="text-end">Total del Pedido:</th>
-                                    <th class="text-end">$<?= number_format($totalPedido, 2) ?></th>
+                                    <th colspan="3" class="text-end text-muted small">Subtotal Pedido (USD):</th>
+                                    <th class="text-end text-muted small">$<?= number_format($totalPedido, 2) ?></th>
+                                </tr>
+                                <tr class="table-primary bg-opacity-10">
+                                    <th colspan="3" class="text-end fs-5">Total del Pedido (<?= htmlspecialchars($pedido['moneda_codigo'] ?? 'Local') ?>):</th>
+                                    <th class="text-end fs-5 text-primary">
+                                        <?= htmlspecialchars($pedido['moneda_codigo'] ?? 'GTQ') ?> 
+                                        <?= number_format($pedido['precio_total_local'] ?? 0, 2) ?>
+                                    </th>
                                 </tr>
                             </tfoot>
                         </table>
