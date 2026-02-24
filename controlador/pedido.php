@@ -1074,12 +1074,12 @@ class PedidosController {
             exit();
         }
 
-    // Detectar roles: si el usuario es Admin, tiene permisos completos.
-    $isAdmin = user_has_any_role_names([ROL_NOMBRE_ADMIN]);
-    // Si el usuario es Repartidor y no es Admin, sólo permitir cambiar el estado
-    // para pedidos que estén asignados a ese repartidor (id_vendedor).
-    $isRepartidor = user_has_any_role_names([ROL_NOMBRE_REPARTIDOR]) && !$isAdmin;
-    if ($isRepartidor) {
+        // Detectar roles usando funciones definidas en utils/permissions.php
+        require_once __DIR__ . '/../utils/permissions.php';
+        $isAdmin       = isSuperAdmin();
+        $isRepartidor  = isRepartidor(); // ya excluye Admin internamente
+        $isClienteRole = isCliente() && !$isAdmin;
+        if ($isRepartidor) {
             try {
                 $pedido = PedidosModel::obtenerPedidoPorId($id_pedido);
             } catch (Exception $e) {
@@ -1109,7 +1109,7 @@ class PedidosController {
 
         // Si el usuario es Cliente y no es Admin, sólo permitir cambiar el estado
         // para pedidos que le pertenezcan (id_cliente).
-        $isClienteRole = user_has_any_role_names([ROL_NOMBRE_CLIENTE]) && !$isAdmin;
+        // $isClienteRole ya está definido arriba usando isCliente() de permissions.php
         if ($isClienteRole) {
             try {
                 $pedido = PedidosModel::obtenerPedidoPorId($id_pedido);
@@ -1128,6 +1128,21 @@ class PedidosController {
 
             if ($idCliente === null || $idCliente === 0 || $userId === null || (int)$userId !== (int)$idCliente) {
                 echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+        }
+
+        // [CLIENTE] Validar que el estado destino sea uno de los permitidos para clientes
+        // Independientemente de que el ownership sea correcto, el cliente solo puede
+        // mover pedidos a: Reprogramado (4) o Devuelto (7).
+        if ($isClienteRole) {
+            $estadosPermitidosCliente = [4, 7]; // 4=Reprogramado, 7=Devuelto
+            if (!in_array($nuevo_estado, $estadosPermitidosCliente, true)) {
+                http_response_code(403);
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Solo puedes cambiar a Reprogramado o Devuelto."
+                ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
         }

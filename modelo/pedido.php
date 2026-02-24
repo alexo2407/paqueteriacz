@@ -451,7 +451,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor', 'fecha_entrega'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -577,6 +577,15 @@ class PedidosModel
                         break;
                     case 'id_estado':
                         $params[':id_estado'] = 1;
+                        break;
+                    case 'fecha_entrega':
+                        $val = $data['fecha_entrega'] ?? null;
+                        if ($val === '' || $val === null) {
+                            $params[':fecha_entrega'] = null;
+                        } else {
+                            $fecha = date_create($val);
+                            $params[':fecha_entrega'] = $fecha ? date_format($fecha, 'Y-m-d') : null;
+                        }
                         break;
                 }
             }
@@ -771,20 +780,12 @@ class PedidosModel
             
             $query = "
                 SELECT 
-                    p.id,
-                    p.numero_orden,
-                    p.destinatario,
-                    p.telefono,
-                    p.direccion,
-                    ST_Y(p.coordenadas) AS latitud,
+                    p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
+                    p.id_estado, p.id_vendedor, p.id_proveedor, p.id_cliente,
+                    p.precio_local, p.precio_total_local, p.precio_usd, p.precio_total_usd,
+                    p.fecha_ingreso, p.fecha_entrega,
+                    ST_Y(p.coordenadas) AS latitud, 
                     ST_X(p.coordenadas) AS longitud,
-                    p.id_estado,
-                    p.id_moneda,
-                    p.id_proveedor,
-                    p.id_cliente,
-                    p.id_vendedor,
-                    p.precio_local,
-                    p.precio_usd,
                     p.id_pais,
                     p.id_departamento,
                     p.municipio,
@@ -1045,6 +1046,16 @@ class PedidosModel
             if (isset($data['id_codigo_postal'])) {
                 $fields[] = 'id_codigo_postal = :id_codigo_postal';
                 $params[':id_codigo_postal'] = $data['id_codigo_postal'] !== '' ? (int)$data['id_codigo_postal'] : null;
+            }
+            if (isset($data['fecha_entrega'])) {
+                $val = $data['fecha_entrega'];
+                $fields[] = 'fecha_entrega = :fecha_entrega';
+                if ($val === '' || $val === null) {
+                    $params[':fecha_entrega'] = null;
+                } else {
+                    $fecha = date_create($val);
+                    $params[':fecha_entrega'] = $fecha ? date_format($fecha, 'Y-m-d') : null;
+                }
             }
 
             // Execute UPDATE if there are fields to update
@@ -1443,7 +1454,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente', 'fecha_entrega'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1498,7 +1509,8 @@ class PedidosModel
                 'id_vendedor' => 'vendedor',
                 'id_proveedor' => 'proveedor',
                 'id_cliente' => 'id_cliente',
-                'id_codigo_postal' => 'id_codigo_postal'
+                'id_codigo_postal' => 'id_codigo_postal',
+                'fecha_entrega' => 'fecha_entrega'
             ];
 
             foreach ($map as $col => $key) {

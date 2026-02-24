@@ -555,6 +555,11 @@ foreach ($pedidos as $p) {
                     $isProveedorOnly = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) && !$isAdmin && !$isRepartidor && !$isCliente;
                     $disabledAttr = $isProveedorOnly ? 'disabled' : '';
 
+                    // IDs de estados a los que un Cliente puede cambiar (Reprogramado=4, Devuelto=7)
+                    $ESTADOS_PERMITIDOS_CLIENTE = [4, 7];
+                    // ¿Es cliente sin privilegios de admin? Aplica restricción de opciones
+                    $isClienteRestricto = $isCliente && !$isAdmin;
+
                     foreach ($pedidos as $pedido): ?>
                         <tr data-id="<?= $pedido['ID_Pedido'] ?>">
                             <td><?= htmlspecialchars($pedido['Numero_Orden']) ?></td>
@@ -563,13 +568,39 @@ foreach ($pedidos as $p) {
 
                             <!-- Celda Editable para Estado -->
                             <td class="editable" data-campo="estado">
-                                <select class="form-select actualizarEstado" data-id="<?= $pedido['ID_Pedido']; ?>" <?= $disabledAttr ?>>
-                                    <?php foreach ($estados as $estado): ?>
-                                        <option value="<?= $estado['id']; ?>" <?= $pedido['Estado'] == $estado['nombre_estado'] ? 'selected' : ''; ?>>
+                                 <?php
+                                    // Calcular el ID del estado actual del pedido para data-estado
+                                    $idEstadoActualPedido = '';
+                                    foreach ($estados as $_e) {
+                                        if ($_e['nombre_estado'] == $pedido['Estado']) {
+                                            $idEstadoActualPedido = $_e['id'];
+                                            break;
+                                        }
+                                    }
+                                 ?>
+                                 <select class="form-select actualizarEstado"
+                                         data-id="<?= $pedido['ID_Pedido']; ?>"
+                                         data-estado="<?= htmlspecialchars($idEstadoActualPedido); ?>"
+                                         <?= $disabledAttr ?>>
+                                    <?php foreach ($estados as $estado):
+                                        $esEstadoActual = ($pedido['Estado'] == $estado['nombre_estado']);
+                                        $esPermitidoCliente = in_array((int)$estado['id'], $ESTADOS_PERMITIDOS_CLIENTE, true);
+                                        // Para cliente: deshabilitar opciones que NO son el estado actual NI los permitidos
+                                        $disabledOpt = ($isClienteRestricto && !$esEstadoActual && !$esPermitidoCliente) ? 'disabled' : '';
+                                    ?>
+                                        <option value="<?= $estado['id']; ?>"
+                                                <?= $esEstadoActual ? 'selected' : ''; ?>
+                                                <?= $disabledOpt; ?>>
                                             <?= htmlspecialchars($estado['nombre_estado']); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
+                                <?php if ($isClienteRestricto): ?>
+                                    <small class="text-muted d-block mt-1" style="font-size:0.75rem;">
+                                        <i class="bi bi-info-circle"></i>
+                                        Solo puedes cambiar a <strong>Reprogramado</strong> o <strong>Devuelto</strong>.
+                                    </small>
+                                <?php endif; ?>
                             </td>
 
                             <td>
@@ -642,13 +673,31 @@ foreach ($pedidos as $p) {
 </script>
 
 <script>
+    // Estados a los que el rol Cliente puede cambiar (IDs de BD: 4=Reprogramado, 7=Devuelto)
+    const ESTADOS_PERMITIDOS_CLIENTE = <?= json_encode($ESTADOS_PERMITIDOS_CLIENTE ?? []) ?>;
+    const IS_CLIENTE_RESTRICTO = <?= ($isClienteRestricto ?? false) ? 'true' : 'false' ?>;
+
     $(document).ready(function() {
         $(".actualizarEstado").change(function() {
             let select = $(this);
             let idPedido = select.data("id");
-            let nuevoEstado = select.val();
-            let estadoAnterior = select.data("estado");
+            let nuevoEstado = parseInt(select.val(), 10);
+            let estadoAnterior = select.data("estado") || select.find("option[selected]").val();
             let nombreEstado = select.find("option:selected").text().trim();
+
+            // Guard: si es cliente y el estado destino no está en la lista permitida, revertir
+            if (IS_CLIENTE_RESTRICTO && !ESTADOS_PERMITIDOS_CLIENTE.includes(nuevoEstado)) {
+                // Revertir al estado anterior (o al option que tenía el atributo selected en el HTML)
+                let valorOriginal = estadoAnterior || select.find('option[selected]').val();
+                select.val(valorOriginal);
+                Swal.fire({
+                    title: 'Acción no permitida',
+                    text: 'Solo puedes cambiar el estado a Reprogramado o Devuelto.',
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
 
             // Preguntar por comentarios/observaciones usando SweetAlert2
             Swal.fire({
@@ -670,7 +719,7 @@ foreach ($pedidos as $p) {
                     select.prop("disabled", true);
 
                     $.ajax({
-                        url: "cambiarEstados",
+                        url: "<?= RUTA_URL ?>cambiarEstados",
                         type: "POST",
                         data: {
                             id_pedido: idPedido,

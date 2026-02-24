@@ -57,6 +57,39 @@ function getBadgeColor($estado, $map) {
 
 $badgeColor = getBadgeColor($pedido['nombre_estado'], $estadoColores);
 
+// --- Lógica de Alerta de Fecha de Entrega ---
+$fechaAlertaBadge = '';
+$fechaAlertaLabel = '';
+$fechaBadgeColor = 'secondary';
+$fechaEntregaRaw = $pedido['fecha_entrega'] ?? null;
+
+if (!empty($fechaEntregaRaw)) {
+    $hoy = new DateTime(date('Y-m-d'));
+    $entrega = new DateTime($fechaEntregaRaw);
+    $intervalo = $hoy->diff($entrega);
+    $dias = (int)$intervalo->format('%r%a');
+
+    if (strtoupper($pedido['nombre_estado']) === 'ENTREGADO') {
+       $fechaBadgeColor = 'outline-success';
+       $fechaAlertaLabel = 'Entregado';
+    } elseif ($dias === 0) {
+        $fechaBadgeColor = 'danger';
+        $fechaAlertaLabel = '¡HOY!';
+    } elseif ($dias === 1) {
+        $fechaBadgeColor = 'warning text-dark';
+        $fechaAlertaLabel = '¡MAÑANA!';
+    } elseif ($dias > 1) {
+        $fechaBadgeColor = 'success';
+        $fechaAlertaLabel = 'PROGRAMADO';
+    } elseif ($dias < 0) {
+        $fechaBadgeColor = 'dark';
+        $fechaAlertaLabel = 'ATRASADO';
+    }
+} else {
+    $fechaAlertaLabel = 'No programada';
+}
+
+
 include("vista/includes/header.php"); 
 ?>
 
@@ -98,13 +131,6 @@ include("vista/includes/header.php");
                             <label class="small text-muted fw-bold text-uppercase">Número de Orden</label>
                             <div class="fs-5 text-dark"><?= htmlspecialchars($pedido['numero_orden']) ?></div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="small text-muted fw-bold text-uppercase">Precio Total</label>
-                            <div class="fs-5 text-dark">
-                                <?= htmlspecialchars($pedido['moneda_codigo'] ?? 'GTQ') ?> 
-                                <?= number_format($pedido['precio_total_local'] ?? 0, 2) ?>
-                            </div>
-                        </div>
 
                          <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Proveedor</label>
@@ -112,10 +138,24 @@ include("vista/includes/header.php");
                                 <i class="bi bi-shop me-1"></i>
                                 <?= htmlspecialchars($pedido['proveedor_nombre'] ?? 'No asignado') ?>
                             </div>
-                        </div>
+                         </div>
                         <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Fecha Creación</label>
                             <div><?= date('d/m/Y H:i', strtotime($pedido['fecha_ingreso'])) ?></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="small text-muted fw-bold text-uppercase">Fecha de Entrega</label>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold fs-5">
+                                    <?= !empty($pedido['fecha_entrega']) ? date('d/m/Y', strtotime($pedido['fecha_entrega'])) : '---' ?>
+                                </span>
+                                <?php if (!empty($fechaAlertaLabel)): ?>
+                                    <span class="badge bg-<?= $fechaBadgeColor ?> rounded-pill px-2 py-1 small">
+                                        <?= $fechaAlertaLabel ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                         
                         <div class="col-md-6">
@@ -167,6 +207,13 @@ include("vista/includes/header.php");
                             </li>
                         <?php endforeach; ?>
                         </ul>
+                        <div class="card-footer bg-light border-top-0 d-flex justify-content-between align-items-center py-3">
+                            <span class="small text-muted fw-bold text-uppercase">Total a Pagar:</span>
+                            <span class="fs-4 fw-bold text-primary">
+                                <?= htmlspecialchars($pedido['moneda_codigo'] ?? 'GTQ') ?> 
+                                <?= number_format($pedido['precio_total_local'] ?? 0, 2) ?>
+                            </span>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>

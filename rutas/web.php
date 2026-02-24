@@ -1110,6 +1110,18 @@ if (isset($ruta[0]) && $ruta[0] === 'cambiarEstados') {
         require_once __DIR__ . '/../utils/session.php';
         start_secure_session();
 
+        // Detectar si es una petición AJAX (XHR o Accept: application/json)
+        $isAjaxCambiarEstado = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                             || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+
+        if ($isAjaxCambiarEstado) {
+            // Delegar completamente a actualizarEstadoAjax: maneja auth, roles,
+            // ownership y responde JSON con http_response_code correcto.
+            PedidosController::actualizarEstadoAjax($_POST);
+            exit;
+        }
+
+        // --- Flujo normal (POST desde formulario, ej: seguimiento/ver) ---
         if (empty($_SESSION['registrado'])) {
             header('Location: ' . RUTA_URL . 'login');
             exit;

@@ -296,6 +296,7 @@ class PedidoApiController
             'id_municipio' => ['required' => false, 'numeric' => true],
             'zona'         => ['required' => false, 'max_len' => 100],
             'codigo_postal'=> ['required' => false],
+            'fecha_entrega' => ['required' => false, 'date' => true],
             'precio_total_local' => ['required' => true, 'numeric' => true, 'min_val' => 0.01],
             'es_combo'     => ['required' => true, 'in' => [0, 1]]
         ];
@@ -606,6 +607,7 @@ class PedidoApiController
             'precio_total_usd' => $precioTotalUsd,
             'tasa_conversion_usd' => $tasaConversionUsd,
             'es_combo' => $esCombo,
+            'fecha_entrega' => $data['fecha_entrega'] ?? null,
             'id_codigo_postal' => $data['id_codigo_postal'] ?? null,
         ];
 
@@ -683,6 +685,7 @@ class PedidoApiController
             'precio_total_usd' => $pedido['precio_total_usd'] ?? null,
             'tasa_conversion_usd' => $pedido['tasa_conversion_usd'] ?? null,
             'es_combo' => $esCombo,
+            'fecha_entrega' => $pedido['fecha_entrega'] ?? null,
             'id_codigo_postal' => $pedido['id_codigo_postal'] ?? null,
         ];
     }

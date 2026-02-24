@@ -866,6 +866,7 @@
                             <tr><td><code>comentario</code></td><td>string</td><td>STRICT</td><td>Delivery notes</td></tr>
                             <tr><td><code>precio_total_local</code></td><td>decimal</td><td>STRICT, > 0</td><td>Total local price</td></tr>
                             <tr><td><code>es_combo</code></td><td>integer</td><td>STRICT (0 or 1)</td><td>1 for combo, 0 for standard</td></tr>
+                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>STRICT, format YYYY-MM-DD</td><td>Estimated delivery date (e.g. "2026-03-15")</td></tr>
                         </tbody>
                     </table>
                     
@@ -882,6 +883,7 @@
                             <tr><td><code>comentario</code></td><td>string</td><td>ESTRICTO</td><td>Notas de entrega</td></tr>
                             <tr><td><code>precio_total_local</code></td><td>decimal</td><td>ESTRICTO, > 0</td><td>Precio total local</td></tr>
                             <tr><td><code>es_combo</code></td><td>entero</td><td>ESTRICTO (0 o 1)</td><td>1 si es combo, 0 si estándar</td></tr>
+                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>ESTRICTO, formato YYYY-MM-DD</td><td>Fecha estimada de entrega (ej. "2026-03-15")</td></tr>
                         </tbody>
                     </table>
                     
@@ -1051,6 +1053,7 @@
     "id_proveedor": 12,
     "zona": "Zona 3 Centro",
     "codigo_postal": "46400",
+    "fecha_entrega": "2026-03-15",
     "precio_total_local": 250.75,
     "es_combo": 1,
     "productos": [
@@ -1073,6 +1076,7 @@
     "id_departamento": 1,
     "id_municipio": 1,
     "zona": "Vista Hermosa",
+    "fecha_entrega": "2026-03-20",
     "precio_total_local": 320.00,
     "es_combo": 1,
     "productos": [
@@ -1093,6 +1097,7 @@
     "zona": "Pradera",
     "codigo_postal": "01010",
     "id_moneda": 2,
+    "fecha_entrega": "2026-03-25",
     "es_combo": 1,
     "precio_total_local": 780.50,
     "productos": [
@@ -1143,6 +1148,7 @@
             "comentario": "Entregar en recepción.",
             "id_proveedor": 12,
             "codigo_postal": "46400",
+            "fecha_entrega": "2026-03-15",
             "precio_total_local": 250.75,
             "es_combo": 1,
             "productos": [
@@ -1159,6 +1165,7 @@
             "comentario": "Tocar timbre dos veces.",
             "id_proveedor": 12,
             "codigo_postal": "46400",
+            "fecha_entrega": "2026-03-22",
             "precio_total_local": 480.00,
             "es_combo": 1,
             "productos": [
