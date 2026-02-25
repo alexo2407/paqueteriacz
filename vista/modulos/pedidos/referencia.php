@@ -19,6 +19,13 @@ include "vista/includes/header.php";
 try {
     $ctrl = new PedidosController();
     $db = (new Conexion())->conectar();
+
+    // Detectar si el usuario SOLO tiene rol Cliente (sin roles admin/vendedor)
+    $rolesSession = $_SESSION['roles_nombres'] ?? [];
+    $esCliente = in_array('Cliente', $rolesSession, true)
+        && !in_array('Administrador', $rolesSession, true)
+        && !in_array('Vendedor', $rolesSession, true)
+        && !in_array('Proveedor', $rolesSession, true);
     
     ?>
     <style>
@@ -102,6 +109,7 @@ try {
                     <i class="bi bi-tag"></i> Estados
                 </button>
             </li>
+            <?php if (!$esCliente): ?>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="pills-proveedores-tab" data-bs-toggle="pill" data-bs-target="#pills-proveedores" type="button" role="tab">
                     <i class="bi bi-building"></i> Proveedores
@@ -112,6 +120,7 @@ try {
                     <i class="bi bi-people"></i> Clientes
                 </button>
             </li>
+            <?php endif; ?>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="pills-monedas-tab" data-bs-toggle="pill" data-bs-target="#pills-monedas" type="button" role="tab">
                     <i class="bi bi-currency-exchange"></i> Monedas
@@ -188,6 +197,7 @@ try {
                 </div>
             </div>
 
+            <?php if (!$esCliente): ?>
             <!-- PROVEEDORES -->
             <div class="tab-pane fade" id="pills-proveedores" role="tabpanel">
                 <div class="card shadow-sm border-0">
@@ -261,6 +271,7 @@ try {
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
 
             <!-- MONEDAS -->
             <div class="tab-pane fade" id="pills-monedas" role="tabpanel">
