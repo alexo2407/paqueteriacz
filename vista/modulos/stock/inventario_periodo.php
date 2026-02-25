@@ -198,73 +198,99 @@ if ($export && !empty($colsList)) {
     $sheet       = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Inventario por Período');
 
-    $orange = \PhpOffice\PhpSpreadsheet\Style\Color::COLOR_YELLOW;
-    $bgGreen = 'FFE2EFDA'; $bgRed = 'FFFFC7CE'; $bgYellow = 'FFFFFF00';
-
-    // Encabezado
-    $titulo = 'INVENTARIO ' . strtoupper(date('F Y', strtotime($fechaDesde)));
-    $totalCols = count($colsList) + 1;
+    $totalCols     = count($colsList) + 2;  // col A = fecha, col B = tipo, luego productos
     $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+
+    // ── Fila 1: título con rango de fechas ────────────────────────────────────
+    $titulo = 'INVENTARIO '
+        . date('d/m/Y', strtotime($fechaDesde))
+        . ' → '
+        . date('d/m/Y', strtotime($fechaHasta));
     $sheet->mergeCells("A1:{$lastColLetter}1");
     $sheet->setCellValue('A1', $titulo);
     $sheet->getStyle('A1')->applyFromArray([
-        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFFFF']],
-        'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '2E75B6']],
+        'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFFFF'], 'size' => 13],
+        'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '1A3A4A']],
         'alignment' => ['horizontal' => 'center'],
     ]);
+    $sheet->getRowDimension(1)->setRowHeight(22);
 
-    // Cabeceras de columnas
+    // ── Fila 2: cabeceras de columnas ─────────────────────────────────────────
     $sheet->setCellValue('A2', 'FECHA');
-    $colIdx = 2;
+    $sheet->setCellValue('B2', 'TIPO');
+    $colIdx = 3;
     foreach ($colsList as $pnombre) {
         $sheet->setCellValueByColumnAndRow($colIdx, 2, strtoupper($pnombre));
         $colIdx++;
     }
     $sheet->getStyle("A2:{$lastColLetter}2")->applyFromArray([
-        'font' => ['bold' => true],
-        'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '4472C4']],
         'font' => ['color' => ['rgb' => 'FFFFFFFF'], 'bold' => true],
+        'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '2D6A4F']],
+        'alignment' => ['horizontal' => 'center'],
     ]);
 
+    // ── Filas de datos: entrada + salida por día ──────────────────────────────
     $excelRow = 3;
     foreach ($filas as $grupo) {
-        // Entrada
-        $sheet->setCellValue("A{$excelRow}", $grupo['entry']['fecha']);
-        $c = 2;
+        $fechaLabel = date('d/m/Y', strtotime($grupo['entry']['fecha']));
+
+        // Fila entrada
+        $sheet->setCellValue("A{$excelRow}", $fechaLabel);
+        $sheet->setCellValue("B{$excelRow}", 'Entrada');
+        $c = 3;
         foreach ($colsList as $pid => $pn) {
             $sheet->setCellValueByColumnAndRow($c, $excelRow, $grupo['entry']['data'][$pid] ?? 0);
             $c++;
         }
+        $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E8F5E9']],
+            'font' => ['color' => ['rgb' => '2E7D32']],
+        ]);
         $excelRow++;
 
-        // Salida
-        $sheet->setCellValue("A{$excelRow}", $grupo['salida']['fecha']);
-        $c = 2;
+        // Fila salida
+        $sheet->setCellValue("A{$excelRow}", $fechaLabel);
+        $sheet->setCellValue("B{$excelRow}", 'Salida');
+        $c = 3;
         foreach ($colsList as $pid => $pn) {
             $sheet->setCellValueByColumnAndRow($c, $excelRow, $grupo['salida']['data'][$pid] ?? 0);
             $c++;
         }
-        $excelRow++;
-
-        // Total (fondo amarillo como el Excel)
-        $sheet->setCellValue("A{$excelRow}", 'Total producto');
-        $c = 2;
-        foreach ($colsList as $pid => $pn) {
-            $sheet->setCellValueByColumnAndRow($c, $excelRow, $grupo['total']['data'][$pid] ?? 0);
-            $c++;
-        }
         $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
-            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFFF00']],
-            'font' => ['bold' => true],
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFF3E0']],
+            'font' => ['color' => ['rgb' => 'BF360C']],
         ]);
         $excelRow++;
     }
 
-    // Auto-size columnas
-    foreach (range(1, $totalCols) as $ci) $sheet->getColumnDimensionByColumn($ci)->setAutoSize(true);
+    // ── Fila Total — saldo acumulado final (solo una vez) ─────────────────────
+    $ultimoGrupo = end($filas);
+    if ($ultimoGrupo) {
+        $sheet->mergeCells("A{$excelRow}:B{$excelRow}");
+        $sheet->setCellValue("A{$excelRow}", 'TOTAL PRODUCTO');
+        $c = 3;
+        foreach ($colsList as $pid => $pn) {
+            $sheet->setCellValueByColumnAndRow($c, $excelRow, $ultimoGrupo['total']['data'][$pid] ?? 0);
+            $c++;
+        }
+        $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFD600']],
+            'font' => ['bold' => true, 'size' => 11],
+        ]);
+        $sheet->getRowDimension($excelRow)->setRowHeight(18);
+    }
+
+    // ── Auto-size columnas ────────────────────────────────────────────────────
+    foreach (range(1, $totalCols) as $ci) {
+        $sheet->getColumnDimensionByColumn($ci)->setAutoSize(true);
+    }
+
+    // ── Freeze panes: congela fila 2 y columnas A-B ───────────────────────────
+    $sheet->freezePane('C3');
 
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment; filename="inventario_periodo_' . date('Ymd') . '.xlsx"');
+    $filename = 'inventario_' . $fechaDesde . '_' . $fechaHasta . '.xlsx';
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
     exit;
