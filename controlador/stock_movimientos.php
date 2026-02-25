@@ -4,13 +4,16 @@
  * Ruta: /stock/movimientos[?fecha_desde=&fecha_hasta=&tipo=&id_cliente=&export=1]
  */
 
-require_once 'modelo/conexion.php';
-require_once 'modelo/stock.php';
-require_once 'modelo/inventario.php';
-require_once 'utils/autenticacion.php';
-require_once 'utils/permissions.php';
+require_once __DIR__ . '/../modelo/conexion.php';
+require_once __DIR__ . '/../modelo/stock.php';
+require_once __DIR__ . '/../modelo/inventario.php';
+require_once __DIR__ . '/../utils/authorization.php';
+require_once __DIR__ . '/../utils/permissions.php';
 
-verificarAutenticacion();
+// Solo Admin y Proveedor pueden ver estos reportes
+require_role(['Administrador', 'Proveedor']);
+
+$isAdmin = in_array(ROL_NOMBRE_ADMIN, $_SESSION['roles_nombres'] ?? [], true);
 
 // ── Filtros ──────────────────────────────────────────────────────────────────
 $fechaDesde  = $_GET['fecha_desde']  ?? date('Y-m-01');
@@ -70,9 +73,9 @@ foreach ($params as $k => $v) $stmt->bindValue($k, $v);
 $stmt->execute();
 $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// ── Clientes para filtro (admin) ─────────────────────────────────────────────
+// ── Clientes para filtro (solo admin) ────────────────────────────────────────
 $clientes = [];
-if (isAdmin() || isSuperAdmin()) {
+if ($isAdmin) {
     $stmtC = $db->query("SELECT id, nombre FROM usuarios WHERE activo = 1 ORDER BY nombre ASC");
     $clientes = $stmtC->fetchAll(PDO::FETCH_ASSOC);
 }

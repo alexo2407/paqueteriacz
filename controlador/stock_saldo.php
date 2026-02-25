@@ -4,12 +4,13 @@
  * Ruta: /stock/saldo[?export=1]
  */
 
-require_once 'modelo/conexion.php';
-require_once 'modelo/inventario.php';
-require_once 'utils/autenticacion.php';
-require_once 'utils/permissions.php';
+require_once __DIR__ . '/../modelo/conexion.php';
+require_once __DIR__ . '/../modelo/inventario.php';
+require_once __DIR__ . '/../utils/authorization.php';
+require_once __DIR__ . '/../utils/permissions.php';
 
-verificarAutenticacion();
+// Solo Admin y Proveedor pueden ver estos reportes
+require_role(['Administrador', 'Proveedor']);
 
 $export = isset($_GET['export']) && $_GET['export'] === '1';
 
