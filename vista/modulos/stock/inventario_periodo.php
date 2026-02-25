@@ -510,15 +510,17 @@ if ($export && !empty($colsList)) {
                             : '0' ?></td>
                     <?php endforeach; ?>
                 </tr>
+            <?php endforeach; ?>
 
-                <!-- Fila Total (saldo acumulado) -->
+                <!-- Fila Total — saldo acumulado FINAL (una sola vez al final) -->
+                <?php $ultimoGrupo = end($filas); if ($ultimoGrupo): ?>
                 <tr class="fila-total">
                     <td class="col-fecha">Total producto</td>
                     <?php foreach ($colsList as $pid => $pn): ?>
-                    <td><?= number_format($grupo['total']['data'][$pid] ?? 0) ?></td>
+                    <td><?= number_format($ultimoGrupo['total']['data'][$pid] ?? 0) ?></td>
                     <?php endforeach; ?>
                 </tr>
-            <?php endforeach; ?>
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
