@@ -45,10 +45,14 @@ class ProductosController
             return ['success' => false, 'message' => 'El nombre es obligatorio.', 'id' => null];
         }
 
+        $sku         = $data['sku']         ?? null;
         $descripcion = $data['descripcion'] ?? null;
-        $precio = $data['precio_usd'] ?? null;
+        $precio      = $data['precio_usd']  ?? null;
 
-        $id = ProductoModel::crear($nombre, $descripcion, $precio);
+        // Obtener el usuario actual de la sesión para asignar como creador
+        $idUsuarioCreador = (int)($_SESSION['idUsuario'] ?? 0) ?: null;
+
+        $id = ProductoModel::crear($nombre, $sku, $descripcion, $precio, $idUsuarioCreador);
         if ($id === null) {
             return ['success' => false, 'message' => 'No fue posible crear el producto.', 'id' => null];
         }
