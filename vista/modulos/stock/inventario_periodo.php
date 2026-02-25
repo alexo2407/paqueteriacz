@@ -220,7 +220,7 @@ if ($export && !empty($colsList)) {
     $sheet->setCellValue('B2', 'TIPO');
     $colIdx = 3;
     foreach ($colsList as $pnombre) {
-        $sheet->setCellValueByColumnAndRow($colIdx, 2, strtoupper($pnombre));
+        $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx) . '2', strtoupper($pnombre));
         $colIdx++;
     }
     $sheet->getStyle("A2:{$lastColLetter}2")->applyFromArray([
@@ -239,7 +239,7 @@ if ($export && !empty($colsList)) {
         $sheet->setCellValue("B{$excelRow}", 'Entrada');
         $c = 3;
         foreach ($colsList as $pid => $pn) {
-            $sheet->setCellValueByColumnAndRow($c, $excelRow, $grupo['entry']['data'][$pid] ?? 0);
+            $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow, $grupo['entry']['data'][$pid] ?? 0);
             $c++;
         }
         $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
@@ -253,7 +253,7 @@ if ($export && !empty($colsList)) {
         $sheet->setCellValue("B{$excelRow}", 'Salida');
         $c = 3;
         foreach ($colsList as $pid => $pn) {
-            $sheet->setCellValueByColumnAndRow($c, $excelRow, $grupo['salida']['data'][$pid] ?? 0);
+            $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow, $grupo['salida']['data'][$pid] ?? 0);
             $c++;
         }
         $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
@@ -270,7 +270,7 @@ if ($export && !empty($colsList)) {
         $sheet->setCellValue("A{$excelRow}", 'TOTAL PRODUCTO');
         $c = 3;
         foreach ($colsList as $pid => $pn) {
-            $sheet->setCellValueByColumnAndRow($c, $excelRow, $ultimoGrupo['total']['data'][$pid] ?? 0);
+            $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow, $ultimoGrupo['total']['data'][$pid] ?? 0);
             $c++;
         }
         $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
