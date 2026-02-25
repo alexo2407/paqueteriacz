@@ -139,6 +139,18 @@
                             </a>
                         </li>
                         <li><hr class="dropdown-divider"></li>
+                        <li class="dropdown-header">Reportes de Stock</li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>stock/movimientos">
+                                <i class="bi bi-journal-arrow-down"></i> Reporte Movimientos
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>stock/saldo">
+                                <i class="bi bi-bar-chart-steps"></i> Saldo por Producto
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>stock/crear">
                                 <i class="bi bi-plus-circle"></i> Nuevo Movimiento
