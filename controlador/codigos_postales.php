@@ -1,8 +1,88 @@
 <?php
 require_once __DIR__ . '/../modelo/codigos_postales.php';
 require_once __DIR__ . '/../services/AddressService.php';
+require_once __DIR__ . '/../services/ImportCpService.php';
 
 class CodigosPostalesController {
+
+    /**
+     * POST /codigos_postales/import/preview
+     * Parsea el archivo, valida y devuelve vista previa JSON.
+     */
+    public function importPreview() {
+        header('Content-Type: application/json; charset=utf-8');
+        ob_start();
+
+        require_once __DIR__ . '/../utils/authorization.php';
+        $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+        $puedeImportar = in_array('Administrador', $rolesNombres, true) || in_array('Vendedor', $rolesNombres, true);
+        if (!$puedeImportar) {
+            ob_end_clean();
+            echo json_encode(['ok' => false, 'message' => 'Sin permisos para importar.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if (!isset($_FILES['archivo']) || $_FILES['archivo']['error'] === UPLOAD_ERR_NO_FILE) {
+            ob_end_clean();
+            echo json_encode(['ok' => false, 'message' => 'No se recibió ningún archivo.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $opciones = [
+            'modo'           => $_POST['modo']           ?? 'upsert',
+            'crear_geo'      => ($_POST['crear_geo']      ?? '1') === '1',
+            'default_activo' => (int)($_POST['default_activo'] ?? 1),
+        ];
+
+        $userId = $_SESSION['user_id'] ?? 0;
+
+        ob_end_clean();
+        try {
+            $result = ImportCpService::previewImport($_FILES['archivo'], $opciones, $userId);
+            echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        } catch (Exception $e) {
+            echo json_encode(['ok' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
+
+    /**
+     * POST /codigos_postales/import/commit
+     * Ejecuta la importación real desde el job temporal.
+     */
+    public function importCommit() {
+        header('Content-Type: application/json; charset=utf-8');
+        ob_start();
+
+        require_once __DIR__ . '/../utils/authorization.php';
+        $rolesNombres2 = $_SESSION['roles_nombres'] ?? [];
+        $puedeImportar2 = in_array('Administrador', $rolesNombres2, true) || in_array('Vendedor', $rolesNombres2, true);
+        if (!$puedeImportar2) {
+            ob_end_clean();
+            echo json_encode(['ok' => false, 'message' => 'Sin permisos para importar.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $jobId  = $_POST['job_id'] ?? '';
+        $userId = $_SESSION['user_id'] ?? 0;
+
+        if (empty($jobId)) {
+            ob_end_clean();
+            echo json_encode(['ok' => false, 'message' => 'job_id requerido.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        ob_end_clean();
+        try {
+            $result = ImportCpService::commitImport($jobId, $userId);
+            echo json_encode($result, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        } catch (Exception $e) {
+            echo json_encode(['ok' => false, 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
+
+
     
     /**
      * Listar CPs con filtros

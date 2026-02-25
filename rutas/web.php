@@ -402,7 +402,27 @@ if (isset($ruta[0]) && $ruta[0] === 'codigos_postales' && $_SERVER['REQUEST_METH
         echo json_encode($response);
         exit;
     }
+
+    // Importación masiva: preview y commit
+    if ($accion === 'import') {
+        $subaccion = isset($ruta[2]) ? $ruta[2] : '';
+
+        if ($subaccion === 'preview') {
+            require_once __DIR__ . '/../modelo/importacion.php';
+            require_once __DIR__ . '/../services/ImportCpService.php';
+            $ctrl->importPreview();
+            exit;
+        }
+
+        if ($subaccion === 'commit') {
+            require_once __DIR__ . '/../modelo/importacion.php';
+            require_once __DIR__ . '/../services/ImportCpService.php';
+            $ctrl->importCommit();
+            exit;
+        }
+    }
 }
+
 
 // -----------------------
 // Manejo de barrios (POST a ?enlace=barrios/<accion>)
