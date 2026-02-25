@@ -194,6 +194,7 @@ $roleColors = [
                 <table id="tblUsuarios" class="table table-hover" style="width:100%">
                     <thead class="table-light">
                         <tr>
+                            <th>ID</th>
                             <th>Usuario</th>
                             <th>País</th>
                             <th>Roles</th>
@@ -227,6 +228,7 @@ $roleColors = [
                             $paisNombre = isset($usuario['id_pais']) && isset($paisesMap[$usuario['id_pais']]) ? $paisesMap[$usuario['id_pais']] : '—';
                         ?>
                         <tr>
+                            <td class="text-muted small fw-semibold">#<?= $usuario['id'] ?></td>
                             <td>
                                 <div class="user-info">
                                     <div class="user-avatar" style="background: <?= $avatarColor ?>">
@@ -347,7 +349,7 @@ $(document).ready(function () {
         columnDefs: [
             { orderable: false, targets: -1 }
         ],
-        order: [[0, 'asc']]
+        order: [[0, 'desc']]
     });
     
     // Modal de eliminación

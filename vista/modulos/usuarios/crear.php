@@ -299,10 +299,6 @@ $roleIcons = [
                             </button>
                         </div>
                         
-                        <?php
-                        $crearUsuario = new UsuariosController();
-                        $crearUsuario->crearUsuarioController();
-                        ?>
                     </form>
                 </div>
             </div>
@@ -311,6 +307,12 @@ $roleIcons = [
 </div>
 
 <?php include("vista/includes/footer.php"); ?>
+
+<?php
+// Procesar POST aquí, DESPUÉS del footer (donde ya cargó SweetAlert2)
+$crearUsuario = new UsuariosController();
+$crearUsuario->crearUsuarioController();
+?>
 
 <script>
 // Toggle password visibility
