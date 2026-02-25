@@ -45,8 +45,7 @@ $proveedores = $db->query(
     "SELECT DISTINCT u.id, u.nombre
      FROM usuarios u
      INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-     INNER JOIN roles r ON r.id = ur.id_rol
-     WHERE r.nombre = 'Proveedor' AND u.activo = 1
+     WHERE ur.id_rol = " . ROL_PROVEEDOR . " AND u.activo = 1
      ORDER BY u.nombre ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
