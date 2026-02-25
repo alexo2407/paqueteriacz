@@ -273,31 +273,13 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
     </div>
     <?php endif; ?>
 
-    <!-- Efectividad Temporal (Admin) -->
-    <?php if ($isAdmin && !empty($clientes)): ?>
+    <?php if ($isAdmin && !empty($efectividadTemporal)): ?>
     <div class="row mb-4">
         <div class="col-12">
             <div class="chart-card">
-                <div class="chart-header d-flex justify-content-between align-items-center flex-wrap">
-                    <div>
-                        <h5><i class="bi bi-graph-up-arrow text-primary"></i> Efectividad Temporal</h5>
-                        <small>Tendencia de entregas exitosas en el tiempo</small>
-                    </div>
-                    <div class="d-flex gap-2 mt-2 mt-md-0">
-                        <select id="filtroCliente" class="form-select form-select-sm" style="width:200px;">
-                            <option value="">Todos los clientes</option>
-                            <?php foreach ($clientes as $cliente): ?>
-                            <option value="<?= $cliente['id'] ?>"><?= htmlspecialchars($cliente['nombre']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <select id="filtroPais" class="form-select form-select-sm" style="width:180px;">
-                            <option value="">Todos los países</option>
-                            <?php foreach ($paises as $p): ?>
-                            <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['nombre']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <button id="btnAplicarFiltros" class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Aplicar</button>
-                    </div>
+                <div class="chart-header">
+                    <h5><i class="bi bi-graph-up-arrow text-primary"></i> Efectividad Temporal</h5>
+                    <small>Tendencia de entregas exitosas en el tiempo</small>
                 </div>
                 <div class="chart-body">
                     <canvas id="efectividadTemporalChart" height="80"></canvas>
@@ -542,38 +524,31 @@ const dashboardData = {
     acumulada: <?= json_encode($acumulada) ?>
 };
 
-<?php if ($isAdmin && !empty($clientes)): ?>
-let efectividadChart = null;
-function cargarEfectividadTemporal() {
-    const clienteId  = document.getElementById('filtroCliente').value;
-    const paisId     = document.getElementById('filtroPais').value;
-    const fechaDesde = document.querySelector('input[name="fecha_desde"]').value;
-    const fechaHasta = document.querySelector('input[name="fecha_hasta"]').value;
-    const params = new URLSearchParams({ cliente_id: clienteId, pais_id: paisId, fecha_desde: fechaDesde, fecha_hasta: fechaHasta });
-    fetch(`<?= RUTA_URL ?>api/dashboard/efectividad-temporal?${params}`)
-        .then(r => r.json())
-        .then(data => {
-            const labels = data.map(e => e.fecha);
-            const values = data.map(e => parseFloat(e.efectividad) || 0);
-            if (efectividadChart) {
-                efectividadChart.data.labels = labels;
-                efectividadChart.data.datasets[0].data = values;
-                efectividadChart.update();
-            } else {
-                efectividadChart = new Chart(document.getElementById('efectividadTemporalChart'), {
-                    type: 'line',
-                    data: { labels, datasets: [{ label: '% Efectividad', data: values, borderColor: '#11998e', backgroundColor: 'rgba(17,153,142,0.1)', tension: 0.4, fill: true }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true } }, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } } }
-                });
-            }
-        })
-        .catch(e => console.error('Error:', e));
-}
-document.addEventListener('DOMContentLoaded', function() {
-    cargarEfectividadTemporal();
-    document.getElementById('btnAplicarFiltros').addEventListener('click', cargarEfectividadTemporal);
+<?php if ($isAdmin && !empty($efectividadTemporal)): ?>
+new Chart(document.getElementById('efectividadTemporalChart'), {
+    type: 'line',
+    data: {
+        labels: <?= json_encode(array_column($efectividadTemporal, 'fecha')) ?>,
+        datasets: [{
+            label: '% Efectividad',
+            data: <?= json_encode(array_column($efectividadTemporal, 'efectividad')) ?>,
+            borderColor: '#11998e',
+            backgroundColor: 'rgba(17,153,142,0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointBackgroundColor: '#11998e'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true } },
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+    }
 });
 <?php endif; ?>
+
 </script>
 <script src="js/dashboard.js?v=<?= time() ?>"></script>
 <?php
