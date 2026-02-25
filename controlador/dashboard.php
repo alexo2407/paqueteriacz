@@ -13,19 +13,23 @@ class DashboardController {
         require_once "modelo/pedido.php";
         require_once __DIR__ . '/../utils/permissions.php';
 
+        // Detectar rol de admin con doble verificación (roles_nombres Y isSuperAdmin)
+        $rolesNombres   = $_SESSION['roles_nombres'] ?? [];
+        $esAdminDash    = in_array('Administrador', $rolesNombres, true) || isSuperAdmin();
+        $esProveedorDash = isProveedor() && !$esAdminDash;
+
         // Determinar si el usuario es proveedor y obtener su ID
         $proveedorId = null;
-        if (isProveedor() && !isSuperAdmin()) {
+        if ($esProveedorDash) {
             $proveedorId = (int)$_SESSION['user_id'];
         }
 
         // Si el usuario es admin y seleccionó un cliente específico, filtrar por ese cliente
         $clienteIdFiltro = null;
-        if (isAdmin()) {
+        if ($esAdminDash) {
             $clienteIdFiltro = isset($_GET['cliente_id']) && (int)$_GET['cliente_id'] > 0
                 ? (int)$_GET['cliente_id']
                 : null;
-            // Usar el cliente seleccionado como filtro en las queries
             if ($clienteIdFiltro) {
                 $proveedorId = $clienteIdFiltro;
             }
@@ -90,7 +94,7 @@ class DashboardController {
         $efectividadTemporal = [];
         $clientes = [];
         $paises   = [];
-        if (isAdmin()) {
+        if ($esAdminDash) {
             require_once "modelo/usuario.php";
             require_once "modelo/pais.php";
             $clientes = UsuarioModel::listarClientes();
