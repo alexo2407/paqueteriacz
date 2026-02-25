@@ -37,15 +37,20 @@ $estados = $db->query(
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $clientes = $db->query(
-    "SELECT id, nombre FROM usuarios
-     WHERE activo = 1 ORDER BY nombre ASC"
+    "SELECT DISTINCT u.id, u.nombre
+     FROM usuarios u
+     INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+     INNER JOIN roles r ON r.id = ur.id_rol
+     WHERE r.nombre_rol = 'Cliente' AND u.activo = 1
+     ORDER BY u.nombre ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $proveedores = $db->query(
     "SELECT DISTINCT u.id, u.nombre
      FROM usuarios u
      INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-     WHERE ur.id_rol = " . ROL_PROVEEDOR . " AND u.activo = 1
+     INNER JOIN roles r ON r.id = ur.id_rol
+     WHERE r.nombre_rol = 'Proveedor' AND u.activo = 1
      ORDER BY u.nombre ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
