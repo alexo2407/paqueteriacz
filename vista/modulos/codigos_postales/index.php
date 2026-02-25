@@ -63,8 +63,10 @@ $puedeEliminar = in_array('Administrador', $rolesNombres, true);
         </div>
         <?php if ($puedeEditar): ?>
         <div class="d-flex gap-2 flex-wrap">
+        <?php else: ?>
+        <div class="d-flex gap-2 flex-wrap">
+        <?php endif; ?>
             <?php
-                // URL de exportación con los filtros actuales
                 $exportParams = http_build_query(array_filter([
                     'id_pais'       => $filtros['id_pais'],
                     'codigo_postal' => $filtros['codigo_postal'],
@@ -76,6 +78,7 @@ $puedeEliminar = in_array('Administrador', $rolesNombres, true);
             <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-success fw-bold shadow-sm" title="Exportar a Excel">
                 📥 Exportar Excel
             </a>
+            <?php if ($puedeEditar): ?>
             <button type="button" class="btn btn-outline-light fw-bold shadow-sm"
                     data-bs-toggle="modal" data-bs-target="#modalImportarCp">
                 ⬆ Importar CPs
@@ -83,8 +86,8 @@ $puedeEliminar = in_array('Administrador', $rolesNombres, true);
             <a href="<?= RUTA_URL ?>codigos_postales/crear" class="btn btn-light text-primary fw-bold shadow-sm">
                 ＋ Nuevo CP
             </a>
+            <?php endif; ?>
         </div>
-        <?php endif; ?>
     </div>
 
     <!-- Filtros -->

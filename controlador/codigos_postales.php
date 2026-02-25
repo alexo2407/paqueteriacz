@@ -204,11 +204,10 @@ class CodigosPostalesController {
      * GET /codigos_postales/exportar — descarga XLSX con todos los CPs (filtro por país opcional)
      */
     public function exportar() {
-        require_once __DIR__ . '/../utils/authorization.php';
-        $roles = $_SESSION['roles_nombres'] ?? [];
-        if (!in_array('Administrador', $roles, true) && !in_array('Vendedor', $roles, true)) {
+        // Solo requiere sesión activa
+        if (empty($_SESSION['user_id'])) {
             http_response_code(403);
-            echo 'Sin permisos.';
+            echo 'Debes iniciar sesión.';
             exit;
         }
 
