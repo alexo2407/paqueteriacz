@@ -65,6 +65,11 @@ RewriteCond %{REQUEST_URI} ^/(?:[^/]+/)?api/utils/.*\.php$
 RewriteCond %{REQUEST_FILENAME} -f
 RewriteRule ^ - [L]
 
+# Permitir acceso directo a archivos .php en dashboard/ (sin pasar por router)
+RewriteCond %{REQUEST_URI} ^/(?:[^/]+/)?api/dashboard/.*\.php$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
 # No reescribir si es un archivo o directorio que existe físicamente
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
