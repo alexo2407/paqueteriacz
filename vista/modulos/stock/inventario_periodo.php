@@ -349,7 +349,7 @@ if ($export && !empty($colsList)) {
             <a href="<?= RUTA_URL ?>stock/saldo" class="btn btn-outline-light btn-sm">
                 <i class="bi bi-bar-chart-steps me-1"></i>Saldo
             </a>
-            <a href="<?= RUTA_URL ?>stock/inventario-periodo?<?= http_build_query(array_merge($_GET, ['export'=>'1'])) ?>"
+            <a href="<?= RUTA_URL ?>stock/inventario_periodo?<?= http_build_query(array_merge($_GET, ['export'=>'1'])) ?>"
                class="btn btn-success btn-sm">
                 <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
             </a>
@@ -359,7 +359,7 @@ if ($export && !empty($colsList)) {
     <!-- Filtros -->
     <div class="card filter-card mb-4">
         <div class="card-body p-3">
-            <form method="GET" action="<?= RUTA_URL ?>stock/inventario-periodo"
+            <form method="GET" action="<?= RUTA_URL ?>stock/inventario_periodo"
                   class="row g-2 align-items-end">
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
@@ -435,7 +435,7 @@ if ($export && !empty($colsList)) {
                     <button type="submit" class="btn btn-primary btn-sm flex-fill">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="<?= RUTA_URL ?>stock/inventario-periodo"
+                    <a href="<?= RUTA_URL ?>stock/inventario_periodo"
                        class="btn btn-outline-secondary btn-sm" title="Limpiar">
                         <i class="bi bi-x-lg"></i>
                     </a>
