@@ -292,6 +292,8 @@ if ($export && !empty($colsList)) {
     $filename = 'inventario_' . $fechaDesde . '_' . $fechaHasta . '.xlsx';
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
+    // Limpiar cualquier HTML que la template haya puesto en el buffer antes de escribir el binario
+    while (ob_get_level() > 0) ob_end_clean();
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
     exit;
 }
