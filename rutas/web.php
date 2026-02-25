@@ -338,6 +338,22 @@ if (isset($ruta[0]) && $ruta[0] === 'municipios' && $_SERVER['REQUEST_METHOD'] =
 }
 
 // -----------------------
+// Manejo de codigos_postales (GET /codigos_postales/exportar)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'codigos_postales' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $accion = $ruta[1] ?? '';
+    if ($accion === 'exportar') {
+        require_once __DIR__ . '/../controlador/codigos_postales.php';
+        require_once __DIR__ . '/../modelo/codigos_postales.php';
+        require_once __DIR__ . '/../utils/session.php';
+        start_secure_session();
+        $ctrl = new CodigosPostalesController();
+        $ctrl->exportar();
+        exit;
+    }
+}
+
+// -----------------------
 // Manejo de codigos_postales (POST a ?enlace=codigos_postales/<accion>)
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'codigos_postales' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -420,6 +436,12 @@ if (isset($ruta[0]) && $ruta[0] === 'codigos_postales' && $_SERVER['REQUEST_METH
             $ctrl->importCommit();
             exit;
         }
+    }
+
+    if ($accion === 'eliminar') {
+        $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+        $ctrl->eliminar($id);
+        exit;
     }
 }
 

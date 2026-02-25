@@ -324,4 +324,19 @@ class CodigosPostalesModel {
             return [];
         }
     }
+
+    /**
+     * Eliminar CP por ID
+     */
+    public static function eliminar(int $id): bool {
+        try {
+            $db   = (new Conexion())->conectar();
+            $stmt = $db->prepare("DELETE FROM codigos_postales WHERE id = :id");
+            $stmt->execute([':id' => $id]);
+            return $stmt->rowCount() > 0;
+        } catch (Exception $e) {
+            error_log("Error en CodigosPostalesModel::eliminar: " . $e->getMessage());
+            return false;
+        }
+    }
 }

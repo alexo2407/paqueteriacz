@@ -49,7 +49,7 @@ function cargarRecursos($pagina) {
   $recursos = [
       "global" => [
           '<link href="' . RUTA_URL . 'vista/css/bootstrap.min.css" rel="stylesheet">',
-          '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/bootstrap-icons-1.2.1/font/bootstrap-icons.css">',
+          '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">',
           '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/estilos.css">',
           // Select2 para búsqueda en dropdowns
           '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">',

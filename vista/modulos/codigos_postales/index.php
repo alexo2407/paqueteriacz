@@ -24,7 +24,8 @@ $paginas = $resultado['paginas'];
 
 // Roles
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
-$puedeEditar = in_array('Administrador', $rolesNombres, true) || in_array('Vendedor', $rolesNombres, true);
+$puedeEditar   = in_array('Administrador', $rolesNombres, true) || in_array('Vendedor', $rolesNombres, true);
+$puedeEliminar = in_array('Administrador', $rolesNombres, true);
 ?>
 
 <style>
@@ -62,12 +63,25 @@ $puedeEditar = in_array('Administrador', $rolesNombres, true) || in_array('Vende
         </div>
         <?php if ($puedeEditar): ?>
         <div class="d-flex gap-2 flex-wrap">
+            <?php
+                // URL de exportación con los filtros actuales
+                $exportParams = http_build_query(array_filter([
+                    'id_pais'       => $filtros['id_pais'],
+                    'codigo_postal' => $filtros['codigo_postal'],
+                    'activo'        => $filtros['activo'],
+                    'parcial'       => $filtros['parcial'],
+                ]));
+                $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $exportParams : '');
+            ?>
+            <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-success fw-bold shadow-sm" title="Exportar a Excel">
+                📥 Exportar Excel
+            </a>
             <button type="button" class="btn btn-outline-light fw-bold shadow-sm"
                     data-bs-toggle="modal" data-bs-target="#modalImportarCp">
-                <i class="bi bi-upload me-1"></i> Importar CPs
+                ⬆ Importar CPs
             </button>
             <a href="<?= RUTA_URL ?>codigos_postales/crear" class="btn btn-light text-primary fw-bold shadow-sm">
-                <i class="bi bi-plus-circle me-1"></i> Nuevo CP
+                ＋ Nuevo CP
             </a>
         </div>
         <?php endif; ?>
@@ -168,9 +182,17 @@ $puedeEditar = in_array('Administrador', $rolesNombres, true) || in_array('Vende
                                 <td class="text-end">
                                     <div class="btn-group">
                                         <?php if ($puedeEditar): ?>
-                                            <a href="<?= RUTA_URL ?>codigos_postales/editar/<?= $item['id'] ?>" class="btn btn-sm btn-outline-primary" title="Editar">
-                                                <i class="bi bi-pencil-square"></i>
+                                            <a href="<?= RUTA_URL ?>codigos_postales/editar/<?= $item['id'] ?>" class="btn btn-sm btn-primary" title="Editar">
+                                                ✏
                                             </a>
+                                        <?php endif; ?>
+                                        <?php if ($puedeEliminar): ?>
+                                            <button type="button" class="btn btn-sm btn-danger btn-eliminar-cp"
+                                                    data-id="<?= $item['id'] ?>"
+                                                    data-cp="<?= htmlspecialchars($item['codigo_postal']) ?>"
+                                                    title="Eliminar">
+                                                🗑
+                                            </button>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -260,6 +282,45 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(err => {
                 this.checked = !status;
                 Swal.fire('Error', 'No se pudo comunicar con el servidor', 'error');
+            });
+        });
+    });
+
+    // ── Eliminar CP ──────────────────────────────────────────────
+    document.querySelectorAll('.btn-eliminar-cp').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.id;
+            const cp = this.dataset.cp;
+
+            Swal.fire({
+                title: `¿Eliminar CP ${cp}?`,
+                text: 'Esta acción no se puede deshacer.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonText: 'Cancelar',
+                confirmButtonText: 'Sí, eliminar',
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                const row = this.closest('tr');
+
+                fetch(`<?= RUTA_URL ?>codigos_postales/eliminar/${id}`, {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        row.style.transition = 'opacity .3s';
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 300);
+                        Swal.fire({ icon: 'success', title: 'Eliminado', text: res.message, timer: 1800, showConfirmButton: false });
+                    } else {
+                        Swal.fire('Error', res.message, 'error');
+                    }
+                })
+                .catch(() => Swal.fire('Error', 'No se pudo comunicar con el servidor.', 'error'));
             });
         });
     });
