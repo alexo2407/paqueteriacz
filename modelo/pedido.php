@@ -2504,8 +2504,8 @@ class PedidosModel
 
 
     /**
-     * Cambiar estado de un pedido con registro en historial
-     * 
+     * Cambiar estado de un pedido con registro en historial y movimientos de stock.
+     *
      * @param int $idPedido ID del pedido
      * @param int $nuevoEstado ID del nuevo estado
      * @param string|null $observaciones Observaciones del cambio
@@ -2514,20 +2514,24 @@ class PedidosModel
      */
     public static function cambiarEstado($idPedido, $nuevoEstado, $observaciones, $idUsuario)
     {
+        require_once __DIR__ . '/../services/PedidoService.php';
         try {
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
-            
-            // Obtener estado actual
-            $stmt = $db->prepare('SELECT id_estado FROM pedidos WHERE id = :id');
+
+            // Bloquear fila para evitar condiciones de carrera
+            $stmt = $db->prepare('SELECT id_estado FROM pedidos WHERE id = :id FOR UPDATE');
             $stmt->execute([':id' => $idPedido]);
-            $estadoActual = $stmt->fetchColumn();
-            
+            $stmt->fetchColumn(); // consumir resultado
+
+            // Aplicar movimientos de stock según nuevo estado
+            PedidoService::aplicarStockPorEstado($idPedido, (int)$nuevoEstado, (int)$idUsuario, $db);
+
             // Actualizar estado del pedido
             $stmt = $db->prepare('UPDATE pedidos SET id_estado = :estado WHERE id = :id');
             $stmt->execute([':estado' => $nuevoEstado, ':id' => $idPedido]);
-            
-            // Registrar en historial (el trigger lo hace automáticamente, pero podemos agregar observaciones)
+
+            // Registrar en historial
             if ($observaciones) {
                 $stmt = $db->prepare('
                     UPDATE pedidos_historial_estados
@@ -2539,15 +2543,15 @@ class PedidosModel
                 ');
                 $stmt->execute([
                     ':observaciones' => $observaciones,
-                    ':id_pedido' => $idPedido,
-                    ':estado_nuevo' => $nuevoEstado
+                    ':id_pedido'     => $idPedido,
+                    ':estado_nuevo'  => $nuevoEstado
                 ]);
             }
-            
+
             $db->commit();
             return true;
         } catch (Exception $e) {
-            if ($db->inTransaction()) {
+            if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
             }
             error_log('Error al cambiar estado de pedido: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');

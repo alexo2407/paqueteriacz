@@ -302,9 +302,10 @@ class LogisticaModel {
     }
 
     /**
-     * Actualizar estado de un pedido con auditoría
+     * Actualizar estado de un pedido con auditoría y movimientos de stock.
      */
     public static function actualizarEstado($pedidoId, $nuevoEstado, $observaciones, $usuarioId, $fechaEntrega = null) {
+        require_once __DIR__ . '/../services/PedidoService.php';
         try {
             $db = (new Conexion())->conectar();
             
@@ -319,6 +320,14 @@ class LogisticaModel {
             }
  
             $db->beginTransaction();
+
+            // Bloquear fila para evitar condiciones de carrera
+            $stmtLock = $db->prepare('SELECT id FROM pedidos WHERE id = :id FOR UPDATE');
+            $stmtLock->execute([':id' => $pedidoId]);
+            $stmtLock->fetchColumn();
+
+            // Aplicar movimientos de stock según nuevo estado
+            PedidoService::aplicarStockPorEstado($pedidoId, (int)$idEstadoNuevo, (int)$usuarioId, $db);
  
             // 1. Actualizar estado (+ fecha si aplica)
             $sql = "UPDATE pedidos SET id_estado = :id_estado";
@@ -334,14 +343,14 @@ class LogisticaModel {
             $stmt->execute($params);
  
             $datosAnteriores = [
-                'id_estado' => $pedidoActual['id_estado'],
-                'estado' => $pedidoActual['nombre_estado'],
-                'fecha_entrega' => $pedidoActual['fecha_entrega']
+                'id_estado'    => $pedidoActual['id_estado'],
+                'estado'       => $pedidoActual['nombre_estado'],
+                'fecha_entrega'=> $pedidoActual['fecha_entrega']
             ];
             
             $datosNuevos = [
-                'id_estado' => $idEstadoNuevo,
-                'estado' => $nuevoEstado,
+                'id_estado'     => $idEstadoNuevo,
+                'estado'        => $nuevoEstado,
                 'observaciones' => $observaciones
             ];
             

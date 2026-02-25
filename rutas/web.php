@@ -1394,3 +1394,21 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] ==
 }
 
 
+
+// -----------------------
+// Stock: Movimientos y Saldo por Producto
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'stock') {
+    require_once __DIR__ . '/../utils/permissions.php';
+    $accion = $ruta[1] ?? 'movimientos';
+
+    if ($accion === 'movimientos') {
+        require_once __DIR__ . '/../controlador/stock_movimientos.php';
+        exit;
+    }
+
+    if ($accion === 'saldo') {
+        require_once __DIR__ . '/../controlador/stock_saldo.php';
+        exit;
+    }
+}
