@@ -40,6 +40,18 @@ $efectividadPaises    = $datos['efectividadPaises'] ?? [];
 $clientes             = $datos['clientes'] ?? [];
 $paises               = $datos['paises'] ?? [];
 $proveedoresMensajeria= $datos['proveedoresMensajeria'] ?? [];
+$clienteIdFiltro      = $datos['clienteIdFiltro'] ?? null;
+
+// Nombre del cliente filtrado (para mostrar en header)
+$clienteNombreFiltro = '';
+if ($clienteIdFiltro && !empty($clientes)) {
+    foreach ($clientes as $c) {
+        if ((int)$c['id'] === $clienteIdFiltro) {
+            $clienteNombreFiltro = $c['nombre'];
+            break;
+        }
+    }
+}
 
 $fechaDesdeFormateada = date('d/m/Y', strtotime($fechaDesde));
 $fechaHastaFormateada = date('d/m/Y', strtotime($fechaHasta));
@@ -148,7 +160,14 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
         <div class="row align-items-center">
             <div class="col-md-8">
                 <h2><?= $saludoIcon ?> <?= $saludo ?>, <?= htmlspecialchars($primerNombre) ?></h2>
-                <p>Aquí tienes un resumen de tu negocio</p>
+                <p>Aquí tienes un resumen de tu negocio
+                <?php if ($clienteNombreFiltro): ?>
+                    &nbsp;·&nbsp;
+                    <span style="background:rgba(255,255,255,0.25);padding:.2rem .75rem;border-radius:50px;font-size:.9rem;">
+                        👤 Viendo: <strong><?= htmlspecialchars($clienteNombreFiltro) ?></strong>
+                    </span>
+                <?php endif; ?>
+                </p>
             </div>
             <div class="col-md-4 text-md-end">
                 <div class="period-badge"><i class="bi bi-calendar3"></i> <?= $periodoTexto ?></div>
@@ -167,7 +186,22 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
                 <label for="fecha_hasta" class="form-label small text-muted mb-1"><i class="bi bi-calendar-event me-1"></i>Hasta</label>
                 <input type="date" id="fecha_hasta" name="fecha_hasta" class="form-control" value="<?= $fechaHasta ?>" required>
             </div>
+            <?php if ($isAdmin && !empty($clientes)): ?>
+            <div class="col-md-3">
+                <label for="cliente_id" class="form-label small text-muted mb-1"><i class="bi bi-person me-1"></i>Cliente</label>
+                <select id="cliente_id" name="cliente_id" class="form-control" style="border-radius:10px;border:2px solid <?= $clienteIdFiltro ? '#667eea' : '#e9ecef' ?>;">
+                    <option value="">— Todos los clientes —</option>
+                    <?php foreach ($clientes as $c): ?>
+                    <option value="<?= (int)$c['id'] ?>" <?= (int)$c['id'] === $clienteIdFiltro ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($c['nombre']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+            <?php else: ?>
             <div class="col-md-6 d-flex gap-2">
+            <?php endif; ?>
                 <button type="submit" class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Filtrar</button>
                 <a href="<?= RUTA_URL ?>dashboard" class="btn btn-secondary"><i class="bi bi-x-lg me-1"></i>Limpiar</a>
             </div>

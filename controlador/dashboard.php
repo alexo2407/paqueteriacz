@@ -19,6 +19,18 @@ class DashboardController {
             $proveedorId = (int)$_SESSION['user_id'];
         }
 
+        // Si el usuario es admin y seleccionó un cliente específico, filtrar por ese cliente
+        $clienteIdFiltro = null;
+        if (isAdmin()) {
+            $clienteIdFiltro = isset($_GET['cliente_id']) && (int)$_GET['cliente_id'] > 0
+                ? (int)$_GET['cliente_id']
+                : null;
+            // Usar el cliente seleccionado como filtro en las queries
+            if ($clienteIdFiltro) {
+                $proveedorId = $clienteIdFiltro;
+            }
+        }
+
         // Obtener fechas del filtro (GET) o usar mes actual por defecto
         $fechaDesde = $_GET['fecha_desde'] ?? null;
         $fechaHasta = $_GET['fecha_hasta'] ?? null;
@@ -32,12 +44,8 @@ class DashboardController {
         }
         
         // Si no se proporcionan fechas, usar mes actual
-        if (!$fechaDesde) {
-            $fechaDesde = date('Y-m-01');
-        }
-        if (!$fechaHasta) {
-            $fechaHasta = date('Y-m-t');
-        }
+        if (!$fechaDesde) { $fechaDesde = date('Y-m-01'); }
+        if (!$fechaHasta) { $fechaHasta = date('Y-m-t'); }
 
         // 1. KPIs de Efectividad
         $kpis = PedidosModel::obtenerKPIsEfectividad($proveedorId, $fechaDesde, $fechaHasta);
@@ -48,7 +56,7 @@ class DashboardController {
         // 3. Entregas Acumuladas
         $acumulada = PedidosModel::obtenerEntregasAcumuladas($proveedorId, $fechaDesde, $fechaHasta);
 
-        // 4. Top Productos con detalle (todos los pedidos del período, no solo entregados)
+        // 4. Top Productos con detalle
         $topProductosDetalle = PedidosModel::obtenerTopProductosDetalle($proveedorId, $fechaDesde, $fechaHasta, 8);
 
         // Build donut chart arrays from detail data
@@ -57,7 +65,7 @@ class DashboardController {
             'cantidades' => array_map('intval', array_column(array_slice($topProductosDetalle, 0, 5), 'total_unidades'))
         ];
 
-        // 6. Recomendación de producto: el más movido del período
+        // 5. Recomendación de producto: el más movido del período
         $recomendacion = null;
         if (!empty($topProductosDetalle)) {
             $top = $topProductosDetalle[0];
@@ -69,16 +77,16 @@ class DashboardController {
             ];
         }
 
-        // 7. Distribución de Estados
+        // 6. Distribución de Estados
         $distribucionEstados = PedidosModel::obtenerDistribucionEstados($proveedorId, $fechaDesde, $fechaHasta);
 
-        // 8. Efectividad por País (para proveedores/clientes)
+        // 7. Efectividad por País
         $efectividadPaises = [];
         if ($proveedorId !== null) {
             $efectividadPaises = PedidosModel::obtenerEfectividadPorPais($proveedorId, $fechaDesde, $fechaHasta);
         }
 
-        // 9. Efectividad Temporal y listas para filtros (solo admin)
+        // 8. Listas para filtros y efectividad temporal (solo admin)
         $efectividadTemporal = [];
         $clientes = [];
         $paises   = [];
@@ -90,8 +98,9 @@ class DashboardController {
             $efectividadTemporal = PedidosModel::obtenerEfectividadTemporal(null, null, $fechaDesde, $fechaHasta);
         }
 
-        // 10. BI: Ranking proveedores de mensajería por efectividad
+        // 9. BI: Ranking proveedores de mensajería por efectividad
         $proveedoresMensajeria = PedidosModel::obtenerProveedoresMensajeriaBI($fechaDesde, $fechaHasta);
+
 
         return [
             'kpis'                  => $kpis,
@@ -107,8 +116,10 @@ class DashboardController {
             'paises'                => $paises,
             'proveedoresMensajeria' => $proveedoresMensajeria,
             'esProveedor'           => $proveedorId !== null,
+            'clienteIdFiltro'       => $clienteIdFiltro,
             'fechaDesde'            => $fechaDesde,
             'fechaHasta'            => $fechaHasta
         ];
+
     }
 }
