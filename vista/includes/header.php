@@ -150,6 +150,11 @@
                                 <i class="bi bi-bar-chart-steps"></i> Saldo por Producto
                             </a>
                         </li>
+                        <li>
+                            <a class="dropdown-item" href="<?= RUTA_URL ?>stock/inventario_periodo">
+                                <i class="bi bi-table"></i> Inventario por Período
+                            </a>
+                        </li>
                         <li><hr class="dropdown-divider"></li>
                         <li>
                             <a class="dropdown-item" href="<?= RUTA_URL ?>stock/crear">
