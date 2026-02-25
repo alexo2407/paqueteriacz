@@ -3193,5 +3193,156 @@ class PedidosModel
             return [];
         }
     }
+
+    // =========================================================================
+    // BI: Proveedor de Mensajería por Efectividad de Entrega
+    // =========================================================================
+
+    /**
+     * Ranking de proveedores de mensajería por efectividad de entrega en un rango de fechas.
+     *
+     * @param string|null $fechaDesde Fecha inicio (Y-m-d)
+     * @param string|null $fechaHasta Fecha fin (Y-m-d)
+     * @return array
+     */
+    public static function obtenerProveedoresMensajeriaBI($fechaDesde = null, $fechaHasta = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
+            $estadosDevueltos  = ['Devuelto', 'No entregado', 'Domicilio cerrado',
+                                  'No hay quien reciba en domicilio', 'Domicilio no encontrado',
+                                  'Rechazado', 'No puede pagar recaudo'];
+
+            $plEnt = implode(',', array_fill(0, count($estadosEntregados), '?'));
+            $plDev = implode(',', array_fill(0, count($estadosDevueltos),  '?'));
+
+            $where  = ['ped.id_proveedor IS NOT NULL'];
+            $params = [];
+
+            if ($fechaDesde !== null) {
+                $where[] = 'ped.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            if ($fechaHasta !== null) {
+                $where[] = 'ped.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+
+            $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+            $query = "
+                SELECT
+                    u.id    AS proveedor_id,
+                    u.nombre AS proveedor_nombre,
+                    COUNT(*)  AS total_pedidos,
+                    SUM(CASE WHEN ep.nombre_estado IN ($plEnt) THEN 1 ELSE 0 END) AS entregados,
+                    SUM(CASE WHEN ep.nombre_estado IN ($plDev) THEN 1 ELSE 0 END) AS devueltos,
+                    SUM(CASE
+                        WHEN ep.nombre_estado NOT IN ($plEnt)
+                        AND  ep.nombre_estado NOT IN ($plDev)
+                        THEN 1 ELSE 0 END) AS en_proceso,
+                    ROUND(
+                        SUM(CASE WHEN ep.nombre_estado IN ($plEnt) THEN 1 ELSE 0 END)
+                        * 100.0 / COUNT(*), 1
+                    ) AS efectividad
+                FROM pedidos ped
+                JOIN  usuarios u          ON ped.id_proveedor = u.id
+                LEFT JOIN estados_pedidos ep ON ped.id_estado = ep.id
+                $whereClause
+                GROUP BY ped.id_proveedor, u.nombre
+                HAVING total_pedidos > 0
+                ORDER BY efectividad DESC, total_pedidos DESC
+            ";
+
+            $stmt = $db->prepare($query);
+            $bindAll = array_merge(
+                $estadosEntregados, $estadosDevueltos,    // 1st SUM
+                $estadosEntregados, $estadosDevueltos,    // NOT IN
+                $estadosEntregados,                       // ROUND
+                $params
+            );
+            $stmt->execute($bindAll);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (Exception $e) {
+            error_log('Error obtenerProveedoresMensajeriaBI: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    // =========================================================================
+    // BI: Top productos con detalle (tabla) 
+    // =========================================================================
+
+    /**
+     * Top productos con unidades, pedidos y efectividad de entrega.
+     *
+     * @param int|null $clienteId
+     * @param string|null $fechaDesde
+     * @param string|null $fechaHasta
+     * @param int $limit
+     * @return array [{nombre, total_unidades, total_pedidos, efectividad}]
+     */
+    public static function obtenerTopProductosDetalle($clienteId = null, $fechaDesde = null, $fechaHasta = null, $limit = 5)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $estadosEntregados      = ['Entregado', 'Completado', 'Finalizado'];
+            $plEnt                  = implode(',', array_fill(0, count($estadosEntregados), '?'));
+
+            $where  = [];
+            $params = [];
+
+            if ($clienteId !== null) {
+                $where[] = 'ped.id_cliente = ?';
+                $params[] = $clienteId;
+            }
+            if ($fechaDesde !== null) {
+                $where[] = 'ped.fecha_ingreso >= ?';
+                $params[] = $fechaDesde . ' 00:00:00';
+            }
+            if ($fechaHasta !== null) {
+                $where[] = 'ped.fecha_ingreso <= ?';
+                $params[] = $fechaHasta . ' 23:59:59';
+            }
+
+            $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+            $query = "
+                SELECT
+                    pr.nombre                               AS nombre,
+                    SUM(pp.cantidad)                        AS total_unidades,
+                    COUNT(DISTINCT ped.id)                  AS total_pedidos,
+                    ROUND(
+                        SUM(CASE WHEN ep.nombre_estado IN ($plEnt) THEN pp.cantidad ELSE 0 END)
+                        * 100.0 / NULLIF(SUM(pp.cantidad), 0), 1
+                    ) AS efectividad
+                FROM pedidos_productos pp
+                JOIN pedidos       ped ON pp.id_pedido   = ped.id
+                JOIN productos     pr  ON pp.id_producto = pr.id
+                LEFT JOIN estados_pedidos ep ON ped.id_estado = ep.id
+                $whereClause
+                GROUP BY pp.id_producto, pr.nombre
+                ORDER BY total_unidades DESC
+                LIMIT ?
+            ";
+
+            $stmt = $db->prepare($query);
+            $bindAll = array_merge(
+                $estadosEntregados,  // IN entregados (ROUND)
+                $params,
+                [(int)$limit]
+            );
+            $stmt->execute($bindAll);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        } catch (Exception $e) {
+            error_log('Error obtenerTopProductosDetalle: ' . $e->getMessage());
+            return [];
+        }
+    }
 }
 

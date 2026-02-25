@@ -39,57 +39,76 @@ class DashboardController {
             $fechaHasta = date('Y-m-t');
         }
 
-        // 1. KPIs de Efectividad (reemplaza métricas de dinero)
+        // 1. KPIs de Efectividad
         $kpis = PedidosModel::obtenerKPIsEfectividad($proveedorId, $fechaDesde, $fechaHasta);
 
-        // 2. Comparativa de Efectividad (reemplaza comparativa de ventas)
+        // 2. Comparativa de Efectividad
         $comparativa = PedidosModel::obtenerComparativaEfectividad($proveedorId, $fechaDesde, $fechaHasta);
 
-        // 3. Entregas Acumuladas (reemplaza ventas acumuladas)
+        // 3. Entregas Acumuladas
         $acumulada = PedidosModel::obtenerEntregasAcumuladas($proveedorId, $fechaDesde, $fechaHasta);
 
-        // 4. Top Productos con Efectividad
-        $topProductos = PedidosModel::obtenerTopProductosConEfectividad($proveedorId, $fechaDesde, $fechaHasta, 5);
+        // 4. Top Productos con detalle (todos los pedidos del período, no solo entregados)
+        $topProductosDetalle = PedidosModel::obtenerTopProductosDetalle($proveedorId, $fechaDesde, $fechaHasta, 8);
 
-        // 5. Distribución de Estados (nuevo)
+        // Build donut chart arrays from detail data
+        $topProductos = [
+            'nombres'    => array_column(array_slice($topProductosDetalle, 0, 5), 'nombre'),
+            'cantidades' => array_map('intval', array_column(array_slice($topProductosDetalle, 0, 5), 'total_unidades'))
+        ];
+
+        // 6. Recomendación de producto: el más movido del período
+        $recomendacion = null;
+        if (!empty($topProductosDetalle)) {
+            $top = $topProductosDetalle[0];
+            $recomendacion = [
+                'nombre'         => $top['nombre'],
+                'total_unidades' => (int)$top['total_unidades'],
+                'total_pedidos'  => (int)$top['total_pedidos'],
+                'efectividad'    => (float)$top['efectividad'],
+            ];
+        }
+
+        // 7. Distribución de Estados
         $distribucionEstados = PedidosModel::obtenerDistribucionEstados($proveedorId, $fechaDesde, $fechaHasta);
 
-        // 5. Efectividad por País (para clientes)
+        // 8. Efectividad por País (para proveedores/clientes)
         $efectividadPaises = [];
         if ($proveedorId !== null) {
-            // Si es proveedor/cliente, mostrar su efectividad
             $efectividadPaises = PedidosModel::obtenerEfectividadPorPais($proveedorId, $fechaDesde, $fechaHasta);
         }
 
-        // 6. Efectividad Temporal y listas para filtros (solo para admin)
+        // 9. Efectividad Temporal y listas para filtros (solo admin)
         $efectividadTemporal = [];
         $clientes = [];
-        $paises = [];
+        $paises   = [];
         if (isAdmin()) {
-            // Obtener listas para filtros
             require_once "modelo/usuario.php";
             require_once "modelo/pais.php";
-            
             $clientes = UsuarioModel::listarClientes();
-            $paises = PaisModel::listar();
-            
-            // Cargar datos iniciales (sin filtros específicos)
+            $paises   = PaisModel::listar();
             $efectividadTemporal = PedidosModel::obtenerEfectividadTemporal(null, null, $fechaDesde, $fechaHasta);
         }
 
+        // 10. BI: Ranking proveedores de mensajería por efectividad
+        $proveedoresMensajeria = PedidosModel::obtenerProveedoresMensajeriaBI($fechaDesde, $fechaHasta);
+
         return [
-            'kpis' => $kpis,
-            'comparativa' => $comparativa,
-            'acumulada' => $acumulada,
-            'topProductos' => $topProductos,
-            'distribucionEstados' => $distribucionEstados,
-            'efectividadPaises' => $efectividadPaises,
-            'efectividadTemporal' => $efectividadTemporal,
-            'clientes' => $clientes,
-            'paises' => $paises,
-            'esProveedor' => $proveedorId !== null,
-            'fechaDesde' => $fechaDesde,
-            'fechaHasta' => $fechaHasta
+            'kpis'                  => $kpis,
+            'comparativa'           => $comparativa,
+            'acumulada'             => $acumulada,
+            'topProductos'          => $topProductos,
+            'topProductosDetalle'   => $topProductosDetalle,
+            'recomendacion'         => $recomendacion,
+            'distribucionEstados'   => $distribucionEstados,
+            'efectividadPaises'     => $efectividadPaises,
+            'efectividadTemporal'   => $efectividadTemporal,
+            'clientes'              => $clientes,
+            'paises'                => $paises,
+            'proveedoresMensajeria' => $proveedoresMensajeria,
+            'esProveedor'           => $proveedorId !== null,
+            'fechaDesde'            => $fechaDesde,
+            'fechaHasta'            => $fechaHasta
         ];
     }
 }
