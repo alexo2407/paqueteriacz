@@ -1,235 +1,258 @@
-<?php include("vista/includes/header.php"); ?>
+<?php
+$usaMaterialize = true;
+include("vista/includes/header_materialize.php");
+?>
 
 <?php
-$ctrl = new CodigosPostalesController();
+$ctrl    = new CodigosPostalesController();
 $paisCtrl = new PaisesController();
 
-$id = isset($parametros[0]) ? (int)$parametros[0] : 0;
+$id   = isset($parametros[0]) ? (int)$parametros[0] : 0;
 $item = null;
 if ($id > 0) {
     $item = $ctrl->ver($id);
 }
 
-// Repoblar si hubo error (desde sesión)
+// Repoblar si hubo error de validación (desde sesión)
 $old = $_SESSION['old_cp'] ?? null;
 if (isset($_SESSION['old_cp'])) unset($_SESSION['old_cp']);
 
 $paises = $paisCtrl->listar();
 
-$esEditar = ($id > 0);
-$titulo = $esEditar ? 'Editar Código Postal' : 'Nuevo Código Postal';
+$esEditar  = ($id > 0);
+$titulo    = $esEditar ? 'Editar Código Postal' : 'Nuevo Código Postal';
+$subtitulo = $esEditar ? 'Actualiza la información del código postal homologado' : 'Registra un nuevo código postal en la fuente de verdad';
 $accionUrl = RUTA_URL . 'codigos_postales/' . ($esEditar ? 'actualizar/' . $id : 'guardar');
 
-// Valores por defecto
-$id_pais = $old['id_pais'] ?? ($item['id_pais'] ?? '');
-$cp = $old['codigo_postal'] ?? ($item['codigo_postal'] ?? '');
-$id_dep = $old['id_departamento'] ?? ($item['id_departamento'] ?? '');
-$id_mun = $old['id_municipio'] ?? ($item['id_municipio'] ?? '');
-$id_bar = $old['id_barrio'] ?? ($item['id_barrio'] ?? '');
-$localidad = $old['nombre_localidad'] ?? ($item['nombre_localidad'] ?? '');
-$activo = $old['activo'] ?? ($item['activo'] ?? 1);
+// Valores actuales (edición o repoblación por error)
+$id_pais   = $old['id_pais']           ?? ($item['id_pais']           ?? '');
+$cp        = $old['codigo_postal']     ?? ($item['codigo_postal']     ?? '');
+$id_dep    = $old['id_departamento']   ?? ($item['id_departamento']   ?? '');
+$id_mun    = $old['id_municipio']      ?? ($item['id_municipio']      ?? '');
+$id_bar    = $old['id_barrio']         ?? ($item['id_barrio']         ?? '');
+$localidad = $old['nombre_localidad']  ?? ($item['nombre_localidad']  ?? '');
+$activo    = $old['activo']            ?? ($item['activo']            ?? 1);
 ?>
 
-<style>
-.form-header {
-    background: linear-gradient(135deg, #1d976c 0%, #93f9b9 100%);
-    color: white;
-    padding: 1.5rem 2rem;
-    border-radius: 12px;
-    margin-bottom: 2rem;
-}
-.card-form {
-    border: none;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-}
-</style>
-
-<div class="container py-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="form-header d-flex align-items-center gap-3">
-                <div class="bg-white bg-opacity-25 rounded-circle p-3">
-                    <i class="bi <?= $esEditar ? 'bi-pencil-square' : 'bi-plus-circle' ?> fs-3"></i>
-                </div>
-                <div>
-                    <h3 class="mb-0 fw-bold"><?= $titulo ?></h3>
-                    <p class="mb-0 opacity-75"><?= $esEditar ? 'Actualiza la información del código postal homologado' : 'Registra un nuevo código postal en la fuente de verdad' ?></p>
-                </div>
-            </div>
-
-            <div class="card card-form">
-                <div class="card-body p-4">
-                    <form action="<?= $accionUrl ?>" method="POST" id="formCP">
-                        <div class="row g-3">
-                            <!-- País -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">País <span class="text-danger">*</span></label>
-                                <select name="id_pais" id="id_pais" class="form-select" required>
-                                    <option value="">Selecciona un país</option>
-                                    <?php foreach ($paises as $p): ?>
-                                        <option value="<?= $p['id'] ?>" <?= $id_pais == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['nombre']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <!-- Código Postal -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Código Postal <span class="text-danger">*</span></label>
-                                <input type="text" name="codigo_postal" id="codigo_postal" class="form-control" 
-                                       placeholder="Ej: 10101" required value="<?= htmlspecialchars($cp) ?>">
-                                <div class="form-text small">Se normalizará automáticamente (Mayúsculas, sin espacios/guiones).</div>
-                            </div>
-
-                            <hr class="my-3">
-                            <h5 class="text-muted small text-uppercase fw-bold">Ubicación Geográfica</h5>
-
-                            <!-- Departamento -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Departamento / Provincia</label>
-                                <select name="id_departamento" id="id_departamento" class="form-select">
-                                    <option value="">Selecciona un departamento</option>
-                                </select>
-                            </div>
-
-                            <!-- Municipio -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Municipio / Ciudad</label>
-                                <select name="id_municipio" id="id_municipio" class="form-select">
-                                    <option value="">Selecciona un municipio</option>
-                                </select>
-                            </div>
-
-                            <!-- Barrio (Opcional) -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Barrio / Zona (Opcional)</label>
-                                <select name="id_barrio" id="id_barrio" class="form-select">
-                                    <option value="">Selecciona un barrio</option>
-                                </select>
-                            </div>
-
-                            <!-- Localidad Texto -->
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Nombre Localidad (Referencia)</label>
-                                <input type="text" name="nombre_localidad" class="form-control" 
-                                       placeholder="Ej: Santa Elena, Zona 10..." value="<?= htmlspecialchars($localidad) ?>">
-                            </div>
-
-                            <!-- Estado -->
-                            <div class="col-12">
-                                <div class="form-check form-switch mt-2">
-                                    <input class="form-check-input" type="checkbox" name="activo" value="1" id="activo" <?= $activo ? 'checked' : '' ?>>
-                                    <label class="form-check-label" for="activo">Registro activo y disponible para homologación</label>
-                                </div>
-                            </div>
-
-                            <div class="col-12 mt-4 d-flex justify-content-between border-top pt-3">
-                                <a href="<?= RUTA_URL ?>codigos_postales" class="btn btn-outline-secondary px-4">
-                                    <i class="bi bi-x-circle me-1"></i> Cancelar
-                                </a>
-                                <button type="submit" class="btn btn-primary px-5 shadow">
-                                    <i class="bi bi-check-circle me-1"></i> <?= $esEditar ? 'Actualizar Registro' : 'Guardar Código Postal' ?>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+<!-- ════ CABECERA ════ -->
+<div class="mz-card-header" style="background:linear-gradient(135deg,#1d976c 0%,#093028 100%);border-radius:12px;margin-bottom:1.5rem">
+    <div class="d-flex align-center gap-2">
+        <i class="material-icons white-text" style="font-size:2.5rem;opacity:.9">
+            <?= $esEditar ? 'edit' : 'add_location' ?>
+        </i>
+        <div>
+            <h4 class="white-text" style="margin:0;font-weight:700"><?= $titulo ?></h4>
+            <p class="white-text" style="margin:4px 0 0;opacity:.75;font-size:.9rem"><?= $subtitulo ?></p>
         </div>
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<!-- ════ FORMULARIO ════ -->
+<div class="row">
+    <div class="col s12 m10 offset-m1 l8 offset-l2">
+        <div class="card mz-card-raised">
+            <div class="card-content" style="padding:2rem">
+
+                <form action="<?= $accionUrl ?>" method="POST" id="formCP">
+
+                    <!-- ── Datos básicos ─────────────────────────────────── -->
+                    <p class="grey-text text-uppercase" style="font-size:.75rem;font-weight:700;letter-spacing:1px;margin:0 0 .75rem">
+                        Datos básicos
+                    </p>
+
+                    <div class="row" style="margin-bottom:0">
+                        <!-- País -->
+                        <div class="input-field col s12 m6">
+                            <select name="id_pais" id="id_pais" required>
+                                <option value="" disabled <?= !$id_pais ? 'selected' : '' ?>>Selecciona un país</option>
+                                <?php foreach ($paises as $p): ?>
+                                <option value="<?= $p['id'] ?>" <?= $id_pais == $p['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($p['nombre']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <label>País <span class="mz-required">*</span></label>
+                        </div>
+
+                        <!-- Código Postal -->
+                        <div class="input-field col s12 m6">
+                            <input type="text" name="codigo_postal" id="codigo_postal" required
+                                   value="<?= htmlspecialchars($cp) ?>"
+                                   <?= $cp ? 'class="active"' : '' ?>>
+                            <label for="codigo_postal" <?= $cp ? 'class="active"' : '' ?>>
+                                Código Postal <span class="mz-required">*</span>
+                            </label>
+                            <span class="helper-text">Se normalizará: MAYÚSCULAS, sin espacios ni guiones</span>
+                        </div>
+                    </div>
+
+                    <div class="divider" style="margin:1.25rem 0"></div>
+
+                    <!-- ── Ubicación geográfica (selects en cascada) ──────── -->
+                    <p class="grey-text text-uppercase" style="font-size:.75rem;font-weight:700;letter-spacing:1px;margin:0 0 .75rem">
+                        Ubicación geográfica
+                    </p>
+
+                    <div class="row" style="margin-bottom:0">
+                        <!-- Departamento (cargado via AJAX al elegir país) -->
+                        <div class="input-field col s12 m6">
+                            <select name="id_departamento" id="id_departamento">
+                                <option value=""><?= $id_pais ? 'Selecciona un departamento' : 'Selecciona un país primero' ?></option>
+                            </select>
+                            <label>Departamento / Provincia</label>
+                        </div>
+
+                        <!-- Municipio (cargado via AJAX al elegir depto) -->
+                        <div class="input-field col s12 m6">
+                            <select name="id_municipio" id="id_municipio">
+                                <option value=""><?= $id_dep ? 'Selecciona un municipio' : 'Selecciona un departamento primero' ?></option>
+                            </select>
+                            <label>Municipio / Ciudad</label>
+                        </div>
+
+                        <!-- Barrio (cargado via AJAX al elegir municipio) -->
+                        <div class="input-field col s12 m6">
+                            <select name="id_barrio" id="id_barrio">
+                                <option value=""><?= $id_mun ? 'Selecciona un barrio' : 'Selecciona un municipio primero' ?></option>
+                            </select>
+                            <label>Barrio / Zona (Opcional)</label>
+                        </div>
+
+                        <!-- Nombre de localidad (texto libre) -->
+                        <div class="input-field col s12 m6">
+                            <input type="text" name="nombre_localidad" id="nombre_localidad"
+                                   value="<?= htmlspecialchars($localidad) ?>"
+                                   placeholder="Ej: Santa Elena, Zona 10..."
+                                   <?= $localidad ? 'class="active"' : '' ?>>
+                            <label for="nombre_localidad" <?= $localidad ? 'class="active"' : '' ?>>
+                                Nombre Localidad (Referencia)
+                            </label>
+                            <span class="helper-text">Texto libre complementario a los campos de arriba</span>
+                        </div>
+                    </div>
+
+                    <div class="divider" style="margin:1.25rem 0"></div>
+
+                    <!-- ── Estado ─────────────────────────────────────────── -->
+                    <div class="switch" style="margin-bottom:1.5rem">
+                        <label>
+                            <input type="checkbox" name="activo" value="1" id="activo" <?= $activo ? 'checked' : '' ?>>
+                            <span class="lever"></span>
+                            Registro activo y disponible para homologación
+                        </label>
+                    </div>
+
+                    <!-- ── Botones ─────────────────────────────────────────── -->
+                    <div class="d-flex justify-between align-center" style="margin-top:.5rem">
+                        <a href="<?= RUTA_URL ?>codigos_postales" class="btn-flat waves-effect grey-text">
+                            <i class="material-icons left">arrow_back</i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success-mz waves-effect waves-light" style="padding:0 2rem">
+                            <i class="material-icons left"><?= $esEditar ? 'save' : 'check_circle' ?></i>
+                            <?= $esEditar ? 'Actualizar Registro' : 'Guardar Código Postal' ?>
+                        </button>
+                    </div>
+
+                </form>
+            </div><!-- /card-content -->
+        </div><!-- /card -->
+    </div>
+</div>
+
+<?php include("vista/includes/footer_materialize.php"); ?>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const sPais = document.getElementById('id_pais');
-    const sDepto = document.getElementById('id_departamento');
-    const sMuni = document.getElementById('id_municipio');
-    const sBarrio = document.getElementById('id_barrio');
 
-    const initialValues = {
-        depto: "<?= $id_dep ?>",
-        muni: "<?= $id_mun ?>",
-        barrio: "<?= $id_bar ?>"
+    // ── Referencias a los 4 selects ────────────────────────────────────────
+    const sPais  = document.getElementById('id_pais');
+    const sDepto = document.getElementById('id_departamento');
+    const sMuni  = document.getElementById('id_municipio');
+    const sBarrio= document.getElementById('id_barrio');
+
+    /**
+     * Valores precargados (edición / repoblación por error).
+     * Rellenan los selects en cascada al cargar la página.
+     */
+    const initial = {
+        depto:  "<?= addslashes($id_dep) ?>",
+        muni:   "<?= addslashes($id_mun) ?>",
+        barrio: "<?= addslashes($id_bar) ?>"
     };
 
-    function clearSelect(select, placeholder) {
-        select.innerHTML = `<option value="">${placeholder}</option>`;
+    // ── Helpers ────────────────────────────────────────────────────────────
+
+    /** Vacía un select y pone un placeholder */
+    function clearSelect(sel, placeholder) {
+        sel.innerHTML = `<option value="">${placeholder}</option>`;
+        reinitSelect(sel);  // función global de footer_materialize.php
     }
 
-    // Cargar Departamentos
-    function loadDeptos(paisId, selectedId = '') {
-        if (!paisId) {
-            clearSelect(sDepto, 'Selecciona un país primero');
-            return;
-        }
+    /** Puebla un select con un array [{id, nombre}] y reinicializa Materialize */
+    function fillSelect(sel, items, selectedId) {
+        let html = `<option value="">Selecciona...</option>`;
+        items.forEach(function(item) {
+            const sel_ = String(item.id) === String(selectedId) ? 'selected' : '';
+            html += `<option value="${item.id}" ${sel_}>${item.nombre}</option>`;
+        });
+        sel.innerHTML = html;
+        reinitSelect(sel);
+    }
+
+    // ── Carga de departamentos ─────────────────────────────────────────────
+    function loadDeptos(paisId, selectedId) {
+        if (!paisId) { clearSelect(sDepto, 'Selecciona un país primero'); return; }
         fetch(`<?= RUTA_URL ?>api/geoinfo/departamentos?id_pais=${paisId}`)
-            .then(r => r.json())
-            .then(data => {
-                clearSelect(sDepto, 'Selecciona un departamento');
-                data.forEach(d => {
-                    const sel = (selectedId == d.id) ? 'selected' : '';
-                    sDepto.innerHTML += `<option value="${d.id}" ${sel}>${d.nombre}</option>`;
-                });
-                if (selectedId) loadMunis(selectedId, initialValues.muni);
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                fillSelect(sDepto, data, selectedId || '');
+                if (selectedId) loadMunis(selectedId, initial.muni);
             });
     }
 
-    // Cargar Municipios
-    function loadMunis(deptoId, selectedId = '') {
-        if (!deptoId) {
-            clearSelect(sMuni, 'Selecciona un departamento primero');
-            return;
-        }
+    // ── Carga de municipios ────────────────────────────────────────────────
+    function loadMunis(deptoId, selectedId) {
+        if (!deptoId) { clearSelect(sMuni, 'Selecciona un departamento primero'); return; }
         fetch(`<?= RUTA_URL ?>api/geoinfo/municipios?id_departamento=${deptoId}`)
-            .then(r => r.json())
-            .then(data => {
-                clearSelect(sMuni, 'Selecciona un municipio');
-                data.forEach(m => {
-                    const sel = (selectedId == m.id) ? 'selected' : '';
-                    sMuni.innerHTML += `<option value="${m.id}" ${sel}>${m.nombre}</option>`;
-                });
-                if (selectedId) loadBarrios(selectedId, initialValues.barrio);
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                fillSelect(sMuni, data, selectedId || '');
+                if (selectedId) loadBarrios(selectedId, initial.barrio);
             });
     }
 
-    // Cargar Barrios
-    function loadBarrios(muniId, selectedId = '') {
-        if (!muniId) {
-            clearSelect(sBarrio, 'Selecciona un municipio primero');
-            return;
-        }
+    // ── Carga de barrios ───────────────────────────────────────────────────
+    function loadBarrios(muniId, selectedId) {
+        if (!muniId) { clearSelect(sBarrio, 'Selecciona un municipio primero'); return; }
         fetch(`<?= RUTA_URL ?>api/geoinfo/barrios?id_municipio=${muniId}`)
-            .then(r => r.json())
-            .then(data => {
-                clearSelect(sBarrio, 'Selecciona un barrio');
-                data.forEach(b => {
-                    const sel = (selectedId == b.id) ? 'selected' : '';
-                    sBarrio.innerHTML += `<option value="${b.id}" ${sel}>${b.nombre}</option>`;
-                });
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                fillSelect(sBarrio, data, selectedId || '');
             });
     }
 
-    // Event Listeners
+    // ── Listeners de cambio ────────────────────────────────────────────────
     sPais.addEventListener('change', function() {
-        loadDeptos(this.value);
-        clearSelect(sMuni, 'Selecciona un departamento primero');
-        clearSelect(sBarrio, 'Selecciona un municipio primero');
+        clearSelect(sMuni,  'Selecciona un departamento primero');
+        clearSelect(sBarrio,'Selecciona un municipio primero');
+        loadDeptos(this.value, '');
     });
 
     sDepto.addEventListener('change', function() {
-        loadMunis(this.value);
         clearSelect(sBarrio, 'Selecciona un municipio primero');
+        loadMunis(this.value, '');
     });
 
     sMuni.addEventListener('change', function() {
-        loadBarrios(this.value);
+        loadBarrios(this.value, '');
     });
 
-    // Carga inicial (edición o repoblación por error)
+    // ── Carga inicial en modo edición / repoblación ────────────────────────
+    // Materialize renderiza el select DESPUÉS de M.FormSelect.init(),
+    // por eso escuchamos el evento 'change' en el select de país ya inicializado.
     if (sPais.value) {
-        loadDeptos(sPais.value, initialValues.depto);
+        loadDeptos(sPais.value, initial.depto);
     }
+
 });
 </script>

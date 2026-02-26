@@ -46,54 +46,44 @@ function mostrarNombreModulo()
 
 
 function cargarRecursos($pagina) {
-  $recursos = [
-      "global" => [
+  // ── Dual-layout support ──────────────────────────────────────────────────
+  // Si la vista declara $usaMaterialize = true ANTES del include de template,
+  // omitimos Bootstrap CSS y Select2 (Materialize los carga en su propio header).
+  $esMaterialize = $GLOBALS['usaMaterialize'] ?? false;
+
+  if (!$esMaterialize) {
+      // ── Assets Bootstrap (layout por defecto) ─────────────────────────
+      $recursosBootstrap = [
           '<link href="' . RUTA_URL . 'vista/css/bootstrap.min.css" rel="stylesheet">',
           '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">',
           '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/estilos.css">',
-          // Select2 para búsqueda en dropdowns
           '<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">',
           '<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">',
-      ],
-      "datatables" => [
-          '<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">',
-          '<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">',
-          '<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">'
-      ],
-      "ckeditor" => [
-          '<script src="https://cdn.ckeditor.com/4.15.1/standard/ckeditor.js"></script>'
-      ],
-      "maps" => [
-          '<script src="https://maps.googleapis.com/maps/api/js?key=' . API_MAP . '&callback=initMap" async defer></script>',
-      ]
-  ];
+      ];
+      echo implode("\n", $recursosBootstrap);
 
-  // Detectar la página actual y cargar los recursos específicos
-  echo implode("\n", $recursos["global"]);
-
-  $modulosConDatatables = [
-    "listar",
-    "pedidos",
-    "usuarios",
-    "stock",
-    "clientes",
-    "monedas",
-    "paises",
-    "departamentos",
-    "municipios",
-    "barrios",
-    "productos",
-    "seguimiento",
-    "crm"
-  ];
-
-  if (in_array($pagina, $modulosConDatatables, true)) {
-      echo implode("\n", $recursos["datatables"]);
-  }
-
-  if ($pagina == "editar") {
-      echo implode("\n", $recursos["ckeditor"]);
-      echo implode("\n", $recursos["maps"]);
+      $modulosConDatatables = [
+          "listar", "pedidos", "usuarios", "stock", "clientes", "monedas",
+          "paises", "departamentos", "municipios", "barrios", "productos",
+          "seguimiento", "crm"
+      ];
+      if (in_array($pagina, $modulosConDatatables, true)) {
+          $recursosDatatables = [
+              '<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css">',
+              '<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">',
+              '<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.dataTables.min.css">',
+          ];
+          echo implode("\n", $recursosDatatables);
+      }
+      if ($pagina == "editar") {
+          echo '<script src="https://cdn.ckeditor.com/4.15.1/standard/ckeditor.js"></script>';
+          echo '<script src="https://maps.googleapis.com/maps/api/js?key=' . API_MAP . '&callback=initMap" async defer></script>';
+      }
+  } else {
+      // ── Assets Materialize (cargados aquí para que lleguen al <head>) ──
+      // Solo cargamos el CSS de estilos globales propio que no depende de Bootstrap.
+      // El CSS y JS de Materialize se cargan en header_materialize.php.
+      echo '<link rel="stylesheet" href="' . RUTA_URL . 'vista/css/estilos_mz.css">' . "\n";
   }
 }
 
