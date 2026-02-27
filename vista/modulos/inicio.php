@@ -1,4 +1,4 @@
-﻿<?php include "vista/includes/headerlogin.php"; ?>
+<?php include "vista/includes/headerlogin.php"; ?>
 
 <div class="container login">
 
@@ -43,4 +43,4 @@
 </div>
 </div>
 
-<?php include "vista/includes/footer_materialize.php" ?>
+<?php include "vista/includes/footer.php" ?>

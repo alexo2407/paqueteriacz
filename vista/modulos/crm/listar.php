@@ -1,4 +1,4 @@
-﻿<?php 
+<?php 
 $usaDataTables = true;
 
 start_secure_session();
@@ -14,7 +14,7 @@ if (!isAdmin()) {
     exit;
 }
 
-include("vista/includes/header_materialize.php");
+include("vista/includes/header.php");
 
 require_once __DIR__ . '/../../../controlador/crm.php';
 require_once __DIR__ . '/../../../utils/crm_status.php';
@@ -126,7 +126,7 @@ $filtros = $resultado['filtros'] ?? [];
     </div>
 </div>
 
-<?php include("vista/includes/footer_materialize.php"); ?>
+<?php include("vista/includes/footer.php"); ?>
 
 <script>
 function exportarCSV() {

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -66,7 +66,7 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
 </head>
 <body>
 
-<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <style>
 .stock-header {
@@ -314,7 +314,7 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
     $(document).ready(function() {

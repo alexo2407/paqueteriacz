@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header_materialize.php") ?>
+<?php include("vista/includes/header.php") ?>
 
 <style>
 .editar-cliente-card {
@@ -132,4 +132,4 @@
 </div>
 
 
-<?php include("vista/includes/footer_materialize.php") ?>
+<?php include("vista/includes/footer.php") ?>

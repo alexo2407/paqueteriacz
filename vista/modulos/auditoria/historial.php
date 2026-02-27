@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -67,7 +67,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
 </head>
 <body>
 
-<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <div class="container-fluid py-4">
     <!-- Header -->
@@ -303,7 +303,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
     $(document).ready(function() {

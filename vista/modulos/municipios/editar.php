@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header_materialize.php"); ?>
+<?php include("vista/includes/header.php"); ?>
 <?php 
 require_once __DIR__ . '/../../../controlador/municipio.php';
 require_once __DIR__ . '/../../../controlador/departamento.php';
@@ -98,7 +98,7 @@ $m = $ctrl->ver($id);
     </div>
 </div>
 
-<?php include("vista/includes/footer_materialize.php"); ?>
+<?php include("vista/includes/footer.php"); ?>
 
 <script>
     $(document).ready(function() {

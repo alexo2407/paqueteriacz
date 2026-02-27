@@ -1,5 +1,5 @@
-﻿<?php
-include("vista/includes/header_materialize.php");
+<?php
+include("vista/includes/header.php");
 require_once __DIR__ . '/../../../utils/session.php';
 start_secure_session();
 
@@ -11,7 +11,7 @@ if (empty($_SESSION['registrado'])) {
 $id = $parametros[0] ?? null;
 if (!$id) {
     echo "<div class='alert alert-danger'>No se proporcionó ID de pedido.</div>";
-    include("vista/includes/footer_materialize.php");
+    include("vista/includes/footer.php");
     exit;
 }
 
@@ -19,7 +19,7 @@ $ctrl = new PedidosController();
 $pedido = $ctrl->obtenerPedido((int)$id);
 if (!$pedido) {
     echo "<div class='alert alert-danger'>Pedido no encontrado.</div>";
-    include("vista/includes/footer_materialize.php");
+    include("vista/includes/footer.php");
     exit;
 }
 
@@ -185,4 +185,4 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
     });
 </script>
 
-<?php include("vista/includes/footer_materialize.php"); ?>
+<?php include("vista/includes/footer.php"); ?>

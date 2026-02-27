@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
@@ -39,7 +39,7 @@ if (isset($producto['categoria_id']) && $producto['categoria_id']) {
 </head>
 <body>
 
-<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <style>
 .detalle-producto-card {
@@ -318,7 +318,7 @@ if (isset($producto['categoria_id']) && $producto['categoria_id']) {
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 </body>
 </html>

@@ -1,6 +1,6 @@
-﻿<?php
+<?php
 $usaDataTables = true;
-include("vista/includes/header_materialize.php");
+include("vista/includes/header.php");
 require_once __DIR__ . '/../../../utils/session.php';
 start_secure_session();
 
@@ -57,7 +57,7 @@ if ($userId) {
         </div>
     <?php endif; ?>
 </div>
-<?php include("vista/includes/footer_materialize.php"); ?>
+<?php include("vista/includes/footer.php"); ?>
 <script>
     $(document).ready(function() {
         $('.table').DataTable({

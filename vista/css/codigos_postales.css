@@ -42,55 +42,22 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   2. FILTROS MOBILE — layout flexbox para ignorar el float de Materialize
-   ─────────────────────────────────────────────────────────────────────────────
-   En ≤ 768px:  .row pasa a flex-wrap:wrap.
-     - .col.s12  → 100% (País, CP)
-     - .col.s6   → 50%  (Estado + Completitud, en la misma fila)
-   En ≥ 993px:  l3 de Materialize da 4 columnas (default).
+   2. FORZAR 1 COLUMNA EN MOBILE (≤ 768px) — solo para cols s12
+   País y Código Postal → ancho completo.
+   Estado + Completitud (s6) → 2 columnas, el override NO los toca.
    ───────────────────────────────────────────────────────────────────────────── */
 @media only screen and (max-width: 768px) {
 
-    /* Convierte el row a flexbox para tener control total del layout */
-    .cp-filtros-form .row {
-        display: flex;
-        flex-wrap: wrap;
-        margin: 0;
-    }
-
-    /* Todos los .col pierden el float de Materialize */
-    .cp-filtros-form .col {
-        float: none !important;
-        box-sizing: border-box;
-    }
-
-    /* País y Código Postal: full-width */
+    /* Solo los campos que el HTML declara como s12 van a full-width */
     .cp-filtros-form .col.s12 {
-        flex: 0 0 100%;
-        max-width: 100%;
+        width: 100% !important;
         margin-left: 0 !important;
     }
 
-    /* Estado y Completitud: 2 columnas en la misma fila */
-    .cp-filtros-form .col.s6 {
-        flex: 0 0 50%;
-        max-width: 50%;
+    /* Formulario nuevo/editar: todos los campos en 1 columna */
+    .cp-form-card .row .col {
+        width: 100% !important;
         margin-left: 0 !important;
-    }
-
-    /* Botones: Filtrar ocupa lo que queda, X compacto */
-    .cp-filtros-form .col.s9 {
-        flex: 0 0 75%;
-        max-width: 75%;
-        margin-left: 0 !important;
-    }
-
-    .cp-filtros-form .col.s3 {
-        flex: 0 0 25%;
-        max-width: 25%;
-        margin-left: 0 !important;
-        display: flex;
-        align-items: center;
     }
 }
 
@@ -112,40 +79,6 @@
     .cp-filtros-btns .btn-flat {
         /* Icono de limpiar: mantener cuadrado */
         flex: 0 0 auto;
-    }
-}
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   2b. FORMULARIO MOBILE — mismo patrón flexbox que los filtros
-   El global de estilos_mz.css cubre la mayoría de casos con .mz-main-content.
-   Este bloque es por si el formulario necesita ajustes específicos.
-   ───────────────────────────────────────────────────────────────────────────── */
-@media only screen and (max-width: 768px) {
-
-    /* Las filas del formulario usan flexbox (ya cubierto globalmente,
-       pero lo dejamos explícito para máxima compatibilidad) */
-    .cp-form-card .row {
-        display: flex;
-        flex-wrap: wrap;
-    }
-
-    .cp-form-card .col {
-        float: none !important;
-        box-sizing: border-box;
-    }
-
-    /* Todos los campos del form: 1 columna en mobile */
-    .cp-form-card .col.s12 {
-        flex: 0 0 100%;
-        max-width: 100%;
-        margin-left: 0 !important;
-    }
-
-    /* Si hay campos s6 en el form (usado para botones, etc.) */
-    .cp-form-card .col.s6 {
-        flex: 0 0 50%;
-        max-width: 50%;
-        margin-left: 0 !important;
     }
 }
 

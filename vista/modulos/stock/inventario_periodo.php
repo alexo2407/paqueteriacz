@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Vista Standalone: Inventario por Período — vista matricial (pivot)
  * Ruta: /stock/inventario-periodo
@@ -361,7 +361,7 @@ if ($export && !empty($colsList)) {
 </head>
 <body class="bg-light">
 
-<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <div class="container-fluid py-4">
 
@@ -567,7 +567,7 @@ if ($export && !empty($colsList)) {
 
 </div>
 
-<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 </body>
 </html>

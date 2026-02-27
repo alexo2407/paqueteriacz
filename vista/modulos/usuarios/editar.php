@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header_materialize.php"); ?>
+<?php include("vista/includes/header.php"); ?>
 
 <?php
 $params = isset($parametros) ? $parametros : [];
@@ -326,7 +326,7 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
     </div>
 </div>
 
-<?php include("vista/includes/footer_materialize.php"); ?>
+<?php include("vista/includes/footer.php"); ?>
 
 <script>
 // Role card selection visual

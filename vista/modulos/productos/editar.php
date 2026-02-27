@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -44,7 +44,7 @@ $categorias = CategoriaModel::listarJerarquico();
 </head>
 <body>
 
-<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <style>
 .editar-producto-card {
@@ -382,7 +382,7 @@ $categorias = CategoriaModel::listarJerarquico();
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
+<?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
     // Auto-generar SKU

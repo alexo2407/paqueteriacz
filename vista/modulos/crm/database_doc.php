@@ -1,4 +1,4 @@
-﻿<?php 
+<?php 
 
 start_secure_session();
 
@@ -13,7 +13,7 @@ if (!isAdmin()) {
     exit;
 }
 
-include("vista/includes/header_materialize.php");
+include("vista/includes/header.php");
 ?>
 
 <div class="container-fluid py-4">
@@ -1258,5 +1258,5 @@ ORDER BY cantidad DESC;</code></pre>
 </style>
 
 <?php 
-include("vista/includes/footer_materialize.php");
+include("vista/includes/footer.php");
 ?>
