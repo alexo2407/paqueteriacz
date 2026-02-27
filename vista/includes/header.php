@@ -81,7 +81,8 @@
 
         <!-- Brand -->
         <a class="navbar-brand" href="<?= $homeUrl ?>">
-            <i class="bi bi-box-seam"></i> RutaEx-Latam
+            <i class="bi bi-box-seam"></i>
+            <span class="brand-text">RutaEx-Latam</span>
         </a>
 
         <!-- Derecha: notificaciones + usuario -->

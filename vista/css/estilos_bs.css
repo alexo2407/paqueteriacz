@@ -16,24 +16,46 @@ body.bs-body {
 .bs-navbar {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
-    padding: .6rem 1rem;
+    padding: .5rem .75rem;
     position: sticky;
     top: 0;
     z-index: 1030;
 }
 
+/* Evitar que el navbar haga wrap en mobile */
+.bs-navbar>.container-fluid {
+    flex-wrap: nowrap !important;
+}
+
 .bs-navbar .navbar-brand {
     font-weight: 700;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     letter-spacing: .3px;
     color: #fff !important;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+}
+
+@media (max-width: 400px) {
+
+    /* En pantallas muy pequeñas ocultar el texto del brand, dejar solo el icono */
+    .bs-navbar .navbar-brand span.brand-text {
+        display: none;
+    }
+
+    .bs-navbar .navbar-brand {
+        max-width: 40px;
+    }
 }
 
 .bs-navbar .navbar-toggler {
     border-color: rgba(255, 255, 255, .3);
+    flex-shrink: 0;
 }
 
 .bs-navbar .navbar-toggler-icon {
