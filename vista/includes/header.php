@@ -129,18 +129,18 @@
 <div class="offcanvas offcanvas-start offcanvas-lg bs-sidebar"
      tabindex="-1" id="bsSidebar" aria-labelledby="bsSidebarLabel">
 
-    <!-- Header sidebar -->
-    <div class="offcanvas-header bs-sidebar-header d-flex justify-content-between align-items-start p-0">
-        <div class="bs-sidebar-header w-100">
-            <div class="bs-sidebar-brand">
-                <i class="bi bi-box-seam me-1"></i> App RutaEx-Latam
-            </div>
+    <!-- Header sidebar: solo usuario -->
+    <div class="bs-sidebar-header" style="display:flex;justify-content:space-between;align-items:center">
+        <div>
             <?php if ($userName): ?>
-            <div class="bs-sidebar-user"><?= htmlspecialchars($userName) ?></div>
+            <div class="bs-sidebar-brand"><?= htmlspecialchars($userName) ?></div>
+            <div class="bs-sidebar-user"><?= implode(', ', $rolesNombres) ?></div>
+            <?php else: ?>
+            <div class="bs-sidebar-brand">App RutaEx-Latam</div>
             <?php endif; ?>
         </div>
         <button type="button" class="btn-close btn-close-white d-lg-none"
-                data-bs-dismiss="offcanvas" style="margin:.75rem .75rem 0 0"></button>
+                data-bs-dismiss="offcanvas"></button>
     </div>
 
     <!-- Nav links -->

@@ -104,9 +104,13 @@ body.bs-body {
 /* SIDEBAR */
 .bs-sidebar {
     width: 260px;
-    background: #1a1a2e;
+    background: #1a1a2e !important;
+    background-color: #1a1a2e !important;
     border-right: none !important;
     flex-shrink: 0;
+    color: #c9d1e0;
+    /* Override Bootstrap offcanvas default white bg */
+    --bs-offcanvas-bg: #1a1a2e;
 }
 
 .bs-sidebar-header {
