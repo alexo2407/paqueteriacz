@@ -1,20 +1,18 @@
 /*
  * estilos_bs.css
- * Shell Bootstrap con look visual idéntico al shell Materialize.
+ * Shell Bootstrap con look visual identico al shell Materialize.
  * Solo afecta el SHELL (navbar, sidebar). No toca inputs, cards ni tablas.
- * Paleta: #1a1a2e (fondo oscuro), #16213e (degradado), #00d084 (acento verde).
+ * Paleta: #1a1a2e (fondo oscuro), #16213e (degradado).
  */
 
-/* ── Tipografía base ─────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
+/* Tipografia base */
 body.bs-body {
     font-family: 'Inter', 'Segoe UI', sans-serif;
     background-color: #f5f6fa;
     color: #2d2d2d;
 }
 
-/* ── NAVBAR ──────────────────────────────────────────────────────────────── */
+/* NAVBAR */
 .bs-navbar {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
@@ -36,14 +34,12 @@ body.bs-body {
 
 .bs-navbar .navbar-toggler {
     border-color: rgba(255, 255, 255, .3);
-    color: #fff;
 }
 
 .bs-navbar .navbar-toggler-icon {
     filter: brightness(10);
 }
 
-/* Íconos de notificación / badge en navbar */
 .bs-nav-badge {
     position: absolute;
     top: 4px;
@@ -61,7 +57,6 @@ body.bs-body {
     padding: 0 3px;
 }
 
-/* Dropdown usuario en navbar */
 .bs-navbar .nav-link {
     color: rgba(255, 255, 255, .85) !important;
     font-size: .9rem;
@@ -106,8 +101,7 @@ body.bs-body {
     font-weight: 700;
 }
 
-/* ── SIDEBAR ─────────────────────────────────────────────────────────────── */
-/* En desktop (≥992px): sidebar siempre visible (offcanvas-lg muestra backdrop en < lg) */
+/* SIDEBAR */
 .bs-sidebar {
     width: 260px;
     background: #1a1a2e;
@@ -115,7 +109,6 @@ body.bs-body {
     flex-shrink: 0;
 }
 
-/* Cabecera del sidebar */
 .bs-sidebar-header {
     background: linear-gradient(135deg, #0f3460, #16213e);
     padding: 1.25rem 1rem .75rem;
@@ -134,7 +127,6 @@ body.bs-body {
     margin-top: 2px;
 }
 
-/* Links del sidebar */
 .bs-sidebar .nav-link {
     color: #c9d1e0 !important;
     font-size: .88rem;
@@ -161,7 +153,6 @@ body.bs-body {
     opacity: 1;
 }
 
-/* Separadores y sub-headers */
 .bs-sidebar .sidebar-divider {
     border-color: rgba(255, 255, 255, .08);
     margin: .25rem 0;
@@ -177,22 +168,16 @@ body.bs-body {
     pointer-events: none;
 }
 
-/* Badge de notificaciones dentro del sidebar */
 .bs-sidebar .nav-link .badge {
     margin-left: auto;
 }
 
-/* ── LAYOUT PRINCIPAL ────────────────────────────────────────────────────── */
-.bs-wrapper {
-    display: flex;
-    min-height: 100vh;
-    flex-direction: column;
-}
-
+/* LAYOUT */
 .bs-body-row {
     display: flex;
     flex: 1;
     min-height: 0;
+    align-items: flex-start;
 }
 
 .bs-main {
@@ -213,7 +198,7 @@ body.bs-body {
     }
 }
 
-/* ── FOOTER ──────────────────────────────────────────────────────────────── */
+/* FOOTER */
 .bs-footer {
     background: #001042 !important;
     color: rgba(255, 255, 255, .6);
@@ -230,10 +215,29 @@ body.bs-body {
     color: #fff;
 }
 
-/* ── RESPONSIVE — Mobile: ocultar sidebar, mostrar offcanvas ─────────────── */
+/* RESPONSIVE */
+
+/* Desktop (>=992px): sidebar SIEMPRE visible, sticky altura completa */
+@media (min-width: 992px) {
+    #bsSidebar {
+        position: sticky !important;
+        top: 0;
+        height: 100vh;
+        transform: none !important;
+        visibility: visible !important;
+        flex-shrink: 0;
+        overflow-y: auto;
+    }
+}
+
+/* Mobile (<992px): sidebar es offcanvas overlay */
 @media (max-width: 991px) {
-    .bs-sidebar.offcanvas {
+    #bsSidebar {
         width: 260px !important;
         background: #1a1a2e !important;
+    }
+
+    .bs-main {
+        width: 100%;
     }
 }
