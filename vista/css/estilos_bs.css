@@ -1,0 +1,239 @@
+/*
+ * estilos_bs.css
+ * Shell Bootstrap con look visual idéntico al shell Materialize.
+ * Solo afecta el SHELL (navbar, sidebar). No toca inputs, cards ni tablas.
+ * Paleta: #1a1a2e (fondo oscuro), #16213e (degradado), #00d084 (acento verde).
+ */
+
+/* ── Tipografía base ─────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body.bs-body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background-color: #f5f6fa;
+    color: #2d2d2d;
+}
+
+/* ── NAVBAR ──────────────────────────────────────────────────────────────── */
+.bs-navbar {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+    padding: .6rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+}
+
+.bs-navbar .navbar-brand {
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: .3px;
+    color: #fff !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bs-navbar .navbar-toggler {
+    border-color: rgba(255, 255, 255, .3);
+    color: #fff;
+}
+
+.bs-navbar .navbar-toggler-icon {
+    filter: brightness(10);
+}
+
+/* Íconos de notificación / badge en navbar */
+.bs-nav-badge {
+    position: absolute;
+    top: 4px;
+    right: 0;
+    background: #f44336;
+    color: #fff;
+    border-radius: 50%;
+    min-width: 16px;
+    height: 16px;
+    font-size: .6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+}
+
+/* Dropdown usuario en navbar */
+.bs-navbar .nav-link {
+    color: rgba(255, 255, 255, .85) !important;
+    font-size: .9rem;
+    transition: color .15s;
+    position: relative;
+}
+
+.bs-navbar .nav-link:hover,
+.bs-navbar .nav-link:focus {
+    color: #fff !important;
+}
+
+.bs-navbar .dropdown-menu {
+    background: #1e2a42;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .25);
+    min-width: 200px;
+}
+
+.bs-navbar .dropdown-item {
+    color: #c9d1e0;
+    font-size: .88rem;
+    padding: .5rem 1rem;
+    transition: background .15s, color .15s;
+}
+
+.bs-navbar .dropdown-item:hover {
+    background: rgba(255, 255, 255, .08);
+    color: #fff;
+}
+
+.bs-navbar .dropdown-divider {
+    border-color: rgba(255, 255, 255, .1);
+}
+
+.bs-navbar .dropdown-header {
+    color: #5a6a8a;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    font-weight: 700;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────────────────────── */
+/* En desktop (≥992px): sidebar siempre visible (offcanvas-lg muestra backdrop en < lg) */
+.bs-sidebar {
+    width: 260px;
+    background: #1a1a2e;
+    border-right: none !important;
+    flex-shrink: 0;
+}
+
+/* Cabecera del sidebar */
+.bs-sidebar-header {
+    background: linear-gradient(135deg, #0f3460, #16213e);
+    padding: 1.25rem 1rem .75rem;
+}
+
+.bs-sidebar-header .bs-sidebar-brand {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #fff;
+    letter-spacing: .2px;
+}
+
+.bs-sidebar-header .bs-sidebar-user {
+    font-size: .82rem;
+    color: rgba(255, 255, 255, .65);
+    margin-top: 2px;
+}
+
+/* Links del sidebar */
+.bs-sidebar .nav-link {
+    color: #c9d1e0 !important;
+    font-size: .88rem;
+    padding: .65rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 0;
+    transition: background .15s, color .15s;
+}
+
+.bs-sidebar .nav-link:hover {
+    background: rgba(255, 255, 255, .07);
+    color: #fff !important;
+}
+
+.bs-sidebar .nav-link .bi {
+    font-size: 1.1rem;
+    opacity: .85;
+    flex-shrink: 0;
+}
+
+.bs-sidebar .nav-link:hover .bi {
+    opacity: 1;
+}
+
+/* Separadores y sub-headers */
+.bs-sidebar .sidebar-divider {
+    border-color: rgba(255, 255, 255, .08);
+    margin: .25rem 0;
+}
+
+.bs-sidebar .sidebar-label {
+    color: #5a6a8a;
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+    padding: .6rem 1rem .2rem;
+    pointer-events: none;
+}
+
+/* Badge de notificaciones dentro del sidebar */
+.bs-sidebar .nav-link .badge {
+    margin-left: auto;
+}
+
+/* ── LAYOUT PRINCIPAL ────────────────────────────────────────────────────── */
+.bs-wrapper {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+.bs-body-row {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+}
+
+.bs-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.bs-page-container {
+    padding: 1.5rem 1rem;
+    flex: 1;
+}
+
+@media (min-width: 992px) {
+    .bs-page-container {
+        padding: 2rem 1.5rem;
+    }
+}
+
+/* ── FOOTER ──────────────────────────────────────────────────────────────── */
+.bs-footer {
+    background: #001042 !important;
+    color: rgba(255, 255, 255, .6);
+    font-size: .78rem;
+    padding: 1.25rem 1rem;
+    margin-top: auto;
+}
+
+.bs-footer a {
+    color: rgba(255, 255, 255, .5);
+}
+
+.bs-footer a:hover {
+    color: #fff;
+}
+
+/* ── RESPONSIVE — Mobile: ocultar sidebar, mostrar offcanvas ─────────────── */
+@media (max-width: 991px) {
+    .bs-sidebar.offcanvas {
+        width: 260px !important;
+        background: #1a1a2e !important;
+    }
+}
