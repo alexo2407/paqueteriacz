@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 
@@ -236,7 +236,7 @@ $pagination = $datos['pagination'] ?? [];
 $currentPage = $pagination['current_page'] ?? 1;
 $totalPages = $pagination['total_pages'] ?? 1;
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 ?>
 
 <style>
@@ -1541,4 +1541,4 @@ $(document).ready(function() {
 
 
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

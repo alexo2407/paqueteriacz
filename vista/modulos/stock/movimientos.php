@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Vista Standalone: Reporte Movimientos de Stock
  * Accedida via: /stock/movimientos
@@ -142,7 +142,7 @@ if ($export) {
 </head>
 <body class="bg-light">
 
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
 
 <div class="container-fluid py-4">
 
@@ -287,7 +287,7 @@ if ($export) {
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
 
 <script>
 $(document).ready(function() {

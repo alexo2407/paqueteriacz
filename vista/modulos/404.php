@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php") ?>
+﻿<?php include("vista/includes/header_materialize.php") ?>
 
 
 <div class="container text-center mt-5">
@@ -7,4 +7,4 @@
     <a href="<?= RUTA_URL ?>inicio" class="btn btn-primary">Regresar al inicio</a>
 </div>
 
-<?php include("vista/includes/footer.php") ?>
+<?php include("vista/includes/footer_materialize.php") ?>

@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 $usaDataTables = true;
 require_once "utils/authorization.php";
 require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 ?>
 
 <?php
@@ -637,7 +637,7 @@ foreach ($pedidos as $p) {
     </div><!-- card pedidos-card -->
 </div><!-- container-fluid -->
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>
 
 
 

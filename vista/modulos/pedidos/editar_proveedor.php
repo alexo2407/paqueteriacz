@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 ob_start(); // Start buffering immediately to catch any spurious output/whitespace
 
 // El ID del pedido se pasa desde el controlador
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Flush buffer and continue with normal page rendering
 ob_end_flush();
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 
 /*ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -1261,4 +1261,4 @@ document.getElementById('es_combo').addEventListener('change', function() {
 });
 </script>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

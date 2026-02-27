@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -8,7 +8,7 @@ require_once __DIR__ . '/../../../controlador/crm.php';
 $crmController = new CrmController();
 $datos = $crmController->reportes();
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 ?>
 
 <div class="container-fluid py-3">
@@ -152,4 +152,4 @@ new Chart(document.getElementById('conversionChart'), {
 });
 </script>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

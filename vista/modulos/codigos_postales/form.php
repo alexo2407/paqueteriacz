@@ -1,5 +1,5 @@
 <?php
-$usaMaterialize = true;
+$loadBootstrap = false; // Vista Materialize pura — no necesita Bootstrap
 include("vista/includes/header_materialize.php");
 ?>
 <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/codigos_postales.css">

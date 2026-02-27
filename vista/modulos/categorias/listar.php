@@ -1,5 +1,5 @@
-<?php 
-include __DIR__ . '/../../includes/header.php'; 
+﻿<?php 
+include __DIR__ . '/../../includes/header_materialize.php'; 
 require_once __DIR__ . '/../../../controlador/categoria.php';
 
 $ctrl = new CategoriaController();
@@ -260,6 +260,6 @@ $categorias = $ctrl->obtenerEstadisticas();
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
 </body>
 </html>

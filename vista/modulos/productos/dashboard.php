@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -48,7 +48,7 @@ $valorEstimado = array_sum(array_map(function($p) {
 </head>
 <body>
 
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
 
 <style>
 .dashboard-header {
@@ -370,7 +370,7 @@ $valorEstimado = array_sum(array_map(function($p) {
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>

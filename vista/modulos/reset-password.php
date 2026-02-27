@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 include "vista/includes/headerlogin.php";
 require_once __DIR__ . '/../../controlador/password_reset.php';
 
@@ -94,4 +94,4 @@ function validarPassword() {
 }
 </script>
 
-<?php include "vista/includes/footer.php" ?>
+<?php include "vista/includes/footer_materialize.php" ?>

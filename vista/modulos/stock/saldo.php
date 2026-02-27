@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Vista Standalone: Saldo por Producto
  * Accedida via: /stock/saldo
@@ -95,7 +95,7 @@ if ($export) {
 </head>
 <body class="bg-light">
 
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
 
 <div class="container-fluid py-4">
 
@@ -188,7 +188,7 @@ if ($export) {
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
 
 <script>
 $(document).ready(function() {

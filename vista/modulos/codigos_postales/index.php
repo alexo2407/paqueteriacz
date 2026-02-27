@@ -1,5 +1,5 @@
 <?php
-$usaMaterialize = true; // Suprime Bootstrap en cargarRecursos()
+$loadBootstrap = false; // Vista Materialize pura — no necesita Bootstrap
 include("vista/includes/header_materialize.php");
 ?>
 <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/codigos_postales.css">
@@ -493,7 +493,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
             <button id="btnCpVistaPrev" class="btn btn-primary-mz waves-effect waves-light">
                 <i class="material-icons left">visibility</i>Vista Previa
             </button>
-            <button id="btnCpConfirmar" class="btn btn-success-mz waves-effect waves-light" disabled>
+            <button id="btnCpConfirmar" class="btn btn-success-mz waves-effect waves-light" disabled style="color:#1a73e8 !important">
                 <i class="material-icons left">check_circle</i>Confirmar e Importar
             </button>
             <button id="btnCpNuevaImport" class="btn btn-primary-mz waves-effect waves-light" style="display:none">

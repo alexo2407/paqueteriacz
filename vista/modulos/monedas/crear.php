@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header_materialize.php"); ?>
 <?php 
 $ctrl = new MonedasController();
 ?>
@@ -72,4 +72,4 @@ $ctrl = new MonedasController();
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

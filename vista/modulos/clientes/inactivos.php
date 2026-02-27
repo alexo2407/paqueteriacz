@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header_materialize.php"); ?>
 
 <?php
 $usaDataTables = true;
@@ -131,7 +131,7 @@ $totalInactivos = $clientesInactivos ? count($clientesInactivos) : 0;
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>
 
 <script>
     $(document).ready(function() {

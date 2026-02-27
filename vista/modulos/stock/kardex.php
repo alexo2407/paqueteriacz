@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -66,7 +66,7 @@ if ($producto || $numeroOrden) {
 </head>
 <body>
 
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
 
 <style>
 .kardex-header {
@@ -443,7 +443,7 @@ if ($producto || $numeroOrden) {
     <?php endif; ?>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
 
 <script>
     $(document).ready(function() {

@@ -1,5 +1,5 @@
-<?php
-include("vista/includes/header.php");
+﻿<?php
+include("vista/includes/header_materialize.php");
 require_once __DIR__ . '/../../../controlador/barrio.php';
 require_once __DIR__ . '/../../../controlador/municipio.php';
 $ctrl = new BarriosController();
@@ -10,7 +10,7 @@ $m = $munCtrl->ver($b['id_municipio'] ?? null);
 
 if (!$b) {
     echo '<div class="container-fluid py-4"><div class="alert alert-danger shadow-sm border-0 rounded-3">Barrio no encontrado.</div></div>';
-    include("vista/includes/footer.php");
+    include("vista/includes/footer_materialize.php");
     exit;
 }
 ?>
@@ -110,4 +110,4 @@ if (!$b) {
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

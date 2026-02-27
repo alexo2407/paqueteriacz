@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header_materialize.php"); ?>
 
 <?php
 $pedidosController = new PedidosController();
@@ -1282,4 +1282,4 @@ document.getElementById('es_combo').addEventListener('change', function() {
 
 
 <script src="<?= RUTA_URL ?>vista/js/codigos_postales_autocomplete.js?v=<?= time() ?>"></script>
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

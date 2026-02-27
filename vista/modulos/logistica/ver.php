@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once "controlador/logistica.php";
 
 // Instanciar controlador
@@ -96,7 +96,7 @@ if (!empty($fechaEntregaRaw)) {
 }
 
 
-include("vista/includes/header.php"); 
+include("vista/includes/header_materialize.php"); 
 ?>
 
 <div class="container-fluid py-4">
@@ -462,4 +462,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

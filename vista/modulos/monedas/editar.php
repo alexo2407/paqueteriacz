@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header_materialize.php"); ?>
 <?php
 require_once __DIR__ . '/../../../controlador/moneda.php';
 $ctrl = new MonedasController();
@@ -90,4 +90,4 @@ $m = $ctrl->ver($id);
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

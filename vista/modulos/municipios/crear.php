@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header_materialize.php"); ?>
 <?php 
 require_once __DIR__ . '/../../../controlador/departamento.php';
 $depCtrl = new DepartamentosController();
@@ -77,7 +77,7 @@ $departamentos = $depCtrl->listar();
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>
 
 <script>
     $(document).ready(function() {

@@ -1,5 +1,5 @@
-<?php
-include("vista/includes/header.php");
+﻿<?php
+include("vista/includes/header_materialize.php");
 require_once __DIR__ . '/../../../controlador/moneda.php';
 $ctrl = new MonedasController();
 $id = isset($ruta[2]) ? (int)$ruta[2] : null;
@@ -7,7 +7,7 @@ $m = $ctrl->ver($id);
 
 if (!$m) {
     echo '<div class="container-fluid py-4"><div class="alert alert-danger shadow-sm border-0 rounded-3">Moneda no encontrada.</div></div>';
-    include("vista/includes/footer.php");
+    include("vista/includes/footer_materialize.php");
     exit;
 }
 ?>
@@ -105,4 +105,4 @@ if (!$m) {
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

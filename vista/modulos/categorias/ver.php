@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../modelo/categoria.php';
@@ -45,7 +45,7 @@ $productos = ProductoModel::listarPorCategoria($id);
 </head>
 <body>
 
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
 
 <style>
 .detail-card {
@@ -261,7 +261,7 @@ $productos = ProductoModel::listarPorCategoria($id);
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
 
 </body>
 </html>

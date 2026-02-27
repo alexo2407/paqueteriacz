@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Vista de Referencia de Valores
  * 
@@ -7,7 +7,7 @@
  */
 
 // Incluir Header del template
-include "vista/includes/header.php";
+include "vista/includes/header_materialize.php";
 
 // Nota: $ctrl y $db deberían estar disponibles o instanciarse aquí si no lo están.
 // En el contexto de la plantilla, ya se han cargado controladores.
@@ -763,4 +763,4 @@ try {
 }
 
 // Incluir Footer del template
-include "vista/includes/footer.php";
+include "vista/includes/footer_materialize.php";

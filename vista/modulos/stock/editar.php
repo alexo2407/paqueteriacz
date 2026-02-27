@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header_materialize.php"); ?>
 
 <?php
 $params = isset($parametros) ? $parametros : [];
@@ -106,7 +106,7 @@ if (class_exists('ProductoModel')) {
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>
 
 <script>
 $(document).ready(function() {

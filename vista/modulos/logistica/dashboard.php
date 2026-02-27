@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Dashboard Logística (Cliente) - Redesign
  */
@@ -110,7 +110,7 @@ function renderNotificationCard($notif) {
     <?php
 }
 
-include "vista/includes/header.php";
+include "vista/includes/header_materialize.php";
 ?>
 
 <style>
@@ -689,7 +689,7 @@ include "vista/includes/header.php";
 </div>
 
 
-<?php include "vista/includes/footer.php"; ?>
+<?php include "vista/includes/footer_materialize.php"; ?>
 
 <script>
     // Búsqueda simple en grid activos (cliente side)

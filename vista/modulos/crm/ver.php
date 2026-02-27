@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 
 
@@ -38,7 +38,7 @@ $lead = $datos['lead'];
 $timeline = $datos['timeline'];
 $webhooks = $datos['webhooks'];
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 ?>
 
 <div class="container-fluid py-3">
@@ -221,4 +221,4 @@ $esProveedor = isProveedorCRM($userId) && !isUserAdmin($userId);
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

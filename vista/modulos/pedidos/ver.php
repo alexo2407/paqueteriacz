@@ -1,5 +1,5 @@
-<?php 
-include("vista/includes/header.php"); 
+﻿<?php 
+include("vista/includes/header_materialize.php"); 
 
  
 
@@ -454,4 +454,4 @@ if (!empty($fechaEntregaRaw)) {
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

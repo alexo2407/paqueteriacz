@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 
 start_secure_session();
 
@@ -17,7 +17,7 @@ if (!isAdmin()) {
 require_once __DIR__ . '/../../../controlador/crm.php';
 require_once __DIR__ . '/../../../utils/crm_status.php';
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 
 // Obtener datos del dashboard
 $crmController = new CrmController();
@@ -334,5 +334,5 @@ new Chart(document.getElementById('tendenciaChart'), {
 </script>
 
 <?php 
-include("vista/includes/footer.php");
+include("vista/includes/footer_materialize.php");
 ?>

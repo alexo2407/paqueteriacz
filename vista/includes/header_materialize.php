@@ -1,13 +1,18 @@
 <?php
 /**
  * header_materialize.php
- * Layout header para vistas migradas a MaterializeCSS.
- * NO carga Bootstrap. Usa Material Icons + Materialize CSS.
+ * Layout header para TODA la aplicación. Carga Materialize siempre.
+ * Carga Bootstrap 5 también por defecto (para vistas que aún usan clases Bootstrap).
  *
- * Uso en cada vista:
- *   $usaMaterialize = true;  // ANTES del include de template (suprime Bootstrap en cargarRecursos)
- *   include("vista/includes/header_materialize.php");
+ * Variables opcionales antes del include:
+ *   $loadBootstrap = false;  → suprime Bootstrap CSS/JS (solo Materialize)
+ *   $usaDataTables = true;   → carga DataTables JS en el footer
  */
+
+// Por defecto Bootstrap se carga (para compatibilidad con vistas heredadas)
+if (!isset($loadBootstrap)) {
+    $loadBootstrap = true;
+}
 
 // ── Misma lógica de roles/redirección del header.php original ─────────────
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
@@ -62,6 +67,21 @@ $userName = $_SESSION['nombre'] ?? null;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <!-- Google Fonts — Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <?php if ($loadBootstrap): ?>
+    <!-- Bootstrap 5 CSS + Icons (para vistas con HTML Bootstrap) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Select2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+    <!-- DataTables CSS -->
+    <?php if (!empty($usaDataTables)): ?>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
+    <?php endif; ?>
+    <?php endif; ?>
+
     <!-- Estilos globales Materialize (sin Bootstrap) -->
     <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos_mz.css">
 

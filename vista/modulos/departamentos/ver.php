@@ -1,5 +1,5 @@
-<?php
-include("vista/includes/header.php");
+﻿<?php
+include("vista/includes/header_materialize.php");
 require_once __DIR__ . '/../../../controlador/departamento.php';
 require_once __DIR__ . '/../../../controlador/pais.php';
 $ctrl = new DepartamentosController();
@@ -10,7 +10,7 @@ $pais = $paisCtrl->ver($d['id_pais'] ?? null);
 
 if (!$d) {
     echo '<div class="container-fluid py-4"><div class="alert alert-danger shadow-sm border-0 rounded-3">Departamento no encontrado.</div></div>';
-    include("vista/includes/footer.php");
+    include("vista/includes/footer_materialize.php");
     exit;
 }
 ?>
@@ -110,4 +110,4 @@ if (!$d) {
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

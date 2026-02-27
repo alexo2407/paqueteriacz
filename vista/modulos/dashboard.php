@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 
 start_secure_session();
 require_once __DIR__ . '/../../utils/permissions.php';
@@ -23,7 +23,7 @@ $isClienteLogistica = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true);
 if ($isClienteLogistica && !$isAdmin) { header('Location: '.RUTA_URL.'pedidos/listar'); exit; }
 
 require_once __DIR__ . '/../../controlador/dashboard.php';
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 
 $dashboard = new DashboardController();
 $datos = $dashboard->obtenerDatosDashboard();
@@ -553,7 +553,7 @@ new Chart(document.getElementById('efectividadTemporalChart'), {
 <script src="js/dashboard.js?v=<?= time() ?>"></script>
 <?php
 
-include("vista/includes/footer.php");
+include("vista/includes/footer_materialize.php");
 
 }
 

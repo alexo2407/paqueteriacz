@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -10,7 +10,7 @@ $datos = $crmController->monitor();
 $inboxPending = $datos['inbox']['pendientes'] ?? [];
 $outboxFailed = $datos['outbox']['fallidos'] ?? [];
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 ?>
 
 <div class="container-fluid py-3">
@@ -470,4 +470,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

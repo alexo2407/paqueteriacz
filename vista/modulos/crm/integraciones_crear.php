@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -11,7 +11,7 @@ $usuarios = $crmController->obtenerUsuarios();
 // Generar secret aleatorio por defecto
 $defaultSecret = bin2hex(random_bytes(16));
 
-include("vista/includes/header.php");
+include("vista/includes/header_materialize.php");
 ?>
 
 <div class="container-fluid py-3">
@@ -103,4 +103,4 @@ include("vista/includes/header.php");
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

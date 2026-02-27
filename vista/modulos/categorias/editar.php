@@ -1,4 +1,4 @@
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+﻿<?php include __DIR__ . '/../../includes/header_materialize.php'; ?>
 
 <?php
 // Incluir el modelo de categorías
@@ -118,7 +118,7 @@ $categoriasDisponibles = CategoriaModel::listar();
     </div>
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../includes/footer_materialize.php'; ?>
 
 <script>
     $(document).ready(function() {

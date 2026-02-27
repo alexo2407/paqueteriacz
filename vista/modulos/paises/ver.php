@@ -1,5 +1,5 @@
-<?php
-include("vista/includes/header.php");
+﻿<?php
+include("vista/includes/header_materialize.php");
 require_once __DIR__ . '/../../../controlador/pais.php';
 global $ruta; // Ensure $ruta is available in this scope
 $ctrl = new PaisesController();
@@ -8,7 +8,7 @@ $p = $ctrl->ver($id);
 
 if (!$p) {
     echo '<div class="container-fluid py-4"><div class="alert alert-danger shadow-sm border-0 rounded-3">País no encontrado.</div></div>';
-    include("vista/includes/footer.php");
+    include("vista/includes/footer_materialize.php");
     exit;
 }
 ?>
@@ -100,4 +100,4 @@ if (!$p) {
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>

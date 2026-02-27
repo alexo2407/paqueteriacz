@@ -1,5 +1,5 @@
-<?php
-include("vista/includes/header.php");
+﻿<?php
+include("vista/includes/header_materialize.php");
 require_once __DIR__ . '/../../../controlador/usuario.php';
 require_once __DIR__ . '/../../../controlador/pais.php';
 
@@ -306,7 +306,7 @@ $roleIcons = [
     </div>
 </div>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php include("vista/includes/footer_materialize.php"); ?>
 
 <?php
 // Procesar POST aquí, DESPUÉS del footer (donde ya cargó SweetAlert2)
