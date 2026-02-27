@@ -235,6 +235,9 @@
             <a href="<?= RUTA_URL ?>usuarios/listar" class="nav-link"><i class="bi bi-people"></i> Usuarios</a>
             <a href="<?= RUTA_URL ?>auditoria/historial" class="nav-link"><i class="bi bi-clock-history"></i> Auditoría</a>
             <a href="<?= RUTA_URL ?>api/doc/" class="nav-link"><i class="bi bi-book"></i> API Docs</a>
+            <a href="<?= RUTA_URL ?>api/doc/crmdoc.php" class="nav-link"><i class="bi bi-file-earmark-code"></i> Doc. CRM</a>
+            <a href="<?= RUTA_URL ?>crm/database_doc" class="nav-link"><i class="bi bi-database"></i> Doc. Base de Datos</a>
+            <a href="<?= RUTA_URL ?>crm/logistics_worker_doc" class="nav-link"><i class="bi bi-diagram-3"></i> Doc. Worker Logístico</a>
             <?php endif; ?>
 
             <!-- Logout -->
@@ -251,4 +254,5 @@
 
 <!-- ══════ MAIN CONTENT ══════ -->
 <main class="bs-main">
+<?php require_once __DIR__ . '/breadcrumb.php'; ?>
 <div class="bs-page-container">

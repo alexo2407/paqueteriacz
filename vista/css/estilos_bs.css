@@ -241,6 +241,122 @@ body.bs-body {
     color: #fff;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   BREADCRUMB — Custom Arrow Style (Expert UX/UI)
+   ═══════════════════════════════════════════════════════════════ */
+
+.custom-breadcrumb-area {
+    padding: 15px 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.custom-breadcrumb-arrow {
+    height: 36px;
+    padding: 0;
+    margin: 0;
+    line-height: 36px;
+    list-style: none !important;
+    /* Forzar quitar puntos */
+    background-color: #e6e9ed;
+    display: inline-flex;
+    /* Uso flex para evitar espacios raros */
+    border-radius: 4px;
+}
+
+.custom-breadcrumb-arrow li {
+    display: flex;
+    align-items: center;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.custom-breadcrumb-arrow li:not(:first-child) {
+    margin-left: -5px !important;
+}
+
+.custom-breadcrumb-arrow li+li:before {
+    display: none !important;
+    /* Quitar el separador / de Bootstrap */
+}
+
+.custom-breadcrumb-arrow li a,
+.custom-breadcrumb-arrow li span {
+    display: inline-block;
+    height: 36px;
+    line-height: 36px;
+    padding: 0 10px 0 25px;
+    position: relative;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.custom-breadcrumb-arrow li:first-child a {
+    padding-left: 15px;
+    border-radius: 4px 0 0 4px;
+}
+
+.custom-breadcrumb-arrow li a {
+    color: #fff !important;
+    text-decoration: none !important;
+    background-color: #3bafda;
+    border: 1px solid #3bafda;
+    transition: all 0.2s;
+}
+
+/* Las flechas (Triángulos CSS) */
+.custom-breadcrumb-arrow li a:after,
+.custom-breadcrumb-arrow li a:before {
+    position: absolute;
+    top: -1px;
+    width: 0;
+    height: 0;
+    content: '';
+    border-top: 18px solid transparent;
+    border-bottom: 18px solid transparent;
+}
+
+/* La punta de la flecha (relleno) */
+.custom-breadcrumb-arrow li a:before {
+    right: -10px;
+    z-index: 3;
+    border-left: 11px solid #3bafda;
+}
+
+/* El borde de la flecha (para el efecto 3D/borde) */
+.custom-breadcrumb-arrow li a:after {
+    right: -11px;
+    z-index: 2;
+    border-left: 11px solid #2494be;
+}
+
+/* Hover effects */
+.custom-breadcrumb-arrow li a:hover {
+    background-color: #4fc1e9;
+    border-color: #4fc1e9;
+}
+
+.custom-breadcrumb-arrow li a:hover:before {
+    border-left-color: #4fc1e9;
+}
+
+/* Active / Current Page */
+.custom-breadcrumb-arrow li.active span {
+    background-color: #e6e9ed;
+    color: #434a54;
+    padding-left: 25px;
+    padding-right: 15px;
+    border-radius: 0 4px 4px 0;
+}
+
+.custom-breadcrumb-arrow li:last-child span {
+    border-right: 1px solid #d1d4d7;
+}
+
+
+
+
+
 /* RESPONSIVE */
 
 /* Desktop (>=992px): sidebar SIEMPRE visible, sticky altura completa */
