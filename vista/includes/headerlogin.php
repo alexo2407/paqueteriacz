@@ -27,7 +27,7 @@
             padding: 0;
             min-height: 100vh;
             font-family: 'Inter', 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0f0c29 0%, #1a1a2e 45%, #16213e 100%);
+            background: #1a1a2e;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -35,25 +35,17 @@
             overflow: hidden;
         }
 
-        /* Partículas decorativas de fondo */
+        /* Capa Vanta NET fija detrás de todo */
+        #vanta-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+        }
+
+        /* Quitar pseudo-elementos decorativos — Vanta los reemplaza */
         body.login-page::before,
-        body.login-page::after {
-            content: '';
-            position: absolute;
-            border-radius: 50%;
-            opacity: .12;
-            pointer-events: none;
-        }
-        body.login-page::before {
-            width: 520px; height: 520px;
-            background: radial-gradient(circle, #00d084, transparent);
-            top: -120px; left: -120px;
-        }
-        body.login-page::after {
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, #0d6efd, transparent);
-            bottom: -100px; right: -100px;
-        }
+        body.login-page::after { display: none; }
 
         /* Card principal */
         .login-wrapper {
@@ -186,4 +178,31 @@
     </style>
 </head>
 <body class="login-page">
+<div id="vanta-bg"></div>
 <script>const RUTA_URL = '<?= RUTA_URL ?>';</script>
+
+<!-- Three.js + Vanta NET -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.VANTA) {
+        VANTA.NET({
+            el: '#vanta-bg',
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            color: 0x00d084,        /* verde acento */
+            color2: 0x0d6efd,       /* azul secundario */
+            backgroundColor: 0x1a1a2e, /* fondo navy */
+            points: 9.00,
+            maxDistance: 22.00,
+            spacing: 18.00
+        });
+    }
+});
+</script>
