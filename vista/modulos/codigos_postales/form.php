@@ -2,6 +2,7 @@
 $usaMaterialize = true;
 include("vista/includes/header_materialize.php");
 ?>
+<link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/codigos_postales.css">
 
 <?php
 $ctrl    = new CodigosPostalesController();
@@ -49,8 +50,8 @@ $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
 
 <!-- ════ FORMULARIO ════ -->
 <div class="row">
-    <div class="col s12 m10 offset-m1 l8 offset-l2">
-        <div class="card mz-card-raised">
+    <div class="col s12 m10 offset-m1 l10 offset-l1">
+        <div class="card mz-card-raised cp-form-card">
             <div class="card-content" style="padding:2rem">
 
                 <form action="<?= $accionUrl ?>" method="POST" id="formCP">
@@ -62,7 +63,7 @@ $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
 
                     <div class="row" style="margin-bottom:0">
                         <!-- País -->
-                        <div class="input-field col s12 m6">
+                        <div class="input-field col s12 l6">
                             <select name="id_pais" id="id_pais" required>
                                 <option value="" disabled <?= !$id_pais ? 'selected' : '' ?>>Selecciona un país</option>
                                 <?php foreach ($paises as $p): ?>
@@ -75,7 +76,7 @@ $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
                         </div>
 
                         <!-- Código Postal -->
-                        <div class="input-field col s12 m6">
+                        <div class="input-field col s12 l6">
                             <input type="text" name="codigo_postal" id="codigo_postal" required
                                    value="<?= htmlspecialchars($cp) ?>"
                                    <?= $cp ? 'class="active"' : '' ?>>
@@ -93,36 +94,35 @@ $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
                         Ubicación geográfica
                     </p>
 
+                    <!-- Fila 1: Departamento + Municipio -->
                     <div class="row" style="margin-bottom:0">
-                        <!-- Departamento (cargado via AJAX al elegir país) -->
-                        <div class="input-field col s12 m6">
+                        <div class="input-field col s12 l6">
                             <select name="id_departamento" id="id_departamento">
                                 <option value=""><?= $id_pais ? 'Selecciona un departamento' : 'Selecciona un país primero' ?></option>
                             </select>
-                            <label>Departamento / Provincia</label>
+                            <label for="id_departamento">Departamento / Provincia</label>
                         </div>
 
-                        <!-- Municipio (cargado via AJAX al elegir depto) -->
-                        <div class="input-field col s12 m6">
+                        <div class="input-field col s12 l6">
                             <select name="id_municipio" id="id_municipio">
                                 <option value=""><?= $id_dep ? 'Selecciona un municipio' : 'Selecciona un departamento primero' ?></option>
                             </select>
-                            <label>Municipio / Ciudad</label>
+                            <label for="id_municipio">Municipio / Ciudad</label>
                         </div>
+                    </div>
 
-                        <!-- Barrio (cargado via AJAX al elegir municipio) -->
-                        <div class="input-field col s12 m6">
+                    <!-- Fila 2: Barrio + Nombre Localidad -->
+                    <div class="row" style="margin-bottom:0">
+                        <div class="input-field col s12 l6">
                             <select name="id_barrio" id="id_barrio">
                                 <option value=""><?= $id_mun ? 'Selecciona un barrio' : 'Selecciona un municipio primero' ?></option>
                             </select>
-                            <label>Barrio / Zona (Opcional)</label>
+                            <label for="id_barrio">Barrio / Zona (Opcional)</label>
                         </div>
 
-                        <!-- Nombre de localidad (texto libre) -->
-                        <div class="input-field col s12 m6">
+                        <div class="input-field col s12 l6">
                             <input type="text" name="nombre_localidad" id="nombre_localidad"
                                    value="<?= htmlspecialchars($localidad) ?>"
-                                   placeholder="Ej: Santa Elena, Zona 10..."
                                    <?= $localidad ? 'class="active"' : '' ?>>
                             <label for="nombre_localidad" <?= $localidad ? 'class="active"' : '' ?>>
                                 Nombre Localidad (Referencia)
@@ -142,8 +142,8 @@ $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
                         </label>
                     </div>
 
-                    <!-- ── Botones ─────────────────────────────────────────── -->
-                    <div class="d-flex justify-between align-center" style="margin-top:.5rem">
+                    <!-- ── Botones ─────────────────────────────────────────────────────── -->
+                    <div class="cp-form-actions">
                         <a href="<?= RUTA_URL ?>codigos_postales" class="btn-flat waves-effect grey-text">
                             <i class="material-icons left">arrow_back</i>Cancelar
                         </a>

@@ -1,0 +1,172 @@
+/*
+ * codigos_postales.css
+ * Fixes de responsive EXCLUSIVOS del módulo codigos_postales.
+ * No afecta ninguna otra vista del sistema.
+ * Breakpoints: mobile < 600px, tablet 600–992px, desktop ≥ 992px
+ */
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   1. CABECERA (mz-card-header) — title + botones de acción
+   ───────────────────────────────────────────────────────────────────────────── */
+.cp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.cp-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    align-items: center;
+}
+
+@media (max-width: 600px) {
+    .cp-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .cp-header-actions {
+        width: 100%;
+    }
+
+    .cp-header-actions .btn {
+        flex: 1 1 auto;
+        text-align: center;
+        font-size: .82rem;
+        padding: 0 10px;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   2. FORZAR 1 COLUMNA EN MOBILE (≤ 768px) — solo para cols s12
+   País y Código Postal → ancho completo.
+   Estado + Completitud (s6) → 2 columnas, el override NO los toca.
+   ───────────────────────────────────────────────────────────────────────────── */
+@media only screen and (max-width: 768px) {
+
+    /* Solo los campos que el HTML declara como s12 van a full-width */
+    .cp-filtros-form .col.s12 {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+
+    /* Formulario nuevo/editar: todos los campos en 1 columna */
+    .cp-form-card .row .col {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+}
+
+/* En mobile los input-field de Materialize flotan bien con s12,
+   pero el bloque de botones necesita centrarse mejor */
+@media (max-width: 600px) {
+    .cp-filtros-btns {
+        display: flex;
+        gap: .5rem;
+        align-items: center;
+        margin-top: .5rem !important;
+        width: 100%;
+    }
+
+    .cp-filtros-btns .btn {
+        flex: 1;
+    }
+
+    .cp-filtros-btns .btn-flat {
+        /* Icono de limpiar: mantener cuadrado */
+        flex: 0 0 auto;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   3. TABLA — scroll horizontal limpio en mobile, NO card layout
+   ───────────────────────────────────────────────────────────────────────────── */
+.cp-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    /* scroll suave en iOS */
+}
+
+/* Anchos mínimos de columnas para que los headers no se compriman */
+.cp-table th,
+.cp-table td {
+    white-space: nowrap;
+}
+
+/* La columna de Ubicación puede ser larga; en desktop se permite multi-line */
+@media (min-width: 993px) {
+    .cp-table td.cp-col-ubicacion {
+        white-space: normal;
+        min-width: 180px;
+        max-width: 260px;
+    }
+}
+
+/* En mobile: ancho mínimo de la tabla para que scroll funcione */
+@media (max-width: 600px) {
+    .cp-table {
+        min-width: 650px;
+        /* fuerza scroll en pantallas estrechas */
+    }
+
+    /* Reducir padding de celdas para que quepan más columnas */
+    .cp-table th,
+    .cp-table td {
+        padding: 10px 8px !important;
+        font-size: .8rem !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   4. CARD-CONTENT padding — reducir en mobile para ganar espacio
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .cp-form-card .card-content {
+        padding: 1rem !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   5. FORMULARIO — botones acción apilados en mobile
+   ───────────────────────────────────────────────────────────────────────────── */
+.cp-form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .5rem;
+}
+
+@media (max-width: 600px) {
+    .cp-form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cp-form-actions .btn,
+    .cp-form-actions .btn-flat {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   6. STEPPER del modal de importación — compactar en mobile
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .mz-step-label {
+        font-size: .6rem !important;
+    }
+
+    .mz-step .mz-step-circle {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: .78rem !important;
+    }
+}

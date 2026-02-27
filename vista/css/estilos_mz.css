@@ -18,6 +18,15 @@ body.mz-body {
     min-height: 100vh;
 }
 
+/* En desktop el sidenav-fixed tiene 260px de ancho y es position:fixed.
+   Para que navbar y contenido no queden por detrás del sidebar,
+   desplazamos todo el body con padding-left. */
+@media only screen and (min-width: 993px) {
+    body.mz-body {
+        padding-left: 260px;
+    }
+}
+
 /* ── Navbar ─────────────────────────────────────────────────────────────── */
 .mz-navbar {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -141,6 +150,8 @@ nav li>a {
     flex: 1;
     padding-top: 0;
 }
+
+/* En desktop el padding-left en body.mz-body ya desplaza .mz-main-content */
 
 .mz-page-container {
     padding: 1.5rem 1rem;
@@ -564,5 +575,111 @@ table.responsive-table {
     table.responsive-table {
         display: block;
         overflow-x: auto;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLE-RESPONSIVE-CARDS
+   Convierte cualquier <table class="table-responsive-cards"> en una lista de
+   tarjetas en mobile (< 768px). Cada <td> debe llevar data-label="…".
+   Desktop (≥ 768px): tabla normal, sin cambios.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+    /* Ocultar cabecera */
+    .table-responsive-cards thead {
+        display: none !important;
+    }
+
+    /* Tabla, tbody, tr y td se convierten en bloques */
+    .table-responsive-cards,
+    .table-responsive-cards tbody,
+    .table-responsive-cards tr,
+    .table-responsive-cards td {
+        display: block;
+        width: 100%;
+    }
+
+    /* Cada <tr> = tarjeta */
+    .table-responsive-cards tr {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 10px 12px 10px 44px;
+        /* espacio izquierdo para el badge */
+        margin-bottom: 10px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+        position: relative;
+    }
+
+    /* Badge circular a la izquierda de la fila */
+    .table-responsive-cards tr::before {
+        content: "·";
+        position: absolute;
+        left: 10px;
+        top: 14px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #4b6cb7;
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-weight: 900;
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    /* Cada celda: label arriba, valor abajo */
+    .table-responsive-cards td {
+        border: none !important;
+        padding: 5px 0 !important;
+    }
+
+    /* Etiqueta (nombre de columna) */
+    .table-responsive-cards td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        display: block;
+        color: #6b7280;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        margin-bottom: 1px;
+    }
+
+    /* Celda sin data-label (p.ej. colspan vacío) */
+    .table-responsive-cards td:not([data-label])::before {
+        display: none;
+    }
+
+    /* Botones de acciones: full-width en mobile */
+    .table-responsive-cards td[data-label="Acciones"] .btn,
+    .table-responsive-cards td[data-label="acciones"] .btn {
+        width: 100%;
+        margin-bottom: 4px;
+        text-align: center;
+    }
+
+    /* El wrapper de scroll ya no necesita overflow en mobile */
+    .table-responsive-cards-wrapper,
+    .responsive-table-wrapper {
+        overflow-x: visible !important;
+    }
+
+    /* ── Cabecera de página Materialize: apilar botones ── */
+    .mz-card-header .d-flex.justify-between {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .75rem;
+    }
+
+    .mz-card-header .d-flex.gap-2.flex-wrap {
+        width: 100%;
+    }
+
+    .mz-card-header .d-flex.gap-2.flex-wrap .btn {
+        flex: 1;
+        text-align: center;
     }
 }

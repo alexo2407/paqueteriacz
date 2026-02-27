@@ -2,6 +2,7 @@
 $usaMaterialize = true; // Suprime Bootstrap en cargarRecursos()
 include("vista/includes/header_materialize.php");
 ?>
+<link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/codigos_postales.css">
 
 <?php
 $ctrl    = new CodigosPostalesController();
@@ -42,7 +43,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
 
 <!-- ════ CABECERA ════ -->
 <div class="mz-card-header" style="background:linear-gradient(135deg,#4b6cb7 0%,#182848 100%); border-radius:12px; margin-bottom:1.5rem;">
-    <div class="d-flex justify-between align-center flex-wrap gap-2">
+    <div class="cp-header">
         <div>
             <h4 class="white-text" style="margin:0;font-weight:700">
                 <i class="material-icons left" style="vertical-align:middle">local_post_office</i>
@@ -52,7 +53,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                 Administración de la fuente de verdad para direcciones
             </p>
         </div>
-        <div class="d-flex gap-2 flex-wrap">
+        <div class="cp-header-actions">
             <a href="<?= htmlspecialchars($exportUrl) ?>" class="btn btn-success-mz waves-effect waves-light" title="Exportar a Excel">
                 <i class="material-icons left">download</i>Exportar Excel
             </a>
@@ -70,12 +71,14 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
 
 <!-- ════ FILTROS ════ -->
 <div class="card mz-card-raised" style="margin-bottom:1.5rem">
-    <div class="card-content">
-        <form method="GET" action="<?= RUTA_URL ?>codigos_postales">
+    <div class="card-content" style="padding:1.25rem 1.5rem">
+        <form method="GET" action="<?= RUTA_URL ?>codigos_postales" class="cp-filtros-form">
             <input type="hidden" name="enlace" value="codigos_postales">
+
             <div class="row" style="margin-bottom:0">
-                <!-- País -->
-                <div class="input-field col s12 m3">
+
+                <!-- País: s12 → full | m6 → 2 cols | l3 → 4 cols -->
+                <div class="input-field col s12 l3">
                     <select name="id_pais" id="f-pais">
                         <option value="">Todos los países</option>
                         <?php foreach ($paises as $p): ?>
@@ -84,51 +87,64 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                         </option>
                         <?php endforeach; ?>
                     </select>
-                    <label>País</label>
+                    <label for="f-pais">País</label>
                 </div>
+
                 <!-- Código Postal -->
-                <div class="input-field col s12 m3">
+                <div class="input-field col s12 l3">
                     <input type="text" name="codigo_postal" id="f-cp"
                            value="<?= htmlspecialchars($filtros['codigo_postal']) ?>">
                     <label for="f-cp" <?= $filtros['codigo_postal'] ? 'class="active"' : '' ?>>Código Postal</label>
                 </div>
+
                 <!-- Estado -->
-                <div class="input-field col s12 m2">
+                <div class="input-field col s6 l3">
                     <select name="activo" id="f-activo">
-                        <option value="">Ver todos</option>
-                        <option value="1" <?= $filtros['activo'] == '1' ? 'selected' : '' ?>>Activos</option>
-                        <option value="0" <?= $filtros['activo'] == '0' ? 'selected' : '' ?>>Inactivos</option>
+                        <option value=""  <?= $filtros['activo'] === ''  ? 'selected' : '' ?>>Todos</option>
+                        <option value="1" <?= $filtros['activo'] === '1' ? 'selected' : '' ?>>Activos</option>
+                        <option value="0" <?= $filtros['activo'] === '0' ? 'selected' : '' ?>>Inactivos</option>
                     </select>
-                    <label>Estado</label>
+                    <label for="f-activo">Estado</label>
                 </div>
+
                 <!-- Completitud -->
-                <div class="input-field col s12 m2">
+                <div class="input-field col s6 l3">
                     <select name="parcial" id="f-parcial">
-                        <option value="">Cualquiera</option>
-                        <option value="1" <?= $filtros['parcial'] == '1' ? 'selected' : '' ?>>Solo Parciales</option>
+                        <option value=""  <?= $filtros['parcial'] === ''  ? 'selected' : '' ?>>Todos</option>
+                        <option value="1" <?= $filtros['parcial'] === '1' ? 'selected' : '' ?>>Solo Parciales</option>
                     </select>
-                    <label>Completitud</label>
+                    <label for="f-parcial">Completitud</label>
                 </div>
-                <!-- Botones -->
-                <div class="col s12 m2 d-flex align-center gap-2" style="margin-top:1rem">
+
+            </div><!-- /row campos -->
+
+            <!-- Botones en fila propia para que nunca se aplasten con los inputs -->
+            <div class="row" style="margin-bottom:0;margin-top:.25rem">
+                <div class="col s9 m4 l2">
                     <button type="submit" class="btn btn-primary-mz waves-effect waves-light w-100">
                         <i class="material-icons left">filter_list</i>Filtrar
                     </button>
-                    <a href="<?= RUTA_URL ?>codigos_postales" class="btn-flat waves-effect tooltipped"
-                       data-tooltip="Limpiar filtros" style="padding:0 12px">
+                </div>
+                <div class="col s3 m2 l1" style="display:flex;align-items:center;padding-top:4px">
+                    <a href="<?= RUTA_URL ?>codigos_postales"
+                       class="btn-flat waves-effect tooltipped"
+                       data-tooltip="Limpiar filtros"
+                       style="padding:0 10px;height:36px;line-height:36px">
                         <i class="material-icons grey-text">close</i>
                     </a>
                 </div>
             </div>
+
         </form>
     </div>
 </div>
 
+
 <!-- ════ TABLA ════ -->
 <div class="card mz-card-raised">
     <div class="card-content" style="padding:0">
-        <div class="responsive-table-wrapper" style="overflow-x:auto">
-            <table class="responsive-table highlight" style="width:100%;margin:0">
+        <div class="cp-table-wrapper">
+            <table class="responsive-table highlight cp-table" style="width:100%;margin:0">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -155,13 +171,13 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                     ?>
                     <tr>
                         <!-- ID -->
-                        <td class="grey-text" style="font-size:.82rem">#<?= $item['id'] ?></td>
+                        <td data-label="ID" class="grey-text" style="font-size:.82rem">#<?= $item['id'] ?></td>
 
                         <!-- País -->
-                        <td><?= htmlspecialchars($item['nombre_pais']) ?></td>
+                        <td data-label="País"><?= htmlspecialchars($item['nombre_pais']) ?></td>
 
                         <!-- CP + badge parcial -->
-                        <td>
+                        <td data-label="CP">
                             <span class="chip chip-muted" style="font-family:monospace;font-size:.9rem">
                                 <?= htmlspecialchars($item['codigo_postal']) ?>
                             </span>
@@ -171,19 +187,19 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                         </td>
 
                         <!-- Ubicación -->
-                        <td style="font-size:.82rem">
-                            <span class="<?= !$item['id_departamento'] ? 'red-text' : '' ?>">
+                        <td data-label="Ubicación" class="cp-col-ubicacion">
+                            <span class="<?= !$item['id_departamento'] ? 'red-text' : '' ?>" style="font-size:.82rem">
                                 <?= htmlspecialchars($item['nombre_departamento'] ?? '[Falta Depto]') ?>
                             </span>
                             <span class="grey-text"> / </span>
-                            <span class="<?= !$item['id_municipio'] ? 'red-text' : '' ?>">
+                            <span class="<?= !$item['id_municipio'] ? 'red-text' : '' ?>" style="font-size:.82rem">
                                 <?= htmlspecialchars($item['nombre_municipio'] ?? ($item['nombre_localidad'] ?: '[Falta Muni]')) ?>
                             </span>
-                            <span class="grey-text"> / <?= htmlspecialchars($item['nombre_barrio'] ?? '-') ?></span>
+                            <span class="grey-text" style="font-size:.82rem"> / <?= htmlspecialchars($item['nombre_barrio'] ?? '-') ?></span>
                         </td>
 
                         <!-- Switch activo -->
-                        <td class="center-align">
+                        <td data-label="Estado" class="center-align">
                             <div class="switch">
                                 <label>
                                     <input type="checkbox" class="btn-toggle"
@@ -196,12 +212,12 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                         </td>
 
                         <!-- Fecha -->
-                        <td class="center-align grey-text" style="font-size:.8rem">
+                        <td data-label="Actualizado" class="center-align grey-text" style="font-size:.8rem">
                             <?= date('d/m/Y H:i', strtotime($item['updated_at'] ?? $item['created_at'])) ?>
                         </td>
 
                         <!-- Acciones -->
-                        <td class="right-align">
+                        <td data-label="Acciones" class="right-align">
                             <?php if ($puedeEditar): ?>
                             <a href="<?= RUTA_URL ?>codigos_postales/editar/<?= $item['id'] ?>"
                                class="btn-floating btn-small waves-effect waves-light blue tooltipped"
@@ -496,6 +512,11 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
 <!-- ════ JS: Toggle estado (activo/inactivo) ════ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+
+    // ── Labels flotantes con valores GET precargados ───────────────────────
+    // M.FormSelect ya fue inicializado en footer_materialize.php,
+    // updateTextFields asegura que el label suba cuando el input tiene valor.
+    M.updateTextFields();
 
     // ── Toggle activo ───────────────────────────────────────────────────────
     document.querySelectorAll('.btn-toggle').forEach(function(btn) {
