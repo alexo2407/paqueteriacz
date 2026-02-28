@@ -4,12 +4,16 @@
     <div class="login-card">
 
         <!-- Logo -->
-        <div class="login-logo">
-            <div class="login-logo-icon">
-                <i class="bi bi-box-seam"></i>
+        <div class="login-logo text-center d-flex align-items-center justify-content-center gap-3 mb-4">
+            <!-- Icono (Sin círculo) -->
+            <div style="flex-shrink: 0;">
+                <img src="<?= RUTA_URL ?>vista/img/icono-logo.png" alt="Icono" class="img-fluid" style="height: 65px; width: auto; filter: brightness(0) invert(1); object-fit: contain;">
             </div>
-            <h1 class="login-title">RutaEx-Latam</h1>
-            <p class="login-subtitle">Gestión de paquetería y logística</p>
+            <!-- Textos -->
+            <div class="text-start d-flex flex-column" style="line-height: 1;">
+                <span style="font-size: 2rem; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: -1px; color: #fff;">RutaEx-Latam</span>
+                <span style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3em; color: rgba(255,255,255,0.9); margin-top: 2px;">Pan-Latam Logistics</span>
+            </div>
         </div>
 
         <!-- Formulario -->

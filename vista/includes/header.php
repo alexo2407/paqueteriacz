@@ -46,6 +46,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>App RutaEx-Latam</title>
 
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="<?= RUTA_URL ?>apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?= RUTA_URL ?>favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?= RUTA_URL ?>favicon-16x16.png">
+    <link rel="manifest" href="<?= RUTA_URL ?>site.webmanifest">
+
     <!-- Google Fonts — Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -80,9 +86,16 @@
         </button>
 
         <!-- Brand -->
-        <a class="navbar-brand" href="<?= $homeUrl ?>">
-            <i class="bi bi-box-seam"></i>
-            <span class="brand-text">RutaEx-Latam</span>
+        <a class="navbar-brand d-flex align-items-center gap-2" href="<?= $homeUrl ?>" style="min-width: fit-content; overflow: visible;">
+            <!-- Icono (Oculto en móvil, visible en md+) -->
+            <div class="d-none d-md-flex" style="align-items: center; justify-content: center; flex-shrink: 0;">
+                <img src="<?= RUTA_URL ?>vista/img/icono-logo.png" alt="Icono" style="height: 38px; width: auto; filter: brightness(0) invert(1); object-fit: contain;">
+            </div>
+            <!-- Textos (Siempre visibles) -->
+            <div class="d-flex flex-column justify-content-center" style="line-height: 1; white-space: nowrap;">
+                <span style="font-size: 1.3rem; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: -0.5px; color: #fff; display: block;">RutaEx-Latam</span>
+                <span style="font-size: 0.55rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.25em; color: rgba(255,255,255,0.9); margin-top: 2px; display: block;">Pan-Latam Logistics</span>
+            </div>
         </a>
 
         <!-- Derecha: notificaciones + usuario -->
