@@ -98,8 +98,8 @@
 
         <!-- Brand -->
         <a class="navbar-brand d-flex align-items-center gap-2" href="<?= $homeUrl ?>" style="min-width: 0; overflow: visible;">
-            <!-- Icono (Estable: sin circulo, sin corte) -->
-            <div style="flex-shrink: 0; display: flex; align-items: center;">
+            <!-- Icono (Oculto en móvil) -->
+            <div class="d-none d-md-flex" style="flex-shrink: 0; align-items: center;">
                 <img src="<?= RUTA_URL ?>vista/img/icono-logo.png" alt="Icono" style="height: 34px; width: auto; filter: brightness(0) invert(1); object-fit: contain;">
             </div>
             <!-- Textos (Estables) -->
