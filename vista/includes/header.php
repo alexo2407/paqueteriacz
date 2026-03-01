@@ -70,7 +70,18 @@
     <!-- Estilos propios de la app -->
     <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos.css">
 
-    <script>const RUTA_URL = '<?= RUTA_URL ?>';</script>
+    <style>
+        .brand-title {
+            font-size: 1.25rem; font-weight: 900; 
+            text-transform: uppercase; font-style: italic; 
+            letter-spacing: -0.5px; color: #fff; line-height: 1;
+        }
+        .brand-subtitle {
+            font-size: 0.55rem; font-weight: 800; 
+            text-transform: uppercase; letter-spacing: 0.25em; 
+            color: rgba(255,255,255,1); margin-top: 1px;
+        }
+    </style>
 </head>
 <body class="bs-body">
 
@@ -86,15 +97,15 @@
         </button>
 
         <!-- Brand -->
-        <a class="navbar-brand d-flex align-items-center gap-2" href="<?= $homeUrl ?>" style="min-width: fit-content; overflow: visible;">
-            <!-- Icono (Oculto en móvil, visible en md+) -->
-            <div class="d-none d-md-flex" style="align-items: center; justify-content: center; flex-shrink: 0;">
-                <img src="<?= RUTA_URL ?>vista/img/icono-logo.png" alt="Icono" style="height: 38px; width: auto; filter: brightness(0) invert(1); object-fit: contain;">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="<?= $homeUrl ?>" style="min-width: 0; overflow: visible;">
+            <!-- Icono (Estable: sin circulo, sin corte) -->
+            <div style="flex-shrink: 0; display: flex; align-items: center;">
+                <img src="<?= RUTA_URL ?>vista/img/icono-logo.png" alt="Icono" style="height: 34px; width: auto; filter: brightness(0) invert(1); object-fit: contain;">
             </div>
-            <!-- Textos (Siempre visibles) -->
-            <div class="d-flex flex-column justify-content-center" style="line-height: 1; white-space: nowrap;">
-                <span style="font-size: 1.3rem; font-weight: 900; text-transform: uppercase; font-style: italic; letter-spacing: -0.5px; color: #fff; display: block;">RutaEx-Latam</span>
-                <span style="font-size: 0.55rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.25em; color: rgba(255,255,255,0.9); margin-top: 2px; display: block;">Pan-Latam Logistics</span>
+            <!-- Textos (Estables) -->
+            <div class="d-flex flex-column" style="white-space: nowrap;">
+                <span class="brand-title">RutaEx-Latam</span>
+                <span class="brand-subtitle">Pan-Latam Logistics</span>
             </div>
         </a>
 

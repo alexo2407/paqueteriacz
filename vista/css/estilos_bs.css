@@ -16,10 +16,16 @@ body.bs-body {
 .bs-navbar {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
-    padding: .5rem .75rem;
+    padding: 0 .75rem;
+    /* Reducido para controlar altura */
     position: sticky;
     top: 0;
-    z-index: 1030;
+    z-index: 1050;
+    /* Mayor a sidebar */
+    height: 60px;
+    /* Altura fija invariable */
+    display: flex;
+    align-items: center;
 }
 
 /* Evitar que el navbar haga wrap en mobile */
@@ -38,18 +44,14 @@ body.bs-body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 160px;
+    max-width: 280px;
+    /* Incrementado para evitar el corte */
 }
 
 @media (max-width: 400px) {
-
-    /* En pantallas muy pequeñas ocultar el texto del brand, dejar solo el icono */
-    .bs-navbar .navbar-brand span.brand-text {
-        display: none;
-    }
-
     .bs-navbar .navbar-brand {
-        max-width: 40px;
+        max-width: 200px;
+        /* Permitir más espacio en móviles */
     }
 }
 
@@ -95,8 +97,17 @@ body.bs-body {
     background: #1e2a42;
     border: 1px solid rgba(255, 255, 255, .1);
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, .25);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
     min-width: 200px;
+    position: absolute !important;
+    /* Forzar absoluto para evitar estiramiento */
+    top: 100% !important;
+    right: 0 !important;
+    left: auto !important;
+    margin-top: 5px !important;
+    z-index: 1100;
+    max-width: calc(100vw - 20px);
+    /* Prevenir salida lateral en movil */
 }
 
 .bs-navbar .dropdown-item {
@@ -381,5 +392,47 @@ body.bs-body {
 
     .bs-main {
         width: 100%;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DECORACIONES ADICIONALES (Dropdown Desktop)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════════
+   FIX: DROPDOWN OVERLAY (NO DEFORMA HEADER)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1) Forzar que el item del dropdown sea el punto de referencia */
+.navbar .nav-item.dropdown {
+    position: relative !important;
+}
+
+/* 2) Sobrescribir position: static de Bootstrap y hacerlo flotante */
+.navbar .navbar-nav .dropdown-menu {
+    position: absolute !important;
+    /* Salir del flujo para no estirar el header */
+    top: calc(100% + .5rem) !important;
+    right: 0 !important;
+    left: auto !important;
+    z-index: 9999 !important;
+    /* Encima de todo */
+    margin-top: 0 !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, .5) !important;
+}
+
+/* 3) Evitar que los contenedores del navbar recorten el menú (overflow) */
+.bs-navbar,
+.bs-navbar .container,
+.bs-navbar .container-fluid {
+    overflow: visible !important;
+}
+
+/* 4) Ajuste para móvil: que no se salga de la pantalla */
+@media (max-width: 576px) {
+    .navbar .navbar-nav .dropdown-menu {
+        max-width: calc(100vw - 20px);
+        right: -10px !important;
+        /* Pequeño ajuste de margen */
     }
 }
