@@ -30,7 +30,6 @@ $id_pais   = $old['id_pais']           ?? ($item['id_pais']           ?? '');
 $cp        = $old['codigo_postal']     ?? ($item['codigo_postal']     ?? '');
 $id_dep    = $old['id_departamento']   ?? ($item['id_departamento']   ?? '');
 $id_mun    = $old['id_municipio']      ?? ($item['id_municipio']      ?? '');
-$id_bar    = $old['id_barrio']         ?? ($item['id_barrio']         ?? '');
 $localidad = $old['nombre_localidad']  ?? ($item['nombre_localidad']  ?? '');
 $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
 ?>
@@ -111,23 +110,16 @@ $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
                         </div>
                     </div>
 
-                    <!-- Fila 2: Barrio + Nombre Localidad -->
+                    <!-- Fila 2: Nombre Localidad (referencia adicional) -->
                     <div class="row" style="margin-bottom:0">
-                        <div class="input-field col s12 l6">
-                            <select name="id_barrio" id="id_barrio">
-                                <option value=""><?= $id_mun ? 'Selecciona un barrio' : 'Selecciona un municipio primero' ?></option>
-                            </select>
-                            <label for="id_barrio">Barrio / Zona (Opcional)</label>
-                        </div>
-
-                        <div class="input-field col s12 l6">
+                        <div class="input-field col s12">
                             <input type="text" name="nombre_localidad" id="nombre_localidad"
                                    value="<?= htmlspecialchars($localidad) ?>"
                                    <?= $localidad ? 'class="active"' : '' ?>>
                             <label for="nombre_localidad" <?= $localidad ? 'class="active"' : '' ?>>
                                 Nombre Localidad (Referencia)
                             </label>
-                            <span class="helper-text">Texto libre complementario a los campos de arriba</span>
+                            <span class="helper-text">Texto libre: colonia, zona, referencia adicional</span>
                         </div>
                     </div>
 
@@ -164,11 +156,10 @@ $activo    = $old['activo']            ?? ($item['activo']            ?? 1);
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
-    // ── Referencias a los 4 selects ────────────────────────────────────────
+    // ── Referencias a los selects en cascada ─────────────────────────────────
     const sPais  = document.getElementById('id_pais');
     const sDepto = document.getElementById('id_departamento');
     const sMuni  = document.getElementById('id_municipio');
-    const sBarrio= document.getElementById('id_barrio');
 
     /**
      * Valores precargados (edición / repoblación por error).
@@ -177,7 +168,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const initial = {
         depto:  "<?= addslashes($id_dep) ?>",
         muni:   "<?= addslashes($id_mun) ?>",
-        barrio: "<?= addslashes($id_bar) ?>"
     };
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -199,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function() {
         reinitSelect(sel);
     }
 
-    // ── Carga de departamentos ─────────────────────────────────────────────
+    // ── Cascada: País → Departamento → Municipio ─────────────────────
     function loadDeptos(paisId, selectedId) {
         if (!paisId) { clearSelect(sDepto, 'Selecciona un país primero'); return; }
         fetch(`<?= RUTA_URL ?>api/geoinfo/departamentos?id_pais=${paisId}`)
@@ -210,41 +200,23 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    // ── Carga de municipios ────────────────────────────────────────────────
     function loadMunis(deptoId, selectedId) {
         if (!deptoId) { clearSelect(sMuni, 'Selecciona un departamento primero'); return; }
         fetch(`<?= RUTA_URL ?>api/geoinfo/municipios?id_departamento=${deptoId}`)
             .then(function(r) { return r.json(); })
             .then(function(data) {
                 fillSelect(sMuni, data, selectedId || '');
-                if (selectedId) loadBarrios(selectedId, initial.barrio);
             });
     }
 
-    // ── Carga de barrios ───────────────────────────────────────────────────
-    function loadBarrios(muniId, selectedId) {
-        if (!muniId) { clearSelect(sBarrio, 'Selecciona un municipio primero'); return; }
-        fetch(`<?= RUTA_URL ?>api/geoinfo/barrios?id_municipio=${muniId}`)
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                fillSelect(sBarrio, data, selectedId || '');
-            });
-    }
-
-    // ── Listeners de cambio ────────────────────────────────────────────────
+    // ── Listeners ─────────────────────────────────────────────────────────
     sPais.addEventListener('change', function() {
         clearSelect(sMuni,  'Selecciona un departamento primero');
-        clearSelect(sBarrio,'Selecciona un municipio primero');
         loadDeptos(this.value, '');
     });
 
     sDepto.addEventListener('change', function() {
-        clearSelect(sBarrio, 'Selecciona un municipio primero');
         loadMunis(this.value, '');
-    });
-
-    sMuni.addEventListener('change', function() {
-        loadBarrios(this.value, '');
     });
 
     // ── Carga inicial en modo edición / repoblación ────────────────────────

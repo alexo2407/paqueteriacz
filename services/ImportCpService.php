@@ -260,10 +260,9 @@ class ImportCpService
             // Caches en memoria para geo
             $cacheDepto  = []; // "id_pais|nombre_lower" => id
             $cacheMuni   = []; // "id_depto|nombre_lower" => id
-            $cacheBarrio = []; // "id_muni|nombre_lower"  => id
 
-            // Precargar geografía existente
-            self::precargarGeo($db, $cacheDepto, $cacheMuni, $cacheBarrio);
+            // Precargar geografía existente (sin barrios)
+            self::precargarGeo($db, $cacheDepto, $cacheMuni);
 
             $insertadas   = 0;
             $actualizadas = 0;
@@ -298,13 +297,8 @@ class ImportCpService
                         );
                     }
 
-                    // Resolver / crear Barrio
-                    if ($fila['barrio'] !== '' && $idMuni) {
-                        $idBarrio = self::resolverOCrearBarrio(
-                            $db, $idMuni, $fila['barrio'],
-                            $cacheBarrio, $crearGeo
-                        );
-                    }
+                    // Nota: barrio ya no se almacena en codigos_postales
+                    // (un CP cubre un municipio; el barrio va en el pedido)
 
                     $cpNorm         = $fila['codigo_postal'];
                     $idPais         = $fila['id_pais'];
@@ -312,18 +306,17 @@ class ImportCpService
                     $activo         = $fila['activo'];
 
                     if ($modo === 'solo_nuevos') {
-                        // INSERT IGNORE
+                        // INSERT IGNORE — omite si el CP ya existe para ese país
                         $sql = "INSERT IGNORE INTO codigos_postales
-                                    (id_pais, codigo_postal, id_departamento, id_municipio, id_barrio, nombre_localidad, activo)
+                                    (id_pais, codigo_postal, id_departamento, id_municipio, nombre_localidad, activo)
                                 VALUES
-                                    (:id_pais, :cp, :id_dep, :id_mun, :id_bar, :localidad, :activo)";
+                                    (:id_pais, :cp, :id_dep, :id_mun, :localidad, :activo)";
                         $stmt = $db->prepare($sql);
                         $stmt->execute([
                             ':id_pais'   => $idPais,
                             ':cp'        => $cpNorm,
                             ':id_dep'    => $idDepto,
                             ':id_mun'    => $idMuni,
-                            ':id_bar'    => $idBarrio,
                             ':localidad' => $nombreLocalidad,
                             ':activo'    => $activo,
                         ]);
@@ -332,16 +325,13 @@ class ImportCpService
                         else            $omitidas++;
 
                     } elseif ($modo === 'upsert') {
-                        // INSERT ... ON DUPLICATE KEY UPDATE
-                        // Usamos COALESCE(VALUES(col), col) para no repetir parámetros
                         $sql = "INSERT INTO codigos_postales
-                                    (id_pais, codigo_postal, id_departamento, id_municipio, id_barrio, nombre_localidad, activo)
+                                    (id_pais, codigo_postal, id_departamento, id_municipio, nombre_localidad, activo)
                                 VALUES
-                                    (:id_pais, :cp, :id_dep, :id_mun, :id_bar, :localidad, :activo)
+                                    (:id_pais, :cp, :id_dep, :id_mun, :localidad, :activo)
                                 ON DUPLICATE KEY UPDATE
                                     id_departamento  = COALESCE(VALUES(id_departamento),  id_departamento),
                                     id_municipio     = COALESCE(VALUES(id_municipio),     id_municipio),
-                                    id_barrio        = COALESCE(VALUES(id_barrio),        id_barrio),
                                     nombre_localidad = COALESCE(VALUES(nombre_localidad), nombre_localidad),
                                     activo           = VALUES(activo),
                                     updated_at       = NOW()";
@@ -351,7 +341,6 @@ class ImportCpService
                             ':cp'        => $cpNorm,
                             ':id_dep'    => $idDepto,
                             ':id_mun'    => $idMuni,
-                            ':id_bar'    => $idBarrio,
                             ':localidad' => $nombreLocalidad,
                             ':activo'    => $activo,
                         ]);
@@ -361,16 +350,13 @@ class ImportCpService
                         else                  $omitidas++; // 0 rows = nada cambió
 
                     } elseif ($modo === 'sobrescribir_ubicacion') {
-                        // Insertar si no existe; si existe, sobreescribir ubicación
-                        // VALUES(col) es la función de MySQL que devuelve el valor propuesto
                         $sql = "INSERT INTO codigos_postales
-                                    (id_pais, codigo_postal, id_departamento, id_municipio, id_barrio, nombre_localidad, activo)
+                                    (id_pais, codigo_postal, id_departamento, id_municipio, nombre_localidad, activo)
                                 VALUES
-                                    (:id_pais, :cp, :id_dep, :id_mun, :id_bar, :localidad, :activo)
+                                    (:id_pais, :cp, :id_dep, :id_mun, :localidad, :activo)
                                 ON DUPLICATE KEY UPDATE
                                     id_departamento  = VALUES(id_departamento),
                                     id_municipio     = VALUES(id_municipio),
-                                    id_barrio        = VALUES(id_barrio),
                                     nombre_localidad = VALUES(nombre_localidad),
                                     activo           = VALUES(activo),
                                     updated_at       = NOW()";
@@ -380,7 +366,6 @@ class ImportCpService
                             ':cp'        => $cpNorm,
                             ':id_dep'    => $idDepto,
                             ':id_mun'    => $idMuni,
-                            ':id_bar'    => $idBarrio,
                             ':localidad' => $nombreLocalidad,
                             ':activo'    => $activo,
                         ]);
@@ -664,7 +649,7 @@ class ImportCpService
     }
 
     /** Precarga toda la geografía en caches de memoria */
-    private static function precargarGeo(\PDO $db, array &$cacheDepto, array &$cacheMuni, array &$cacheBarrio): void
+    private static function precargarGeo(\PDO $db, array &$cacheDepto, array &$cacheMuni): void
     {
         // Departamentos
         $rows = $db->query('SELECT id, id_pais, LOWER(nombre) AS n FROM departamentos')->fetchAll(PDO::FETCH_ASSOC);
@@ -676,11 +661,7 @@ class ImportCpService
         foreach ($rows as $r) {
             $cacheMuni[$r['id_departamento'] . '|' . $r['n']] = (int)$r['id'];
         }
-        // Barrios
-        $rows = $db->query('SELECT id, id_municipio, LOWER(nombre) AS n FROM barrios')->fetchAll(PDO::FETCH_ASSOC);
-        foreach ($rows as $r) {
-            $cacheBarrio[$r['id_municipio'] . '|' . $r['n']] = (int)$r['id'];
-        }
+        // Nota: barrios ya no se precargan (id_barrio fue eliminado de codigos_postales)
     }
 
     private static function resolverOCrearDepto(\PDO $db, int $idPais, string $nombre, array &$cache, bool $crear): ?int
