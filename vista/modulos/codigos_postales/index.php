@@ -342,7 +342,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                     </div>
 
                     <!-- Alerta archivo -->
-                    <div id="cpAlertaArchivo" class="mz-alert d-none"></div>
+                    <div id="cpAlertaArchivo" class="mz-alert hide"></div>
 
                     <!-- Opciones avanzadas (collapsible) -->
                     <ul class="collapsible" style="margin-bottom:1rem">
@@ -412,7 +412,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
 
             <!-- ══ PASO 2: Vista previa ══ -->
             <div class="wizard-step" id="wizardStep2" style="display:none">
-                <div id="cpAlertaPaso2" class="mz-alert d-none"></div>
+                <div id="cpAlertaPaso2" class="mz-alert hide"></div>
 
                 <!-- Tarjetas resumen -->
                 <div class="row">
@@ -442,11 +442,11 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                     </div>
                 </div>
 
-                <div id="cpErroresContainer" class="d-none">
+                <div id="cpErroresContainer" class="hide">
                     <p class="red-text" style="font-weight:600"><i class="material-icons tiny">cancel</i> Errores encontrados</p>
                     <div id="cpErroresLista" style="max-height:150px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px"></div>
                 </div>
-                <div id="cpWarnContainer" class="d-none" style="margin-top:.75rem">
+                <div id="cpWarnContainer" class="hide" style="margin-top:.75rem">
                     <p class="orange-text" style="font-weight:600"><i class="material-icons tiny">warning</i> Advertencias</p>
                     <div id="cpAdvertenciasLista" style="max-height:120px;overflow-y:auto;border:1px solid #eee;border-radius:8px;padding:8px"></div>
                 </div>
@@ -455,7 +455,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                 <div style="overflow-x:auto">
                     <table class="striped highlight" id="cpPreviewTable" style="font-size:.78rem">
                         <thead class="blue darken-3 white-text">
-                            <tr><th>#</th><th>Status</th><th>País</th><th>CP</th><th>Departamento</th><th>Municipio</th><th>Barrio</th><th>Localidad</th><th>Activo</th></tr>
+                            <tr><th>#Línea</th><th>Status</th><th>CP</th><th>País</th><th>Departamento</th><th>Municipio</th><th>Barrio</th><th>Activo</th></tr>
                         </thead>
                         <tbody id="cpPreviewTbody">
                             <tr><td colspan="9" class="center-align grey-text">Cargando vista previa...</td></tr>
@@ -475,7 +475,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
                     <div class="col s6 m2"><div class="card-panel center-align red lighten-5"><div class="red-text" style="font-size:1.5rem;font-weight:700" id="cpResFallidas">0</div><div class="grey-text" style="font-size:.8rem">Fallidas</div></div></div>
                     <div class="col s6 m2"><div class="card-panel center-align"><div style="font-size:1.3rem;font-weight:700" id="cpResTiempo">0s</div><div class="grey-text" style="font-size:.8rem">Tiempo</div></div></div>
                 </div>
-                <div id="cpLinkErrores" class="d-none"></div>
+                <div id="cpLinkErrores" class="hide"></div>
             </div><!-- /wizardStep3 -->
 
         </div><!-- /padding 1.5rem -->
