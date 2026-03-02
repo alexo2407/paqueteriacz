@@ -2,7 +2,7 @@
  * Codigos Postales Autocomplete logic
  * Handle CP -> Location resolution with colision management
  */
-(function() {
+(function () {
     document.addEventListener('DOMContentLoaded', () => {
         const cpInput = document.getElementById('codigo_postal');
         if (!cpInput) return;
@@ -12,13 +12,13 @@
         const munSelect = document.getElementById('id_municipio');
         const barrioSelect = document.getElementById('id_barrio');
         const statusContainer = document.getElementById('cp_status_container');
-        
+
         let debounceTimer;
 
         cpInput.addEventListener('input', (e) => {
             clearTimeout(debounceTimer);
             const cp = e.target.value.trim();
-            
+
             if (cp.length < 3) {
                 updateBadge('Pendiente', 'secondary');
                 return;
@@ -36,8 +36,18 @@
                 let url = `api/geoinfo/codigos_postales.php?action=resolve&cp=${encodeURIComponent(cp)}`;
                 if (id_pais) url += `&id_pais=${id_pais}`;
 
-                // RUTA_URL check (if defined in template)
-                const baseUrl = typeof RUTA_URL !== 'undefined' ? RUTA_URL : '';
+                // Derivar base URL: usar RUTA_URL si existe (páginas Materialize),
+                // si no, calcular la raíz del proyecto desde window.location
+                let baseUrl;
+                if (typeof RUTA_URL !== 'undefined' && RUTA_URL) {
+                    baseUrl = RUTA_URL;
+                } else {
+                    // Detectar la raíz del proyecto (e.g. /paqueteriacz/) desde la URL actual
+                    const pathParts = window.location.pathname.split('/');
+                    // El primer segmento no-vacío es el subdirectorio de la app
+                    const appRoot = pathParts.length > 1 && pathParts[1] ? '/' + pathParts[1] + '/' : '/';
+                    baseUrl = window.location.origin + appRoot;
+                }
                 const response = await fetch(baseUrl + url);
                 const result = await response.json();
 
@@ -63,7 +73,7 @@
 
         function applyMatch(match) {
             hideConflictSelector();
-            
+
             // 1. Badge status
             if (match.activo === 0) {
                 updateBadge('Inactivo', 'danger');
@@ -109,7 +119,7 @@
                     }, 300);
                 }, 300);
             }, 300);
-            
+
             // Set hidden field if present
             const hiddenId = document.getElementById('id_codigo_postal');
             if (hiddenId) hiddenId.value = match.id_codigo_postal;
@@ -126,12 +136,12 @@
         function showConflictSelector(matches, cp) {
             let selector = document.getElementById('cp_conflict_selector');
             let optionsContainer = document.getElementById('cp_conflict_options');
-            
+
             if (!selector || !optionsContainer) return;
 
             updateBadge('Varios Países', 'info');
             optionsContainer.innerHTML = '';
-            
+
             matches.forEach(m => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
