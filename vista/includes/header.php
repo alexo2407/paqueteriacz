@@ -82,6 +82,10 @@
             color: rgba(255,255,255,1); margin-top: 1px;
         }
     </style>
+    <!-- Variables JS globales disponibles para todos los scripts de la app -->
+    <script>
+        const RUTA_URL = '<?= RUTA_URL ?>';
+    </script>
 </head>
 <body class="bs-body">
 
