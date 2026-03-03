@@ -828,6 +828,13 @@ include "vista/includes/header.php";
                         <input type="date" name="fecha_entrega" class="form-control">
                         <div class="form-text">Indique la nueva fecha estimada para la entrega.</div>
                     </div>
+
+                    <!-- Fecha de Liquidación (Solo para Entregado – liquidado) -->
+                    <div id="liquidacionFechaSection" class="mb-3" style="display: none;">
+                        <label class="form-label fw-bold text-success"><i class="bi bi-cash-coin me-1"></i>Fecha de Liquidación</label>
+                        <input type="date" name="fecha_liquidacion" class="form-control" value="<?= date('Y-m-d') ?>">
+                        <div class="form-text">Fecha en que el pedido fue liquidado/cobrado.</div>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">Observaciones</label>
                         <textarea name="observaciones" class="form-control" rows="3" placeholder="Razón del cambio..." required></textarea>
@@ -962,19 +969,39 @@ include "vista/includes/header.php";
         const estadoSelect = form.querySelector('select[name="estado"]');
         const fechaSection = document.getElementById('reprogramarFechaSection');
         const fechaInput = fechaSection.querySelector('input[name="fecha_entrega"]');
+        const liquidacionSection = document.getElementById('liquidacionFechaSection');
+        const liquidacionInput = liquidacionSection.querySelector('input[name="fecha_liquidacion"]');
 
-        // Reset display of date section on open
+        function normalizeEstado(val) {
+            return val.toUpperCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^A-Z0-9 ]/g, ' ').trim();
+        }
+
+        // Reset display on open
         fechaSection.style.display = 'none';
         fechaInput.required = false;
+        liquidacionSection.style.display = 'none';
+        liquidacionInput.required = false;
 
-        // Lógica para mostrar/ocultar fecha de reprogramación
+        // Lógica para mostrar/ocultar campos condicionales
         estadoSelect.onchange = function() {
-            if (this.value.toUpperCase() === 'REPROGRAMADO') {
+            const norm = normalizeEstado(this.value);
+            // Reprogramado → fecha de entrega
+            if (norm === 'REPROGRAMADO') {
                 fechaSection.style.display = 'block';
                 fechaInput.required = true;
             } else {
                 fechaSection.style.display = 'none';
                 fechaInput.required = false;
+            }
+            // Entregado liquidado → fecha de liquidación
+            if (norm.includes('LIQUIDADO')) {
+                liquidacionSection.style.display = 'block';
+                liquidacionInput.required = true;
+            } else {
+                liquidacionSection.style.display = 'none';
+                liquidacionInput.required = false;
             }
         };
 
