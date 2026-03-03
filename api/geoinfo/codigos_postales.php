@@ -19,10 +19,11 @@ if ($method !== 'GET') {
     exit;
 }
 
-$action    = $_GET['action'] ?? 'resolve';
-$cp_raw    = $_GET['cp'] ?? '';
-$id_pais   = isset($_GET['id_pais'])    ? (int)$_GET['id_pais']    : null;
+$action       = $_GET['action'] ?? 'resolve';
+$cp_raw       = $_GET['cp'] ?? '';
+$id_pais      = isset($_GET['id_pais'])      ? (int)$_GET['id_pais']      : null;
 $id_municipio = isset($_GET['id_municipio']) ? (int)$_GET['id_municipio'] : null;
+$id_barrio    = isset($_GET['id_barrio'])    ? (int)$_GET['id_barrio']    : null;
 
 // Normalización obligatoria
 $normalized_cp = AddressService::normalizarCP($cp_raw);
@@ -50,7 +51,7 @@ try {
                     ]);
                 } else {
                     // Adaptar respuesta al formato solicitado
-                                    $formatted_match = [
+                    $formatted_match = [
                         "id_codigo_postal" => (int)$match['id'],
                         "id_pais"          => (int)$match['id_pais'],
                         "pais"             => $match['nombre_pais'] ?? 'N/A',
@@ -60,6 +61,8 @@ try {
                         "departamento"     => $match['nombre_departamento'] ?? null,
                         "id_municipio"     => $match['id_municipio'] ? (int)$match['id_municipio'] : null,
                         "municipio"        => $match['nombre_municipio'] ?? null,
+                        "id_barrio"        => $match['id_barrio'] ? (int)$match['id_barrio'] : null,
+                        "barrio"           => $match['nombre_barrio'] ?? null,
                         "partial"          => AddressService::isPartial($match)
                     ];
 
@@ -88,6 +91,8 @@ try {
                         "departamento"     => $row['nombre_departamento'] ?? null,
                         "id_municipio"     => $row['id_municipio'] ? (int)$row['id_municipio'] : null,
                         "municipio"        => $row['nombre_municipio'] ?? null,
+                        "id_barrio"        => $row['id_barrio'] ? (int)$row['id_barrio'] : null,
+                        "barrio"           => $row['nombre_barrio'] ?? null,
                         "partial"          => AddressService::isPartial($row)
                     ];
                 }
@@ -104,15 +109,25 @@ try {
             break;
 
                 case 'find_by_zone':
-            if (!$id_pais || !$id_municipio) {
+            if (!$id_pais || (!$id_municipio && !$id_barrio)) {
                 http_response_code(400);
-                echo json_encode(["ok" => false, "error" => "id_pais e id_municipio son requeridos", "code" => "BAD_REQUEST"]);
+                echo json_encode(["ok" => false, "error" => "id_pais y (id_municipio o id_barrio) son requeridos", "code" => "BAD_REQUEST"]);
                 exit;
             }
 
-            $results = CodigosPostalesModel::buscarPorMunicipio($id_pais, $id_municipio);
-            $matches = [];
+            if ($id_barrio) {
+                // Búsqueda por barrio específico
+                $results = CodigosPostalesModel::buscarPorZona($id_pais, $id_barrio);
+                $groupKey = "id_barrio";
+                $groupVal = $id_barrio;
+            } else {
+                // Búsqueda por municipio (comportamiento previo)
+                $results = CodigosPostalesModel::buscarPorMunicipio($id_pais, $id_municipio);
+                $groupKey = "id_municipio";
+                $groupVal = $id_municipio;
+            }
 
+            $matches = [];
             foreach ($results as $row) {
                 $matches[] = [
                     "id_codigo_postal" => (int)$row['id'],
@@ -121,14 +136,16 @@ try {
                     "pais"             => $row['nombre_pais'],
                     "id_municipio"     => $row['id_municipio'] ? (int)$row['id_municipio'] : null,
                     "municipio"        => $row['nombre_municipio'] ?? null,
+                    "id_barrio"        => $row['id_barrio'] ? (int)$row['id_barrio'] : null,
+                    "barrio"           => $row['nombre_barrio'] ?? null,
                 ];
             }
 
             echo json_encode([
                 "ok"   => true,
                 "data" => [
-                    "id_municipio" => $id_municipio,
-                    "matches"      => $matches
+                    $groupKey => $groupVal,
+                    "matches" => $matches
                 ],
                 "error" => null
             ]);

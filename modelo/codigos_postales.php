@@ -11,10 +11,12 @@ class CodigosPostalesModel {
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare("SELECT cp.*,
                                         d.nombre as nombre_departamento,
-                                        m.nombre as nombre_municipio
+                                        m.nombre as nombre_municipio,
+                                        b.nombre as nombre_barrio
                                  FROM codigos_postales cp
                                  LEFT JOIN departamentos d ON cp.id_departamento = d.id
                                  LEFT JOIN municipios m ON cp.id_municipio = m.id
+                                 LEFT JOIN barrios b ON cp.id_barrio = b.id
                                  WHERE cp.id_pais = :id_pais
                                  AND cp.codigo_postal = :cp
                                  AND cp.activo = 1");
@@ -33,14 +35,15 @@ class CodigosPostalesModel {
         try {
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare("INSERT INTO codigos_postales
-                (id_pais, codigo_postal, id_departamento, id_municipio, nombre_localidad, activo)
-                VALUES (:id_pais, :cp, :id_dep, :id_mun, :localidad, 1)");
+                (id_pais, codigo_postal, id_departamento, id_municipio, id_barrio, nombre_localidad, activo)
+                VALUES (:id_pais, :cp, :id_dep, :id_mun, :id_barrio, :localidad, 1)");
 
             $stmt->execute([
                 ':id_pais'   => $data['id_pais'],
                 ':cp'        => strtoupper(trim($data['codigo_postal'])),
                 ':id_dep'    => $data['id_departamento'] ?? null,
                 ':id_mun'    => $data['id_municipio']   ?? null,
+                ':id_barrio' => $data['id_barrio']       ?? null,
                 ':localidad' => $data['nombre_localidad'] ?? null,
             ]);
             
@@ -81,11 +84,13 @@ class CodigosPostalesModel {
             $sql = "SELECT cp.*,
                            p.nombre as nombre_pais,
                            d.nombre as nombre_departamento,
-                           m.nombre as nombre_municipio
+                           m.nombre as nombre_municipio,
+                           b.nombre as nombre_barrio
                     FROM codigos_postales cp
                     INNER JOIN paises p ON cp.id_pais = p.id
                     LEFT JOIN departamentos d ON cp.id_departamento = d.id
                     LEFT JOIN municipios m ON cp.id_municipio = m.id
+                    LEFT JOIN barrios b ON cp.id_barrio = b.id
                     WHERE " . implode(" AND ", $where) . "
                     ORDER BY cp.created_at DESC
                     LIMIT $limite OFFSET $offset";
@@ -122,6 +127,7 @@ class CodigosPostalesModel {
                 codigo_postal   = :cp,
                 id_departamento = :id_dep,
                 id_municipio    = :id_mun,
+                id_barrio       = :id_barrio,
                 nombre_localidad = :localidad,
                 activo          = :activo,
                 updated_at      = NOW()
@@ -133,6 +139,7 @@ class CodigosPostalesModel {
                 ':cp'        => strtoupper(trim($data['codigo_postal'])),
                 ':id_dep'    => $data['id_departamento'] ?? null,
                 ':id_mun'    => $data['id_municipio']   ?? null,
+                ':id_barrio' => $data['id_barrio']       ?? null,
                 ':localidad' => $data['nombre_localidad'] ?? null,
                 ':activo'    => $data['activo'] ?? 1,
             ]);
@@ -189,11 +196,13 @@ class CodigosPostalesModel {
             $stmt = $db->prepare("SELECT cp.*,
                                          p.nombre as nombre_pais,
                                          d.nombre as nombre_departamento,
-                                         m.nombre as nombre_municipio
+                                         m.nombre as nombre_municipio,
+                                         b.nombre as nombre_barrio
                                   FROM codigos_postales cp
                                   INNER JOIN paises p ON cp.id_pais = p.id
                                   LEFT JOIN departamentos d ON cp.id_departamento = d.id
                                   LEFT JOIN municipios m ON cp.id_municipio = m.id
+                                  LEFT JOIN barrios b ON cp.id_barrio = b.id
                                   WHERE cp.id = :id");
             $stmt->execute([':id' => $id]);
             return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -251,7 +260,7 @@ class CodigosPostalesModel {
         try {
             $db = (new Conexion())->conectar();
             // Solo traemos los activos y las columnas necesarias para el autocompletado
-            $stmt = $db->query("SELECT id_pais, codigo_postal, id_departamento, id_municipio, activo
+            $stmt = $db->query("SELECT id_pais, codigo_postal, id_departamento, id_municipio, id_barrio, activo
                                FROM codigos_postales
                                WHERE activo = 1");
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -269,11 +278,13 @@ class CodigosPostalesModel {
             $stmt = $db->prepare("SELECT cp.*,
                                          p.nombre as nombre_pais,
                                          d.nombre as nombre_departamento,
-                                         m.nombre as nombre_municipio
+                                         m.nombre as nombre_municipio,
+                                         b.nombre as nombre_barrio
                                   FROM codigos_postales cp
                                   INNER JOIN paises p ON cp.id_pais = p.id
                                   LEFT JOIN departamentos d ON cp.id_departamento = d.id
                                   LEFT JOIN municipios m ON cp.id_municipio = m.id
+                                  LEFT JOIN barrios b ON cp.id_barrio = b.id
                                   WHERE cp.codigo_postal = :cp");
             $stmt->execute([':cp' => strtoupper(trim((string)$codigo_postal))]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -284,10 +295,38 @@ class CodigosPostalesModel {
     }
 
     /**
-     * Buscar CP por zona (barrio) - Búsqueda inversa
+     * Buscar CPs por barrio — búsqueda inversa original restaurada
      */
+    public static function buscarPorZona($id_pais, $id_barrio) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT cp.*,
+                                         p.nombre as nombre_pais,
+                                         d.nombre as nombre_departamento,
+                                         m.nombre as nombre_municipio,
+                                         b.nombre as nombre_barrio
+                                  FROM codigos_postales cp
+                                  INNER JOIN paises p ON cp.id_pais = p.id
+                                  LEFT JOIN departamentos d ON cp.id_departamento = d.id
+                                  LEFT JOIN municipios m ON cp.id_municipio = m.id
+                                  LEFT JOIN barrios b ON cp.id_barrio = b.id
+                                  WHERE cp.id_pais  = :id_pais
+                                  AND cp.id_barrio  = :id_barrio
+                                  AND cp.activo = 1
+                                  LIMIT 10");
+            $stmt->execute([
+                ':id_pais'   => (int)$id_pais,
+                ':id_barrio' => (int)$id_barrio,
+            ]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Error en CodigosPostalesModel::buscarPorZona: " . $e->getMessage());
+            return [];
+        }
+    }
+
     /**
-     * Buscar CP por municipio — reemplaza buscarPorZona (que usaba id_barrio eliminado)
+     * Buscar CP por municipio
      */
     public static function buscarPorMunicipio($id_pais, $id_municipio) {
         try {

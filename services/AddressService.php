@@ -22,9 +22,16 @@ class AddressService {
         $cp_norm = self::normalizarCP($codigo_postal);
         
         // 1. Buscar si ya existe (incluye inactivos para saber su estado real)
+        //    Búsqueda por país + CP + barrio (NULL = aplica a todo el municipio)
+        $id_barrio_buscar = $data_adicional['id_barrio'] ?? null;
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare("SELECT * FROM codigos_postales WHERE id_pais = :id_pais AND codigo_postal = :cp");
-        $stmt->execute([':id_pais' => $id_pais, ':cp' => $cp_norm]);
+        if ($id_barrio_buscar) {
+            $stmt = $db->prepare("SELECT * FROM codigos_postales WHERE id_pais = :id_pais AND codigo_postal = :cp AND id_barrio = :id_barrio");
+            $stmt->execute([':id_pais' => $id_pais, ':cp' => $cp_norm, ':id_barrio' => $id_barrio_buscar]);
+        } else {
+            $stmt = $db->prepare("SELECT * FROM codigos_postales WHERE id_pais = :id_pais AND codigo_postal = :cp AND id_barrio IS NULL");
+            $stmt->execute([':id_pais' => $id_pais, ':cp' => $cp_norm]);
+        }
         $homologacion = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($homologacion) {
