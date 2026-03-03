@@ -172,15 +172,53 @@ include("vista/includes/header.php");
                         
                         <div class="col-12 mt-1">
                             <label class="small text-muted fw-bold text-uppercase">Dirección de Entrega</label>
-                            <div class="p-2 bg-light rounded border">
-                                <?= htmlspecialchars($pedido['direccion'] ?? 'Sin dirección específica') ?>
-                                <br>
-                                <small class="text-muted">
-                                    <?= htmlspecialchars($pedido['municipio'] ?? '') ?>, 
-                                    <?= htmlspecialchars($pedido['zona'] ?? '') ?>
-                                </small>
+                            <div class="p-3 bg-light rounded border">
+                                <div class="mb-1">
+                                    <?= htmlspecialchars($pedido['direccion'] ?? 'Sin dirección específica') ?>
+                                </div>
+                                <div class="row row-cols-2 row-cols-md-4 g-2 mt-1">
+                                    <?php if (!empty($pedido['codigo_postal'])): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Código Postal</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['codigo_postal']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php 
+                                        // Intentar nombre de departamento desde id_departamento
+                                        $nomDepto = null;
+                                        if (!empty($pedido['id_departamento'])) {
+                                            try {
+                                                $dbTmp = (new Conexion())->conectar();
+                                                $stTmp = $dbTmp->prepare("SELECT nombre FROM departamentos WHERE id = :id LIMIT 1");
+                                                $stTmp->execute([':id' => $pedido['id_departamento']]);
+                                                $nomDepto = $stTmp->fetchColumn();
+                                            } catch(Exception $e) {}
+                                        }
+                                    ?>
+                                    <?php if ($nomDepto): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Departamento</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($nomDepto) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['municipio'])): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Municipio</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['municipio']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['barrio']) || !empty($pedido['zona'])): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Barrio / Zona</span>
+                                        <span class="fw-semibold">
+                                            <?= htmlspecialchars($pedido['barrio'] ?? $pedido['zona'] ?? '') ?>
+                                        </span>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
