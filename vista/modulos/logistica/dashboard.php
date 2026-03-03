@@ -26,6 +26,10 @@ $pedidosActivos     = $data['historial'];        // Tab "En Proceso" (sin estado
 $historialCompleto  = $data['historialCompleto']; // Tab "Historial Completo" (todos los estados)
 $filtros            = $data['filtros'];           // Filtros tab "En Proceso"
 $filtrosHistorial   = $data['filtrosHistorial'];  // Filtros tab "Historial Completo"
+$filtrosLiq         = $data['filtrosLiq']   ?? [];      // Filtros tab "Liquidados"
+$liquidados         = $data['liquidados']   ?? [];
+$liquidadosTotal    = $data['liquidadosTotal'] ?? 0;
+$liquidadosSuma     = $data['liquidadosSuma']  ?? 0.0;
 $paginationH             = $data['paginationH'];        // Paginación Historial Completo
 $estadosDisponibles      = $data['estados']    ?? [];
 $clientesLista           = $data['clientes']   ?? [];
@@ -235,11 +239,13 @@ include "vista/includes/header.php";
     
     $showPedidos = ($activeTab === 'pedidos') ? 'active' : '';
     $showUpdates = ($activeTab === 'updates') ? 'active' : '';
-    $showAll = ($activeTab === 'all') ? 'active' : '';
+    $showAll     = ($activeTab === 'all')     ? 'active' : '';
+    $showLiq     = ($activeTab === 'liq')     ? 'active' : '';
     
     $panePedidos = ($activeTab === 'pedidos') ? 'show active' : '';
     $paneUpdates = ($activeTab === 'updates') ? 'show active' : '';
-    $paneAll = ($activeTab === 'all') ? 'show active' : '';
+    $paneAll     = ($activeTab === 'all')     ? 'show active' : '';
+    $paneLiq     = ($activeTab === 'liq')     ? 'show active' : '';
     
     // Usar el total de pedidos de la paginación, no solo los de la página actual
     $countActivos = $data['pagination']['total'] ?? count($pedidosActivos);
@@ -286,6 +292,22 @@ include "vista/includes/header.php";
                     onclick="history.pushState(null, '', '?tab=all')">
                 <i class="bi bi-archive-fill"></i>
                 <span>Historial Completo</span>
+            </button>
+        </li>
+
+        <!-- Tab: Liquidados -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $showLiq ?> d-flex align-items-center gap-2"
+                    id="pills-liq-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#pills-liq"
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=liq')">
+                <i class="bi bi-cash-coin text-success"></i>
+                <span>Liquidados</span>
+                <?php if ($liquidadosTotal > 0): ?>
+                    <span class="badge bg-success rounded-pill"><?= $liquidadosTotal ?></span>
+                <?php endif; ?>
             </button>
         </li>
     </ul>
@@ -665,7 +687,110 @@ include "vista/includes/header.php";
                 </div>
             <?php endif; ?>
 
+        <!-- TAB: LIQUIDADOS -->
+        <div class="tab-pane fade <?= $paneLiq ?>" id="pills-liq" role="tabpanel">
+
+            <!-- Filtros Liquidados -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body bg-light rounded">
+                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-2 align-items-end">
+                        <input type="hidden" name="tab" value="liq">
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Liq. Desde</label>
+                            <input type="date" name="liq_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosLiq['liq_desde'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold mb-1">Liq. Hasta</label>
+                            <input type="date" name="liq_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosLiq['liq_hasta'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold mb-1">Buscar</label>
+                            <input type="text" name="liq_search" class="form-control form-control-sm" placeholder="Orden / destinatario..." value="<?= htmlspecialchars($filtrosLiq['search'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-2 d-flex gap-1">
+                            <button class="btn btn-success btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
+                            <a href="<?= RUTA_URL ?>logistica/dashboard?tab=liq" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-circle"></i></a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <?php if ($liquidadosTotal > 0): ?>
+            <!-- Tarjeta resumen total período -->
+            <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #198754 !important;">
+                <div class="card-body d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase"><i class="bi bi-cash-coin me-1 text-success"></i>Total Liquidado en el período</div>
+                        <div class="fs-3 fw-bold text-success">GTQ <?= number_format($liquidadosSuma, 2) ?></div>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted small"><?= $liquidadosTotal ?> pedido<?= $liquidadosTotal > 1 ? 's' : '' ?></div>
+                        <div class="text-muted small">
+                            <?= date('d/m/Y', strtotime($filtrosLiq['liq_desde'])) ?>
+                            &ndash; <?= date('d/m/Y', strtotime($filtrosLiq['liq_hasta'])) ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Tabla liquidados -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle border">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Orden</th>
+                            <th>Destinatario</th>
+                            <th>Fecha Ingreso</th>
+                            <th>Fecha Liquidación</th>
+                            <th class="text-end">Total</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($liquidados)): ?>
+                            <tr><td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-cash-coin display-4 opacity-25 d-block mb-2"></i>
+                                No hay pedidos liquidados en este período.
+                            </td></tr>
+                        <?php else: ?>
+                            <?php foreach ($liquidados as $liq): ?>
+                            <tr>
+                                <td><span class="badge bg-light text-dark border">#<?= htmlspecialchars($liq['numero_orden']) ?></span></td>
+                                <td>
+                                    <div><?= htmlspecialchars($liq['destinatario']) ?></div>
+                                    <small class="text-muted"><?= htmlspecialchars($liq['telefono'] ?? '') ?></small>
+                                </td>
+                                <td><?= date('d/m/Y', strtotime($liq['fecha_ingreso'])) ?></td>
+                                <td>
+                                    <span class="badge" style="background:#d1fae5;color:#065f46;">
+                                        <i class="bi bi-check-circle-fill me-1"></i>
+                                        <?= !empty($liq['fecha_liquidacion']) ? date('d/m/Y', strtotime($liq['fecha_liquidacion'])) : '–' ?>
+                                    </span>
+                                </td>
+                                <td class="text-end fw-bold"><?= htmlspecialchars($liq['moneda'] ?? 'GTQ') ?> <?= number_format($liq['precio_total_local'], 2) ?></td>
+                                <td class="text-end">
+                                    <a href="<?= RUTA_URL ?>logistica/ver/<?= $liq['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                    <?php if ($liquidadosTotal > 0): ?>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td colspan="4" class="text-end">TOTAL DEL PERÍODO:</td>
+                            <td class="text-end text-success">GTQ <?= number_format($liquidadosSuma, 2) ?></td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                    <?php endif; ?>
+                </table>
+            </div>
         </div>
+
     </div>
 </div>
 

@@ -90,6 +90,19 @@ class LogisticaController {
             );
         }
 
+        // Filtros tab "Liquidados"
+        $liqDesde   = isset($_GET['liq_desde']) && $_GET['liq_desde'] !== '' ? $_GET['liq_desde'] : date('Y-m-01');
+        $liqHasta   = isset($_GET['liq_hasta']) && $_GET['liq_hasta'] !== '' ? $_GET['liq_hasta'] : date('Y-m-t');
+        $liqSearch  = trim($_GET['liq_search'] ?? '');
+        $filtrosLiq = [
+            'liq_desde'  => $liqDesde,
+            'liq_hasta'  => $liqHasta,
+            'search'     => $liqSearch,
+            'id_cliente' => $idCliente,
+        ];
+
+        $liquidadosData = LogisticaModel::obtenerLiquidados($userId, $isProveedor, $filtrosLiq, 200, 0);
+
         return [
             'notificaciones'         => $notificaciones,
             'historial'              => $historial,
@@ -98,6 +111,10 @@ class LogisticaController {
             'clientes'               => $clientes,
             'filtros'                => $filtros,
             'filtrosHistorial'       => $filtrosHistorial,
+            'filtrosLiq'             => $filtrosLiq,
+            'liquidados'             => $liquidadosData['rows'],
+            'liquidadosTotal'        => $liquidadosData['total'],
+            'liquidadosSuma'         => $liquidadosData['suma'],
             'proveedoresMensajeriaBI' => $proveedoresMensajeriaBI,
             'pagination'             => [
                 'current_page' => $page,
@@ -112,6 +129,7 @@ class LogisticaController {
                 'total_pages'  => $totalPagesH,
             ],
         ];
+
     }
 
     /*

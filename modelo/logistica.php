@@ -261,6 +261,87 @@ class LogisticaModel {
     }
 
     /**
+     * Obtener pedidos liquidados (estado ID 14 = "Entregado – liquidado")
+     * filtrados por rango de fecha_liquidacion y opcionalmente por id_cliente.
+     *
+     * @param int   $userId           ID del usuario actual
+     * @param bool  $filterByProveedor Si true, filtra por id_proveedor; si false, por id_cliente
+     * @param array $filtros           Claves soportadas: liq_desde, liq_hasta, search, id_cliente
+     * @param int   $limit
+     * @param int   $offset
+     * @return array ['rows' => [...], 'total' => int, 'suma' => float]
+     */
+    public static function obtenerLiquidados(int $userId, bool $filterByProveedor, array $filtros = [], int $limit = 50, int $offset = 0): array
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $filterField = $filterByProveedor ? 'p.id_proveedor' : 'p.id_cliente';
+
+            $where  = ["{$filterField} = :user_id", "p.id_estado = 14"];
+            $params = [':user_id' => $userId];
+
+            if (!empty($filtros['liq_desde'])) {
+                $where[]            = 'p.fecha_liquidacion >= :liq_desde';
+                $params[':liq_desde'] = $filtros['liq_desde'];
+            }
+            if (!empty($filtros['liq_hasta'])) {
+                $where[]            = 'p.fecha_liquidacion <= :liq_hasta';
+                $params[':liq_hasta'] = $filtros['liq_hasta'];
+            }
+            if (!empty($filtros['search'])) {
+                $where[] = '(CAST(p.numero_orden AS CHAR) LIKE :search OR p.destinatario LIKE :search2)';
+                $params[':search']  = '%' . $filtros['search'] . '%';
+                $params[':search2'] = '%' . $filtros['search'] . '%';
+            }
+            if (!empty($filtros['id_cliente']) && (int)$filtros['id_cliente'] > 0) {
+                $where[]              = 'p.id_cliente = :id_cliente';
+                $params[':id_cliente'] = (int)$filtros['id_cliente'];
+            }
+
+            $whereStr = 'WHERE ' . implode(' AND ', $where);
+
+            // Total count + suma
+            $stmtAgg = $db->prepare("SELECT COUNT(*) AS total, COALESCE(SUM(p.precio_total_local),0) AS suma
+                FROM pedidos p $whereStr");
+            foreach ($params as $k => $v) $stmtAgg->bindValue($k, $v);
+            $stmtAgg->execute();
+            $agg = $stmtAgg->fetch(PDO::FETCH_ASSOC);
+
+            // Rows
+            $sql = "SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.fecha_ingreso,
+                           p.fecha_liquidacion, p.precio_total_local,
+                           ep.nombre_estado AS estado,
+                           m.codigo AS moneda,
+                           uc.nombre AS nombre_cliente,
+                           up.nombre AS nombre_proveedor
+                    FROM pedidos p
+                    LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                    LEFT JOIN monedas m ON p.id_moneda = m.id
+                    LEFT JOIN usuarios uc ON p.id_cliente = uc.id
+                    LEFT JOIN usuarios up ON p.id_proveedor = up.id
+                    $whereStr
+                    ORDER BY p.fecha_liquidacion DESC, p.id DESC
+                    LIMIT :limit OFFSET :offset";
+
+            $stmt = $db->prepare($sql);
+            foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+            $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return [
+                'rows'  => $stmt->fetchAll(PDO::FETCH_ASSOC),
+                'total' => (int)($agg['total'] ?? 0),
+                'suma'  => (float)($agg['suma']  ?? 0),
+            ];
+
+        } catch (Exception $e) {
+            error_log('Error obtenerLiquidados: ' . $e->getMessage());
+            return ['rows' => [], 'total' => 0, 'suma' => 0.0];
+        }
+    }
+
+    /**
      * Obtener todos los estados disponibles de la tabla estados_pedidos
      */
     public static function obtenerEstados() {
