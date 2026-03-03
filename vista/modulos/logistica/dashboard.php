@@ -1118,7 +1118,9 @@ include "vista/includes/header.php";
             <strong>Columnas reconocidas:</strong>
             <code>id_pedido</code> o <code>numero_orden</code> (al menos uno), 
             <code>comentario</code> y/o <code>estado</code> (al menos uno de los dos),
-            <code>motivo</code> (opcional).
+            <code>motivo</code> (opcional),
+            <code>fecha_entrega</code> (opcional, requerida si estado = <em>Reprogramado</em>),
+            <code>fecha_liquidacion</code> (opcional, requerida si estado = <em>Entregado – liquidado</em>). Formato de fechas: <code>YYYY-MM-DD</code>.
           </div>
 
           <!-- Plantillas de descarga -->

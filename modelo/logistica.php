@@ -541,10 +541,22 @@ class LogisticaModel {
             $line = $row['_line'] ?? '?';
             $ip   = isset($row['id_pedido'])    && $row['id_pedido']    !== null ? (int)$row['id_pedido'] : null;
             $no   = isset($row['numero_orden']) && $row['numero_orden'] !== null ? (string)$row['numero_orden'] : null;
-            $comentario  = $row['comentario']  ?? null;
-            $estadoNombre = isset($row['estado']) ? strtolower(trim((string)$row['estado'])) : null;
-            $idEstadoRaw  = isset($row['id_estado']) && $row['id_estado'] !== null ? (int)$row['id_estado'] : null;
-            $motivo       = $row['motivo'] ?? null;
+            $comentario    = $row['comentario']    ?? null;
+            $estadoNombre  = isset($row['estado'])    ? strtolower(trim((string)$row['estado']))    : null;
+            $idEstadoRaw   = isset($row['id_estado']) && $row['id_estado'] !== null ? (int)$row['id_estado'] : null;
+            $motivo        = $row['motivo']          ?? null;
+            $fechaEntrega     = isset($row['fecha_entrega'])     && $row['fecha_entrega']     !== null ? trim((string)$row['fecha_entrega'])     : null;
+            $fechaLiquidacion = isset($row['fecha_liquidacion']) && $row['fecha_liquidacion'] !== null ? trim((string)$row['fecha_liquidacion']) : null;
+
+            // Validar formato de fechas (acepta YYYY-MM-DD)
+            if ($fechaEntrega !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEntrega)) {
+                $errores[] = "Línea {$line}: fecha_entrega '{$fechaEntrega}' no es válida. Use YYYY-MM-DD (ej: 2026-03-15).";
+                continue;
+            }
+            if ($fechaLiquidacion !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaLiquidacion)) {
+                $errores[] = "Línea {$line}: fecha_liquidacion '{$fechaLiquidacion}' no es válida. Use YYYY-MM-DD (ej: 2026-03-15).";
+                continue;
+            }
 
             // Sin identificador
             if ($ip === null && $no === null) {
@@ -621,14 +633,16 @@ class LogisticaModel {
             }
 
             $rowsValidadas[] = [
-                '_line'        => $line,
-                'id_pedido'    => (int)$pedido['id'],
-                'numero_orden' => $pedido['numero_orden'],
+                '_line'             => $line,
+                'id_pedido'         => (int)$pedido['id'],
+                'numero_orden'      => $pedido['numero_orden'],
                 'comentario_anterior' => $pedido['comentario'],
                 'estado_anterior_id'  => $pedido['id_estado'],
                 'nuevo_comentario'    => $nuevoComentario,
                 'nuevo_id_estado'     => $nuevoIdEstado,
                 'motivo'              => $motivo,
+                'fecha_entrega'       => $fechaEntrega,
+                'fecha_liquidacion'   => $fechaLiquidacion,
             ];
         }
 
@@ -672,13 +686,17 @@ class LogisticaModel {
 
         try {
             foreach ($rowsValidadas as $row) {
-                $idPedido       = (int)$row['id_pedido'];
-                $nuevoComentario = $row['nuevo_comentario'];
-                $nuevoIdEstado   = $row['nuevo_id_estado'];
+                $idPedido         = (int)$row['id_pedido'];
+                $nuevoComentario  = $row['nuevo_comentario'];
+                $nuevoIdEstado    = $row['nuevo_id_estado'];
+                $fechaEntrega     = $row['fecha_entrega']     ?? null;
+                $fechaLiquidacion = $row['fecha_liquidacion'] ?? null;
 
                 // Determinar si hay cambios reales
                 $hayCambio = ($nuevoComentario !== null && $nuevoComentario !== (string)($row['comentario_anterior'] ?? ''))
-                          || ($nuevoIdEstado  !== null && $nuevoIdEstado  !== (int)($row['estado_anterior_id'] ?? 0));
+                          || ($nuevoIdEstado  !== null && $nuevoIdEstado  !== (int)($row['estado_anterior_id'] ?? 0))
+                          || $fechaEntrega     !== null
+                          || $fechaLiquidacion !== null;
 
                 if (!$hayCambio) {
                     $sinCambios++;
@@ -690,12 +708,20 @@ class LogisticaModel {
                 $params = [];
 
                 if ($nuevoComentario !== null) {
-                    $sets[]             = 'comentario = :comentario';
+                    $sets[]                = 'comentario = :comentario';
                     $params[':comentario'] = $nuevoComentario;
                 }
                 if ($nuevoIdEstado !== null) {
-                    $sets[]               = 'id_estado = :id_estado';
-                    $params[':id_estado']  = $nuevoIdEstado;
+                    $sets[]              = 'id_estado = :id_estado';
+                    $params[':id_estado'] = $nuevoIdEstado;
+                }
+                if ($fechaEntrega !== null) {
+                    $sets[]                 = 'fecha_entrega = :fecha_entrega';
+                    $params[':fecha_entrega'] = $fechaEntrega;
+                }
+                if ($fechaLiquidacion !== null) {
+                    $sets[]                      = 'fecha_liquidacion = :fecha_liquidacion';
+                    $params[':fecha_liquidacion']  = $fechaLiquidacion;
                 }
 
                 $params[':id'] = $idPedido;
@@ -716,6 +742,12 @@ class LogisticaModel {
                     if ($nuevoIdEstado !== null) {
                         $antes['id_estado']  = $row['estado_anterior_id'];
                         $nuevos['id_estado'] = $nuevoIdEstado;
+                    }
+                    if ($fechaEntrega !== null) {
+                        $nuevos['fecha_entrega'] = $fechaEntrega;
+                    }
+                    if ($fechaLiquidacion !== null) {
+                        $nuevos['fecha_liquidacion'] = $fechaLiquidacion;
                     }
                     if (!empty($row['motivo'])) {
                         $nuevos['motivo'] = $row['motivo'];

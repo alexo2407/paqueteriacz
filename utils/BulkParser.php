@@ -13,7 +13,7 @@ class BulkParser
     const MAX_ROWS = 10000;
 
     /** Columnas reconocidas (normalizadas a minúsculas) */
-    const KNOWN_COLS = ['id_pedido', 'numero_orden', 'comentario', 'estado', 'id_estado', 'motivo'];
+    const KNOWN_COLS = ['id_pedido', 'numero_orden', 'comentario', 'estado', 'id_estado', 'motivo', 'fecha_entrega', 'fecha_liquidacion'];
 
     /**
      * Punto de entrada principal.
