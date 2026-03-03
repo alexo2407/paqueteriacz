@@ -3209,7 +3209,7 @@ class PedidosModel
      * @param string|null $fechaHasta Fecha fin (Y-m-d)
      * @return array
      */
-    public static function obtenerProveedoresMensajeriaBI($fechaDesde = null, $fechaHasta = null)
+    public static function obtenerProveedoresMensajeriaBI($fechaDesde = null, $fechaHasta = null, $clienteId = null)
     {
         try {
             $db = (new Conexion())->conectar();
@@ -3224,6 +3224,11 @@ class PedidosModel
 
             $where  = ['ped.id_proveedor IS NOT NULL'];
             $params = [];
+
+            if ($clienteId !== null) {
+                $where[] = 'ped.id_cliente = ?';
+                $params[] = $clienteId;
+            }
 
             if ($fechaDesde !== null) {
                 $where[] = 'ped.fecha_ingreso >= ?';

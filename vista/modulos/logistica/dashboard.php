@@ -26,9 +26,10 @@ $pedidosActivos     = $data['historial'];        // Tab "En Proceso" (sin estado
 $historialCompleto  = $data['historialCompleto']; // Tab "Historial Completo" (todos los estados)
 $filtros            = $data['filtros'];           // Filtros tab "En Proceso"
 $filtrosHistorial   = $data['filtrosHistorial'];  // Filtros tab "Historial Completo"
-$paginationH        = $data['paginationH'];       // Paginación Historial Completo
-$estadosDisponibles = $data['estados']   ?? [];
-$clientesLista      = $data['clientes']  ?? [];
+$paginationH             = $data['paginationH'];        // Paginación Historial Completo
+$estadosDisponibles      = $data['estados']    ?? [];
+$clientesLista           = $data['clientes']   ?? [];
+$proveedoresMensajeriaBI = $data['proveedoresMensajeriaBI'] ?? [];
 
 // Mapa de Colores Estandarizado y Vibrante
 $estadoColores = [
@@ -688,6 +689,93 @@ include "vista/includes/header.php";
     </div>
 </div>
 
+<?php if (!empty($proveedoresMensajeriaBI)): ?>
+<!-- BI: Efectividad de Proveedores de Mensajería -->
+<div class="container mb-5">
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 py-3">
+            <i class="bi bi-truck text-primary fs-5"></i>
+            <div>
+                <h6 class="mb-0 fw-bold">Proveedor de Mensajería – Efectividad de Entrega</h6>
+                <small class="text-muted">Rendimiento por proveedor en el mes actual</small>
+            </div>
+        </div>
+        <div class="card-body">
+            <?php
+            // Mejor proveedor
+            $mejorBI = $proveedoresMensajeriaBI[0] ?? null;
+            if ($mejorBI): ?>
+            <div class="alert border-0 mb-4" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a !important;border-radius:10px;">
+                <div class="d-flex align-items-center gap-3">
+                    <span style="font-size:2rem;">🏆</span>
+                    <div>
+                        <strong class="text-success"><?= htmlspecialchars($mejorBI['proveedor_nombre']) ?></strong>
+                        <div class="small text-muted"><?= number_format($mejorBI['efectividad'], 1) ?>% de efectividad &middot; <?= $mejorBI['entregados'] ?> de <?= $mejorBI['total_pedidos'] ?> pedidos entregados</div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="row g-3">
+            <?php foreach ($proveedoresMensajeriaBI as $i => $prov):
+                $ef  = (float)$prov['efectividad'];
+                $ef_color = $ef >= 80 ? '#16a34a' : ($ef >= 50 ? '#d97706' : '#dc2626');
+                $bar_color = $ef >= 80 ? '#22c55e' : ($ef >= 50 ? '#f59e0b' : '#ef4444');
+                $stars = $ef >= 80 ? 3 : ($ef >= 50 ? 2 : 1);
+            ?>
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 border shadow-sm" style="border-radius:12px; transition:transform .2s;" onmouseenter="this.style.transform='translateY(-3px)'" onmouseleave="this.style.transform=''">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <div class="fw-bold text-dark" style="font-size:.95rem;"><?= htmlspecialchars($prov['proveedor_nombre']) ?></div>
+                                <div class="text-warning" style="font-size:.85rem;"><?= str_repeat('★', $stars) . str_repeat('☆', 3 - $stars) ?></div>
+                            </div>
+                            <span class="fw-bold fs-5" style="color:<?= $ef_color ?>"><?= number_format($ef, 1) ?>%</span>
+                        </div>
+                        <!-- Barra de progreso -->
+                        <div class="bg-light rounded mb-3" style="height:6px;">
+                            <div style="height:6px;border-radius:3px;width:<?= min(100, $ef) ?>%;background:<?= $bar_color ?>;transition:width .6s;"></div>
+                        </div>
+                        <!-- Métricas -->
+                        <div class="row text-center g-0">
+                            <div class="col">
+                                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Total</div>
+                                <div class="fw-bold"><?= (int)$prov['total_pedidos'] ?></div>
+                            </div>
+                            <div class="col">
+                                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Entregados</div>
+                                <div class="fw-bold text-success"><?= (int)$prov['entregados'] ?></div>
+                            </div>
+                            <div class="col">
+                                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Devueltos</div>
+                                <div class="fw-bold text-danger"><?= (int)$prov['devueltos'] ?></div>
+                            </div>
+                        </div>
+                        <?php if ((int)$prov['en_proceso'] > 0): ?>
+                        <div class="text-center mt-2">
+                            <span class="badge bg-light text-secondary border">
+                                <i class="bi bi-hourglass-split me-1"></i><?= (int)$prov['en_proceso'] ?> en proceso
+                            </span>
+                        </div>
+                        <?php endif; ?>
+                        <!-- Etiqueta rendimiento -->
+                        <div class="mt-3 text-center">
+                            <?php if ($i === 0): ?>
+                            <span class="badge" style="background:#dcfce7;color:#16a34a;font-size:.75rem;">✓ Mejor rendimiento</span>
+                            <?php elseif ($ef < 50): ?>
+                            <span class="badge" style="background:#fff7ed;color:#d97706;font-size:.75rem;">⚠ Pendiente de mejora</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <?php include "vista/includes/footer.php"; ?>
 

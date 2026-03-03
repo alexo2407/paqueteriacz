@@ -18,7 +18,7 @@
     } elseif (($isProveedorCRM || $isClienteCRM) && !$isAdmin) {
         $homeUrl = RUTA_URL . 'crm/notificaciones';
     } elseif ($isCliente && !$isAdmin) {
-        $homeUrl = RUTA_URL . 'pedidos/listar';
+        $homeUrl = RUTA_URL . 'logistica/dashboard';
     } else {
         $homeUrl = RUTA_URL . 'dashboard';
     }

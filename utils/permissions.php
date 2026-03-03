@@ -334,12 +334,15 @@ function getCurrentUserId() {
         return (int)$GLOBALS['API_USER_ID'];
     }
     
-    // Luego verificar sesión web
-    if (isset($_SESSION['ID_Usuario'])) {
-        return (int)$_SESSION['ID_Usuario'];
-    }
+    // Luego verificar sesión web - Intentar varias claves comunes
     if (isset($_SESSION['user_id'])) {
         return (int)$_SESSION['user_id'];
+    }
+    if (isset($_SESSION['idUsuario'])) {
+        return (int)$_SESSION['idUsuario'];
+    }
+    if (isset($_SESSION['ID_Usuario'])) {
+        return (int)$_SESSION['ID_Usuario'];
     }
     
     return null;

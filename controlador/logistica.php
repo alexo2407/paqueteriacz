@@ -70,21 +70,42 @@ class LogisticaController {
         $estados  = LogisticaModel::obtenerEstados();
         $clientes = LogisticaModel::obtenerClientesDelProveedor($userId, $isProveedor);
 
+        // 5. BI: Efectividad de proveedores de mensajería (filtrado por este cliente)
+        // NOTA: $isProveedor = isCliente() tiene naming legacy confuso.
+        // isCliente() devuelve TRUE para ROL_CLIENTE (NutraTrade = quien crea pedidos = id_cliente en pedidos)
+        // isCliente() devuelve FALSE para ROL_PROVEEDOR (quien distribuye = id_proveedor en pedidos)
+        // Para el BI de proveedores mensajería:
+        //   - Si el usuario es ROL_CLIENTE ($isProveedor=true): filtrar por id_cliente = $userId
+        //   - Si el usuario es ROL_PROVEEDOR ($isProveedor=false): no aplica filtro de cliente en BI
+        $clienteIdParaBI = $isProveedor ? (int)$userId : null;
+        $fechaBIDesde    = date('Y-m-01');
+        $fechaBIHasta    = date('Y-m-t');
+        $proveedoresMensajeriaBI = [];
+        if ($clienteIdParaBI) {
+            require_once 'modelo/pedido.php';
+            $proveedoresMensajeriaBI = PedidosModel::obtenerProveedoresMensajeriaBI(
+                $fechaBIDesde,
+                $fechaBIHasta,
+                $clienteIdParaBI
+            );
+        }
+
         return [
-            'notificaciones'    => $notificaciones,
-            'historial'         => $historial,
-            'historialCompleto' => $historialCompleto,
-            'estados'           => $estados,
-            'clientes'          => $clientes,
-            'filtros'           => $filtros,
-            'filtrosHistorial'  => $filtrosHistorial,
-            'pagination'        => [
+            'notificaciones'         => $notificaciones,
+            'historial'              => $historial,
+            'historialCompleto'      => $historialCompleto,
+            'estados'                => $estados,
+            'clientes'               => $clientes,
+            'filtros'                => $filtros,
+            'filtrosHistorial'       => $filtrosHistorial,
+            'proveedoresMensajeriaBI' => $proveedoresMensajeriaBI,
+            'pagination'             => [
                 'current_page' => $page,
                 'per_page'     => $perPage,
                 'total'        => $totalPedidos,
                 'total_pages'  => $totalPages,
             ],
-            'paginationH'       => [
+            'paginationH'            => [
                 'current_page' => $pageH,
                 'per_page'     => $perPageH,
                 'total'        => $totalHistorial,

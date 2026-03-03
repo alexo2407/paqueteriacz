@@ -92,20 +92,23 @@ class EnlacesController
 
             // Políticas de acceso por módulo basadas en nombre de rol
             $allowedByModule = [
-                'pedidos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
-                'usuarios' => [ROL_NOMBRE_ADMIN],
-                'stock' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'productos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'monedas' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'paises' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'departamentos' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'municipios' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'barrios' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'seguimiento' => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN],
-                'auditoria' => [ROL_NOMBRE_ADMIN],
-                'crm' => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'], // CRM-specific roles
-                'logistica' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE],
+                'pedidos'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'usuarios'        => [ROL_NOMBRE_ADMIN],
+                'stock'           => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'productos'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'monedas'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'paises'          => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'departamentos'   => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'municipios'      => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'barrios'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'seguimiento'     => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN],
+                'auditoria'       => [ROL_NOMBRE_ADMIN],
+                'crm'             => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'],
+                'logistica'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE],
                 'codigos_postales' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_VENDEDOR, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                // Dashboard principal: solo Admin y Proveedor
+                // Clientes tienen su propio dashboard en logistica/dashboard
+                'dashboard'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
             ];
 
             $userRoleNames = $_SESSION['roles_nombres'] ?? [];
@@ -118,10 +121,13 @@ class EnlacesController
             if (!$isAdmin && !$isPerfilRoute && isset($allowedByModule[$modulo])) {
                 $permitidos = $allowedByModule[$modulo];
                 if (!is_array($userRoleNames) || count(array_intersect($permitidos, $userRoleNames)) === 0) {
-                    // Denegar acceso y redirigir con mensaje
-                    set_flash('error', 'Acceso denegado para tu rol.');
-                    $destino = defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard';
-                    header('Location: ' . $destino);
+                    // Si es cliente intentando acceder al dashboard principal → redirigir a su dashboard
+                    if ($modulo === 'dashboard' && in_array(ROL_NOMBRE_CLIENTE, $userRoleNames, true)) {
+                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'logistica/dashboard' : 'index.php?enlace=logistica/dashboard'));
+                    } else {
+                        set_flash('error', 'Acceso denegado para tu rol.');
+                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'logistica/dashboard' : 'index.php?enlace=logistica/dashboard'));
+                    }
                     exit;
                 }
             }

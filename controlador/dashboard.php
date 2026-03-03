@@ -17,39 +17,46 @@ class DashboardController {
         $rolesNombres   = $_SESSION['roles_nombres'] ?? [];
         $esAdminDash    = in_array('Administrador', $rolesNombres, true) || isSuperAdmin();
         $esProveedorDash = isProveedor() && !$esAdminDash;
+        $esClienteDash  = isCliente()   && !$esAdminDash;
 
-        // Determinar si el usuario es proveedor y obtener su ID
-        $proveedorId = null;
-        if ($esProveedorDash) {
-            $proveedorId = (int)$_SESSION['user_id'];
-        }
+        $userIdActual    = getCurrentUserId();
 
-        // Si el usuario es admin y seleccionó un cliente específico, filtrar por ese cliente
-        $clienteIdFiltro = null;
+        // ── Filtro general (usado en KPIs, gráficos, productos) ───────────────
+        // Para proveedores: filtra pedidos donde id_proveedor = su ID
+        // Para clientes:    filtra pedidos donde id_cliente   = su ID
+        // Para admin:       null (sin filtro) o el cliente seleccionado en el desplegable
+        $proveedorId     = null;  // alias histórico; se usa como "id_cliente" en las queries
+        $clienteIdFiltro = null;  // filtro para el BI de proveedores de mensajería
+
         if ($esAdminDash) {
             $clienteIdFiltro = isset($_GET['cliente_id']) && (int)$_GET['cliente_id'] > 0
                 ? (int)$_GET['cliente_id']
                 : null;
-            if ($clienteIdFiltro) {
-                $proveedorId = $clienteIdFiltro;
-            }
+            $proveedorId = $clienteIdFiltro; // KPIs filtrados por ese cliente (o todos si null)
+
+        } elseif ($esProveedorDash) {
+            $proveedorId     = $userIdActual; // KPIs filtrados por su ID de proveedor
+            $clienteIdFiltro = null;          // El BI de mensajería no aplica filtro de cliente para proveedores
+
+        } elseif ($esClienteDash) {
+            $clienteIdFiltro = $userIdActual; // BI: solo proveedores que atienden a este cliente
+            $proveedorId     = $userIdActual; // KPIs: solo sus pedidos
+        }
+
+        // Seguridad: si es cliente/proveedor y no tenemos ID de sesión, no mostrar nada
+        if (($esProveedorDash || $esClienteDash) && !$proveedorId) {
+            $proveedorId     = -1;
+            $clienteIdFiltro = $esClienteDash ? -1 : null;
         }
 
         // Obtener fechas del filtro (GET) o usar mes actual por defecto
         $fechaDesde = $_GET['fecha_desde'] ?? null;
         $fechaHasta = $_GET['fecha_hasta'] ?? null;
         
-        // Validar formato de fechas si se proporcionan
-        if ($fechaDesde && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaDesde)) {
-            $fechaDesde = null;
-        }
-        if ($fechaHasta && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaHasta)) {
-            $fechaHasta = null;
-        }
-        
-        // Si no se proporcionan fechas, usar mes actual
+        if ($fechaDesde && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaDesde)) { $fechaDesde = null; }
+        if ($fechaHasta && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaHasta)) { $fechaHasta = null; }
         if (!$fechaDesde) { $fechaDesde = date('Y-m-01'); }
-        if (!$fechaHasta) { $fechaHasta = date('Y-m-t'); }
+        if (!$fechaHasta) { $fechaHasta = date('Y-m-t');  }
 
         // 1. KPIs de Efectividad
         $kpis = PedidosModel::obtenerKPIsEfectividad($proveedorId, $fechaDesde, $fechaHasta);
@@ -99,11 +106,14 @@ class DashboardController {
             require_once "modelo/pais.php";
             $clientes = UsuarioModel::listarClientes();
             $paises   = PaisModel::listar();
-            $efectividadTemporal = PedidosModel::obtenerEfectividadTemporal(null, null, $fechaDesde, $fechaHasta);
+            $efectividadTemporal = PedidosModel::obtenerEfectividadTemporal($clienteIdFiltro, null, $fechaDesde, $fechaHasta);
         }
 
-        // 9. BI: Ranking proveedores de mensajería por efectividad
-        $proveedoresMensajeria = PedidosModel::obtenerProveedoresMensajeriaBI($fechaDesde, $fechaHasta);
+        // 9. BI: Ranking proveedores de mensajería
+        // $clienteIdFiltro determina el alcance:
+        //   null  → admin sin selección   → todos los proveedores
+        //   int   → cliente/admin+filtro  → solo proveedores que atienden ese cliente
+        $proveedoresMensajeria = PedidosModel::obtenerProveedoresMensajeriaBI($fechaDesde, $fechaHasta, $clienteIdFiltro);
 
 
         return [
