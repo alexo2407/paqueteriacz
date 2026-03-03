@@ -1249,20 +1249,22 @@ include "vista/includes/header.php";
     estado: {
       nombre: 'plantilla_estado.csv',
       contenido: [
-        'id_pedido,numero_orden,estado,motivo',
-        '101,,<?= $__e0 ?>,Salió a ruta hoy',
-        ',280001234,<?= $__e1 ?>,Recibido por familiar',
-        '102,,<?= $__e2 ?>,Solicitud del cliente',
+        'id_pedido,numero_orden,estado,motivo,fecha_entrega,fecha_liquidacion',
+        '101,,<?= $__e0 ?>,Salió a ruta hoy,,',
+        ',280001234,Reprogramado,Reagendado por cliente,2026-03-20,',
+        '102,,Entregado – liquidado,Cobro confirmado,,2026-03-03',
+        '103,,<?= $__e2 ?>,Solicitud del cliente,,',
       ].join('\r\n')
     },
     completa: {
       nombre: 'plantilla_completa.csv',
       contenido: [
-        'id_pedido,numero_orden,comentario,estado,motivo',
-        '101,,Entregado con retraso,<?= $__e1 ?>,Tráfico en zona norte',
-        ',280001234,Cliente ausente al primer intento,<?= $__e0 ?>,Se reprogramó para mañana',
-        '102,,,<?= $__e2 ?>,Solicitud del cliente por teléfono',
-        '103,,Dirección actualizada,,Cambió a Avenida 5 N°22',
+        'id_pedido,numero_orden,comentario,estado,motivo,fecha_entrega,fecha_liquidacion',
+        '101,,Entregado con retraso,<?= $__e1 ?>,Tráfico en zona norte,,',
+        ',280001234,Cliente ausente al primer intento,Reprogramado,Se reprogramó para mañana,2026-03-20,',
+        '102,,,Entregado – liquidado,Cobro confirmado en efectivo,,2026-03-03',
+        '103,,,<?= $__e2 ?>,Solicitud del cliente por teléfono,,',
+        '104,,Dirección actualizada,,Cambió a Avenida 5 N°22,,',
       ].join('\r\n')
     }
   };
