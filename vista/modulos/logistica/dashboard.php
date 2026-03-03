@@ -31,31 +31,57 @@ $estadosDisponibles      = $data['estados']    ?? [];
 $clientesLista           = $data['clientes']   ?? [];
 $proveedoresMensajeriaBI = $data['proveedoresMensajeriaBI'] ?? [];
 
-// Mapa de Colores Estandarizado y Vibrante
+// Colores semánticos por categoría funcional (hex + texto)
+// ORDEN IMPORTA: claves específicas primero (evita match prematuro)
+define('CLR_LOGISTICA',  'background:#3498db;color:#fff');  // Azul      — Logística Interna (1,11,12,13)
+define('CLR_TRANSITO',   'background:#2ecc71;color:#212529'); // Verde esm. — En Tránsito (2)
+define('CLR_COMPLETADO', 'background:#27ae60;color:#fff');  // Verde osc. — Completado (3,14)
+define('CLR_EXCEPCION',  'background:#f39c12;color:#212529'); // Naranja   — Excepción Temporal (4,5,6,8)
+define('CLR_FALLO',      'background:#c0392b;color:#fff');  // Rojo       — Fallo/Devolución (7,9,10,15,17)
+define('CLR_CRITICO',    'background:#e74c3c;color:#fff');  // Rojo alerta — Crítico (16)
+define('CLR_GRIS',       'background:#95a5a6;color:#212529'); // Gris      — Sin estado
+
 $estadoColores = [
-    'EN BODEGA'           => 'primary',           
-    'EN RUTA'             => 'info text-dark',    
-    'ENTREGADO'           => 'success',           
-    'CANCELADO'           => 'danger',            
-    'LIQUIDADO'           => 'dark',              
-    'DEVOLUCION'          => 'warning text-dark', 
-    'DEVOLUCION COMPLETA' => 'warning text-dark', 
-    'EN_ESPERA'           => 'secondary',         
-    'PENDIENTE'           => 'warning text-dark', 
-    'VENDIDO'             => 'success',           
-    'RECHAZADO'           => 'danger',            
-    'DOMICILIO'           => 'warning text-dark', 
-    'DEVUELTO'            => 'danger',            
-    'TRANSITO'            => 'info text-dark'     
+    // Devolución ANTES de Entregado ("Devolución – entregado a bodega" contiene "entregado")
+    'DEVOLUCION'            => CLR_FALLO,      // #15 Devolución – entregado a bodega
+    'DEVUELTO'              => CLR_FALLO,      // #7  Devuelto
+    // Recolección específica ANTES de Pendiente genérico
+    'PENDIENTE RECOLECCION' => CLR_EXCEPCION,  // #11 Pendiente recolección por mensajería
+    'RECOLECTADO'           => CLR_LOGISTICA,  // #12 Recolectado por mensajería
+    'TRASLADO'              => CLR_LOGISTICA,  // #13 Traslado a punto de distribución
+    // Domicilio específicos ANTES del genérico
+    'DOMICILIO CERRADO'     => CLR_EXCEPCION,  // #5  Domicilio cerrado
+    'DOMICILIO NO'          => CLR_EXCEPCION,  // #8  Domicilio no encontrado
+    'NO HAY QUIEN'          => CLR_EXCEPCION,  // #6  No hay quien reciba en domicilio
+    'NO PUEDE PAGAR'        => CLR_FALLO,      // #10 No puede pagar recaudo
+    // Estados estándar
+    'EN BODEGA'             => CLR_LOGISTICA,  // #1  En bodega
+    'EN RUTA'               => CLR_TRANSITO,   // #2  En ruta o proceso
+    'REPROGRAMADO'          => CLR_EXCEPCION,  // #4  Reprogramado
+    'ENTREGADO'             => CLR_COMPLETADO, // #3 y #14
+    'RECHAZADO'             => CLR_FALLO,      // #9  Rechazado
+    'LIQUIDADO'             => CLR_COMPLETADO, // #14 cierre contable
+    'INCIDENCIA'            => CLR_CRITICO,    // #16 Incidencia
+    'CANCELADO'             => CLR_FALLO,      // #17 Cancelado
+    // Fallbacks legacy
+    'DOMICILIO'             => CLR_EXCEPCION,
+    'PENDIENTE'             => CLR_EXCEPCION,
+    'EN_ESPERA'             => CLR_GRIS,
+    'TRANSITO'              => CLR_TRANSITO,
+    'VENDIDO'               => CLR_COMPLETADO,
 ];
 
 function getBadgeColor($estado, $map) {
-    if (empty($estado)) return 'secondary';
-    $estadoUpper = strtoupper($estado);
+    if (empty($estado)) return CLR_GRIS;
+    $upper = strtoupper($estado);
+    $norm = strtr($upper, [
+        'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N',
+        'Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+    ]);
     foreach ($map as $key => $val) {
-        if (strpos($estadoUpper, $key) !== false) return $val;
+        if (strpos($norm, $key) !== false) return $val;
     }
-    return 'secondary';
+    return CLR_GRIS;
 }
 
 // Función Helper para Renderizar Card de Notificación (estilo CRM)
@@ -341,7 +367,7 @@ include "vista/includes/header.php";
                                      <span class="badge bg-light text-dark border">
                                          #<?= htmlspecialchars($p['numero_orden']) ?>
                                      </span>
-                                     <span class="badge bg-<?= $color ?>"><?= htmlspecialchars($p['estado']) ?></span>
+                                     <span class="badge" style="<?= $color ?>"><?= htmlspecialchars($p['estado']) ?></span>
                                  </div>
                                  
                                  <h5 class="card-title fw-bold text-dark mb-1">
@@ -562,7 +588,7 @@ include "vista/includes/header.php";
                                     </td>
                                     <td><?= date('d/m/Y', strtotime($p['fecha_ingreso'])) ?></td>
                                     <td><?= htmlspecialchars($p['moneda']) ?> <?= number_format($p['precio_total_local'], 2) ?></td>
-                                    <td><span class="badge bg-<?= $color ?>"><?= htmlspecialchars($p['estado']) ?></span></td>
+                                    <td><span class="badge" style="<?= $color ?>"><?= htmlspecialchars($p['estado']) ?></span></td>
                                     <td class="text-end">
                                         <div class="dropdown">
                                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">

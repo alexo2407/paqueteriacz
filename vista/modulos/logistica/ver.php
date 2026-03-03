@@ -26,33 +26,54 @@ foreach ($estadosDisponibles as $e) {
     $mapaEstados[$e['id']] = $e['nombre_estado'];
 }
 
-// Mapa de Colores Estandarizado y Vibrante
+// Constantes de color semántico (definidas aquí porque ver.php puede cargarse de forma independiente)
+if (!defined('CLR_LOGISTICA'))  define('CLR_LOGISTICA',  'background:#3498db;color:#fff');
+if (!defined('CLR_TRANSITO'))   define('CLR_TRANSITO',   'background:#2ecc71;color:#212529');
+if (!defined('CLR_COMPLETADO')) define('CLR_COMPLETADO', 'background:#27ae60;color:#fff');
+if (!defined('CLR_EXCEPCION'))  define('CLR_EXCEPCION',  'background:#f39c12;color:#212529');
+if (!defined('CLR_FALLO'))      define('CLR_FALLO',      'background:#c0392b;color:#fff');
+if (!defined('CLR_CRITICO'))    define('CLR_CRITICO',    'background:#e74c3c;color:#fff');
+if (!defined('CLR_GRIS'))       define('CLR_GRIS',       'background:#95a5a6;color:#212529');
+
+// Mapa de colores — 17 estados de estados_pedidos
+// ORDEN IMPORTA: claves específicas primero
 $estadoColores = [
-    'EN BODEGA'           => 'primary',           // Azul (Proceso inicial)
-    'EN RUTA'             => 'info text-dark',    // Celeste (En camino)
-    'ENTREGADO'           => 'success',           // Verde (Completado)
-    'CANCELADO'           => 'danger',            // Rojo (Anulado)
-    'LIQUIDADO'           => 'dark',              // Negro (Cierre contable)
-    'DEVOLUCION'          => 'warning text-dark', // Naranja (Problema/Retorno)
-    'DEVOLUCION COMPLETA' => 'warning text-dark', // Naranja
-    'EN_ESPERA'           => 'secondary',         // Gris
-    'PENDIENTE'           => 'warning text-dark', // Amarillo
-    'VENDIDO'             => 'success',           // Verde
-    'RECHAZADO'           => 'danger',            // Rojo
-    'DOMICILIO'           => 'warning text-dark', // Amarillo (No encontrado)
-    'DEVUELTO'            => 'danger',            // Rojo
-    'TRANSITO'            => 'info text-dark'     // Celeste
+    'DEVOLUCION'            => CLR_FALLO,      // #15 Devolución – entregado a bodega
+    'DEVUELTO'              => CLR_FALLO,      // #7  Devuelto
+    'PENDIENTE RECOLECCION' => CLR_EXCEPCION,  // #11 Pendiente recolección por mensajería
+    'RECOLECTADO'           => CLR_LOGISTICA,  // #12 Recolectado por mensajería
+    'TRASLADO'              => CLR_LOGISTICA,  // #13 Traslado a punto de distribución
+    'DOMICILIO CERRADO'     => CLR_EXCEPCION,  // #5  Domicilio cerrado
+    'DOMICILIO NO'          => CLR_EXCEPCION,  // #8  Domicilio no encontrado
+    'NO HAY QUIEN'          => CLR_EXCEPCION,  // #6  No hay quien reciba en domicilio
+    'NO PUEDE PAGAR'        => CLR_FALLO,      // #10 No puede pagar recaudo
+    'EN BODEGA'             => CLR_LOGISTICA,  // #1  En bodega
+    'EN RUTA'               => CLR_TRANSITO,   // #2  En ruta o proceso
+    'REPROGRAMADO'          => CLR_EXCEPCION,  // #4  Reprogramado
+    'ENTREGADO'             => CLR_COMPLETADO, // #3 y #14
+    'RECHAZADO'             => CLR_FALLO,      // #9  Rechazado
+    'LIQUIDADO'             => CLR_COMPLETADO, // #14 cierre contable
+    'INCIDENCIA'            => CLR_CRITICO,    // #16 Incidencia
+    'CANCELADO'             => CLR_FALLO,      // #17 Cancelado
+    'DOMICILIO'             => CLR_EXCEPCION,
+    'PENDIENTE'             => CLR_EXCEPCION,
+    'EN_ESPERA'             => CLR_GRIS,
+    'TRANSITO'              => CLR_TRANSITO,
+    'VENDIDO'               => CLR_COMPLETADO,
 ];
 
 function getBadgeColor($estado, $map) {
-    if (empty($estado)) return 'secondary';
-    $estadoUpper = strtoupper($estado);
-    
-    // Búsqueda de palabra clave para mayor flexibilidad
+    if (empty($estado)) return CLR_GRIS;
+    $upper = strtoupper($estado);
+    // strtoupper() no convierte acentos UTF-8; los normalizamos con strtr
+    $norm = strtr($upper, [
+        'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N',
+        'Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+    ]);
     foreach ($map as $key => $val) {
-        if (strpos($estadoUpper, $key) !== false) return $val;
+        if (strpos($norm, $key) !== false) return $val;
     }
-    return 'secondary';
+    return CLR_GRIS;
 }
 
 $badgeColor = getBadgeColor($pedido['nombre_estado'], $estadoColores);
@@ -110,7 +131,7 @@ include("vista/includes/header.php");
             <p class="text-muted mb-0">Gestiona y revisa el historial de este pedido.</p>
         </div>
         <div class="d-flex gap-2">
-           <span class="badge bg-<?= $badgeColor ?> fs-6 px-3 py-2 align-self-center"><?= htmlspecialchars($pedido['nombre_estado'] ?? 'Desconocido') ?></span>
+           <span class="badge fs-6 px-3 py-2 align-self-center" style="<?= $badgeColor ?>"><?= htmlspecialchars($pedido['nombre_estado'] ?? 'Desconocido') ?></span>
            
            <?php if (!in_array(strtoupper($pedido['nombre_estado']), ['ENTREGADO', 'CANCELADO', 'DEVOLUCION COMPLETA', 'LIQUIDADO'])): ?>
                 <button type="button" class="btn btn-warning text-dark align-self-center" data-bs-toggle="modal" data-bs-target="#cambiarEstadoModal">
@@ -315,12 +336,12 @@ include("vista/includes/header.php");
                                 
                                 $titulo = "Actualización de Pedido";
                                 $detalle = "";
-                                $badgeColor = "info";
+                                $badgeColor = CLR_LOGISTICA; // azul por defecto
 
                                 if ($cambio['accion'] == 'crear') {
                                     $titulo = "Pedido Creado";
                                     $detalle = "El pedido fue ingresado al sistema.";
-                                    $badgeColor = "success";
+                                    $badgeColor = CLR_COMPLETADO; // verde
                                 } else {
                                     // 1. Si hay cambio de estado (Formato Nuevo)
                                     if (isset($datosNuevos['estado'])) {
@@ -371,7 +392,7 @@ include("vista/includes/header.php");
                             ?>
                             <div class="d-flex mb-3 pb-3 border-bottom position-relative">
                                 <div class="flex-shrink-0 me-3">
-                                    <div class="badge bg-<?= $badgeColor ?> p-2 rounded-circle" style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
+                                    <div class="badge p-2 rounded-circle" style="<?= $badgeColor ?>; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
                                         <i class="bi bi-clock"></i>
                                     </div>
                                 </div>

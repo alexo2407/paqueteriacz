@@ -133,12 +133,9 @@ class LogisticaModel {
             }
             
             if ($excluirEstadosFinales) {
-                $sql .= " AND (ep.nombre_estado IS NULL OR LOWER(ep.nombre_estado) NOT IN (
-                    'entregado',
-                    'devuelto',
-                    'rechazado',
-                    'no puede pagar recaudo'
-                ))";
+                // Tab "En Proceso": solo mostrar pedidos activos reales
+                // Incluir exclusivamente: En bodega (1) y En ruta o proceso (2)
+                $sql .= " AND p.id_estado IN (1, 2)";
             }
 
             $sql .= " ORDER BY p.fecha_ingreso DESC";
@@ -210,12 +207,9 @@ class LogisticaModel {
             }
             
             if ($excluirEstadosFinales) {
-                $sql .= " AND (ep.nombre_estado IS NULL OR LOWER(ep.nombre_estado) NOT IN (
-                    'entregado',
-                    'devuelto',
-                    'rechazado',
-                    'no puede pagar recaudo'
-                ))";
+                // Tab "En Proceso": solo mostrar pedidos activos reales
+                // Incluir exclusivamente: En bodega (1) y En ruta o proceso (2)
+                $sql .= " AND p.id_estado IN (1, 2)";
             }
 
             $stmt = $db->prepare($sql);
