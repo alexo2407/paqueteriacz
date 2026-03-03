@@ -335,10 +335,37 @@ include("vista/includes/header.php");
                                         $detalle = "Actualización de estado procesada por el sistema.";
                                         $badgeColor = getBadgeColor($nombreEs, $estadoColores);
                                     }
-                                    // 3. Otros cambios
+                                    // 3. Otros cambios — mostrar etiquetas amigables
                                     else {
+                                        $etiquetas = [
+                                            'coordenadas'       => 'Ubicación GPS',
+                                            'id_pais'           => 'País',
+                                            'id_departamento'   => 'Departamento',
+                                            'id_municipio'      => 'Municipio',
+                                            'id_barrio'         => 'Barrio / Zona',
+                                            'id_codigo_postal'  => 'Código Postal',
+                                            'codigo_postal'     => 'Código Postal',
+                                            'direccion'         => 'Dirección',
+                                            'zona'              => 'Zona',
+                                            'municipio'         => 'Municipio',
+                                            'barrio'            => 'Barrio',
+                                            'destinatario'      => 'Destinatario',
+                                            'telefono'          => 'Teléfono',
+                                            'comentario'        => 'Comentario',
+                                            'fecha_entrega'     => 'Fecha de Entrega',
+                                            'precio_local'      => 'Precio Local',
+                                            'precio_usd'        => 'Precio USD',
+                                            'precio_total_local'=> 'Total Local',
+                                            'precio_total_usd'  => 'Total USD',
+                                            'id_proveedor'      => 'Proveedor',
+                                            'id_cliente'        => 'Cliente',
+                                            'id_vendedor'       => 'Vendedor',
+                                            'id_estado'         => 'Estado',
+                                            'activo'            => 'Estado activo',
+                                        ];
                                         $keys = array_keys(array_diff_assoc($datosNuevos, $datosAnt));
-                                        $detalle = "Campos modificados: " . implode(', ', $keys);
+                                        $labels = array_map(fn($k) => $etiquetas[$k] ?? ucfirst(str_replace('_', ' ', $k)), $keys);
+                                        $detalle = "Cambios: " . implode(', ', array_unique($labels));
                                     }
                                 }
                             ?>
