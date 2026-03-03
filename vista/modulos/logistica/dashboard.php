@@ -687,6 +687,8 @@ include "vista/includes/header.php";
                 </div>
             <?php endif; ?>
 
+        </div><!-- /pills-all -->
+
         <!-- TAB: LIQUIDADOS -->
         <div class="tab-pane fade <?= $paneLiq ?>" id="pills-liq" role="tabpanel">
 
