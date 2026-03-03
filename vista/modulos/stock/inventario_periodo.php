@@ -17,16 +17,19 @@ require_once __DIR__ . '/../../../modelo/conexion.php';
 
 start_secure_session();
 require_login();
-require_role(['Administrador', 'Proveedor']);
-
-$isAdmin = isSuperAdmin();
-$db      = (new Conexion())->conectar();
+$isAdmin     = isSuperAdmin();
+$currRol     = $_SESSION['rol'] ?? 0;
+// En este sistema, ID 4 se llama "Cliente" en BD y ID 5 se llama "Proveedor"
+$isRealCliente   = ($currRol == 4); 
+$isRealProveedor = ($currRol == 5);
+$currUserId      = getCurrentUserId();
+$db              = (new Conexion())->conectar();
 
 // ── Leer filtros de la URL ────────────────────────────────────────────────────
 $fechaDesde  = $_GET['fecha_desde']  ?? date('Y-m-01');
 $fechaHasta  = $_GET['fecha_hasta']  ?? date('Y-m-t');   // último día del mes
-$idCliente   = (int)($_GET['id_cliente']  ?? 0);
-$idProveedor = (int)($_GET['id_proveedor'] ?? 0);
+$idCliente   = ($isRealCliente)   ? $currUserId : (int)($_GET['id_cliente']  ?? 0);
+$idProveedor = ($isRealProveedor) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
 $idEstado    = (int)($_GET['id_estado']   ?? 0);
 $idProducto  = (int)($_GET['id_producto'] ?? 0);
 $export      = isset($_GET['export']) && $_GET['export'] === '1';
@@ -41,7 +44,8 @@ $clientes = $db->query(
      FROM usuarios u
      INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
      INNER JOIN roles r ON r.id = ur.id_rol
-     WHERE r.nombre_rol = 'Cliente' AND u.activo = 1
+     WHERE r.nombre_rol = 'Cliente' AND u.activo = 1"
+    . ($isRealCliente ? " AND u.id = " . (int)$currUserId : "") . "
      ORDER BY u.nombre ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
@@ -50,12 +54,17 @@ $proveedores = $db->query(
      FROM usuarios u
      INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
      INNER JOIN roles r ON r.id = ur.id_rol
-     WHERE r.nombre_rol = 'Proveedor' AND u.activo = 1
+     " . ($isRealCliente ? " INNER JOIN pedidos ped ON ped.id_proveedor = u.id " : "") . "
+     WHERE r.nombre_rol = 'Proveedor' AND u.activo = 1 " 
+     . ($isRealCliente ? " AND ped.id_cliente = " . (int)$currUserId : "")
+     . ($isRealProveedor ? " AND u.id = " . (int)$currUserId : "") . "
      ORDER BY u.nombre ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 $productos = $db->query(
-    "SELECT id, nombre FROM productos WHERE activo = 1 ORDER BY nombre ASC"
+    "SELECT id, nombre FROM productos WHERE activo = 1 " 
+    . ((!$isAdmin && ($isRealCliente || $isRealProveedor)) ? " AND id_usuario_creador = " . (int)$currUserId : "") . "
+     ORDER BY nombre ASC"
 )->fetchAll(PDO::FETCH_ASSOC);
 
 // ── Query principal: entradas y salidas por día × producto ───────────────────
@@ -90,13 +99,20 @@ if ($idProducto > 0) {
     $where[]               = 's.id_producto = :id_producto';
     $params[':id_producto'] = $idProducto;
 }
+if (!$isAdmin && ($isRealCliente || $isRealProveedor)) {
+    // Restringimos por creador del producto para asegurar privacidad
+    $where[] = 'pr.id_usuario_creador = :curr_user_id';
+    $params[':curr_user_id'] = $currUserId;
+}
 
 $whereStr = 'WHERE ' . implode(' AND ', $where);
 
 // Si hay filtros de pedido (cliente/proveedor/estado), forzamos JOIN INNER en pedidos
-// para que los ajustes manuales sin referencia no contaminen el reporte
+// para que los ajustes manuales sin referencia no contaminen el reporte.
+// EXCEPCIÓN: Si el filtro es automático por ser Cliente/Proveedor, usamos LEFT JOIN
+// para que vean sus productos aunque no tengan pedidos asociados aún.
 $joinType = ($idCliente > 0 || $idProveedor > 0 || $idEstado > 0)
-    ? 'INNER JOIN'
+    ? (($isAdmin) ? 'INNER JOIN' : 'LEFT JOIN')
     : 'LEFT JOIN';
 
 $sqlMovs = "
@@ -408,6 +424,16 @@ if ($export && !empty($colsList)) {
                     <input type="date" name="fecha_hasta" class="form-control form-control-sm"
                            value="<?= htmlspecialchars($fechaHasta) ?>">
                 </div>
+                <?php if ($isRealCliente): ?>
+                <div class="col-md-2 col-6">
+                    <label class="form-label small fw-semibold mb-1">
+                        <i class="bi bi-person"></i> Cliente
+                    </label>
+                    <input type="text" class="form-control form-control-sm bg-light" 
+                           value="<?= htmlspecialchars($_SESSION['nombre'] ?? 'Mi Usuario') ?>" readonly disabled>
+                    <input type="hidden" name="id_cliente" value="<?= $currUserId ?>">
+                </div>
+                <?php else: ?>
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
                         <i class="bi bi-person"></i> Cliente
@@ -422,6 +448,17 @@ if ($export && !empty($colsList)) {
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php endif; ?>
+                <?php if ($isRealProveedor): ?>
+                <div class="col-md-2 col-6">
+                    <label class="form-label small fw-semibold mb-1">
+                        <i class="bi bi-truck"></i> Proveedor
+                    </label>
+                    <input type="text" class="form-control form-control-sm bg-light" 
+                           value="<?= htmlspecialchars($_SESSION['nombre'] ?? 'Mi Usuario') ?>" readonly disabled>
+                    <input type="hidden" name="id_proveedor" value="<?= $currUserId ?>">
+                </div>
+                <?php else: ?>
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
                         <i class="bi bi-truck"></i> Proveedor
@@ -436,6 +473,7 @@ if ($export && !empty($colsList)) {
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php endif; ?>
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
                         <i class="bi bi-flag"></i> Estado pedido
