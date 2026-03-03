@@ -176,6 +176,30 @@ include("vista/includes/header.php");
                                 <div class="mb-1">
                                     <?= htmlspecialchars($pedido['direccion'] ?? 'Sin dirección específica') ?>
                                 </div>
+                                <?php
+                                    // Resolver nombres geográficos desde IDs FK
+                                    $nomDepto = $nomMuni = $nomBarrio = null;
+                                    try {
+                                        $dbTmp = (new Conexion())->conectar();
+                                        if (!empty($pedido['id_departamento'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM departamentos WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => $pedido['id_departamento']]);
+                                            $nomDepto = $st->fetchColumn();
+                                        }
+                                        if (!empty($pedido['id_municipio'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM municipios WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => $pedido['id_municipio']]);
+                                            $nomMuni = $st->fetchColumn();
+                                        }
+                                        if (!empty($pedido['id_barrio'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM barrios WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => $pedido['id_barrio']]);
+                                            $nomBarrio = $st->fetchColumn();
+                                        }
+                                    } catch(Exception $e) {}
+                                    // Fallback: zona es campo texto libre en pedidos
+                                    if (!$nomBarrio && !empty($pedido['zona'])) $nomBarrio = $pedido['zona'];
+                                ?>
                                 <div class="row row-cols-2 row-cols-md-4 g-2 mt-1">
                                     <?php if (!empty($pedido['codigo_postal'])): ?>
                                     <div class="col">
@@ -183,41 +207,28 @@ include("vista/includes/header.php");
                                         <span class="fw-semibold"><?= htmlspecialchars($pedido['codigo_postal']) ?></span>
                                     </div>
                                     <?php endif; ?>
-                                    <?php 
-                                        // Intentar nombre de departamento desde id_departamento
-                                        $nomDepto = null;
-                                        if (!empty($pedido['id_departamento'])) {
-                                            try {
-                                                $dbTmp = (new Conexion())->conectar();
-                                                $stTmp = $dbTmp->prepare("SELECT nombre FROM departamentos WHERE id = :id LIMIT 1");
-                                                $stTmp->execute([':id' => $pedido['id_departamento']]);
-                                                $nomDepto = $stTmp->fetchColumn();
-                                            } catch(Exception $e) {}
-                                        }
-                                    ?>
                                     <?php if ($nomDepto): ?>
                                     <div class="col">
                                         <span class="small text-muted d-block">Departamento</span>
                                         <span class="fw-semibold"><?= htmlspecialchars($nomDepto) ?></span>
                                     </div>
                                     <?php endif; ?>
-                                    <?php if (!empty($pedido['municipio'])): ?>
+                                    <?php if ($nomMuni): ?>
                                     <div class="col">
                                         <span class="small text-muted d-block">Municipio</span>
-                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['municipio']) ?></span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($nomMuni) ?></span>
                                     </div>
                                     <?php endif; ?>
-                                    <?php if (!empty($pedido['barrio']) || !empty($pedido['zona'])): ?>
+                                    <?php if ($nomBarrio): ?>
                                     <div class="col">
                                         <span class="small text-muted d-block">Barrio / Zona</span>
-                                        <span class="fw-semibold">
-                                            <?= htmlspecialchars($pedido['barrio'] ?? $pedido['zona'] ?? '') ?>
-                                        </span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($nomBarrio) ?></span>
                                     </div>
                                     <?php endif; ?>
                                 </div>
                             </div>
                         </div>
+
 
                     </div>
                 </div>
