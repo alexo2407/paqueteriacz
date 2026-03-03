@@ -301,13 +301,14 @@ class LogisticaController {
             exit;
         }
 
-        $nuevoEstado   = $_POST['estado']        ?? '';
-        $observaciones  = $_POST['observaciones'] ?? '';
-        $fechaEntrega   = $_POST['fecha_entrega'] ?? null;
+        $nuevoEstado      = $_POST['estado']             ?? '';
+        $observaciones    = $_POST['observaciones']      ?? '';
+        $fechaEntrega     = $_POST['fecha_entrega']      ?? null;
+        $fechaLiquidacion = $_POST['fecha_liquidacion']  ?? null;
 
         $success = false;
         if (!empty($nuevoEstado)) {
-            $success = LogisticaModel::actualizarEstado($id, $nuevoEstado, $observaciones, $userId, $fechaEntrega);
+            $success = LogisticaModel::actualizarEstado($id, $nuevoEstado, $observaciones, $userId, $fechaEntrega, $fechaLiquidacion);
         }
 
         if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
