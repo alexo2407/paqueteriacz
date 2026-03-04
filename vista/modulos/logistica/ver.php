@@ -473,7 +473,8 @@ include("vista/includes/header.php");
                     <div id="liquidacionFechaSection" class="mb-3" style="display: none;">
                         <label class="form-label fw-bold text-success"><i class="bi bi-cash-coin me-1"></i>Fecha de Liquidación</label>
                         <input type="date" name="fecha_liquidacion" class="form-control"
-                               value="<?= !empty($pedido['fecha_liquidacion']) ? date('Y-m-d', strtotime($pedido['fecha_liquidacion'])) : date('Y-m-d') ?>">
+                               value="<?= !empty($pedido['fecha_liquidacion']) ? date('Y-m-d', strtotime($pedido['fecha_liquidacion'])) : date('Y-m-d') ?>"
+                               disabled>
                         <div class="form-text">Fecha en que el pedido fue liquidado/cobrado.</div>
                     </div>
                     <div class="mb-3">
@@ -515,17 +516,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (norm === 'REPROGRAMADO') {
             fechaSection.style.display = 'block';
             fechaInput.required = true;
+            fechaInput.disabled = false;
         } else {
             fechaSection.style.display = 'none';
             fechaInput.required = false;
+            fechaInput.disabled = true;
         }
         // Entregado liquidado → mostrar fecha de liquidación
         if (norm.includes('LIQUIDADO')) {
             liquidacionSection.style.display = 'block';
             liquidacionInput.required = true;
+            liquidacionInput.disabled = false;
         } else {
             liquidacionSection.style.display = 'none';
             liquidacionInput.required = false;
+            liquidacionInput.disabled = true;
         }
     });
 
