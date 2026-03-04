@@ -328,21 +328,21 @@ include "vista/includes/header.php";
                     <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" id="formFiltrosPedidos">
                         <input type="hidden" name="tab" value="pedidos">
 
-                        <!-- Fila 1: Campos de filtro -->
+                        <!-- Fila 1: Campos de filtro (todos en una fila) -->
                         <div class="row g-2 mb-2">
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-calendar-event me-1"></i>Desde
                                 </label>
                                 <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_desde']) ?>">
                             </div>
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-calendar-check me-1"></i>Hasta
                                 </label>
                                 <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_hasta']) ?>">
                             </div>
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-person me-1"></i>Cliente
                                 </label>
@@ -355,7 +355,7 @@ include "vista/includes/header.php";
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-tag me-1"></i>Estado
                                 </label>
@@ -368,7 +368,7 @@ include "vista/includes/header.php";
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-sm-12 col-md-12">
+                            <div class="col-sm-12 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-search me-1"></i>Buscar
                                 </label>
@@ -580,21 +580,21 @@ include "vista/includes/header.php";
                     <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard">
                         <input type="hidden" name="tab" value="all">
 
-                        <!-- Fila 1: Campos de filtro -->
+                        <!-- Fila 1: Campos de filtro (todos en una fila) -->
                         <div class="row g-2 mb-2">
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-calendar-event me-1"></i>Desde
                                 </label>
                                 <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_desde']) ?>">
                             </div>
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-calendar-check me-1"></i>Hasta
                                 </label>
                                 <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_hasta']) ?>">
                             </div>
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-person me-1"></i>Cliente
                                 </label>
@@ -607,7 +607,7 @@ include "vista/includes/header.php";
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-sm-6 col-md-3">
+                            <div class="col-sm-6 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-tag me-1"></i>Estado
                                 </label>
@@ -620,7 +620,7 @@ include "vista/includes/header.php";
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-sm-12 col-md-12">
+                            <div class="col-sm-12 col-md">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-search me-1"></i>Buscar
                                 </label>
