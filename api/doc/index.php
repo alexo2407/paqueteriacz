@@ -2027,7 +2027,7 @@ municipalitySelect.addEventListener('change', (e) => {
                                 <tr><td><code>id_pedido</code></td><td>integer</td><td>—</td><td>Filter by internal order ID</td><td><code>45</code></td></tr>
                                 <tr><td><code>id_estado_anterior</code></td><td>integer</td><td>—</td><td>Filter by exact previous state ID</td><td><code>1</code></td></tr>
                                 <tr><td><code>id_estado_nuevo</code></td><td>integer</td><td>—</td><td>Filter by exact new state ID</td><td><code>3</code></td></tr>
-                                <tr><td><code>estados</code></td><td>string</td><td>—</td><td>Comma-separated state IDs — matches previous <strong>OR</strong> new state</td><td><code>1,2,3</code></td></tr>
+                                <tr><td><code>id_estados</code></td><td>string</td><td>—</td><td>Comma-separated state IDs — matches previous <strong>OR</strong> new state</td><td><code>1,2,3</code></td></tr>
                                 <tr><td><code>fecha_desde</code></td><td>date</td><td>—</td><td>Start date of the change (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
                                 <tr><td><code>fecha_hasta</code></td><td>date</td><td>—</td><td>End date of the change (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
                                 <tr><td><code>id_usuario</code></td><td>integer</td><td>—</td><td>Filter by user who made the change</td><td><code>7</code></td></tr>
@@ -2054,7 +2054,7 @@ municipalitySelect.addEventListener('change', (e) => {
                                 <tr><td><code>id_pedido</code></td><td>entero</td><td>—</td><td>Filtrar por ID interno del pedido</td><td><code>45</code></td></tr>
                                 <tr><td><code>id_estado_anterior</code></td><td>entero</td><td>—</td><td>Filtrar por ID exacto del estado anterior</td><td><code>1</code></td></tr>
                                 <tr><td><code>id_estado_nuevo</code></td><td>entero</td><td>—</td><td>Filtrar por ID exacto del estado nuevo</td><td><code>3</code></td></tr>
-                                <tr><td><code>estados</code></td><td>string</td><td>—</td><td>IDs de estados separados por coma — coincide con anterior <strong>O</strong> nuevo</td><td><code>1,2,3</code></td></tr>
+                                <tr><td><code>id_estados</code></td><td>string</td><td>—</td><td>IDs de estados separados por coma — coincide con anterior <strong>O</strong> nuevo</td><td><code>1,2,3</code></td></tr>
                                 <tr><td><code>fecha_desde</code></td><td>fecha</td><td>—</td><td>Fecha inicio del cambio (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
                                 <tr><td><code>fecha_hasta</code></td><td>fecha</td><td>—</td><td>Fecha fin del cambio (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
                                 <tr><td><code>id_usuario</code></td><td>entero</td><td>—</td><td>Filtrar por usuario que realizó el cambio</td><td><code>7</code></td></tr>
@@ -2087,7 +2087,7 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
 
                     <h4 data-lang="en">4. Orders that passed through states 1, 2 or 7</h4>
                     <h4 data-lang="es">4. Pedidos que pasaron por los estados 1, 2 o 7</h4>
-                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/historial?estados=1,2,7&amp;page=1&amp;limit=50
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/historial?id_estados=1,2,7&amp;page=1&amp;limit=50
 Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
 
                     <h4 data-lang="en">5. Full cURL example</h4>
@@ -2247,8 +2247,8 @@ foreach ($response['data'] as $cambio) {
                     <h2 class="section-title" data-lang="en">State ID Reference</h2>
                     <h2 class="section-title" data-lang="es">Referencia de IDs de Estado</h2>
 
-                    <p data-lang="en">Use these IDs in <code>id_estado_anterior</code>, <code>id_estado_nuevo</code> or <code>estados</code> filter parameters.</p>
-                    <p data-lang="es">Usa estos IDs en los parámetros de filtro <code>id_estado_anterior</code>, <code>id_estado_nuevo</code> o <code>estados</code>.</p>
+                    <p data-lang="en">Use these IDs in <code>id_estado_anterior</code>, <code>id_estado_nuevo</code> or <code>id_estados</code> filter parameters.</p>
+                    <p data-lang="es">Usa estos IDs en los parámetros de filtro <code>id_estado_anterior</code>, <code>id_estado_nuevo</code> o <code>id_estados</code>.</p>
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm">
@@ -2336,6 +2336,21 @@ foreach ($response['data'] as $cambio) {
                         <strong data-lang="es">⚠️ Nota:</strong>
                         <span data-lang="en"> The list of states above may grow over time. Use <code>GET /api/pedidos/estados</code> to always retrieve the current, up-to-date list from the database.</span>
                         <span data-lang="es"> La lista de estados puede crecer con el tiempo. Usa <code>GET /api/pedidos/estados</code> para obtener siempre la lista actualizada desde la base de datos.</span>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">🔧 How history records are created:</strong>
+                        <strong data-lang="es">🔧 Cómo se generan los registros del historial:</strong>
+                        <ul class="mb-0 mt-2" data-lang="en">
+                            <li>Each state change is recorded automatically by a <strong>database trigger</strong> (<code>AFTER UPDATE</code> on <code>pedidos</code>).</li>
+                            <li>When an operator adds a comment/observation during a state change (e.g. from the Logistics dashboard), the PHP layer updates the <code>observaciones</code> column of the latest history record for that order.</li>
+                            <li>This two-step approach prevents duplicate entries — the trigger owns the INSERT, PHP only annotates it.</li>
+                        </ul>
+                        <ul class="mb-0 mt-2" data-lang="es">
+                            <li>Cada cambio de estado es registrado automáticamente por un <strong>trigger de base de datos</strong> (<code>AFTER UPDATE</code> sobre la tabla <code>pedidos</code>).</li>
+                            <li>Cuando un operador incluye un comentario/observación durante el cambio de estado (por ejemplo desde el panel de Logística), la capa PHP actualiza la columna <code>observaciones</code> del último registro de historial de ese pedido.</li>
+                            <li>Este enfoque en dos pasos evita entradas duplicadas: el trigger es dueño del INSERT, PHP solo lo anota.</li>
+                        </ul>
                     </div>
                 </div>
 
