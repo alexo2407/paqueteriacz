@@ -187,13 +187,13 @@ class LogisticaController {
             'K1' => 'Municipio',
             'L1' => 'Barrio',
             'M1' => 'Estado',
-            'N1' => 'Total',
-            'O1' => 'Moneda',
-            'P1' => 'Cliente',
-            'Q1' => 'Proveedor',
-            'R1' => 'Productos',
-            'S1' => 'Fecha Entrega / Reprogramación',
-            'T1' => 'Fecha Liquidación',
+            'N1' => 'Fecha Entrega / Reprogramación',
+            'O1' => 'Fecha Liquidación',
+            'P1' => 'Total',
+            'Q1' => 'Moneda',
+            'R1' => 'Cliente',
+            'S1' => 'Proveedor',
+            'T1' => 'Productos',
         ];
 
         // Obtener productos de todos los pedidos en una sola query batch
@@ -233,13 +233,13 @@ class LogisticaController {
             $sheet->setCellValue("K{$row}", $p['nombre_municipio']    ?? '');
             $sheet->setCellValue("L{$row}", $p['nombre_barrio']       ?? '');
             $sheet->setCellValue("M{$row}", $p['estado']              ?? '');
-            $sheet->setCellValue("N{$row}", $p['precio_total_local']  ?? 0);
-            $sheet->setCellValue("O{$row}", $p['moneda']              ?? '');
-            $sheet->setCellValue("P{$row}", $p['nombre_cliente']      ?? '');
-            $sheet->setCellValue("Q{$row}", $p['nombre_proveedor']    ?? '');
-            $sheet->setCellValue("R{$row}", $productos);
-            $sheet->setCellValue("S{$row}", $fechaEntrega);
-            $sheet->setCellValue("T{$row}", $fechaLiq);
+            $sheet->setCellValue("N{$row}", $fechaEntrega);
+            $sheet->setCellValue("O{$row}", $fechaLiq);
+            $sheet->setCellValue("P{$row}", $p['precio_total_local']  ?? 0);
+            $sheet->setCellValue("Q{$row}", $p['moneda']              ?? '');
+            $sheet->setCellValue("R{$row}", $p['nombre_cliente']      ?? '');
+            $sheet->setCellValue("S{$row}", $p['nombre_proveedor']    ?? '');
+            $sheet->setCellValue("T{$row}", $productos);
             $row++;
         }
 
