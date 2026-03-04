@@ -710,8 +710,12 @@ include "vista/includes/header.php";
                             <input type="text" name="liq_search" class="form-control form-control-sm" placeholder="Orden / destinatario..." value="<?= htmlspecialchars($filtrosLiq['search'] ?? '') ?>">
                         </div>
                         <div class="col-md-2 d-flex gap-1">
-                            <button class="btn btn-success btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
-                            <a href="<?= RUTA_URL ?>logistica/dashboard?tab=liq" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-circle"></i></a>
+                            <button class="btn btn-primary btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
+                            <a href="<?= RUTA_URL ?>logistica/dashboard?tab=liq" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-circle"></i></a>
+                            <a href="<?= RUTA_URL ?>logistica/export_liquidados_excel?liq_desde=<?= urlencode($filtrosLiq['liq_desde'] ?? '') ?>&liq_hasta=<?= urlencode($filtrosLiq['liq_hasta'] ?? '') ?>&liq_search=<?= urlencode($filtrosLiq['search'] ?? '') ?>&id_cliente=<?= (int)($filtrosLiq['id_cliente'] ?? 0) ?>"
+                               class="btn btn-success btn-sm" title="Descargar Excel de liquidados">
+                                <i class="bi bi-file-earmark-excel"></i>
+                            </a>
                         </div>
                     </form>
                 </div>

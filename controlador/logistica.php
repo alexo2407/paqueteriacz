@@ -495,6 +495,121 @@ class LogisticaController {
      * Las columnas "estado" y "comentario" van vacías para que el usuario las complete y
      * suba el archivo al bulk-update.
      */
+    /*
+     * Exportar pedidos LIQUIDADOS a Excel con los filtros del tab Liquidados
+     */
+    public function exportarLiquidadosExcel(): void
+    {
+        require_once "modelo/logistica.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../vendor/autoload.php';
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        // Sanitizar filtros (idéntico al controlador dashboard)
+        $liqDesde  = isset($_GET['liq_desde']) && $_GET['liq_desde'] !== '' ? $_GET['liq_desde'] : '';
+        $liqHasta  = isset($_GET['liq_hasta']) && $_GET['liq_hasta'] !== '' ? $_GET['liq_hasta'] : '';
+        $liqSearch = trim($_GET['liq_search'] ?? '');
+        $idCliente = isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0;
+
+        $filtros = [
+            'liq_desde'  => $liqDesde,
+            'liq_hasta'  => $liqHasta,
+            'search'     => $liqSearch,
+            'id_cliente' => $idCliente,
+        ];
+
+        // Obtener TODOS los liquidados (sin paginación) — límite seguro 10 000
+        $result = LogisticaModel::obtenerLiquidados($userId, $isProveedor, $filtros, 10001, 0);
+        $rows   = $result['rows'];
+
+        if (count($rows) > 10000) {
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'El resultado excede 10,000 filas. Aplica más filtros.']);
+            exit;
+        }
+
+        // Crear spreadsheet
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Liquidados');
+
+        // Estilo encabezado
+        $boldStyle = [
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => 'D5E8D4'],   // verde suave
+            ],
+        ];
+
+        // Encabezados
+        $headers = [
+            'A1' => 'Núm. Orden',
+            'B1' => 'Destinatario',
+            'C1' => 'Teléfono',
+            'D1' => 'Fecha Ingreso',
+            'E1' => 'Fecha Liquidación',
+            'F1' => 'Total',
+            'G1' => 'Moneda',
+            'H1' => 'Cliente',
+            'I1' => 'Proveedor',
+        ];
+
+        foreach ($headers as $cell => $label) {
+            $sheet->setCellValue($cell, $label);
+            $sheet->getStyle($cell)->applyFromArray($boldStyle);
+        }
+
+        // Datos
+        $row = 2;
+        foreach ($rows as $liq) {
+            $fechaIngreso     = !empty($liq['fecha_ingreso'])     ? date('d/m/Y', strtotime($liq['fecha_ingreso']))     : '';
+            $fechaLiquidacion = !empty($liq['fecha_liquidacion']) ? date('d/m/Y', strtotime($liq['fecha_liquidacion'])) : '';
+
+            $sheet->setCellValue("A{$row}", $liq['numero_orden']       ?? '');
+            $sheet->setCellValue("B{$row}", $liq['destinatario']       ?? '');
+            $sheet->setCellValue("C{$row}", $liq['telefono']           ?? '');
+            $sheet->setCellValue("D{$row}", $fechaIngreso);
+            $sheet->setCellValue("E{$row}", $fechaLiquidacion);
+            $sheet->setCellValue("F{$row}", $liq['precio_total_local'] ?? 0);
+            $sheet->setCellValue("G{$row}", $liq['moneda']             ?? '');
+            $sheet->setCellValue("H{$row}", $liq['nombre_cliente']     ?? '');
+            $sheet->setCellValue("I{$row}", $liq['nombre_proveedor']   ?? '');
+            $row++;
+        }
+
+        // Fila de total al final
+        if (!empty($rows)) {
+            $totalRow = $row;
+            $sheet->setCellValue("E{$totalRow}", 'TOTAL:');
+            $sheet->setCellValue("F{$totalRow}", $result['suma']);
+            $totalStyle = ['font' => ['bold' => true], 'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D5E8D4']]];
+            $sheet->getStyle("A{$totalRow}:I{$totalRow}")->applyFromArray($totalStyle);
+        }
+
+        // Auto-size columnas A–I
+        foreach (range('A', 'I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Nombre del archivo con rango de fechas
+        $desde    = $liqDesde  ? str_replace('-', '', $liqDesde)  : 'inicio';
+        $hasta    = $liqHasta  ? str_replace('-', '', $liqHasta)  : date('Ymd');
+        $filename = "liquidados_{$desde}_{$hasta}.xlsx";
+
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header("Content-Disposition: attachment; filename=\"{$filename}\"");
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
     public function exportarPlantillaCSV(): void
     {
         require_once 'modelo/logistica.php';
