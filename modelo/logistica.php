@@ -79,6 +79,8 @@ class LogisticaModel {
                         p.id,
                         p.numero_orden,
                         p.fecha_ingreso,
+                        p.fecha_entrega,
+                        p.fecha_liquidacion,
                         p.destinatario,
                         p.telefono,
                         p.direccion,

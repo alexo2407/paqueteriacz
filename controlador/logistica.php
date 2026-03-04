@@ -192,6 +192,8 @@ class LogisticaController {
             'P1' => 'Cliente',
             'Q1' => 'Proveedor',
             'R1' => 'Productos',
+            'S1' => 'Fecha Entrega / Reprogramación',
+            'T1' => 'Fecha Liquidación',
         ];
 
         // Obtener productos de todos los pedidos en una sola query batch
@@ -214,7 +216,9 @@ class LogisticaController {
         // Datos
         $row = 2;
         foreach ($pedidos as $p) {
-            $fechaFmt  = !empty($p['fecha_ingreso']) ? date('d/m/Y', strtotime($p['fecha_ingreso'])) : '';
+            $fechaFmt       = !empty($p['fecha_ingreso'])     ? date('d/m/Y', strtotime($p['fecha_ingreso']))     : '';
+            $fechaEntrega   = !empty($p['fecha_entrega'])     ? date('d/m/Y', strtotime($p['fecha_entrega']))     : '';
+            $fechaLiq       = !empty($p['fecha_liquidacion']) ? date('d/m/Y', strtotime($p['fecha_liquidacion'])) : '';
             $productos = $productosPorPedido[(int)$p['id']] ?? '';
             $sheet->setCellValue("A{$row}", $p['numero_orden']        ?? '');
             $sheet->setCellValue("B{$row}", $fechaFmt);
@@ -234,11 +238,13 @@ class LogisticaController {
             $sheet->setCellValue("P{$row}", $p['nombre_cliente']      ?? '');
             $sheet->setCellValue("Q{$row}", $p['nombre_proveedor']    ?? '');
             $sheet->setCellValue("R{$row}", $productos);
+            $sheet->setCellValue("S{$row}", $fechaEntrega);
+            $sheet->setCellValue("T{$row}", $fechaLiq);
             $row++;
         }
 
-        // Auto-size columnas A–R
-        foreach (range('A', 'R') as $col) {
+        // Auto-size columnas A–T
+        foreach (range('A', 'T') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
