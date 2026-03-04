@@ -694,29 +694,68 @@ include "vista/includes/header.php";
 
             <!-- Filtros Liquidados -->
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body bg-light rounded">
-                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-2 align-items-end">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                    <span class="fw-semibold text-muted small text-uppercase">
+                        <i class="bi bi-funnel me-1"></i> Filtros
+                    </span>
+                </div>
+                <div class="card-body pt-2">
+                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard">
                         <input type="hidden" name="tab" value="liq">
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold mb-1">Liq. Desde</label>
-                            <input type="date" name="liq_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosLiq['liq_desde'] ?? '') ?>">
+
+                        <!-- Fila 1: Campos de filtro -->
+                        <div class="row g-2 mb-2">
+                            <div class="col-sm-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-calendar-event me-1"></i>Liq. Desde
+                                </label>
+                                <input type="date" name="liq_desde"
+                                       class="form-control form-control-sm"
+                                       value="<?= htmlspecialchars($filtrosLiq['liq_desde'] ?? '') ?>">
+                            </div>
+                            <div class="col-sm-6 col-md-4">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-calendar-check me-1"></i>Liq. Hasta
+                                </label>
+                                <input type="date" name="liq_hasta"
+                                       class="form-control form-control-sm"
+                                       value="<?= htmlspecialchars($filtrosLiq['liq_hasta'] ?? '') ?>">
+                            </div>
+                            <div class="col-sm-12 col-md-4">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-search me-1"></i>Buscar
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white"><i class="bi bi-hash"></i></span>
+                                    <input type="text" name="liq_search"
+                                           class="form-control"
+                                           placeholder="Orden o destinatario..."
+                                           value="<?= htmlspecialchars($filtrosLiq['search'] ?? '') ?>">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold mb-1">Liq. Hasta</label>
-                            <input type="date" name="liq_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosLiq['liq_hasta'] ?? '') ?>">
+
+                        <!-- Fila 2: Botones de acción -->
+                        <div class="row g-2">
+                            <div class="col-sm-4 col-md-4">
+                                <button type="submit" class="btn btn-primary btn-sm w-100">
+                                    <i class="bi bi-search me-1"></i> Aplicar filtros
+                                </button>
+                            </div>
+                            <div class="col-sm-4 col-md-4">
+                                <a href="<?= RUTA_URL ?>logistica/dashboard?tab=liq"
+                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="bi bi-x-circle me-1"></i> Limpiar
+                                </a>
+                            </div>
+                            <div class="col-sm-4 col-md-4">
+                                <a href="<?= RUTA_URL ?>logistica/export_liquidados_excel?liq_desde=<?= urlencode($filtrosLiq['liq_desde'] ?? '') ?>&liq_hasta=<?= urlencode($filtrosLiq['liq_hasta'] ?? '') ?>&liq_search=<?= urlencode($filtrosLiq['search'] ?? '') ?>&id_cliente=<?= (int)($filtrosLiq['id_cliente'] ?? 0) ?>"
+                                   class="btn btn-success btn-sm w-100">
+                                    <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
+                                </a>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold mb-1">Buscar</label>
-                            <input type="text" name="liq_search" class="form-control form-control-sm" placeholder="Orden / destinatario..." value="<?= htmlspecialchars($filtrosLiq['search'] ?? '') ?>">
-                        </div>
-                        <div class="col-md-2 d-flex gap-1">
-                            <button class="btn btn-primary btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
-                            <a href="<?= RUTA_URL ?>logistica/dashboard?tab=liq" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-circle"></i></a>
-                            <a href="<?= RUTA_URL ?>logistica/export_liquidados_excel?liq_desde=<?= urlencode($filtrosLiq['liq_desde'] ?? '') ?>&liq_hasta=<?= urlencode($filtrosLiq['liq_hasta'] ?? '') ?>&liq_search=<?= urlencode($filtrosLiq['search'] ?? '') ?>&id_cliente=<?= (int)($filtrosLiq['id_cliente'] ?? 0) ?>"
-                               class="btn btn-success btn-sm" title="Descargar Excel de liquidados">
-                                <i class="bi bi-file-earmark-excel"></i>
-                            </a>
-                        </div>
+
                     </form>
                 </div>
             </div>
