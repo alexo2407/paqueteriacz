@@ -2003,6 +2003,141 @@ class PedidosModel
     }
 
     /**
+     * Obtener historial de cambios de estado con filtros avanzados y paginación.
+     *
+     * @param array $filtros {
+     *   numero_orden?: string,      Número de orden del pedido
+     *   id_pedido?: int,            ID interno del pedido
+     *   id_estado_anterior?: int,   Filtrar por estado anterior específico
+     *   id_estado_nuevo?: int,      Filtrar por estado nuevo específico
+     *   id_estados?: int[],         Filtrar por cualquiera de estos estados (anterior o nuevo)
+     *   fecha_desde?: string,       Rango inicio del cambio (Y-m-d)
+     *   fecha_hasta?: string,       Rango fin del cambio (Y-m-d)
+     *   id_usuario?: int,           Filtrar por quien realizó el cambio
+     * }
+     * @param int $page  Página actual (1-indexed)
+     * @param int $limit Registros por página (máx 100)
+     * @return array { data: array, pagination: array }
+     */
+    public static function obtenerHistorialEstadosFiltrado(array $filtros = [], int $page = 1, int $limit = 20): array {
+        $db = (new Conexion())->conectar();
+
+        $where  = [];
+        $params = [];
+
+        // --- Filtro por número de orden (join con pedidos) ---
+        $joinPedido = '';
+        if (!empty($filtros['numero_orden'])) {
+            $joinPedido = 'INNER JOIN pedidos p ON p.id = h.id_pedido';
+            $where[]  = 'p.numero_orden = :numero_orden';
+            $params[':numero_orden'] = $filtros['numero_orden'];
+        } elseif (!empty($filtros['id_pedido'])) {
+            $where[]  = 'h.id_pedido = :id_pedido';
+            $params[':id_pedido'] = (int)$filtros['id_pedido'];
+        }
+
+        // --- Filtro por estado anterior específico ---
+        if (!empty($filtros['id_estado_anterior'])) {
+            $where[]  = 'h.id_estado_anterior = :id_estado_anterior';
+            $params[':id_estado_anterior'] = (int)$filtros['id_estado_anterior'];
+        }
+
+        // --- Filtro por estado nuevo específico ---
+        if (!empty($filtros['id_estado_nuevo'])) {
+            $where[]  = 'h.id_estado_nuevo = :id_estado_nuevo';
+            $params[':id_estado_nuevo'] = (int)$filtros['id_estado_nuevo'];
+        }
+
+        // --- Filtro por lista de estados (anterior O nuevo) ---
+        if (!empty($filtros['id_estados']) && is_array($filtros['id_estados'])) {
+            $ids = array_map('intval', $filtros['id_estados']);
+            $ids = array_filter($ids);
+            if (!empty($ids)) {
+                $inPlaceholders = implode(',', $ids);
+                $where[] = "(h.id_estado_anterior IN ($inPlaceholders) OR h.id_estado_nuevo IN ($inPlaceholders))";
+            }
+        }
+
+        // --- Filtro por rango de fecha del cambio ---
+        if (!empty($filtros['fecha_desde'])) {
+            $where[]  = 'h.created_at >= :fecha_desde';
+            $params[':fecha_desde'] = $filtros['fecha_desde'] . ' 00:00:00';
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $where[]  = 'h.created_at <= :fecha_hasta';
+            $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
+        }
+
+        // --- Filtro por usuario que realizó el cambio ---
+        if (!empty($filtros['id_usuario'])) {
+            $where[]  = 'h.id_usuario = :id_usuario';
+            $params[':id_usuario'] = (int)$filtros['id_usuario'];
+        }
+
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        // --- Contar total para paginación ---
+        $countSql = "SELECT COUNT(*) 
+                     FROM pedidos_historial_estados h
+                     $joinPedido
+                     $whereClause";
+        $countStmt = $db->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        // --- Calcular paginación ---
+        $limit      = max(1, min(100, $limit));
+        $page       = max(1, $page);
+        $totalPages = $total > 0 ? (int)ceil($total / $limit) : 1;
+        $offset     = ($page - 1) * $limit;
+
+        // --- Consulta principal ---
+        $sql = "SELECT 
+                    h.id,
+                    h.id_pedido,
+                    p2.numero_orden,
+                    h.id_estado_anterior,
+                    e_ant.nombre_estado  AS estado_anterior,
+                    h.id_estado_nuevo,
+                    e_nvo.nombre_estado  AS estado_nuevo,
+                    h.observaciones      AS comentario,
+                    h.id_usuario,
+                    u.nombre             AS realizado_por,
+                    h.created_at         AS fecha_cambio
+                FROM pedidos_historial_estados h
+                $joinPedido
+                INNER JOIN pedidos p2 ON p2.id = h.id_pedido
+                LEFT JOIN estados_pedidos e_ant ON e_ant.id = h.id_estado_anterior
+                LEFT JOIN estados_pedidos e_nvo ON e_nvo.id = h.id_estado_nuevo
+                LEFT JOIN usuarios u ON u.id = h.id_usuario
+                $whereClause
+                ORDER BY h.created_at DESC
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'data' => $data,
+            'pagination' => [
+                'total'        => $total,
+                'per_page'     => $limit,
+                'current_page' => $page,
+                'total_pages'  => $totalPages,
+                'has_next'     => $page < $totalPages,
+                'has_prev'     => $page > 1,
+            ]
+        ];
+    }
+
+    /**
      * Helper para resolver el ID de usuario actual desde sesión o API global
      */
     public static function resolveCurrentUserId() {

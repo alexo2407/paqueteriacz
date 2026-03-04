@@ -514,6 +514,11 @@
                     <span data-lang="en">📱 Messenger App</span><span data-lang="es">📱 App Mensajería</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="historial-tab" data-bs-toggle="tab" data-bs-target="#historial" type="button" role="tab">
+                    <span data-lang="en">📋 Status History</span><span data-lang="es">📋 Historial de Estados</span>
+                </button>
+            </li>
         </ul>
 
         <!-- Tab panes -->
@@ -1973,7 +1978,370 @@ municipalitySelect.addEventListener('change', (e) => {
                     </div>
                 </div>
             </div>
-            
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- Tab: Historial de Estados                                    -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <div class="tab-pane fade" id="historial" role="tabpanel">
+
+                <!-- Descripción general -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Order Status History</h2>
+                    <h2 class="section-title" data-lang="es">Historial de Cambios de Estado</h2>
+
+                    <p data-lang="en">This endpoint allows you to query the full audit trail of status changes for any order. Each record shows the previous state, the new state, the comment left at the time of the change, and who performed it.</p>
+                    <p data-lang="es">Este endpoint permite consultar el historial completo de cambios de estado de los pedidos. Cada registro muestra el estado anterior, el estado nuevo, el comentario del cambio y quién lo realizó.</p>
+
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-get">GET</span> /api/pedidos/historial
+                        <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">💡 Tip:</strong>
+                        <strong data-lang="es">💡 Tip:</strong>
+                        <span data-lang="en"> All filters are optional and can be combined freely. Without filters, all history is returned paginated.</span>
+                        <span data-lang="es"> Todos los filtros son opcionales y combinables libremente. Sin filtros, se devuelve todo el historial paginado.</span>
+                    </div>
+                </div>
+
+                <!-- Parámetros -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Query Parameters</h2>
+                    <h2 class="section-title" data-lang="es">Parámetros de Consulta</h2>
+
+                    <!-- EN table -->
+                    <div class="table-responsive" data-lang="en">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Type</th>
+                                    <th>Default</th>
+                                    <th>Description</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>—</td><td>Filter by order number</td><td><code>100045</code></td></tr>
+                                <tr><td><code>id_pedido</code></td><td>integer</td><td>—</td><td>Filter by internal order ID</td><td><code>45</code></td></tr>
+                                <tr><td><code>id_estado_anterior</code></td><td>integer</td><td>—</td><td>Filter by exact previous state ID</td><td><code>1</code></td></tr>
+                                <tr><td><code>id_estado_nuevo</code></td><td>integer</td><td>—</td><td>Filter by exact new state ID</td><td><code>3</code></td></tr>
+                                <tr><td><code>estados</code></td><td>string</td><td>—</td><td>Comma-separated state IDs — matches previous <strong>OR</strong> new state</td><td><code>1,2,3</code></td></tr>
+                                <tr><td><code>fecha_desde</code></td><td>date</td><td>—</td><td>Start date of the change (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
+                                <tr><td><code>fecha_hasta</code></td><td>date</td><td>—</td><td>End date of the change (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>id_usuario</code></td><td>integer</td><td>—</td><td>Filter by user who made the change</td><td><code>7</code></td></tr>
+                                <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td><td><code>2</code></td></tr>
+                                <tr><td><code>limit</code></td><td>integer</td><td>20</td><td>Records per page (max 100)</td><td><code>50</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ES table -->
+                    <div class="table-responsive" data-lang="es">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Parámetro</th>
+                                    <th>Tipo</th>
+                                    <th>Defecto</th>
+                                    <th>Descripción</th>
+                                    <th>Ejemplo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>—</td><td>Filtrar por número de orden</td><td><code>100045</code></td></tr>
+                                <tr><td><code>id_pedido</code></td><td>entero</td><td>—</td><td>Filtrar por ID interno del pedido</td><td><code>45</code></td></tr>
+                                <tr><td><code>id_estado_anterior</code></td><td>entero</td><td>—</td><td>Filtrar por ID exacto del estado anterior</td><td><code>1</code></td></tr>
+                                <tr><td><code>id_estado_nuevo</code></td><td>entero</td><td>—</td><td>Filtrar por ID exacto del estado nuevo</td><td><code>3</code></td></tr>
+                                <tr><td><code>estados</code></td><td>string</td><td>—</td><td>IDs de estados separados por coma — coincide con anterior <strong>O</strong> nuevo</td><td><code>1,2,3</code></td></tr>
+                                <tr><td><code>fecha_desde</code></td><td>fecha</td><td>—</td><td>Fecha inicio del cambio (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
+                                <tr><td><code>fecha_hasta</code></td><td>fecha</td><td>—</td><td>Fecha fin del cambio (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>id_usuario</code></td><td>entero</td><td>—</td><td>Filtrar por usuario que realizó el cambio</td><td><code>7</code></td></tr>
+                                <tr><td><code>page</code></td><td>entero</td><td>1</td><td>Número de página</td><td><code>2</code></td></tr>
+                                <tr><td><code>limit</code></td><td>entero</td><td>20</td><td>Registros por página (máx 100)</td><td><code>50</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Ejemplos de uso -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Usage Examples</h2>
+                    <h2 class="section-title" data-lang="es">Ejemplos de Uso</h2>
+
+                    <h4 data-lang="en">1. Full history (paginated)</h4>
+                    <h4 data-lang="es">1. Historial completo (paginado)</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/historial
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h4 data-lang="en">2. History for a specific order</h4>
+                    <h4 data-lang="es">2. Historial de un pedido específico</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/historial?numero_orden=100045
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h4 data-lang="en">3. Changes to "Delivered" state in March 2026</h4>
+                    <h4 data-lang="es">3. Cambios a estado "Entregado" en marzo 2026</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/historial?id_estado_nuevo=3&amp;fecha_desde=2026-03-01&amp;fecha_hasta=2026-03-31
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h4 data-lang="en">4. Orders that passed through states 1, 2 or 7</h4>
+                    <h4 data-lang="es">4. Pedidos que pasaron por los estados 1, 2 o 7</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/historial?estados=1,2,7&amp;page=1&amp;limit=50
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h4 data-lang="en">5. Full cURL example</h4>
+                    <h4 data-lang="es">5. Ejemplo completo con cURL</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">curl -X GET "http://localhost/paqueteriacz/api/pedidos/historial?numero_orden=100045&amp;page=1&amp;limit=20" \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLC..." \
+  -H "Content-Type: application/json"</code></pre>
+
+                    <h4 data-lang="en">6. JavaScript (fetch)</h4>
+                    <h4 data-lang="es">6. JavaScript (fetch)</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">const params = new URLSearchParams({
+  numero_orden: '100045',
+  page: 1,
+  limit: 20
+});
+
+const res = await fetch(`/api/pedidos/historial?${params}`, {
+  headers: { 'Authorization': 'Bearer ' + token }
+});
+const json = await res.json();
+console.log(json.data);       // array de cambios
+console.log(json.pagination); // metadatos de paginación</code></pre>
+
+                    <h4 data-lang="en">7. PHP (cURL)</h4>
+                    <h4 data-lang="es">7. PHP (cURL)</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">$ch = curl_init();
+curl_setopt_array($ch, [
+  CURLOPT_URL            => 'http://localhost/paqueteriacz/api/pedidos/historial?numero_orden=100045',
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token]
+]);
+$response = json_decode(curl_exec($ch), true);
+curl_close($ch);
+
+foreach ($response['data'] as $cambio) {
+    echo $cambio['fecha_cambio'] . ': '
+       . $cambio['estado_anterior'] . ' → '
+       . $cambio['estado_nuevo'] . PHP_EOL;
+}</code></pre>
+                </div>
+
+                <!-- Estructura de Respuesta -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Response Structure</h2>
+                    <h2 class="section-title" data-lang="es">Estructura de Respuesta</h2>
+
+                    <h4 data-lang="en">Success <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 data-lang="es">Éxito <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Se encontraron 42 registros en el historial.",
+    "data": [
+        {
+            "id": 12,
+            "id_pedido": 45,
+            "numero_orden": "100045",
+            "id_estado_anterior": 1,
+            "estado_anterior": "En bodega",
+            "id_estado_nuevo": 2,
+            "estado_nuevo": "En ruta o proceso",
+            "comentario": "Recogido por mensajero",
+            "id_usuario": 7,
+            "realizado_por": "Juan Pérez",
+            "fecha_cambio": "2026-03-04 09:30:00"
+        },
+        {
+            "id": 11,
+            "id_pedido": 45,
+            "numero_orden": "100045",
+            "id_estado_anterior": null,
+            "estado_anterior": null,
+            "id_estado_nuevo": 1,
+            "estado_nuevo": "En bodega",
+            "comentario": null,
+            "id_usuario": 3,
+            "realizado_por": "María García",
+            "fecha_cambio": "2026-03-03 14:00:00"
+        }
+    ],
+    "pagination": {
+        "total": 42,
+        "per_page": 20,
+        "current_page": 1,
+        "total_pages": 3,
+        "has_next": true,
+        "has_prev": false
+    }
+}</code></pre>
+
+                    <h4 class="mt-4" data-lang="en">Response Fields</h4>
+                    <h4 class="mt-4" data-lang="es">Campos de la Respuesta</h4>
+
+                    <!-- EN fields table -->
+                    <div class="table-responsive" data-lang="en">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>id</code></td><td>integer</td><td>Unique ID of the history record</td></tr>
+                                <tr><td><code>id_pedido</code></td><td>integer</td><td>Internal order ID</td></tr>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>Order number (client reference)</td></tr>
+                                <tr><td><code>id_estado_anterior</code></td><td>integer|null</td><td>Previous state ID (null if this was the first transition)</td></tr>
+                                <tr><td><code>estado_anterior</code></td><td>string|null</td><td>Previous state name</td></tr>
+                                <tr><td><code>id_estado_nuevo</code></td><td>integer</td><td>New state ID after the change</td></tr>
+                                <tr><td><code>estado_nuevo</code></td><td>string</td><td>New state name</td></tr>
+                                <tr><td><code>comentario</code></td><td>string|null</td><td>Observation or comment recorded at the time of the change</td></tr>
+                                <tr><td><code>id_usuario</code></td><td>integer</td><td>ID of the user who made the change</td></tr>
+                                <tr><td><code>realizado_por</code></td><td>string</td><td>Full name of the user who made the change</td></tr>
+                                <tr><td><code>fecha_cambio</code></td><td>datetime</td><td>Date and time of the state change</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ES fields table -->
+                    <div class="table-responsive" data-lang="es">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>id</code></td><td>entero</td><td>ID único del registro de historial</td></tr>
+                                <tr><td><code>id_pedido</code></td><td>entero</td><td>ID interno del pedido</td></tr>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>Número de orden (referencia del cliente)</td></tr>
+                                <tr><td><code>id_estado_anterior</code></td><td>entero|null</td><td>ID del estado anterior (null si es la primera transición)</td></tr>
+                                <tr><td><code>estado_anterior</code></td><td>string|null</td><td>Nombre del estado anterior</td></tr>
+                                <tr><td><code>id_estado_nuevo</code></td><td>entero</td><td>ID del estado nuevo después del cambio</td></tr>
+                                <tr><td><code>estado_nuevo</code></td><td>string</td><td>Nombre del estado nuevo</td></tr>
+                                <tr><td><code>comentario</code></td><td>string|null</td><td>Observación o comentario registrado al momento del cambio</td></tr>
+                                <tr><td><code>id_usuario</code></td><td>entero</td><td>ID del usuario que realizó el cambio</td></tr>
+                                <tr><td><code>realizado_por</code></td><td>string</td><td>Nombre completo del usuario que realizó el cambio</td></tr>
+                                <tr><td><code>fecha_cambio</code></td><td>datetime</td><td>Fecha y hora del cambio de estado</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Error responses -->
+                    <h4 class="mt-4" data-lang="en">Error Responses</h4>
+                    <h4 class="mt-4" data-lang="es">Respuestas de Error</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">// 401 - No token
+{
+    "success": false,
+    "message": "Token de autorización requerido.",
+    "data": null
+}
+
+// 400 - Bad date format
+{
+    "success": false,
+    "message": "Formato de fecha_desde inválido. Use Y-m-d (ej: 2026-03-01).",
+    "data": null
+}</code></pre>
+                </div>
+
+                <!-- Referencia de estados -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">State ID Reference</h2>
+                    <h2 class="section-title" data-lang="es">Referencia de IDs de Estado</h2>
+
+                    <p data-lang="en">Use these IDs in <code>id_estado_anterior</code>, <code>id_estado_nuevo</code> or <code>estados</code> filter parameters.</p>
+                    <p data-lang="es">Usa estos IDs en los parámetros de filtro <code>id_estado_anterior</code>, <code>id_estado_nuevo</code> o <code>estados</code>.</p>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th><span data-lang="en">State Name</span><span data-lang="es">Nombre del Estado</span></th>
+                                    <th><span data-lang="en">Category</span><span data-lang="es">Categoría</span></th>
+                                    <th><span data-lang="en">Description</span><span data-lang="es">Descripción</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>1</code></td>
+                                    <td>En bodega</td>
+                                    <td><span class="badge" style="background:#6c757d"><span data-lang="en">Initial</span><span data-lang="es">Inicial</span></span></td>
+                                    <td><span data-lang="en">Order received and stored at warehouse</span><span data-lang="es">Pedido recibido y almacenado en bodega</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>2</code></td>
+                                    <td>En ruta o proceso</td>
+                                    <td><span class="badge" style="background:#3b82f6"><span data-lang="en">In Transit</span><span data-lang="es">En tránsito</span></span></td>
+                                    <td><span data-lang="en">Order is out for delivery</span><span data-lang="es">Pedido en camino al destinatario</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>3</code></td>
+                                    <td>Entregado</td>
+                                    <td><span class="badge" style="background:#10b981"><span data-lang="en">Completed</span><span data-lang="es">Completado</span></span></td>
+                                    <td><span data-lang="en">Order successfully delivered to recipient</span><span data-lang="es">Pedido entregado exitosamente al destinatario</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>4</code></td>
+                                    <td>Reprogramado</td>
+                                    <td><span class="badge" style="background:#f59e0b"><span data-lang="en">Rescheduled</span><span data-lang="es">Reprogramado</span></span></td>
+                                    <td><span data-lang="en">Delivery rescheduled for another day/time</span><span data-lang="es">Entrega reprogramada para otra fecha/hora</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>5</code></td>
+                                    <td>Domicilio cerrado</td>
+                                    <td><span class="badge" style="background:#ef4444"><span data-lang="en">Issue</span><span data-lang="es">Incidencia</span></span></td>
+                                    <td><span data-lang="en">Delivery failed: location was closed</span><span data-lang="es">Falló la entrega: el domicilio estaba cerrado</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>6</code></td>
+                                    <td>No hay quien reciba</td>
+                                    <td><span class="badge" style="background:#ef4444"><span data-lang="en">Issue</span><span data-lang="es">Incidencia</span></span></td>
+                                    <td><span data-lang="en">Delivery failed: no one available to receive</span><span data-lang="es">Falló la entrega: nadie disponible para recibir</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>7</code></td>
+                                    <td>Devuelto</td>
+                                    <td><span class="badge" style="background:#dc2626"><span data-lang="en">Returned</span><span data-lang="es">Devuelto</span></span></td>
+                                    <td><span data-lang="en">Order returned to warehouse</span><span data-lang="es">Pedido devuelto a bodega</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>8</code></td>
+                                    <td>Domicilio no encontrado</td>
+                                    <td><span class="badge" style="background:#ef4444"><span data-lang="en">Issue</span><span data-lang="es">Incidencia</span></span></td>
+                                    <td><span data-lang="en">Address could not be located</span><span data-lang="es">La dirección no pudo ser ubicada</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>9</code></td>
+                                    <td>Rechazado</td>
+                                    <td><span class="badge" style="background:#7c3aed"><span data-lang="en">Rejected</span><span data-lang="es">Rechazado</span></span></td>
+                                    <td><span data-lang="en">Customer refused to receive the order</span><span data-lang="es">El cliente rechazó recibir el pedido</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>10</code></td>
+                                    <td>No puede pagar recaudo</td>
+                                    <td><span class="badge" style="background:#ef4444"><span data-lang="en">Issue</span><span data-lang="es">Incidencia</span></span></td>
+                                    <td><span data-lang="en">Customer unable to pay cash on delivery</span><span data-lang="es">Cliente no pudo pagar el recaudo al recibir</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>11</code></td>
+                                    <td>Entregado-liquidado</td>
+                                    <td><span class="badge" style="background:#059669"><span data-lang="en">Settled</span><span data-lang="es">Liquidado</span></span></td>
+                                    <td><span data-lang="en">Order delivered and payment settled</span><span data-lang="es">Pedido entregado y pago liquidado</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-warning mt-3">
+                        <strong data-lang="en">⚠️ Note:</strong>
+                        <strong data-lang="es">⚠️ Nota:</strong>
+                        <span data-lang="en"> The list of states above may grow over time. Use <code>GET /api/pedidos/estados</code> to always retrieve the current, up-to-date list from the database.</span>
+                        <span data-lang="es"> La lista de estados puede crecer con el tiempo. Usa <code>GET /api/pedidos/estados</code> para obtener siempre la lista actualizada desde la base de datos.</span>
+                    </div>
+                </div>
+
+            </div>
+            <!-- /Tab: Historial de Estados -->
+
         </div>
     </div>
 

@@ -419,6 +419,10 @@ class LogisticaModel {
             }
             
             $sql .= " WHERE id = :id";
+            // Comunicar usuario y observaciones al trigger after_pedido_update_estado
+            $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs")
+               ->execute([':uid' => (int)$usuarioId, ':obs' => $observaciones ?: null]);
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
  
@@ -451,7 +455,7 @@ class LogisticaModel {
                 $datosAnteriores,
                 $datosNuevos
             );
- 
+
             $db->commit();
             return true;
 
@@ -728,6 +732,11 @@ class LogisticaModel {
                 $sql = 'UPDATE pedidos SET ' . implode(', ', $sets) . ' WHERE id = :id';
 
                 $stmt = $db->prepare($sql);
+                // Comunicar usuario y observaciones al trigger after_pedido_update_estado
+                if ($nuevoIdEstado !== null) {
+                    $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs")
+                       ->execute([':uid' => (int)$userId, ':obs' => $row['motivo'] ?? null]);
+                }
                 $ok   = $stmt->execute($params);
 
                 if ($ok && $stmt->rowCount() > 0) {

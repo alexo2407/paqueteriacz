@@ -97,6 +97,11 @@ if (preg_match('/\/api\/pedidos\/status$/', $path) && $method === 'GET') {
     exit;
 }
 
+if (preg_match('/\/api\/pedidos\/historial$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/pedidos/historial.php';
+    exit;
+}
+
 // Rutas de Geoinfo
 if (preg_match('/\/api\/geoinfo\/paises$/', $path)) {
     include __DIR__ . '/geoinfo/paises.php';
