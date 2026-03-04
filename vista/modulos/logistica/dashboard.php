@@ -319,19 +319,33 @@ include "vista/includes/header.php";
             
             <!-- Barra de Filtros + Excel (Tab Pedidos Activos) -->
             <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body bg-light rounded">
-                        <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-2 align-items-end" id="formFiltrosPedidos">
-                            <input type="hidden" name="tab" value="pedidos">
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold mb-1">Desde</label>
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                    <span class="fw-semibold text-muted small text-uppercase">
+                        <i class="bi bi-funnel me-1"></i> Filtros
+                    </span>
+                </div>
+                <div class="card-body pt-2">
+                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" id="formFiltrosPedidos">
+                        <input type="hidden" name="tab" value="pedidos">
+
+                        <!-- Fila 1: Campos de filtro -->
+                        <div class="row g-2 mb-2">
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-calendar-event me-1"></i>Desde
+                                </label>
                                 <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_desde']) ?>">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold mb-1">Hasta</label>
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-calendar-check me-1"></i>Hasta
+                                </label>
                                 <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtros['fecha_hasta']) ?>">
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold mb-1">Cliente</label>
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-person me-1"></i>Cliente
+                                </label>
                                 <select name="id_cliente" class="form-select form-select-sm">
                                     <option value="0">Todos</option>
                                     <?php foreach ($clientesLista as $cli): ?>
@@ -341,8 +355,10 @@ include "vista/includes/header.php";
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold mb-1">Estado</label>
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-tag me-1"></i>Estado
+                                </label>
                                 <select name="id_estado" class="form-select form-select-sm">
                                     <option value="0">Todos</option>
                                     <?php foreach ($estadosDisponibles as $est): ?>
@@ -352,24 +368,48 @@ include "vista/includes/header.php";
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                            <div class="col-md-2">
-                                <label class="form-label small fw-bold mb-1">Buscar</label>
-                                <input type="text" name="search" class="form-control form-control-sm" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtros['search']) ?>">
+                            <div class="col-sm-12 col-md-12">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-search me-1"></i>Buscar
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white"><i class="bi bi-hash"></i></span>
+                                    <input type="text" name="search" class="form-control" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtros['search']) ?>">
+                                </div>
                             </div>
-                            <div class="col-md-2 d-flex gap-1">
-                                <button class="btn btn-primary btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
-                                <a href="<?= RUTA_URL ?>logistica/dashboard?tab=pedidos" class="btn btn-outline-secondary btn-sm" title="Limpiar filtros"><i class="bi bi-x-circle"></i></a>
-                                <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=pedidos&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>" 
-                                   class="btn btn-success btn-sm" title="Descargar Excel"><i class="bi bi-file-earmark-excel"></i></a>
-                                <?php if (isCliente() || isSuperAdmin()): ?>
-                                <button type="button" class="btn btn-warning btn-sm" id="btnAbrirBulk" title="Actualizar comentarios/estado masivamente" onclick="abrirModalBulk()">
-                                    <i class="bi bi-file-earmark-arrow-up"></i> Actualizar
+                        </div>
+
+                        <!-- Fila 2: Botones de acción -->
+                        <div class="row g-2">
+                            <div class="col-sm-3 col-md-3">
+                                <button type="submit" class="btn btn-primary btn-sm w-100">
+                                    <i class="bi bi-search me-1"></i> Aplicar filtros
                                 </button>
-                                <?php endif; ?>
                             </div>
-                        </form>
-                    </div>
+                            <div class="col-sm-3 col-md-3">
+                                <a href="<?= RUTA_URL ?>logistica/dashboard?tab=pedidos"
+                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="bi bi-x-circle me-1"></i> Limpiar
+                                </a>
+                            </div>
+                            <div class="col-sm-3 col-md-3">
+                                <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=pedidos&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>"
+                                   class="btn btn-success btn-sm w-100">
+                                    <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
+                                </a>
+                            </div>
+                            <?php if (isCliente() || isSuperAdmin()): ?>
+                            <div class="col-sm-3 col-md-3">
+                                <button type="button" class="btn btn-warning btn-sm w-100" id="btnAbrirBulk" onclick="abrirModalBulk()">
+                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
+                                </button>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+
+                    </form>
                 </div>
+            </div>
 
             <?php if (empty($pedidosActivos)): ?>
                 <div class="text-center py-5 border rounded bg-light">
@@ -531,54 +571,94 @@ include "vista/includes/header.php";
             
             <!-- Barra de Filtros Avanzados + Excel (Tab Historial Completo) -->
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body bg-light rounded">
-                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard" class="row g-2 align-items-end">
+                <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                    <span class="fw-semibold text-muted small text-uppercase">
+                        <i class="bi bi-funnel me-1"></i> Filtros
+                    </span>
+                </div>
+                <div class="card-body pt-2">
+                    <form method="GET" action="<?= RUTA_URL ?>logistica/dashboard">
                         <input type="hidden" name="tab" value="all">
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold mb-1">Desde</label>
-                            <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_desde']) ?>">
+
+                        <!-- Fila 1: Campos de filtro -->
+                        <div class="row g-2 mb-2">
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-calendar-event me-1"></i>Desde
+                                </label>
+                                <input type="date" name="fecha_desde" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_desde']) ?>">
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-calendar-check me-1"></i>Hasta
+                                </label>
+                                <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_hasta']) ?>">
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-person me-1"></i>Cliente
+                                </label>
+                                <select name="id_cliente" class="form-select form-select-sm">
+                                    <option value="0">Todos</option>
+                                    <?php foreach ($clientesLista as $cli): ?>
+                                        <option value="<?= (int)$cli['id'] ?>" <?= (int)$filtrosHistorial['id_cliente'] === (int)$cli['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($cli['nombre']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-tag me-1"></i>Estado
+                                </label>
+                                <select name="id_estado" class="form-select form-select-sm">
+                                    <option value="0">Todos</option>
+                                    <?php foreach ($estadosDisponibles as $est): ?>
+                                        <option value="<?= (int)$est['id'] ?>" <?= (int)$filtrosHistorial['id_estado'] === (int)$est['id'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($est['nombre_estado']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-sm-12 col-md-12">
+                                <label class="form-label small fw-semibold mb-1 text-muted">
+                                    <i class="bi bi-search me-1"></i>Buscar
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-white"><i class="bi bi-hash"></i></span>
+                                    <input type="text" name="search" class="form-control" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtrosHistorial['search']) ?>">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold mb-1">Hasta</label>
-                            <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="<?= htmlspecialchars($filtrosHistorial['fecha_hasta']) ?>">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold mb-1">Cliente</label>
-                            <select name="id_cliente" class="form-select form-select-sm">
-                                <option value="0">Todos</option>
-                                <?php foreach ($clientesLista as $cli): ?>
-                                    <option value="<?= (int)$cli['id'] ?>" <?= (int)$filtrosHistorial['id_cliente'] === (int)$cli['id'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($cli['nombre']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold mb-1">Estado</label>
-                            <select name="id_estado" class="form-select form-select-sm">
-                                <option value="0">Todos</option>
-                                <?php foreach ($estadosDisponibles as $est): ?>
-                                    <option value="<?= (int)$est['id'] ?>" <?= (int)$filtrosHistorial['id_estado'] === (int)$est['id'] ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($est['nombre_estado']) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold mb-1">Buscar</label>
-                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Orden / nombre..." value="<?= htmlspecialchars($filtrosHistorial['search']) ?>">
-                        </div>
-                        <div class="col-md-2 d-flex gap-1">
-                            <button class="btn btn-primary btn-sm flex-grow-1" type="submit"><i class="bi bi-search"></i> Aplicar</button>
-                            <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all" class="btn btn-outline-secondary btn-sm" title="Limpiar"><i class="bi bi-x-circle"></i></a>
-                            <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtrosHistorial['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtrosHistorial['fecha_hasta']) ?>&id_cliente=<?= (int)$filtrosHistorial['id_cliente'] ?>&id_estado=<?= (int)$filtrosHistorial['id_estado'] ?>&search=<?= urlencode($filtrosHistorial['search']) ?>" 
-                               class="btn btn-success btn-sm" title="Descargar Excel"><i class="bi bi-file-earmark-excel"></i></a>
+
+                        <!-- Fila 2: Botones de acción -->
+                        <div class="row g-2">
+                            <div class="col-sm-3 col-md-3">
+                                <button type="submit" class="btn btn-primary btn-sm w-100">
+                                    <i class="bi bi-search me-1"></i> Aplicar filtros
+                                </button>
+                            </div>
+                            <div class="col-sm-3 col-md-3">
+                                <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all"
+                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    <i class="bi bi-x-circle me-1"></i> Limpiar
+                                </a>
+                            </div>
+                            <div class="col-sm-3 col-md-3">
+                                <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtrosHistorial['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtrosHistorial['fecha_hasta']) ?>&id_cliente=<?= (int)$filtrosHistorial['id_cliente'] ?>&id_estado=<?= (int)$filtrosHistorial['id_estado'] ?>&search=<?= urlencode($filtrosHistorial['search']) ?>"
+                                   class="btn btn-success btn-sm w-100">
+                                    <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
+                                </a>
+                            </div>
                             <?php if (isCliente() || isSuperAdmin()): ?>
-                            <button type="button" class="btn btn-warning btn-sm" title="Actualizar comentarios/estado masivamente" onclick="abrirModalBulk()">
-                                <i class="bi bi-file-earmark-arrow-up"></i> Actualizar
-                            </button>
+                            <div class="col-sm-3 col-md-3">
+                                <button type="button" class="btn btn-warning btn-sm w-100" onclick="abrirModalBulk()">
+                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
+                                </button>
+                            </div>
                             <?php endif; ?>
                         </div>
+
                     </form>
                 </div>
             </div>
