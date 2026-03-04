@@ -85,6 +85,7 @@ class LogisticaModel {
                         p.zona,
                         p.codigo_postal,
                         p.precio_total_local,
+                        p.comentario,
                         p.id_cliente,
                         p.id_proveedor,
                         ep.nombre_estado AS estado,

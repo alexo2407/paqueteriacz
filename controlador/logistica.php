@@ -144,16 +144,20 @@ class LogisticaController {
         $isProveedor = isCliente();
 
         // Sanitizar filtros
+        $tab = $_GET['tab'] ?? 'all';
+        $soloActivos = ($tab === 'pedidos'); // Tab "En Proceso" → solo estados 1 y 2
+
         $filtros = [
             'fecha_desde' => $_GET['fecha_desde'] ?? '',
             'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
             'search'      => $_GET['search'] ?? '',
             'id_cliente'  => isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0,
-            'id_estado'   => isset($_GET['id_estado'])  && is_numeric($_GET['id_estado'])  ? (int)$_GET['id_estado']  : 0,
+            // Tab "En Proceso": ignorar id_estado del GET; el backend ya filtra a IDs 1 y 2 con $soloActivos
+            'id_estado'   => $soloActivos ? 0 : (isset($_GET['id_estado']) && is_numeric($_GET['id_estado']) ? (int)$_GET['id_estado'] : 0),
         ];
 
         // Obtener TODOS los pedidos (sin paginación) - límite de seguridad 10 000
-        $pedidos = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, 10001, 0, false);
+        $pedidos = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, 10001, 0, $soloActivos);
 
         if (count($pedidos) > 10000) {
             // Excede límite seguro — mostrar mensaje
@@ -175,18 +179,19 @@ class LogisticaController {
             'C1' => 'Destinatario',
             'D1' => 'Teléfono',
             'E1' => 'Dirección',
-            'F1' => 'Zona',
-            'G1' => 'Código Postal',
-            'H1' => 'País',
-            'I1' => 'Departamento',
-            'J1' => 'Municipio',
-            'K1' => 'Barrio',
-            'L1' => 'Estado',
-            'M1' => 'Total',
-            'N1' => 'Moneda',
-            'O1' => 'Cliente',
-            'P1' => 'Proveedor',
-            'Q1' => 'Productos',
+            'F1' => 'Comentario',
+            'G1' => 'Zona',
+            'H1' => 'Código Postal',
+            'I1' => 'País',
+            'J1' => 'Departamento',
+            'K1' => 'Municipio',
+            'L1' => 'Barrio',
+            'M1' => 'Estado',
+            'N1' => 'Total',
+            'O1' => 'Moneda',
+            'P1' => 'Cliente',
+            'Q1' => 'Proveedor',
+            'R1' => 'Productos',
         ];
 
         // Obtener productos de todos los pedidos en una sola query batch
@@ -216,29 +221,34 @@ class LogisticaController {
             $sheet->setCellValue("C{$row}", $p['destinatario']        ?? '');
             $sheet->setCellValue("D{$row}", $p['telefono']            ?? '');
             $sheet->setCellValue("E{$row}", $p['direccion']           ?? '');
-            $sheet->setCellValue("F{$row}", $p['zona']                ?? '');
-            $sheet->setCellValue("G{$row}", $p['codigo_postal']       ?? '');
-            $sheet->setCellValue("H{$row}", $p['nombre_pais']         ?? '');
-            $sheet->setCellValue("I{$row}", $p['nombre_departamento'] ?? '');
-            $sheet->setCellValue("J{$row}", $p['nombre_municipio']    ?? '');
-            $sheet->setCellValue("K{$row}", $p['nombre_barrio']       ?? '');
-            $sheet->setCellValue("L{$row}", $p['estado']              ?? '');
-            $sheet->setCellValue("M{$row}", $p['precio_total_local']  ?? 0);
-            $sheet->setCellValue("N{$row}", $p['moneda']              ?? '');
-            $sheet->setCellValue("O{$row}", $p['nombre_cliente']      ?? '');
-            $sheet->setCellValue("P{$row}", $p['nombre_proveedor']    ?? '');
-            $sheet->setCellValue("Q{$row}", $productos);
+            $sheet->setCellValue("F{$row}", $p['comentario']          ?? '');
+            $sheet->setCellValue("G{$row}", $p['zona']                ?? '');
+            $sheet->setCellValue("H{$row}", $p['codigo_postal']       ?? '');
+            $sheet->setCellValue("I{$row}", $p['nombre_pais']         ?? '');
+            $sheet->setCellValue("J{$row}", $p['nombre_departamento'] ?? '');
+            $sheet->setCellValue("K{$row}", $p['nombre_municipio']    ?? '');
+            $sheet->setCellValue("L{$row}", $p['nombre_barrio']       ?? '');
+            $sheet->setCellValue("M{$row}", $p['estado']              ?? '');
+            $sheet->setCellValue("N{$row}", $p['precio_total_local']  ?? 0);
+            $sheet->setCellValue("O{$row}", $p['moneda']              ?? '');
+            $sheet->setCellValue("P{$row}", $p['nombre_cliente']      ?? '');
+            $sheet->setCellValue("Q{$row}", $p['nombre_proveedor']    ?? '');
+            $sheet->setCellValue("R{$row}", $productos);
             $row++;
         }
 
-        // Auto-size columnas A–Q
-        foreach (range('A', 'Q') as $col) {
+        // Auto-size columnas A–R
+        foreach (range('A', 'R') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Limitar ancho máximo de la columna Productos para que no se estire demasiado
-        $sheet->getColumnDimension('Q')->setAutoSize(false);
-        $sheet->getColumnDimension('Q')->setWidth(60);
+        // Limitar ancho máximo de columnas de texto largo
+        $sheet->getColumnDimension('E')->setAutoSize(false);
+        $sheet->getColumnDimension('E')->setWidth(45); // Dirección
+        $sheet->getColumnDimension('F')->setAutoSize(false);
+        $sheet->getColumnDimension('F')->setWidth(45); // Comentario
+        $sheet->getColumnDimension('R')->setAutoSize(false);
+        $sheet->getColumnDimension('R')->setWidth(60); // Productos
 
         // Nombre del archivo
         $timestamp = date('Ymd_Hi');

@@ -198,6 +198,18 @@ include("vista/includes/header.php");
                         </div>
 
                         <div class="col-12">
+                            <label class="small text-muted fw-bold text-uppercase">Comentario del Pedido</label>
+                            <div class="p-3 bg-light rounded border mt-1">
+                                <?php if (!empty($pedido['comentario'])): ?>
+                                    <i class="bi bi-chat-left-text me-1 text-secondary"></i>
+                                    <?= nl2br(htmlspecialchars($pedido['comentario'])) ?>
+                                <?php else: ?>
+                                    <span class="text-muted fst-italic">Sin comentarios registrados.</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
                             <hr class="my-2">
                         </div>
                         

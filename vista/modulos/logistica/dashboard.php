@@ -361,7 +361,10 @@ include "vista/includes/header.php";
                                 </label>
                                 <select name="id_estado" class="form-select form-select-sm">
                                     <option value="0">Todos</option>
-                                    <?php foreach ($estadosDisponibles as $est): ?>
+                                    <?php
+                                    // Tab "En Proceso" solo maneja estados activos: En bodega (1) y En ruta o proceso (2)
+                                    $estadosEnProceso = array_filter($estadosDisponibles, fn($e) => in_array((int)$e['id'], [1, 2]));
+                                    foreach ($estadosEnProceso as $est): ?>
                                         <option value="<?= (int)$est['id'] ?>" <?= (int)$filtros['id_estado'] === (int)$est['id'] ? 'selected' : '' ?>>
                                             <?= htmlspecialchars($est['nombre_estado']) ?>
                                         </option>
