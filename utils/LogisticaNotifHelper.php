@@ -61,17 +61,17 @@ class LogisticaNotifHelper
                 case self::ACCION_CREADO:
                     $tipo    = 'pedido_creado';
                     $titulo  = "Nuevo pedido #$numeroOrden creado";
-                    $mensaje = "Se creó el pedido #$numeroOrden para «$destinatarioPedido» vía API.";
+                    $mensaje = "Se creó el pedido #{$numeroOrden} para «{$destinatarioPedido}» vía API.";
                     break;
                 case self::ACCION_ACTUALIZADO:
                     $tipo    = 'pedido_actualizado';
                     $titulo  = "Pedido #$numeroOrden actualizado";
-                    $mensaje = "Se actualizaron los datos del pedido #$numeroOrden para «$destinatarioPedido».";
+                    $mensaje = "Se actualizaron los datos del pedido #{$numeroOrden} para «{$destinatarioPedido}».";
                     break;
                 case self::ACCION_ESTADO_CAMBIADO:
                     $tipo    = 'pedido_estado';
                     $titulo  = "Estado de pedido #$numeroOrden: $estadoActual";
-                    $mensaje = "El pedido #$numeroOrden cambió de estado a «$estadoActual».";
+                    $mensaje = "El pedido #{$numeroOrden} cambió de estado a «{$estadoActual}».";
                     break;
                 default:
                     $tipo    = 'pedido_evento';
