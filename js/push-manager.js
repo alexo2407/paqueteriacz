@@ -47,9 +47,13 @@
             return null;
         }
         try {
-            return await navigator.serviceWorker.register(SW_PATH, { scope: BASE_URL + '/' });
+            // ⚠️ NO pasar scope explícito: Chrome lo infiere del path del sw.js.
+            // Si el scope fuera más amplio que la ruta del sw.js, Chrome lo bloquea.
+            const reg = await navigator.serviceWorker.register(SW_PATH);
+            console.log('[Push] SW registrado. Scope:', reg.scope, '| State:', reg.active ? reg.active.state : 'installing');
+            return reg;
         } catch (err) {
-            console.error('[Push] Error al registrar SW:', err);
+            console.error('[Push] Error al registrar SW:', err.message, err);
             return null;
         }
     }
@@ -85,24 +89,20 @@
     }
 
     async function unsubscribeFromPush() {
-        const reg = await navigator.serviceWorker.getRegistration(SW_PATH);
-        if (!reg) return true;
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+            const sub = await reg.pushManager.getSubscription();
+            if (!sub) continue;
 
-        const sub = await reg.pushManager.getSubscription();
-        if (!sub) return true;
+            const endpoint = sub.endpoint;
+            await sub.unsubscribe();
 
-        const endpoint = sub.endpoint;
-
-        // Desuscribir en el navegador
-        await sub.unsubscribe();
-
-        // Notificar al backend
-        await fetch(UNSUBSCRIBE_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint }),
-        });
-
+            await fetch(UNSUBSCRIBE_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endpoint }),
+            });
+        }
         return true;
     }
 
@@ -115,10 +115,13 @@
 
     async function isSubscribed() {
         if (!('serviceWorker' in navigator)) return false;
-        const reg = await navigator.serviceWorker.getRegistration(SW_PATH);
-        if (!reg) return false;
-        const sub = await reg.pushManager.getSubscription();
-        return !!sub;
+        // Buscar cualquier SW registrado bajo el scope del subdirectorio
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) {
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) return true;
+        }
+        return false;
     }
 
     // ─── UI: actualizar botón toggle ─────────────────────────────────────────

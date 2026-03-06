@@ -41,6 +41,12 @@ Options -MultiViews
     # Remove server signature
     Header always unset X-Powered-By
     Header always unset Server
+
+    # Service Worker: permite que sw.js en la raiz controle el scope /paqueteriacz/
+    # Sin esto, Chrome bloquea el registro si el SW esta fuera del subdirectorio.
+    <FilesMatch "sw\.js$">
+        Header set Service-Worker-Allowed "/"
+    </FilesMatch>
 </IfModule>
 
 # Ocultar información del servidor
