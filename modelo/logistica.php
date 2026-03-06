@@ -460,6 +460,42 @@ class LogisticaModel {
             );
 
             $db->commit();
+
+            // ── Crear notificación logística ──────────────────────────────────
+            try {
+                require_once __DIR__ . '/logistica_notification.php';
+
+                $estadoAnteriorNombre = $pedidoActual['nombre_estado'] ?? ($datosAnteriores['estado'] ?? '');
+                $titulo = "Pedido #{$pedidoActual['numero_orden']} → {$nuevoEstado}";
+                $mensaje = $observaciones ?: '';
+                $payload = [
+                    'estado_anterior' => $estadoAnteriorNombre,
+                    'estado_nuevo'    => $nuevoEstado,
+                    'numero_orden'    => $pedidoActual['numero_orden'] ?? '',
+                ];
+
+                // Notificar al cliente del pedido (si existe y es distinto del usuario que actuó)
+                $idClientePedido  = (int)($pedidoActual['id_cliente']  ?? 0);
+                $idProveedorPedido = (int)($pedidoActual['id_proveedor'] ?? 0);
+
+                if ($idClientePedido > 0) {
+                    LogisticaNotificationModel::agregar(
+                        $idClientePedido, 'estado_cambiado',
+                        $titulo, $mensaje, $pedidoId, $payload
+                    );
+                }
+                // Notificar al proveedor también si es diferente
+                if ($idProveedorPedido > 0 && $idProveedorPedido !== $idClientePedido) {
+                    LogisticaNotificationModel::agregar(
+                        $idProveedorPedido, 'estado_cambiado',
+                        $titulo, $mensaje, $pedidoId, $payload
+                    );
+                }
+            } catch (Exception $notifEx) {
+                // No bloquear el flujo principal por errores de notificación
+                error_log("[LogisticaNotification] Error al crear notif: " . $notifEx->getMessage());
+            }
+
             return true;
 
         } catch (Exception $e) {
@@ -468,6 +504,7 @@ class LogisticaModel {
             return false;
         }
     }
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // Bulk update — comentario y/o estado

@@ -693,4 +693,61 @@ class LogisticaController {
         fclose($out);
         exit;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Centro de Notificaciones Logísticas
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Retorna datos para la vista de notificaciones logísticas.
+     */
+    public function notificaciones(): array {
+        require_once 'modelo/logistica_notification.php';
+
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        if ($userId <= 0) {
+            return ['notificaciones' => [], 'pendientes' => [], 'unread_count' => 0, 'pagination' => []];
+        }
+
+        $page   = max(1, (int)($_GET['page'] ?? 1));
+        $limit  = 300;
+        $offset = ($page - 1) * $limit;
+        $onlyUnread = isset($_GET['unread']) && $_GET['unread'] === 'true';
+        $search = trim($_GET['q'] ?? '');
+
+        $notificaciones = LogisticaNotificationModel::obtenerPorUsuario($userId, $limit, $offset, $onlyUnread, $search);
+        $total          = LogisticaNotificationModel::contarTotalPorUsuario($userId, $onlyUnread, $search);
+        $unreadCount    = LogisticaNotificationModel::contarNoLeidas($userId);
+        $pendientes     = LogisticaNotificationModel::obtenerPendientes($userId);
+
+        // Decodificar payload JSON en cada notificación
+        foreach ($notificaciones as &$n) {
+            if (isset($n['payload']) && is_string($n['payload'])) {
+                $n['payload'] = json_decode($n['payload'], true) ?? [];
+            }
+        }
+        unset($n);
+
+        foreach ($pendientes as &$p) {
+            if (isset($p['payload']) && is_string($p['payload'])) {
+                $p['payload'] = json_decode($p['payload'], true) ?? [];
+            }
+        }
+        unset($p);
+
+        $totalPages = max(1, (int)ceil($total / $limit));
+
+        return [
+            'notificaciones' => $notificaciones,
+            'pendientes'     => $pendientes,
+            'unread_count'   => $unreadCount,
+            'search_query'   => $search,
+            'pagination'     => [
+                'current_page' => $page,
+                'total_pages'  => $totalPages,
+                'total_items'  => $total,
+                'limit'        => $limit,
+            ],
+        ];
+    }
 }

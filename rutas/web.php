@@ -1412,3 +1412,46 @@ if (isset($ruta[0]) && $ruta[0] === 'stock') {
         exit;
     }
 }
+
+// -----------------------
+// Notificaciones Logísticas — AJAX endpoints
+// GET  ?enlace=logistica/notificaciones/marcarLeida/{id}
+// POST ?enlace=logistica/notificaciones/marcarTodasLeidas
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'notificaciones' && isset($ruta[2])) {
+    require_once __DIR__ . '/../modelo/logistica_notification.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+
+    header('Content-Type: application/json');
+    $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+
+    if ($userId <= 0) {
+        echo json_encode(['success' => false, 'message' => 'No autenticado.']);
+        exit;
+    }
+
+    $accion = $ruta[2];
+
+    if ($accion === 'marcarLeida') {
+        $id = isset($ruta[3]) ? (int)$ruta[3] : 0;
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID inválido.']);
+            exit;
+        }
+        $ok = LogisticaNotificationModel::marcarLeida($id, $userId);
+        $unread = LogisticaNotificationModel::contarNoLeidas($userId);
+        echo json_encode(['success' => $ok, 'unread_count' => $unread]);
+        exit;
+    }
+
+    if ($accion === 'marcarTodasLeidas') {
+        $ok = LogisticaNotificationModel::marcarTodasLeidas($userId);
+        echo json_encode(['success' => $ok, 'unread_count' => 0]);
+        exit;
+    }
+
+    echo json_encode(['success' => false, 'message' => 'Acción no reconocida.']);
+    exit;
+}
+
