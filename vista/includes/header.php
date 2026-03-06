@@ -24,17 +24,42 @@
     }
 
     // ── Notificaciones ──────────────────────────────────────────────────────
-    $unreadCount = 0;
-    $showProviderLeads = false;
+    $unreadCount        = 0;
+    $showProviderLeads  = false;
+    $notifUrl           = RUTA_URL . 'crm/notificaciones'; // default
+    $isLogisticaCliente = $isCliente && !$isAdmin && !$isProveedorCRM && !$isClienteCRM;
+    $navNotifPreview    = []; // Para el dropdown preview (últimas 5)
+    $navNotifModulo     = 'crm'; // 'logistica' | 'crm'
+
     if (!$isRepartidor || $isAdmin) {
-        require_once "modelo/crm_notification.php";
-        require_once "modelo/crm_lead.php";
         $navUserId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0;
-        $showProviderLeads = $isProveedor && !$isAdmin;
-        if ($showProviderLeads) {
-            $unreadCount = $navUserId > 0 ? CrmLead::contarPendientesProveedor($navUserId) : 0;
+
+        if ($isLogisticaCliente) {
+            require_once 'modelo/logistica_notification.php';
+            $unreadCount     = $navUserId > 0 ? LogisticaNotificationModel::contarNoLeidas($navUserId) : 0;
+            $notifUrl        = RUTA_URL . 'logistica/notificaciones';
+            $navNotifModulo  = 'logistica';
+            if ($navUserId > 0) {
+                $navNotifPreview = LogisticaNotificationModel::obtenerPorUsuario($navUserId, 5, 0, false, '');
+                foreach ($navNotifPreview as &$np) {
+                    if (isset($np['payload']) && is_string($np['payload'])) {
+                        $np['payload'] = json_decode($np['payload'], true) ?? [];
+                    }
+                }
+                unset($np);
+            }
         } else {
-            $unreadCount = $navUserId > 0 ? CrmNotificationModel::contarNoLeidas($navUserId) : 0;
+            require_once 'modelo/crm_notification.php';
+            require_once 'modelo/crm_lead.php';
+            $showProviderLeads = $isProveedor && !$isAdmin;
+            if ($showProviderLeads) {
+                $unreadCount = $navUserId > 0 ? CrmLead::contarPendientesProveedor($navUserId) : 0;
+            } else {
+                $unreadCount = $navUserId > 0 ? CrmNotificationModel::contarNoLeidas($navUserId) : 0;
+                if ($navUserId > 0) {
+                    $navNotifPreview = CrmNotificationModel::obtenerPorUsuario($navUserId, false, 5, 0) ?? [];
+                }
+            }
         }
     }
     $userName = $_SESSION['nombre'] ?? null;
@@ -117,16 +142,202 @@
         <ul class="navbar-nav ms-auto flex-row align-items-center gap-2">
 
             <?php if (!$isRepartidor || $isAdmin): ?>
-            <li class="nav-item position-relative">
-                <a class="nav-link px-2" href="<?= RUTA_URL ?>crm/notificaciones"
-                   title="<?= $showProviderLeads ? 'Leads' : 'Notificaciones' ?>">
-                    <i class="bi bi-<?= $showProviderLeads ? 'people-fill' : 'bell' ?>" style="font-size:1.2rem"></i>
+            <!-- ═ NOTIF DROPDOWN ═ -->
+            <li class="nav-item dropdown" id="navNotifDropdown">
+                <a class="nav-link px-2 position-relative" href="#"
+                   data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                   aria-expanded="false" aria-label="Notificaciones">
+                    <i class="bi bi-<?= $showProviderLeads ? 'people-fill' : 'bell-fill' ?>" style="font-size:1.25rem"></i>
                     <?php if ($unreadCount > 0): ?>
-                    <span class="bs-nav-badge"><?= $unreadCount ?></span>
+                    <span class="bs-nav-badge" id="navNotifBadge"><?= $unreadCount ?></span>
                     <?php endif; ?>
                 </a>
+
+                <div class="dropdown-menu dropdown-menu-end shadow-lg border-0 p-0"
+                     style="width:360px;max-width:95vw;border-radius:12px;overflow:hidden">
+
+                    <!-- Header -->
+                    <div class="d-flex align-items-center justify-content-between px-3 py-2"
+                         style="background:linear-gradient(135deg,#0d6efd,#0a58ca);">
+                        <span class="text-white fw-semibold">
+                            <i class="bi bi-bell-fill me-1"></i>
+                            <?= $showProviderLeads ? 'Leads pendientes' : 'Notificaciones' ?>
+                            <?php if ($unreadCount > 0): ?>
+                            <span class="badge bg-white text-primary ms-1" style="font-size:.7rem"><?= $unreadCount ?> nuevas</span>
+                            <?php endif; ?>
+                        </span>
+                        <?php if ($unreadCount > 0 && !$showProviderLeads): ?>
+                        <button class="btn btn-sm text-white opacity-75 p-0 border-0" id="navMarkAllRead"
+                                style="font-size:.75rem" title="Marcar todo leído">
+                            <i class="bi bi-check-all"></i> Todo leído
+                        </button>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Lista -->
+                    <div style="max-height:320px;overflow-y:auto">
+                    <?php if (empty($navNotifPreview) && !$showProviderLeads): ?>
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-bell-slash display-6 opacity-25 d-block mb-1"></i>
+                            <small>Sin notificaciones recientes</small>
+                        </div>
+                    <?php elseif ($showProviderLeads): ?>
+                        <div class="px-3 py-3 text-center text-muted">
+                            <i class="bi bi-people-fill display-6 opacity-25 d-block mb-1"></i>
+                            <small>Tienes <strong><?= $unreadCount ?></strong> leads por atender</small>
+                        </div>
+                    <?php else: ?>
+                        <?php foreach ($navNotifPreview as $np):
+                            if ($navNotifModulo === 'logistica') {
+                                require_once 'modelo/logistica_notification.php';
+                                $cfg = LogisticaNotificationModel::getTipoConfig($np['tipo'] ?? '');
+                                $npIcon  = $cfg['icon'];
+                                $npColor = $cfg['border'];
+                                $npUrl   = RUTA_URL . 'logistica/ver/' . ($np['pedido_id'] ?? '');
+                                $npRead  = (bool)($np['is_read'] ?? false);
+                                $npId    = $np['id'];
+                                $npText  = htmlspecialchars($np['titulo'] ?? '');
+                                $npSub   = htmlspecialchars($np['numero_orden'] ? "Pedido #{$np['numero_orden']}" : '');
+                                $npTime  = date('d/m H:i', strtotime($np['created_at']));
+                            } else {
+                                $npIcon  = 'bi-bell';
+                                $npColor = '#0d6efd';
+                                $npUrl   = RUTA_URL . 'crm/notificaciones';
+                                $npRead  = (bool)($np['is_read'] ?? $np['read'] ?? false);
+                                $npId    = $np['id'];
+                                $npText  = htmlspecialchars($np['title'] ?? $np['titulo'] ?? $np['message'] ?? '');
+                                $npSub   = '';
+                                $npTime  = !empty($np['created_at']) ? date('d/m H:i', strtotime($np['created_at'])) : '';
+                            }
+                        ?>
+                        <a href="<?= $npUrl ?>" class="d-flex align-items-start gap-2 px-3 py-2 text-decoration-none notif-drop-item <?= !$npRead ? 'notif-drop-unread' : '' ?>"
+                           data-id="<?= $npId ?>" data-modulo="<?= $navNotifModulo ?>">
+                            <div class="notif-drop-icon flex-shrink-0" style="border-color:<?= $npColor ?>">
+                                <i class="bi <?= $npIcon ?>" style="color:<?= $npColor ?>"></i>
+                            </div>
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="notif-drop-title"><?= $npText ?></div>
+                                <?php if ($npSub): ?>
+                                <div class="notif-drop-sub"><?= $npSub ?></div>
+                                <?php endif; ?>
+                                <div class="notif-drop-time"><?= $npTime ?></div>
+                            </div>
+                            <?php if (!$npRead): ?>
+                            <span class="notif-drop-dot flex-shrink-0"></span>
+                            <?php endif; ?>
+                        </a>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="border-top text-center py-2">
+                        <a href="<?= $notifUrl ?>" class="text-primary small fw-semibold text-decoration-none">
+                            Ver todas las notificaciones <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+
+                </div>
             </li>
             <?php endif; ?>
+
+            <style>
+            .notif-drop-item {
+                border-bottom: 1px solid #f1f3f4;
+                transition: background .15s;
+                color: #212529;
+            }
+            .notif-drop-item:hover { background: #f8f9fa; }
+            .notif-drop-unread { background: #f0f4ff; }
+            .notif-drop-unread:hover { background: #e6eeff; }
+            .notif-drop-icon {
+                width: 34px; height: 34px;
+                border-radius: 8px;
+                border: 1.5px solid #dee2e6;
+                display: flex; align-items: center; justify-content: center;
+                background: #fff;
+                flex-shrink: 0;
+            }
+            .notif-drop-title {
+                font-size: .82rem;
+                font-weight: 600;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 240px;
+            }
+            .notif-drop-sub  { font-size: .72rem; color: #6c757d; }
+            .notif-drop-time { font-size: .70rem; color: #adb5bd; }
+            .notif-drop-dot {
+                width: 8px; height: 8px;
+                border-radius: 50%;
+                background: #0d6efd;
+                margin-top: 4px;
+            }
+            #navNotifBadge {
+                animation: pulse-notif 2s ease-in-out infinite;
+            }
+            @keyframes pulse-notif {
+                0%,100% { transform: scale(1); }
+                50% { transform: scale(1.15); }
+            }
+            </style>
+
+            <script>
+            (function(){
+                // Marcar todo leído desde el dropdown
+                const btnAll = document.getElementById('navMarkAllRead');
+                if (btnAll) {
+                    btnAll.addEventListener('click', function(e){
+                        e.stopPropagation();
+                        const modulo = '<?= $navNotifModulo ?>';
+                        const url    = RUTA_URL + (modulo === 'logistica'
+                            ? 'logistica/notificaciones/marcarTodasLeidas'
+                            : 'crm/notificaciones/marcarTodasLeidas');
+                        fetch(url, { method:'POST', credentials:'same-origin' })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.success !== false) {
+                                    document.querySelectorAll('.notif-drop-unread').forEach(el => {
+                                        el.classList.remove('notif-drop-unread');
+                                    });
+                                    document.querySelectorAll('.notif-drop-dot').forEach(el => el.remove());
+                                    const badge = document.getElementById('navNotifBadge');
+                                    if (badge) badge.remove();
+                                    btnAll.remove();
+                                }
+                            }).catch(() => {});
+                    });
+                }
+
+                // Marcar como leída al hacer clic en un item del dropdown
+                document.querySelectorAll('.notif-drop-item').forEach(function(link) {
+                    link.addEventListener('click', function() {
+                        const id     = this.dataset.id;
+                        const modulo = this.dataset.modulo;
+                        if (!id || this.classList.contains('notif-drop-read')) return;
+                        const url = RUTA_URL + (modulo === 'logistica'
+                            ? 'logistica/notificaciones/marcarLeida/' + id
+                            : 'crm/notificaciones/marcarLeida/' + id);
+                        fetch(url, { credentials: 'same-origin' })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.success !== false) {
+                                    this.classList.remove('notif-drop-unread');
+                                    const dot = this.querySelector('.notif-drop-dot');
+                                    if (dot) dot.remove();
+                                    const badge = document.getElementById('navNotifBadge');
+                                    if (badge) {
+                                        const curr = parseInt(badge.textContent) - 1;
+                                        if (curr <= 0) badge.remove();
+                                        else badge.textContent = curr;
+                                    }
+                                }
+                            }).catch(() => {});
+                    });
+                });
+            })();
+            </script>
 
             <?php if ($userName): ?>
             <li class="nav-item dropdown">
@@ -185,8 +396,15 @@
             <a href="<?= RUTA_URL ?>logistica/dashboard" class="nav-link">
                 <i class="bi bi-truck"></i> Mis Pedidos
             </a>
+            <a href="<?= RUTA_URL ?>logistica/notificaciones" class="nav-link d-flex align-items-center justify-content-between">
+                <span><i class="bi bi-bell me-1"></i> Notificaciones</span>
+                <?php if ($isLogisticaCliente && $unreadCount > 0): ?>
+                <span class="badge bg-danger"><?= $unreadCount ?></span>
+                <?php endif; ?>
+            </a>
             <a href="<?= RUTA_URL ?>productos/listar" class="nav-link">
                 <i class="bi bi-box-seam"></i> Mis Productos
+
             </a>
             <?php endif; ?>
 
@@ -244,8 +462,8 @@
             <a href="<?= RUTA_URL ?>crm/listar" class="nav-link"><i class="bi bi-people-fill"></i> Leads</a>
             <?php endif; ?>
             <a href="<?= RUTA_URL ?>crm/notificaciones" class="nav-link">
-                <i class="bi bi-bell"></i> Notificaciones
-                <?php if ($unreadCount > 0): ?>
+                <i class="bi bi-bell"></i> Notificaciones CRM
+                <?php if (!$isLogisticaCliente && $unreadCount > 0): ?>
                 <span class="badge bg-danger ms-auto"><?= $unreadCount ?></span>
                 <?php endif; ?>
             </a>
