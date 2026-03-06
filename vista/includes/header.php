@@ -245,11 +245,14 @@
             .notif-drop-item {
                 border-bottom: 1px solid #f1f3f4;
                 transition: background .15s;
-                color: #212529;
+                color: #212529 !important;          /* texto siempre oscuro */
+                background: #ffffff;                /* fondo blanco explicito */
             }
-            .notif-drop-item:hover { background: #f8f9fa; }
-            .notif-drop-unread { background: #f0f4ff; }
-            .notif-drop-unread:hover { background: #e6eeff; }
+            .notif-drop-item:hover { background: #f8f9fa !important; }
+            .notif-drop-unread {
+                background: #eef3ff !important;     /* azul muy suave */
+            }
+            .notif-drop-unread:hover { background: #ddeaff !important; }
             .notif-drop-icon {
                 width: 34px; height: 34px;
                 border-radius: 8px;
@@ -265,9 +268,10 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 max-width: 240px;
+                color: #1a1a2e !important;          /* oscuro, buen contraste */
             }
-            .notif-drop-sub  { font-size: .72rem; color: #6c757d; }
-            .notif-drop-time { font-size: .70rem; color: #adb5bd; }
+            .notif-drop-sub  { font-size: .72rem; color: #495057 !important; } /* gris medio */
+            .notif-drop-time { font-size: .70rem; color: #6c757d !important; } /* gris suave */
             .notif-drop-dot {
                 width: 8px; height: 8px;
                 border-radius: 50%;
