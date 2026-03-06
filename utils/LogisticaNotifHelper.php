@@ -50,23 +50,23 @@ class LogisticaNotifHelper
                 return;
             }
 
-            $numeroOrden = $pedido['numero_orden'];
-            $destinatario = $pedido['destinatario'];
-            $estadoActual = $estadoNuevo ?: ($pedido['nombre_estado'] ?? 'N/D');
-            $idCliente    = (int)($pedido['id_cliente']   ?? 0);
-            $idProveedor  = (int)($pedido['id_proveedor'] ?? 0);
+            $numeroOrden       = $pedido['numero_orden'];
+            $destinatarioPedido = $pedido['destinatario'];
+            $estadoActual      = $estadoNuevo ?: ($pedido['nombre_estado'] ?? 'N\/D');
+            $idCliente         = (int)($pedido['id_cliente']   ?? 0);
+            $idProveedor       = (int)($pedido['id_proveedor'] ?? 0);
 
             // ── 2. Construir título y mensaje según acción ─────────────────
             switch ($accion) {
                 case self::ACCION_CREADO:
                     $tipo    = 'pedido_creado';
                     $titulo  = "Nuevo pedido #$numeroOrden creado";
-                    $mensaje = "Se creó el pedido #$numeroOrden para «$destinatario» vía API.";
+                    $mensaje = "Se creó el pedido #$numeroOrden para «$destinatarioPedido» vía API.";
                     break;
                 case self::ACCION_ACTUALIZADO:
                     $tipo    = 'pedido_actualizado';
                     $titulo  = "Pedido #$numeroOrden actualizado";
-                    $mensaje = "Se actualizaron los datos del pedido #$numeroOrden para «$destinatario».";
+                    $mensaje = "Se actualizaron los datos del pedido #$numeroOrden para «$destinatarioPedido».";
                     break;
                 case self::ACCION_ESTADO_CAMBIADO:
                     $tipo    = 'pedido_estado';
@@ -82,16 +82,16 @@ class LogisticaNotifHelper
             $payload = [
                 'accion'       => $accion,
                 'numero_orden' => $numeroOrden,
-                'destinatario' => $destinatario,
+                'destinatario' => $destinatarioPedido,
                 'estado'       => $estadoActual,
             ];
 
             // ── 3. Obtener IDs de todos los admin ──────────────────────────
             $adminStmt = $db->prepare("
                 SELECT DISTINCT ur.id_usuario
-                FROM usuario_roles ur
+                FROM usuarios_roles ur
                 INNER JOIN roles r ON r.id = ur.id_rol
-                WHERE r.nombre = 'Admin'
+                WHERE r.nombre_rol = 'Admin'
             ");
             $adminStmt->execute();
             $adminIds = $adminStmt->fetchAll(PDO::FETCH_COLUMN);
