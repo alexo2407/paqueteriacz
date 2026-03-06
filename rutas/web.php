@@ -1455,3 +1455,36 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] =
     exit;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Web Push — rutas del módulo push
+// ─────────────────────────────────────────────────────────────────────────────
+if (isset($ruta[0]) && $ruta[0] === 'push') {
+    require_once __DIR__ . '/../controlador/push.php';
+
+    $accion = $ruta[1] ?? '';
+    $ctrl   = new PushController();
+
+    // GET /push/vapid-key — devuelve la clave pública VAPID (no requiere auth)
+    if ($accion === 'vapid-key' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $ctrl->vapidKey();
+        exit;
+    }
+
+    // POST /push/subscribe — guarda suscripción (requiere sesión)
+    if ($accion === 'subscribe' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $ctrl->subscribe();
+        exit;
+    }
+
+    // POST /push/unsubscribe — desactiva suscripción (requiere sesión)
+    if ($accion === 'unsubscribe' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $ctrl->unsubscribe();
+        exit;
+    }
+
+    http_response_code(404);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Push endpoint no reconocido']);
+    exit;
+}
+

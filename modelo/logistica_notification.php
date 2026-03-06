@@ -46,7 +46,7 @@ class LogisticaNotificationModel {
                 VALUES
                     (:user_id, :tipo, :titulo, :mensaje, :pedido_id, :payload, 0, NOW())
             ");
-            return $stmt->execute([
+            $ok = $stmt->execute([
                 ':user_id'   => $userId,
                 ':tipo'      => $tipo,
                 ':titulo'    => $titulo,
@@ -54,6 +54,33 @@ class LogisticaNotificationModel {
                 ':pedido_id' => $pedidoId,
                 ':payload'   => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             ]);
+
+            // ── Disparo automático de Web Push ───────────────────────────────
+            // Solo si el usuario tiene suscripciones activas.
+            // Falla silenciosamente para no bloquear el flujo principal.
+            if ($ok) {
+                try {
+                    $pushFile = __DIR__ . '/../services/PushNotificationService.php';
+                    if (file_exists($pushFile)) {
+                        require_once $pushFile;
+                        if (PushNotificationService::userHasActiveSub($userId)) {
+                            $url = defined('RUTA_URL') ? rtrim(RUTA_URL, '/') . '/logistica/dashboard' : '/';
+                            if ($pedidoId) {
+                                $url = (defined('RUTA_URL') ? rtrim(RUTA_URL, '/') : '') . '/logistica/ver/' . $pedidoId;
+                            }
+                            PushNotificationService::sendToUser(
+                                $userId, $titulo, $mensaje ?: '', $url,
+                                ['tipo' => $tipo, 'pedido_id' => $pedidoId]
+                            );
+                        }
+                    }
+                } catch (Exception $pushEx) {
+                    error_log('[LogisticaNotification] Push dispatch error: ' . $pushEx->getMessage());
+                }
+            }
+
+            return $ok;
+
         } catch (Exception $e) {
             error_log("[LogisticaNotification] Error al crear: " . $e->getMessage());
             return false;
