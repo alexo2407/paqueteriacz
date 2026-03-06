@@ -193,7 +193,12 @@
                                 $cfg = LogisticaNotificationModel::getTipoConfig($np['tipo'] ?? '');
                                 $npIcon  = $cfg['icon'];
                                 $npColor = $cfg['border'];
-                                $npUrl   = RUTA_URL . 'logistica/ver/' . ($np['pedido_id'] ?? '');
+                                // Lote: ir al dashboard; individual: ir al detalle
+                                if (($np['tipo'] ?? '') === 'lote_creado') {
+                                    $npUrl = RUTA_URL . 'logistica/dashboard?tab=pedidos';
+                                } else {
+                                    $npUrl = RUTA_URL . 'logistica/ver/' . ($np['pedido_id'] ?? '');
+                                }
                                 $npRead  = (bool)($np['is_read'] ?? false);
                                 $npId    = $np['id'];
                                 $npText  = htmlspecialchars($np['titulo'] ?? '');

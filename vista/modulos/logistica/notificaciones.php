@@ -97,9 +97,17 @@ function renderLogisticaNotifCard(array $notif): void {
                     <!-- Pie de card -->
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <?php if ($pedidoId > 0): ?>
-                            <a href="<?= RUTA_URL ?>logistica/ver/<?= $pedidoId ?>"
+                            <?php
+                                $urlPedido = ($tipo === 'lote_creado')
+                                    ? RUTA_URL . 'logistica/dashboard?tab=pedidos'
+                                    : RUTA_URL . 'logistica/ver/' . $pedidoId;
+                                $btnLabel = ($tipo === 'lote_creado')
+                                    ? '<i class="bi bi-grid me-1"></i>Ver pedidos'
+                                    : '<i class="bi bi-box-seam me-1"></i>' . $orden;
+                            ?>
+                            <a href="<?= $urlPedido ?>"
                                class="btn btn-sm btn-light border">
-                                <i class="bi bi-box-seam me-1"></i><?= $orden ?>
+                                <?= $btnLabel ?>
                             </a>
                         <?php endif; ?>
                         <span class="badge bg-light text-dark border">
