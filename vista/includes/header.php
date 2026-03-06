@@ -108,9 +108,12 @@
         }
     </style>
     <!-- Variables JS globales disponibles para todos los scripts de la app -->
+    <meta name="base-url" content="<?= RUTA_URL ?>">
     <script>
         const RUTA_URL = '<?= RUTA_URL ?>';
     </script>
+    <!-- Web Push: Service Worker manager -->
+    <script src="<?= RUTA_URL ?>js/push-manager.js" defer></script>
 </head>
 <body class="bs-body">
 
@@ -243,6 +246,18 @@
                     </div>
 
                 </div>
+            </li>
+            <?php endif; ?>
+
+            <?php if ($isLogisticaCliente): ?>
+            <!-- ═ TOGGLE WEB PUSH ═ -->
+            <li class="nav-item">
+                <button id="btnTogglePush" type="button"
+                        class="btn btn-sm btn-outline-light"
+                        title="Activar notificaciones push del navegador"
+                        style="font-size:.8rem;padding:4px 10px">
+                    <i class="bi bi-bell me-1"></i> Push
+                </button>
             </li>
             <?php endif; ?>
 
