@@ -12,18 +12,20 @@ self.addEventListener('push', function (event) {
     } catch (e) {
         data = {
             title: 'PaqueteriaCZ',
-            body:  event.data ? event.data.text() : 'Nueva notificación',
-            url:   '/',
+            body: event.data ? event.data.text() : 'Nueva notificación',
+            url: '/',
         };
     }
 
-    const title   = data.title  || 'PaqueteriaCZ';
+    const title = data.title || 'PaqueteriaCZ';
     const options = {
-        body:    data.body   || '',
-        icon:    data.icon   || '/android-chrome-192x192.png',
-        badge:   data.badge  || '/favicon-32x32.png',
-        tag:     data.tag    || 'paqueteriacz',
-        renotify: true,
+        body: data.body || '',
+        icon: data.icon || '/android-chrome-192x192.png',
+        badge: data.badge || '/favicon-32x32.png',
+        // Tag único: cada push se muestra de forma INDEPENDIENTE.
+        // Antes el tag fijo hacía que la 2ª notificación reemplazara a la 1ª.
+        tag: (data.tag || 'paqueteriacz') + '-' + Date.now(),
+        renotify: false,
         requireInteraction: false,
         data: {
             url: data.url || (data.data && data.data.url) || '/',
@@ -76,9 +78,9 @@ self.addEventListener('pushsubscriptionchange', function (event) {
         }).then(function (subscription) {
             // Notificar al backend de la nueva suscripción
             return fetch('/push/subscribe', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify(subscription.toJSON()),
+                body: JSON.stringify(subscription.toJSON()),
             });
         }).catch(function (e) {
             console.warn('[SW] pushsubscriptionchange error:', e);

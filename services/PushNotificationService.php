@@ -56,7 +56,15 @@ class PushNotificationService
                 return false;
             }
 
-            // Upsert: si el endpoint ya existe para este usuario, actualizarlo
+        // Desactivar TODAS las suscripciones anteriores del usuario antes de guardar la nueva
+        // (excepto si el endpoint ya existe: en ese caso la reactiva el ON DUPLICATE KEY UPDATE)
+        $stmtClean = $db->prepare(
+            "UPDATE push_subscriptions SET activo = 0
+             WHERE id_usuario = :uid AND endpoint != :endpoint"
+        );
+        $stmtClean->execute([':uid' => $userId, ':endpoint' => $endpoint]);
+
+        // Upsert: si el endpoint ya existe para este usuario, actualizarlo
             $sql = "INSERT INTO push_subscriptions
                         (id_usuario, endpoint, p256dh, auth, user_agent, contexto, activo)
                     VALUES
@@ -273,7 +281,9 @@ class PushNotificationService
             'url'     => $url,
             'icon'    => defined('RUTA_URL') ? rtrim(RUTA_URL, '/') . '/android-chrome-192x192.png' : '/android-chrome-192x192.png',
             'badge'   => defined('RUTA_URL') ? rtrim(RUTA_URL, '/') . '/favicon-32x32.png' : '/favicon-32x32.png',
-            'tag'     => 'paqueteriacz-' . ($payload['tipo'] ?? 'notif'),
+            // Tag único: timestamp en microsegundos para que cada push
+            // se muestre de forma independiente (no reemplaza al anterior)
+            'tag'     => 'pz-' . ($payload['tipo'] ?? 'notif') . '-' . round(microtime(true) * 1000),
             'data'    => array_merge(['url' => $url], $payload),
         ]);
 
