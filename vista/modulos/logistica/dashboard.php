@@ -493,7 +493,26 @@ include "vista/includes/header.php";
             ?>
                 <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
                     <div class="text-muted small">
-                        Mostrando <strong><?= $start ?></strong> - <strong><?= $end ?></strong> de <strong><?= $total ?></strong> pedidos
+                        Mostrando <strong><?= $start ?></strong>&ndash;<strong><?= $end ?></strong> de <strong><?= $total ?></strong> pedidos
+                        <?php if (!empty($filtros['fecha_desde']) && !empty($filtros['fecha_hasta'])): ?>
+                            &nbsp;<span class="badge bg-light text-secondary border">
+                                <i class="bi bi-calendar3 me-1"></i>
+                                <?= date('d/m/Y', strtotime($filtros['fecha_desde'])) ?> &ndash; <?= date('d/m/Y', strtotime($filtros['fecha_hasta'])) ?>
+                            </span>
+                        <?php endif; ?>
+                        <?php if (!empty($filtros['search'])): ?>
+                            <span class="badge bg-light text-secondary border ms-1">
+                                <i class="bi bi-search me-1"></i><?= htmlspecialchars($filtros['search']) ?>
+                            </span>
+                        <?php endif; ?>
+                        <?php if (!empty($filtros['id_estado'])): ?>
+                            <?php $estNombre = ''; foreach ($estadosDisponibles as $e) { if ((int)$e['id'] === (int)$filtros['id_estado']) { $estNombre = $e['nombre_estado']; break; } } ?>
+                            <?php if ($estNombre): ?>
+                            <span class="badge bg-light text-secondary border ms-1">
+                                <i class="bi bi-tag me-1"></i><?= htmlspecialchars($estNombre) ?>
+                            </span>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     </div>
                     
                     <nav aria-label="Paginación de pedidos">
@@ -741,7 +760,26 @@ include "vista/includes/header.php";
             ?>
                 <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
                     <div class="text-muted small">
-                        Mostrando <strong><?= $startH ?></strong> - <strong><?= $endH ?></strong> de <strong><?= $totalH ?></strong> pedidos
+                        Mostrando <strong><?= $startH ?></strong>&ndash;<strong><?= $endH ?></strong> de <strong><?= $totalH ?></strong> pedidos
+                        <?php if (!empty($filtrosHistorial['fecha_desde']) && !empty($filtrosHistorial['fecha_hasta'])): ?>
+                            &nbsp;<span class="badge bg-light text-secondary border">
+                                <i class="bi bi-calendar3 me-1"></i>
+                                <?= date('d/m/Y', strtotime($filtrosHistorial['fecha_desde'])) ?> &ndash; <?= date('d/m/Y', strtotime($filtrosHistorial['fecha_hasta'])) ?>
+                            </span>
+                        <?php endif; ?>
+                        <?php if (!empty($filtrosHistorial['search'])): ?>
+                            <span class="badge bg-light text-secondary border ms-1">
+                                <i class="bi bi-search me-1"></i><?= htmlspecialchars($filtrosHistorial['search']) ?>
+                            </span>
+                        <?php endif; ?>
+                        <?php if (!empty($filtrosHistorial['id_estado'])): ?>
+                            <?php $estNombreH = ''; foreach ($estadosDisponibles as $e) { if ((int)$e['id'] === (int)$filtrosHistorial['id_estado']) { $estNombreH = $e['nombre_estado']; break; } } ?>
+                            <?php if ($estNombreH): ?>
+                            <span class="badge bg-light text-secondary border ms-1">
+                                <i class="bi bi-tag me-1"></i><?= htmlspecialchars($estNombreH) ?>
+                            </span>
+                            <?php endif; ?>
+                        <?php endif; ?>
                     </div>
                     <nav aria-label="Paginación historial">
                         <ul class="pagination pagination-sm mb-0">
