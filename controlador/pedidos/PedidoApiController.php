@@ -129,6 +129,9 @@ class PedidoApiController
         }
 
         $results = [];
+        $pedidosExitosos = []; // Para notificación de lote al final
+        $idClienteLote   = 0;
+        $idProveedorLote = 0;
         
         // Determinar si el usuario es proveedor (comparar SOLO por nombre, no por ID numérico
         // porque el ID numérico de rol varía entre sistemas y puede colisionar con otros roles)
@@ -214,9 +217,15 @@ class PedidoApiController
                 $itemResult['success'] = true;
                 $itemResult['id_pedido'] = $nuevoId;
 
-                // Notificación logística al crear (masivo)
+                // Acumular para notificación de lote (una sola al final)
                 if ($nuevoId) {
-                    LogisticaNotifHelper::notificarPedido($nuevoId, LogisticaNotifHelper::ACCION_CREADO);
+                    $pedidosExitosos[] = [
+                        'id'          => $nuevoId,
+                        'numero_orden'=> $modelPayload['numero_orden'],
+                    ];
+                    // Capturar cliente/proveedor del primer pedido exitoso
+                    if ($idClienteLote === 0)   $idClienteLote   = (int)($modelPayload['id_cliente']  ?? 0);
+                    if ($idProveedorLote === 0) $idProveedorLote = (int)($modelPayload['id_proveedor'] ?? 0);
                 }
 
                 // Encolar si se solicita
@@ -234,6 +243,11 @@ class PedidoApiController
                 $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
                 $results[] = $itemResult;
             }
+        }
+
+        // Notificación de lote: UNA SOLA notificación resumen
+        if (!empty($pedidosExitosos)) {
+            LogisticaNotifHelper::notificarLote($pedidosExitosos, $idClienteLote, $idProveedorLote);
         }
 
         return ['results' => $results];

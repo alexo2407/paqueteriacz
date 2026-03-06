@@ -128,4 +128,80 @@ class LogisticaNotifHelper
             error_log("[LogisticaNotifHelper] Error: " . $e->getMessage());
         }
     }
+
+    /**
+     * Envía UNA SOLA notificación resumen para un lote de pedidos creados.
+     *
+     * @param array $pedidosCreados  Array de ['id' => int, 'numero_orden' => int]
+     * @param int   $idCliente       ID del cliente (común en el lote, puede ser 0)
+     * @param int   $idProveedor     ID del proveedor (común en el lote, puede ser 0)
+     */
+    public static function notificarLote(array $pedidosCreados, int $idCliente = 0, int $idProveedor = 0): void
+    {
+        try {
+            if (empty($pedidosCreados)) return;
+
+            require_once __DIR__ . '/../modelo/logistica_notification.php';
+            require_once __DIR__ . '/../modelo/conexion.php';
+
+            $total    = count($pedidosCreados);
+            $numeros  = array_column($pedidosCreados, 'numero_orden');
+            $primeros = array_slice($numeros, 0, 5);
+            $resto    = $total - count($primeros);
+
+            $listaStr = '#' . implode(', #', $primeros);
+            if ($resto > 0) {
+                $listaStr .= " (+$resto más)";
+            }
+
+            $tipo    = 'lote_creado';
+            $titulo  = "$total pedido" . ($total > 1 ? 's' : '') . " creado" . ($total > 1 ? 's' : '') . " vía API";
+            $mensaje = "Se crearon $total pedidos en lote: $listaStr.";
+            $payload = [
+                'accion'         => 'lote_creado',
+                'total'          => $total,
+                'numeros_orden'  => $numeros,
+            ];
+
+            // ID del primer pedido como referencia en la notificación
+            $idPedidoRef = $pedidosCreados[0]['id'] ?? null;
+
+            $db = (new Conexion())->conectar();
+
+            // Obtener admins
+            $adminStmt = $db->prepare("
+                SELECT DISTINCT ur.id_usuario
+                FROM usuarios_roles ur
+                INNER JOIN roles r ON r.id = ur.id_rol
+                WHERE r.nombre_rol = 'Admin'
+            ");
+            $adminStmt->execute();
+            $adminIds = $adminStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // Construir destinatarios únicos
+            $destinatarios = [];
+            if ($idCliente > 0)   $destinatarios[$idCliente]  = 'cliente';
+            if ($idProveedor > 0) $destinatarios[$idProveedor] = 'proveedor';
+            foreach ($adminIds as $adminId) {
+                $adminId = (int)$adminId;
+                if (!isset($destinatarios[$adminId])) {
+                    $destinatarios[$adminId] = 'admin';
+                }
+            }
+
+            foreach ($destinatarios as $userId => $contexto) {
+                LogisticaNotificationModel::agregar(
+                    $userId,
+                    $tipo,
+                    $titulo,
+                    $mensaje,
+                    $idPedidoRef,
+                    array_merge($payload, ['contexto' => $contexto])
+                );
+            }
+
+        } catch (Throwable $e) {
+            error_log("[LogisticaNotifHelper] Error lote: " . $e->getMessage());
+        }
+    }
 }
