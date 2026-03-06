@@ -13,6 +13,7 @@ require_once __DIR__ . '/../modelo/barrio.php';
 require_once __DIR__ . '/../modelo/pedido.php';
 require_once __DIR__ . '/../services/AddressService.php';
 require_once __DIR__ . '/../modelo/codigos_postales.php';
+require_once __DIR__ . '/../utils/LogisticaNotifHelper.php';
 
 class PedidosController {
 
@@ -354,6 +355,11 @@ class PedidosController {
     public function actualizarPedido($data) {
         $resultado = PedidosModel::actualizarPedido($data);
         if ($resultado) {
+            // Notificación logística al actualizar datos del pedido
+            $idPedido = (int)($data['id_pedido'] ?? 0);
+            if ($idPedido > 0) {
+                LogisticaNotifHelper::notificarPedido($idPedido, LogisticaNotifHelper::ACCION_ACTUALIZADO);
+            }
             return [
                 "success" => true,
                 "message" => "Pedido actualizado correctamente."

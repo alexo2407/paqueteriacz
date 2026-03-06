@@ -11,6 +11,7 @@ require_once __DIR__ . '/../../modelo/departamento.php';
 require_once __DIR__ . '/../../modelo/municipio.php';
 require_once __DIR__ . '/../../modelo/moneda.php';
 require_once __DIR__ . '/../../modelo/barrio.php';
+require_once __DIR__ . '/../../utils/LogisticaNotifHelper.php';
 
 class PedidoApiController
 {
@@ -99,13 +100,17 @@ class PedidoApiController
         // Crear pedido
         $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
         
+        // Notificación logística al crear
+        if ($nuevoId) {
+            LogisticaNotifHelper::notificarPedido($nuevoId, LogisticaNotifHelper::ACCION_CREADO);
+        }
+
         // Encolar si se solicita
         if ($autoEnqueue && $nuevoId) {
             try {
                 require_once __DIR__ . '/../../services/LogisticsQueueService.php';
                 LogisticsQueueService::queue('generar_guia', $nuevoId);
             } catch (Exception $e) {
-                // No fallar la creación por error en la cola, pero registrar
                 error_log("Error auto_enqueue: " . $e->getMessage());
             }
         }
@@ -208,7 +213,12 @@ class PedidoApiController
                 $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items);
                 $itemResult['success'] = true;
                 $itemResult['id_pedido'] = $nuevoId;
-                
+
+                // Notificación logística al crear (masivo)
+                if ($nuevoId) {
+                    LogisticaNotifHelper::notificarPedido($nuevoId, LogisticaNotifHelper::ACCION_CREADO);
+                }
+
                 // Encolar si se solicita
                 if ($autoEnqueue && $nuevoId) {
                     try {
@@ -218,7 +228,7 @@ class PedidoApiController
                         error_log("Error auto_enqueue multiple: " . $qe->getMessage());
                     }
                 }
-                
+
                 $results[] = $itemResult;
             } catch (Exception $e) {
                 $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
