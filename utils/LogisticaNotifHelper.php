@@ -60,23 +60,25 @@ class LogisticaNotifHelper
             switch ($accion) {
                 case self::ACCION_CREADO:
                     $tipo    = 'pedido_creado';
-                    $titulo  = "Nuevo pedido #$numeroOrden creado";
-                    $mensaje = "Se creó el pedido #{$numeroOrden} para «{$destinatarioPedido}» vía API.";
+                    $titulo  = "📦 Nuevo pedido #{$numeroOrden}";
+                    $mensaje = "Destinatario: {$destinatarioPedido}\nEstado: {$estadoActual}";
                     break;
                 case self::ACCION_ACTUALIZADO:
                     $tipo    = 'pedido_actualizado';
-                    $titulo  = "Pedido #$numeroOrden actualizado";
-                    $mensaje = "Se actualizaron los datos del pedido #{$numeroOrden} para «{$destinatarioPedido}».";
+                    $titulo  = "🔄 Pedido #{$numeroOrden} actualizado";
+                    $mensaje = "Datos actualizados • {$destinatarioPedido}";
                     break;
                 case self::ACCION_ESTADO_CAMBIADO:
                     $tipo    = 'pedido_estado';
-                    $titulo  = "Estado de pedido #$numeroOrden: $estadoActual";
-                    $mensaje = "El pedido #{$numeroOrden} cambió de estado a «{$estadoActual}».";
+                    // Emoji según el estado para mejor escaneo visual
+                    $iconoEstado = self::emojiEstado($estadoActual);
+                    $titulo  = "{$iconoEstado} Pedido #{$numeroOrden} → {$estadoActual}";
+                    $mensaje = "{$destinatarioPedido} • Estado actualizado";
                     break;
                 default:
                     $tipo    = 'pedido_evento';
-                    $titulo  = "Evento en pedido #$numeroOrden";
-                    $mensaje = "Ocurrió un evento ($accion) en el pedido #$numeroOrden.";
+                    $titulo  = "🔔 Pedido #{$numeroOrden}";
+                    $mensaje = ucfirst($accion) . " • {$destinatarioPedido}";
             }
 
             $payload = [
@@ -91,7 +93,7 @@ class LogisticaNotifHelper
                 SELECT DISTINCT ur.id_usuario
                 FROM usuarios_roles ur
                 INNER JOIN roles r ON r.id = ur.id_rol
-                WHERE r.nombre_rol = 'Admin'
+                WHERE r.nombre_rol = 'Administrador'
             ");
             $adminStmt->execute();
             $adminIds = $adminStmt->fetchAll(PDO::FETCH_COLUMN);
@@ -173,7 +175,7 @@ class LogisticaNotifHelper
                 SELECT DISTINCT ur.id_usuario
                 FROM usuarios_roles ur
                 INNER JOIN roles r ON r.id = ur.id_rol
-                WHERE r.nombre_rol = 'Admin'
+                WHERE r.nombre_rol = 'Administrador'
             ");
             $adminStmt->execute();
             $adminIds = $adminStmt->fetchAll(PDO::FETCH_COLUMN);
@@ -203,5 +205,23 @@ class LogisticaNotifHelper
         } catch (Throwable $e) {
             error_log("[LogisticaNotifHelper] Error lote: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Devuelve emoji representativo del estado del pedido para notificaciones push.
+     */
+    public static function emojiEstado(string $estado): string
+    {
+        $e = mb_strtolower(trim($estado));
+        if (str_contains($e, 'entregado'))   return '✅';
+        if (str_contains($e, 'ruta'))        return '🚚';
+        if (str_contains($e, 'bodega'))      return '📦';
+        if (str_contains($e, 'devoluci'))    return '🔄';
+        if (str_contains($e, 'reprogramad')) return '📅';
+        if (str_contains($e, 'anulad') || str_contains($e, 'cancelad')) return '❌';
+        if (str_contains($e, 'liquidado'))   return '💰';
+        if (str_contains($e, 'incidencia'))  return '⚠️';
+        if (str_contains($e, 'pendiente'))   return '⏳';
+        return '🔔';
     }
 }
