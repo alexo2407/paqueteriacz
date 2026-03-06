@@ -911,4 +911,45 @@ class LogisticaModel {
             return [];
         }
     }
+
+    /**
+     * Obtener productos de un conjunto de pedidos como array estructurado.
+     * Útil para generar columnas dinámicas en Excel.
+     *
+     * @param  int[] $pedidoIds
+     * @return array  Mapa [pedido_id => [['nombre' => string, 'cantidad' => int], ...]]
+     */
+    public static function obtenerProductosPorPedidosDetallado(array $pedidoIds): array
+    {
+        if (empty($pedidoIds)) return [];
+
+        try {
+            $db  = (new Conexion())->conectar();
+            $ph  = implode(',', array_fill(0, count($pedidoIds), '?'));
+            $sql = "SELECT pp.id_pedido, pr.nombre, pp.cantidad
+                    FROM pedidos_productos pp
+                    INNER JOIN productos pr ON pr.id = pp.id_producto
+                    WHERE pp.id_pedido IN ($ph)
+                    ORDER BY pp.id_pedido, pr.nombre";
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute(array_values($pedidoIds));
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $mapa = [];
+            foreach ($rows as $r) {
+                $pid = (int)$r['id_pedido'];
+                $mapa[$pid][] = [
+                    'nombre'   => $r['nombre'],
+                    'cantidad' => (int)$r['cantidad'],
+                ];
+            }
+
+            return $mapa;
+
+        } catch (Exception $e) {
+            error_log('Error obtenerProductosPorPedidosDetallado: ' . $e->getMessage());
+            return [];
+        }
+    }
 }

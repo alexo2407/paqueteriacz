@@ -172,8 +172,18 @@ class LogisticaController {
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Pedidos');
 
-        // Encabezados
-        $headers = [
+        // Obtener productos detallados (array estructurado) para columnas dinámicas
+        $pedidoIds = array_column($pedidos, 'id');
+        $productosPorPedidoDetalle = LogisticaModel::obtenerProductosPorPedidosDetallado(array_map('intval', $pedidoIds));
+
+        // Máximo de productos en cualquier pedido del lote
+        $maxProductos = 1;
+        foreach ($productosPorPedidoDetalle as $prods) {
+            if (count($prods) > $maxProductos) $maxProductos = count($prods);
+        }
+
+        // Encabezados fijos A–S
+        $headersFixed = [
             'A1' => 'Núm. Orden',
             'B1' => 'Fecha Ingreso',
             'C1' => 'Destinatario',
@@ -193,68 +203,86 @@ class LogisticaController {
             'Q1' => 'Moneda',
             'R1' => 'Cliente',
             'S1' => 'Proveedor',
-            'T1' => 'Productos',
         ];
-
-        // Obtener productos de todos los pedidos en una sola query batch
-        $pedidoIds = array_column($pedidos, 'id');
-        $productosPorPedido = LogisticaModel::obtenerProductosPorPedidos(array_map('intval', $pedidoIds));
 
         $boldStyle = [
             'font' => ['bold' => true],
-            'fill' => [
-                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'D9E1F2'],
-            ],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D9E1F2']],
+        ];
+        $boldStyleProd = [
+            'font' => ['bold' => true],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2EFDA']],
         ];
 
-        foreach ($headers as $cell => $label) {
+        // Escribir encabezados fijos
+        foreach ($headersFixed as $cell => $label) {
             $sheet->setCellValue($cell, $label);
             $sheet->getStyle($cell)->applyFromArray($boldStyle);
         }
 
-        // Datos
-        $row = 2;
-        foreach ($pedidos as $p) {
-            $fechaFmt       = !empty($p['fecha_ingreso'])     ? date('d/m/Y', strtotime($p['fecha_ingreso']))     : '';
-            $fechaEntrega   = !empty($p['fecha_entrega'])     ? date('d/m/Y', strtotime($p['fecha_entrega']))     : '';
-            $fechaLiq       = !empty($p['fecha_liquidacion']) ? date('d/m/Y', strtotime($p['fecha_liquidacion'])) : '';
-            $productos = $productosPorPedido[(int)$p['id']] ?? '';
-            $sheet->setCellValue("A{$row}", $p['numero_orden']        ?? '');
-            $sheet->setCellValue("B{$row}", $fechaFmt);
-            $sheet->setCellValue("C{$row}", $p['destinatario']        ?? '');
-            $sheet->setCellValue("D{$row}", $p['telefono']            ?? '');
-            $sheet->setCellValue("E{$row}", $p['direccion']           ?? '');
-            $sheet->setCellValue("F{$row}", $p['comentario']          ?? '');
-            $sheet->setCellValue("G{$row}", $p['zona']                ?? '');
-            $sheet->setCellValue("H{$row}", $p['codigo_postal']       ?? '');
-            $sheet->setCellValue("I{$row}", $p['nombre_pais']         ?? '');
-            $sheet->setCellValue("J{$row}", $p['nombre_departamento'] ?? '');
-            $sheet->setCellValue("K{$row}", $p['nombre_municipio']    ?? '');
-            $sheet->setCellValue("L{$row}", $p['nombre_barrio']       ?? '');
-            $sheet->setCellValue("M{$row}", $p['estado']              ?? '');
-            $sheet->setCellValue("N{$row}", $fechaEntrega);
-            $sheet->setCellValue("O{$row}", $fechaLiq);
-            $sheet->setCellValue("P{$row}", $p['precio_total_local']  ?? 0);
-            $sheet->setCellValue("Q{$row}", $p['moneda']              ?? '');
-            $sheet->setCellValue("R{$row}", $p['nombre_cliente']      ?? '');
-            $sheet->setCellValue("S{$row}", $p['nombre_proveedor']    ?? '');
-            $sheet->setCellValue("T{$row}", $productos);
-            $row++;
+        // Encabezados dinámicos de productos a partir de columna T (índice 20)
+        $colInicioProd = 20; // T = 20 en PhpSpreadsheet (A=1)
+        for ($i = 0; $i < $maxProductos; $i++) {
+            $num         = $i + 1;
+            $colNombre   = $colInicioProd + ($i * 2);
+            $colCantidad = $colInicioProd + ($i * 2) + 1;
+            $cellN = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colNombre)   . '1';
+            $cellC = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colCantidad) . '1';
+            $sheet->setCellValue($cellN, "Producto {$num}");
+            $sheet->setCellValue($cellC, "Cantidad {$num}");
+            $sheet->getStyle($cellN)->applyFromArray($boldStyleProd);
+            $sheet->getStyle($cellC)->applyFromArray($boldStyleProd);
         }
 
-        // Auto-size columnas A–T
-        foreach (range('A', 'T') as $col) {
+        // Datos
+        $fila = 2;
+        foreach ($pedidos as $p) {
+            $fechaFmt     = !empty($p['fecha_ingreso'])     ? date('d/m/Y', strtotime($p['fecha_ingreso']))     : '';
+            $fechaEntrega = !empty($p['fecha_entrega'])     ? date('d/m/Y', strtotime($p['fecha_entrega']))     : '';
+            $fechaLiq     = !empty($p['fecha_liquidacion']) ? date('d/m/Y', strtotime($p['fecha_liquidacion'])) : '';
+
+            $sheet->setCellValue("A{$fila}", $p['numero_orden']        ?? '');
+            $sheet->setCellValue("B{$fila}", $fechaFmt);
+            $sheet->setCellValue("C{$fila}", $p['destinatario']        ?? '');
+            $sheet->setCellValue("D{$fila}", $p['telefono']            ?? '');
+            $sheet->setCellValue("E{$fila}", $p['direccion']           ?? '');
+            $sheet->setCellValue("F{$fila}", $p['comentario']          ?? '');
+            $sheet->setCellValue("G{$fila}", $p['zona']                ?? '');
+            $sheet->setCellValue("H{$fila}", $p['codigo_postal']       ?? '');
+            $sheet->setCellValue("I{$fila}", $p['nombre_pais']         ?? '');
+            $sheet->setCellValue("J{$fila}", $p['nombre_departamento'] ?? '');
+            $sheet->setCellValue("K{$fila}", $p['nombre_municipio']    ?? '');
+            $sheet->setCellValue("L{$fila}", $p['nombre_barrio']       ?? '');
+            $sheet->setCellValue("M{$fila}", $p['estado']              ?? '');
+            $sheet->setCellValue("N{$fila}", $fechaEntrega);
+            $sheet->setCellValue("O{$fila}", $fechaLiq);
+            $sheet->setCellValue("P{$fila}", $p['precio_total_local']  ?? 0);
+            $sheet->setCellValue("Q{$fila}", $p['moneda']              ?? '');
+            $sheet->setCellValue("R{$fila}", $p['nombre_cliente']      ?? '');
+            $sheet->setCellValue("S{$fila}", $p['nombre_proveedor']    ?? '');
+
+            // Columnas dinámicas de productos
+            $prodsDelPedido = $productosPorPedidoDetalle[(int)$p['id']] ?? [];
+            for ($i = 0; $i < $maxProductos; $i++) {
+                $colN = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colInicioProd + ($i * 2));
+                $colC = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colInicioProd + ($i * 2) + 1);
+                $sheet->setCellValue("{$colN}{$fila}", isset($prodsDelPedido[$i]) ? $prodsDelPedido[$i]['nombre']   : '');
+                $sheet->setCellValue("{$colC}{$fila}", isset($prodsDelPedido[$i]) ? $prodsDelPedido[$i]['cantidad'] : '');
+            }
+
+            $fila++;
+        }
+
+        // Auto-size todas las columnas (fijas + dinámicas)
+        $lastColIdx = $colInicioProd + ($maxProductos * 2) - 1;
+        $lastCol    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastColIdx);
+        foreach (range('A', $lastCol) as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Limitar ancho máximo de columnas de texto largo
-        $sheet->getColumnDimension('E')->setAutoSize(false);
-        $sheet->getColumnDimension('E')->setWidth(45); // Dirección
-        $sheet->getColumnDimension('F')->setAutoSize(false);
-        $sheet->getColumnDimension('F')->setWidth(45); // Comentario
-        $sheet->getColumnDimension('R')->setAutoSize(false);
-        $sheet->getColumnDimension('R')->setWidth(60); // Productos
+        // Limitar ancho de columnas de texto largo
+        $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(45); // Dirección
+        $sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(45); // Comentario
 
         // Nombre del archivo
         $timestamp = date('Ymd_Hi');
