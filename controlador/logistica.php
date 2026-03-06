@@ -26,10 +26,10 @@ class LogisticaController {
         $offsetH    = ($pageH - 1) * $perPageH;
 
         // Filtros — todos los parámetros GET sanitizados
-        // Tab "En Proceso": defaults a últimos 30 días
+        // Tab "En Proceso": defaults al 1° del mes actual hasta hoy
         $fechaDesde = isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== ''
             ? $_GET['fecha_desde']
-            : date('Y-m-d', strtotime('-30 days'));
+            : date('Y-m-01');
         $fechaHasta = isset($_GET['fecha_hasta']) && $_GET['fecha_hasta'] !== ''
             ? $_GET['fecha_hasta']
             : date('Y-m-d');
@@ -44,10 +44,10 @@ class LogisticaController {
             'id_cliente'  => $idCliente,
             'id_estado'   => $idEstado,
         ];
-        // Tab "Historial Completo": sin default de fechas — muestra TODOS los pedidos
+        // Tab "Historial Completo": defaults al 1° del mes actual hasta hoy
         $filtrosHistorial = [
-            'fecha_desde' => isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== '' ? $_GET['fecha_desde'] : '',
-            'fecha_hasta' => isset($_GET['fecha_hasta']) && $_GET['fecha_hasta'] !== '' ? $_GET['fecha_hasta'] : '',
+            'fecha_desde' => isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== '' ? $_GET['fecha_desde'] : date('Y-m-01'),
+            'fecha_hasta' => isset($_GET['fecha_hasta']) && $_GET['fecha_hasta'] !== '' ? $_GET['fecha_hasta'] : date('Y-m-d'),
             'search'      => $search,
             'id_cliente'  => $idCliente,
             'id_estado'   => $idEstado,
