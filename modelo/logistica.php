@@ -466,7 +466,7 @@ class LogisticaModel {
                 require_once __DIR__ . '/logistica_notification.php';
 
                 $estadoAnteriorNombre = $pedidoActual['nombre_estado'] ?? ($datosAnteriores['estado'] ?? '');
-                $titulo = "Pedido #{$pedidoActual['numero_orden']} → {$nuevoEstado}";
+                $titulo  = "Pedido #{$pedidoActual['numero_orden']} → {$nuevoEstado}";
                 $mensaje = $observaciones ?: '';
                 $payload = [
                     'estado_anterior' => $estadoAnteriorNombre,
@@ -474,27 +474,51 @@ class LogisticaModel {
                     'numero_orden'    => $pedidoActual['numero_orden'] ?? '',
                 ];
 
-                // Notificar al cliente del pedido (si existe y es distinto del usuario que actuó)
-                $idClientePedido  = (int)($pedidoActual['id_cliente']  ?? 0);
+                // Recopilar destinatarios únicos (cliente + proveedor + admins)
+                $destinatarios = [];
+
+                $idClientePedido   = (int)($pedidoActual['id_cliente']   ?? 0);
                 $idProveedorPedido = (int)($pedidoActual['id_proveedor'] ?? 0);
 
                 if ($idClientePedido > 0) {
+                    $destinatarios[$idClientePedido] = true;
+                }
+                if ($idProveedorPedido > 0) {
+                    $destinatarios[$idProveedorPedido] = true;
+                }
+
+                // Obtener IDs de todos los usuarios con rol admin
+                try {
+                    $dbNotif = (new Conexion())->conectar();
+                    // Busca admins por la tabla usuarios_roles o por el campo rol
+                    $stmtAdmins = $dbNotif->prepare("
+                        SELECT DISTINCT u.id
+                        FROM usuarios u
+                        INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                        INNER JOIN roles r ON r.id = ur.id_rol
+                        WHERE r.nombre = :rolAdmin
+                    ");
+                    $stmtAdmins->execute([':rolAdmin' => defined('ROL_NOMBRE_ADMIN') ? ROL_NOMBRE_ADMIN : 'Administrador']);
+                    foreach ($stmtAdmins->fetchAll(PDO::FETCH_COLUMN) as $adminId) {
+                        $destinatarios[(int)$adminId] = true;
+                    }
+                } catch (Exception $eAdmins) {
+                    error_log("[LogisticaNotification] No se pudieron obtener admins: " . $eAdmins->getMessage());
+                }
+
+                // Crear una notificación por cada destinatario único
+                foreach (array_keys($destinatarios) as $uid) {
                     LogisticaNotificationModel::agregar(
-                        $idClientePedido, 'estado_cambiado',
+                        $uid, 'estado_cambiado',
                         $titulo, $mensaje, $pedidoId, $payload
                     );
                 }
-                // Notificar al proveedor también si es diferente
-                if ($idProveedorPedido > 0 && $idProveedorPedido !== $idClientePedido) {
-                    LogisticaNotificationModel::agregar(
-                        $idProveedorPedido, 'estado_cambiado',
-                        $titulo, $mensaje, $pedidoId, $payload
-                    );
-                }
+
             } catch (Exception $notifEx) {
                 // No bloquear el flujo principal por errores de notificación
                 error_log("[LogisticaNotification] Error al crear notif: " . $notifEx->getMessage());
             }
+
 
             return true;
 
