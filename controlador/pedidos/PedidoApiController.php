@@ -306,30 +306,94 @@ class PedidoApiController
     {
         $errores = [];
 
-        // 1. Campos obligatorios y sus reglas básicas (STRICT REQUIRED)
+        // 1. Reglas con mensajes descriptivos por campo
         $rules = [
-            'numero_orden' => ['required' => true, 'numeric' => true, 'min' => 1],
-            'destinatario' => ['required' => true, 'min_len' => 2],
-            'id_cliente'   => ['required' => true, 'numeric' => true],
-            'id_proveedor' => ['required' => true, 'numeric' => true],
-            'telefono'     => ['required' => true, 'min_len' => 7],
-            'direccion'    => ['required' => true, 'min_len' => 5],
-            'comentario'   => ['required' => true, 'min_len' => 1],
-            'id_pais'      => ['required' => false, 'numeric' => true],
-            'id_departamento' => ['required' => false, 'numeric' => true],
-            'id_municipio' => ['required' => false, 'numeric' => true],
-            'zona'         => ['required' => false, 'max_len' => 100],
-            'codigo_postal'=> ['required' => false],
-            'fecha_entrega' => ['required' => false, 'date' => true],
-            'precio_total_local' => ['required' => true, 'numeric' => true, 'min_val' => 0.01],
-            'es_combo'     => ['required' => true, 'in' => [0, 1]]
+            'numero_orden' => [
+                'required' => true, 'numeric' => true, 'min' => 1,
+                'messages' => [
+                    'required' => 'El numero_orden es obligatorio. Debe ser un entero positivo, ej: "numero_orden": 8741.',
+                    'numeric'  => 'El numero_orden debe ser un número entero positivo (sin letras ni guiones). Valor recibido: "%s".',
+                    'min'      => 'El numero_orden debe ser mayor a 0.',
+                ],
+            ],
+            'destinatario' => [
+                'required' => true, 'min_len' => 2,
+                'messages' => [
+                    'required' => 'El campo destinatario es obligatorio. Indica el nombre completo del destinatario.',
+                    'min_len'  => 'El destinatario debe tener al menos 2 caracteres. Valor recibido: "%s".',
+                ],
+            ],
+            'id_cliente' => [
+                'required' => true, 'numeric' => true,
+                'messages' => [
+                    'required' => 'El id_cliente es obligatorio. Indica el ID numérico del cliente al que pertenece el pedido.',
+                    'numeric'  => 'El id_cliente debe ser un número entero. Valor recibido: "%s".',
+                ],
+            ],
+            'id_proveedor' => [
+                'required' => true, 'numeric' => true,
+                'messages' => [
+                    'required' => 'El id_proveedor es obligatorio. Indica el ID numérico del proveedor (empresa de mensajería).',
+                    'numeric'  => 'El id_proveedor debe ser un número entero. Valor recibido: "%s".',
+                ],
+            ],
+            'telefono' => [
+                'required' => true, 'min_len' => 7,
+                'messages' => [
+                    'required' => 'El teléfono del destinatario es obligatorio.',
+                    'min_len'  => 'El telefono debe tener al menos 7 dígitos. Valor recibido: "%s".',
+                ],
+            ],
+            'direccion' => [
+                'required' => true, 'min_len' => 5,
+                'messages' => [
+                    'required' => 'La dirección de entrega es obligatoria.',
+                    'min_len'  => 'La direccion debe tener al menos 5 caracteres. Valor recibido: "%s".',
+                ],
+            ],
+            'comentario' => [
+                'required' => true, 'min_len' => 1,
+                'messages' => [
+                    'required' => 'El campo comentario es obligatorio. Si no hay comentario, envía el valor "-".',
+                    'min_len'  => 'El comentario no puede estar vacío. Si no hay comentario, envía el valor "-".',
+                ],
+            ],
+            'id_pais'         => ['required' => false, 'numeric' => true,
+                'messages' => ['numeric' => 'El id_pais debe ser un número entero (ID del país). Valor recibido: "%s".']],
+            'id_departamento' => ['required' => false, 'numeric' => true,
+                'messages' => ['numeric' => 'El id_departamento debe ser un número entero. Valor recibido: "%s".']],
+            'id_municipio'    => ['required' => false, 'numeric' => true,
+                'messages' => ['numeric' => 'El id_municipio debe ser un número entero. Valor recibido: "%s".']],
+            'zona'            => ['required' => false, 'max_len' => 100,
+                'messages' => ['max_len' => 'La zona no debe exceder 100 caracteres.']],
+            'codigo_postal'   => ['required' => false],
+            'fecha_entrega'   => [
+                'required' => false, 'date' => true,
+                'messages' => ['date' => 'La fecha_entrega debe estar en formato YYYY-MM-DD, ej: "2026-03-15". Valor recibido: "%s".'],
+            ],
+            'precio_total_local' => [
+                'required' => true, 'numeric' => true, 'min_val' => 0.01,
+                'messages' => [
+                    'required' => 'El precio_total_local es obligatorio. Indica el precio total en moneda local, ej: 673.',
+                    'numeric'  => 'El precio_total_local debe ser un número. Valor recibido: "%s".',
+                    'min_val'  => 'El precio_total_local debe ser mayor a 0.',
+                ],
+            ],
+            'es_combo' => [
+                'required' => true, 'in' => [0, 1],
+                'messages' => [
+                    'required' => 'El campo es_combo es obligatorio. Envía 1 si es combo de productos, 0 si es producto simple.',
+                    'in'       => 'El campo es_combo solo acepta 0 (producto simple) o 1 (combo). Valor recibido: "%s".',
+                ],
+            ],
         ];
 
         foreach ($rules as $field => $config) {
-            $val = isset($data[$field]) ? $data[$field] : null;
+            $val  = $data[$field] ?? null;
+            $msgs = $config['messages'] ?? [];
 
             if ($config['required'] && ($val === null || $val === '')) {
-                $errores[$field] = "El campo '$field' es obligatorio.";
+                $errores[$field] = $msgs['required'] ?? "El campo '$field' es obligatorio.";
                 continue;
             }
 
@@ -338,46 +402,53 @@ class PedidoApiController
             }
 
             if (isset($config['numeric']) && !is_numeric($val)) {
-                $errores[$field] = "El campo '$field' debe ser numérico.";
+                $errores[$field] = isset($msgs['numeric']) ? sprintf($msgs['numeric'], $val) : "El campo '$field' debe ser numérico.";
                 continue;
             }
 
             if (isset($config['min']) && (int)$val < $config['min']) {
-                $errores[$field] = "El campo '$field' debe ser al menos " . $config['min'] . ".";
+                $errores[$field] = $msgs['min'] ?? "El campo '$field' debe ser al menos {$config['min']}.";
             }
 
             if (isset($config['min_val']) && (float)$val < $config['min_val']) {
-                $errores[$field] = "El campo '$field' debe ser mayor a 0.";
+                $errores[$field] = $msgs['min_val'] ?? "El campo '$field' debe ser mayor a 0.";
             }
 
             if (isset($config['min_len']) && strlen(trim((string)$val)) < $config['min_len']) {
-                $errores[$field] = "El campo '$field' debe tener al menos " . $config['min_len'] . " caracteres.";
+                $errores[$field] = isset($msgs['min_len']) ? sprintf($msgs['min_len'], $val) : "El campo '$field' debe tener al menos {$config['min_len']} caracteres.";
             }
 
             if (isset($config['max_len']) && strlen((string)$val) > $config['max_len']) {
-                $errores[$field] = "El campo '$field' no debe exceder los " . $config['max_len'] . " caracteres.";
+                $errores[$field] = $msgs['max_len'] ?? "El campo '$field' no debe exceder los {$config['max_len']} caracteres.";
             }
 
             if (isset($config['in']) && !in_array((int)$val, $config['in'], true)) {
-                $errores[$field] = "El campo '$field' solo acepta los valores: " . implode(', ', $config['in']) . ".";
+                $errores[$field] = isset($msgs['in']) ? sprintf($msgs['in'], $val) : "El campo '$field' solo acepta: " . implode(', ', $config['in']) . ".";
+            }
+
+            if (isset($config['date']) && !empty($val)) {
+                $d = DateTime::createFromFormat('Y-m-d', (string)$val);
+                if (!$d || $d->format('Y-m-d') !== (string)$val) {
+                    $errores[$field] = isset($msgs['date']) ? sprintf($msgs['date'], $val) : "El campo '$field' debe estar en formato YYYY-MM-DD.";
+                }
             }
         }
 
-        // 2. Validar productos (producto_id como array o con al menos 1 elemento)
-        $hasProductsArray = isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0;
+        // 2. Validar productos
+        $hasProductsArray  = isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0;
         $hasSingleProductId = isset($data['producto_id']) && is_numeric($data['producto_id']);
-        
+
         if (!$hasSingleProductId && !$hasProductsArray) {
-            $errores['producto_id'] = "El campo 'producto_id' o 'productos' es obligatorio y debe contener al menos 1 producto.";
+            $errores['productos'] = 'Debes enviar al menos un producto. Usa el array "productos": [{"producto_id": 72, "cantidad": 1}], o el campo "producto_id" con un ID numérico.';
         }
 
         if ($hasProductsArray) {
             foreach ($data['productos'] as $i => $pi) {
                 if (!isset($pi['producto_id']) || !is_numeric($pi['producto_id'])) {
-                    $errores["productos[$i][producto_id]"] = "Debe ser numérico.";
+                    $errores["productos[$i].producto_id"] = "El producto en posición $i requiere 'producto_id' numérico. Recibido: " . json_encode($pi['producto_id'] ?? null) . ".";
                 }
                 if (!isset($pi['cantidad']) || !is_numeric($pi['cantidad']) || (int)$pi['cantidad'] <= 0) {
-                    $errores["productos[$i][cantidad]"] = "Debe ser mayor a cero.";
+                    $errores["productos[$i].cantidad"] = "El producto en posición $i requiere 'cantidad' mayor a 0. Recibido: " . json_encode($pi['cantidad'] ?? null) . ".";
                 }
             }
         }
@@ -386,33 +457,33 @@ class PedidoApiController
         if (!isset($errores['id_cliente'])) {
             $cliente = (new UsuarioModel())->obtenerPorId((int)$data['id_cliente']);
             if (!$cliente) {
-                $errores['id_cliente'] = "El cliente especificado no existe.";
+                $errores['id_cliente'] = "El cliente con id_cliente={$data['id_cliente']} no existe en el sistema. Verifica el ID.";
             }
         }
 
         // 4. Validar unicidad de numero_orden por cliente
         if (!isset($errores['numero_orden']) && !isset($errores['id_cliente'])) {
             if (PedidosModel::existeNumeroOrden($data['numero_orden'], $data['id_cliente'])) {
-                $errores['numero_orden'] = "El número de orden ya existe para este cliente.";
+                $errores['numero_orden'] = "El numero_orden {$data['numero_orden']} ya existe para el cliente id={$data['id_cliente']}. Debes usar un número diferente.";
             }
         }
 
-        // 5. Validar Jerarquía Geográfica (solo si se proporcionan los campos)
+        // 5. Validar jerarquía geográfica
         if (!isset($errores['id_departamento']) && !empty($data['id_departamento']) && !empty($data['id_pais'])) {
             $depto = DepartamentoModel::obtenerPorId((int)$data['id_departamento']);
             if (!$depto) {
-                $errores['id_departamento'] = "El departamento especificado no existe.";
+                $errores['id_departamento'] = "El departamento con id={$data['id_departamento']} no existe en el sistema.";
             } elseif ((int)$depto['id_pais'] !== (int)$data['id_pais']) {
-                $errores['id_departamento'] = "El departamento no pertenece al país seleccionado.";
+                $errores['id_departamento'] = "El departamento id={$data['id_departamento']} no pertenece al país id={$data['id_pais']}.";
             }
         }
 
         if (!isset($errores['id_municipio']) && !empty($data['id_municipio']) && !empty($data['id_departamento'])) {
             $muni = MunicipioModel::obtenerPorId((int)$data['id_municipio']);
             if (!$muni) {
-                $errores['id_municipio'] = "El municipio especificado no existe.";
+                $errores['id_municipio'] = "El municipio con id={$data['id_municipio']} no existe en el sistema.";
             } elseif ((int)$muni['id_departamento'] !== (int)$data['id_departamento']) {
-                $errores['id_municipio'] = "El municipio no pertenece al departamento seleccionado.";
+                $errores['id_municipio'] = "El municipio id={$data['id_municipio']} no pertenece al departamento id={$data['id_departamento']}.";
             }
         }
 

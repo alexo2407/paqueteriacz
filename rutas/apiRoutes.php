@@ -29,7 +29,10 @@ class ApiRouter {
                     }
 
                     $response = $controller->crearPedidoAPI($data);
-                    responder(true, $response['message'], $response['data']);
+                    $isValidationError = !$response['success'] && ($response['message'] === 'VALIDATION_ERROR' || isset($response['fields']));
+                    $httpCode = $response['success'] ? 200 : ($isValidationError ? 422 : 400);
+                    $extra = isset($response['fields']) ? ['fields' => $response['fields']] : [];
+                    responder($response['success'], $response['message'], $response['data'] ?? null, $httpCode, $extra);
                 } elseif ($action === 'multiple' && $method === 'POST') {
                     // Bulk import endpoint for authenticated clients
                     $headers = apache_request_headers();

@@ -83,8 +83,11 @@ try {
     $pedidoController = new PedidosController();
     $response = $pedidoController->crearPedidoAPI($data, $autoEnqueue, $userId, $userRole);
 
-    // El controlador ya devuelve el sobre { success, message, data }
-    responder($response['success'], $response['message'], $response['data'] ?? null, $response['success'] ? 200 : 400);
+    // El controlador ya devuelve el sobre { success, message, data, fields }
+    $isValidationError = !$response['success'] && ($response['message'] === 'VALIDATION_ERROR' || isset($response['fields']));
+    $httpCode = $response['success'] ? 200 : ($isValidationError ? 422 : 400);
+    $extra = isset($response['fields']) ? ['fields' => $response['fields']] : [];
+    responder($response['success'], $response['message'], $response['data'] ?? null, $httpCode, $extra);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
