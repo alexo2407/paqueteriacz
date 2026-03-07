@@ -449,10 +449,11 @@ foreach ($pedidos as $p) {
 
 <?php
 // ── BI: Proveedores de Mensajería (solo para clientes) ──────────────────────
-// Detectar si es cliente logistico: rol puede estar como 'Proveedor' (constante ROL_NOMBRE_CLIENTE)
-// o como 'Cliente' (nombre literal en BD para ciertos setups). Usamos isCliente() que cubre ambos casos.
+// NOTA: isProveedor() detecta rol 'Cliente' (ID4 en BD) = clientes logísticos como NutraTrade y Pulox.
+//       isCliente() detecta rol 'Proveedor' (ID5 en BD) = mensajeros reales como RutaEX NutraTrade.
+//       Los roles están intercambiados en config.php por diseño histórico.
 require_once __DIR__ . '/../../../utils/permissions.php';
-$isClienteParaBI = isCliente() && !$isAdmin;
+$isClienteParaBI = isProveedor() && !$isAdmin;
 $proveedoresMensajeriaCliente = [];
 $mejorProveedorCliente = null;
 $clienteIdBI = null;

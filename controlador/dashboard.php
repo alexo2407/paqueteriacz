@@ -16,8 +16,11 @@ class DashboardController {
         // Detectar rol de admin con doble verificación (roles_nombres Y isSuperAdmin)
         $rolesNombres   = $_SESSION['roles_nombres'] ?? [];
         $esAdminDash    = in_array('Administrador', $rolesNombres, true) || isSuperAdmin();
-        $esProveedorDash = isProveedor() && !$esAdminDash;
-        $esClienteDash  = isCliente()   && !$esAdminDash;
+        // NOTA: Los roles están invertidos en config.php por diseño histórico:
+        //   isProveedor() → detecta rol 'Cliente' (ID4 en BD) → son los CLIENTES logísticos (NutraTrade, Pulox)
+        //   isCliente()   → detecta rol 'Proveedor' (ID5 en BD) → son los MENSAJEROS (RutaEX NutraTrade, Pulox CR)
+        $esClienteDash  = isProveedor() && !$esAdminDash;  // clientes logísticos (NutraTrade, Pulox)
+        $esProveedorDash = isCliente()  && !$esAdminDash;  // mensajeros reales (RutaEX NutraTrade, Pulox CR)
 
         $userIdActual    = getCurrentUserId();
 
