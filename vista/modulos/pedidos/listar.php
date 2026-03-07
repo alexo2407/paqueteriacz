@@ -449,20 +449,24 @@ foreach ($pedidos as $p) {
 
 <?php
 // ── BI: Proveedores de Mensajería (solo para clientes) ──────────────────────
-$isClienteParaBI = in_array(ROL_NOMBRE_CLIENTE, $_SESSION['roles_nombres'] ?? [], true);
+// Detectar si es cliente logistico: rol puede estar como 'Proveedor' (constante ROL_NOMBRE_CLIENTE)
+// o como 'Cliente' (nombre literal en BD para ciertos setups). Usamos isCliente() que cubre ambos casos.
+require_once __DIR__ . '/../../../utils/permissions.php';
+$isClienteParaBI = isCliente() && !$isAdmin;
 $proveedoresMensajeriaCliente = [];
 $mejorProveedorCliente = null;
+$clienteIdBI = null;
+$fechaDesdeBI = date('Y-m-01');
+$fechaHastaBI = date('Y-m-t');
 
-if ($isClienteParaBI && !$isAdmin) {
-    require_once __DIR__ . '/../../../controlador/dashboard.php';
+if ($isClienteParaBI) {
     require_once __DIR__ . '/../../../modelo/pedido.php';
-    require_once __DIR__ . '/../../../utils/permissions.php';
-    $clienteIdBI = getCurrentUserId();
-    $fechaDesdeBI = date('Y-m-01');
-    $fechaHastaBI = date('Y-m-t');
-    $proveedoresMensajeriaCliente = PedidosModel::obtenerProveedoresMensajeriaBI($fechaDesdeBI, $fechaHastaBI, $clienteIdBI);
-    if (!empty($proveedoresMensajeriaCliente)) {
-        $mejorProveedorCliente = $proveedoresMensajeriaCliente[0];
+    $clienteIdBI = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+    if ($clienteIdBI > 0) {
+        $proveedoresMensajeriaCliente = PedidosModel::obtenerProveedoresMensajeriaBI($fechaDesdeBI, $fechaHastaBI, $clienteIdBI);
+        if (!empty($proveedoresMensajeriaCliente)) {
+            $mejorProveedorCliente = $proveedoresMensajeriaCliente[0];
+        }
     }
 }
 ?>
