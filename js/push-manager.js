@@ -131,26 +131,29 @@
 
         const permission = await getCurrentPermission();
         const subscribed = await isSubscribed();
+        const icon = btn.querySelector('i');
+        if (!icon) return;
 
         if (permission === 'denied') {
             btn.disabled = true;
-            btn.innerHTML = '<i class="bi bi-bell-slash me-1"></i> Push bloqueado';
-            btn.title = 'Permite las notificaciones en la configuración del navegador';
-            btn.className = btn.className.replace(/btn-\S+/g, '') + ' btn btn-sm btn-secondary';
+            icon.className = 'bi bi-bell-slash';
+            icon.style.color = 'rgba(255,100,100,0.75)';
+            btn.title = 'Push bloqueado — permítelo en la configuración del navegador';
+            btn.dataset.pushActive = '0';
             return;
         }
 
         if (subscribed && permission === 'granted') {
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-bell-fill me-1"></i> Push activado';
-            btn.title = 'Click para desactivar notificaciones push';
-            btn.className = btn.className.replace(/btn-\S+/g, '') + ' btn btn-sm btn-success';
+            icon.className = 'bi bi-bell-fill';
+            icon.style.color = '#4ade80';   /* verde suave */
+            btn.title = 'Push activado — clic para desactivar';
             btn.dataset.pushActive = '1';
         } else {
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-bell me-1"></i> Activar push';
-            btn.title = 'Click para activar notificaciones push';
-            btn.className = btn.className.replace(/btn-\S+/g, '') + ' btn btn-sm btn-outline-primary';
+            icon.className = 'bi bi-bell-slash';
+            icon.style.color = 'rgba(255,255,255,0.55)';
+            btn.title = 'Activar notificaciones push del navegador';
             btn.dataset.pushActive = '0';
         }
     }
@@ -159,7 +162,11 @@
 
     async function handleToggle(btn) {
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Procesando...';
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = 'bi bi-arrow-repeat spin-icon';
+            icon.style.color = 'rgba(255,255,255,0.55)';
+        }
 
         try {
             if (btn.dataset.pushActive === '1') {

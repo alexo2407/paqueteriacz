@@ -253,10 +253,10 @@
             <!-- ═ TOGGLE WEB PUSH ═ -->
             <li class="nav-item">
                 <button id="btnTogglePush" type="button"
-                        class="btn btn-sm btn-outline-light"
+                        class="nav-link px-2 border-0 bg-transparent"
                         title="Activar notificaciones push del navegador"
-                        style="font-size:.8rem;padding:4px 10px">
-                    <i class="bi bi-bell me-1"></i> Push
+                        style="cursor:pointer">
+                    <i class="bi bi-bell-slash" style="font-size:1.25rem;color:rgba(255,255,255,0.55)"></i>
                 </button>
             </li>
             <?php endif; ?>
@@ -305,6 +305,11 @@
                 0%,100% { transform: scale(1); }
                 50% { transform: scale(1.15); }
             }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to   { transform: rotate(360deg); }
+            }
+            .spin-icon { animation: spin 0.8s linear infinite; display: inline-block; }
             </style>
 
             <script>
