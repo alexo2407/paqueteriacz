@@ -2,6 +2,8 @@
 start_secure_session();
 if (!isset($_SESSION['registrado'])) { header('location:' . RUTA_URL . 'login'); die(); }
 
+$usaDataTables = true;
+
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../controlador/logistica.php';
 
