@@ -116,6 +116,10 @@ if (!empty($fechaEntregaRaw)) {
     $fechaSubLabel = 'Pendiente de definir fecha';
 }
 
+// ¿El pedido tiene coordenadas válidas?
+$hasCoords = !empty($pedido['latitud']) && !empty($pedido['longitud'])
+             && (float)$pedido['latitud'] != 0 && (float)$pedido['longitud'] != 0;
+
 
 include("vista/includes/header.php"); 
 ?>
@@ -130,9 +134,15 @@ include("vista/includes/header.php");
             </h1>
             <p class="text-muted mb-0">Gestiona y revisa el historial de este pedido.</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
            <span class="badge fs-6 px-3 py-2 align-self-center" style="<?= $badgeColor ?>"><?= htmlspecialchars($pedido['nombre_estado'] ?? 'Desconocido') ?></span>
-           
+
+           <?php if ($hasCoords): ?>
+               <button type="button" class="btn btn-success align-self-center" data-bs-toggle="modal" data-bs-target="#mapaModal">
+                   <i class="bi bi-geo-alt-fill me-1"></i> Ver Ubicación
+               </button>
+           <?php endif; ?>
+
            <?php if (!in_array(strtoupper($pedido['nombre_estado']), ['ENTREGADO', 'CANCELADO', 'DEVOLUCION COMPLETA', 'LIQUIDADO'])): ?>
                 <button type="button" class="btn btn-warning text-dark align-self-center" data-bs-toggle="modal" data-bs-target="#cambiarEstadoModal">
                     <i class="bi bi-arrow-repeat"></i> Cambiar Estado
@@ -272,6 +282,43 @@ include("vista/includes/header.php");
                             </div>
                         </div>
 
+                        <?php if ($hasCoords): ?>
+                        <div class="col-12 mt-2">
+                            <label class="small text-muted fw-bold text-uppercase">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>Coordenadas GPS
+                            </label>
+                            <div class="p-0 mt-1 rounded border overflow-hidden position-relative" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#mapaModal">
+                                <iframe
+                                    id="mapaPreview"
+                                    src="https://www.openstreetmap.org/export/embed.html?bbox=<?= ((float)$pedido['longitud'] - 0.005) ?>,<?= ((float)$pedido['latitud'] - 0.005) ?>,<?= ((float)$pedido['longitud'] + 0.005) ?>,<?= ((float)$pedido['latitud'] + 0.005) ?>&layer=mapnik&marker=<?= (float)$pedido['latitud'] ?>,<?= (float)$pedido['longitud'] ?>"
+                                    width="100%" height="200" frameborder="0"
+                                    style="pointer-events:none;display:block;"
+                                    title="Mapa de ubicación"
+                                    loading="lazy">
+                                </iframe>
+                                <div class="position-absolute top-0 end-0 m-2">
+                                    <span class="badge bg-dark bg-opacity-75">
+                                        <i class="bi bi-arrows-fullscreen me-1"></i>Expandir mapa
+                                    </span>
+                                </div>
+                                <div class="position-absolute bottom-0 start-0 m-2">
+                                    <span class="badge bg-dark bg-opacity-75">
+                                        <i class="bi bi-crosshair me-1"></i>
+                                        <?= number_format((float)$pedido['latitud'], 6) ?>, <?= number_format((float)$pedido['longitud'], 6) ?>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mt-1 d-flex gap-2">
+                                <a href="https://www.google.com/maps?q=<?= (float)$pedido['latitud'] ?>,<?= (float)$pedido['longitud'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-map me-1"></i>Google Maps
+                                </a>
+                                <a href="https://waze.com/ul?ll=<?= (float)$pedido['latitud'] ?>,<?= (float)$pedido['longitud'] ?>&navigate=yes" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-signpost-2 me-1"></i>Waze
+                                </a>
+                                <span class="text-muted small align-self-center ms-auto"><?= number_format((float)$pedido['latitud'], 6) ?>, <?= number_format((float)$pedido['longitud'], 6) ?></span>
+                            </div>
+                        </div>
+                        <?php endif; ?>
 
                     </div>
                 </div>
@@ -438,6 +485,48 @@ include("vista/includes/header.php");
     </div>
 
 </div>
+
+<?php if ($hasCoords): ?>
+<!-- Modal Ver Mapa -->
+<div class="modal fade" id="mapaModal" tabindex="-1" aria-labelledby="mapaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="mapaModalLabel">
+                    <i class="bi bi-geo-alt-fill me-2"></i>Ubicación del Pedido #<?= htmlspecialchars($pedido['numero_orden']) ?>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe
+                    src="https://www.openstreetmap.org/export/embed.html?bbox=<?= ((float)$pedido['longitud'] - 0.01) ?>,<?= ((float)$pedido['latitud'] - 0.01) ?>,<?= ((float)$pedido['longitud'] + 0.01) ?>,<?= ((float)$pedido['latitud'] + 0.01) ?>&layer=mapnik&marker=<?= (float)$pedido['latitud'] ?>,<?= (float)$pedido['longitud'] ?>"
+                    width="100%" height="540" frameborder="0"
+                    style="display:block;"
+                    title="Mapa de ubicación completo"
+                    loading="lazy">
+                </iframe>
+            </div>
+            <div class="modal-footer bg-light justify-content-between">
+                <div class="d-flex gap-2">
+                    <a href="https://www.google.com/maps?q=<?= (float)$pedido['latitud'] ?>,<?= (float)$pedido['longitud'] ?>" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-map me-1"></i>Abrir en Google Maps
+                    </a>
+                    <a href="https://waze.com/ul?ll=<?= (float)$pedido['latitud'] ?>,<?= (float)$pedido['longitud'] ?>&navigate=yes" target="_blank" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-signpost-2 me-1"></i>Abrir en Waze
+                    </a>
+                    <a href="https://www.openstreetmap.org/?mlat=<?= (float)$pedido['latitud'] ?>&mlon=<?= (float)$pedido['longitud'] ?>#map=17/<?= (float)$pedido['latitud'] ?>/<?= (float)$pedido['longitud'] ?>" target="_blank" class="btn btn-outline-dark btn-sm">
+                        <i class="bi bi-globe me-1"></i>OpenStreetMap
+                    </a>
+                </div>
+                <span class="text-muted small">
+                    <i class="bi bi-crosshair me-1"></i>
+                    <?= number_format((float)$pedido['latitud'], 6) ?>, <?= number_format((float)$pedido['longitud'], 6) ?>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Modal Cambiar Estado -->
 <div class="modal fade" id="cambiarEstadoModal" tabindex="-1">

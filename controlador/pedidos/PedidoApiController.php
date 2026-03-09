@@ -534,15 +534,22 @@ class PedidoApiController
 
     private function procesarCoordenadas(array $data): array
     {
-        $latitud = $data['latitud'] ?? null;
-        $longitud = $data['longitud'] ?? null;
-        
-        if ($latitud === null || $longitud === null) {
-            if (!empty($data["coordenadas"]) && strpos($data["coordenadas"], ',') !== false) {
-                $parts = array_map('trim', explode(',', $data['coordenadas']));
-                $latitud = $parts[0];
-                $longitud = $parts[1];
+        // 1. Campos explícitos latitud/longitud — máxima prioridad
+        $latitud  = isset($data['latitud'])  && is_numeric($data['latitud'])  ? (float)$data['latitud']  : null;
+        $longitud = isset($data['longitud']) && is_numeric($data['longitud']) ? (float)$data['longitud'] : null;
+
+        // 2. Campo coordenadas "lat,lng" — segunda prioridad
+        if (($latitud === null || $longitud === null) && !empty($data['coordenadas'])) {
+            $parts = array_map('trim', explode(',', $data['coordenadas']));
+            if (count($parts) === 2 && is_numeric($parts[0]) && is_numeric($parts[1])) {
+                $latitud  = (float)$parts[0];
+                $longitud = (float)$parts[1];
             }
+        }
+
+        // 3. Fallback: extraer del comentario — menor prioridad
+        if ($latitud === null || $longitud === null) {
+            [$latitud, $longitud] = $this->extraerCoordenadasDeTexto($data['comentario'] ?? null);
         }
 
         // Si no se proporcionan coordenadas válidas, usar valores por defecto (0.0, 0.0)
@@ -551,6 +558,27 @@ class PedidoApiController
         }
 
         return [(float)$latitud, (float)$longitud];
+    }
+
+    /**
+     * Extrae un par de coordenadas (lat, lng) de un texto libre.
+     * Busca el patrón: número decimal con al menos 4 decimales, coma, número decimal con al menos 4 decimales.
+     * La alta precisión decimal evita capturar precios u otros números cortos en el comentario.
+     *
+     * @param string|null $texto
+     * @return array [float|null $lat, float|null $lng]
+     */
+    private function extraerCoordenadasDeTexto(?string $texto): array
+    {
+        if (empty($texto)) return [null, null];
+
+        // Patrón: decimal con signo opcional y >=4 dígitos tras el punto
+        $pattern = '/(-?\d{1,3}\.\d{4,})\s*,\s*(-?\d{1,3}\.\d{4,})/';
+        if (preg_match($pattern, $texto, $m)) {
+            return [(float)$m[1], (float)$m[2]];
+        }
+
+        return [null, null];
     }
 
     private function validarRelaciones(array $data): void
@@ -737,16 +765,22 @@ class PedidoApiController
             }
         }
 
-        // Parsing coordenadas string (lat,lng) if provided
-        $lat = isset($pedido['latitud']) ? (float)$pedido['latitud'] : (isset($pedido['latitude']) ? (float)$pedido['latitude'] : null);
-        $lng = isset($pedido['longitud']) ? (float)$pedido['longitud'] : (isset($pedido['longitude']) ? (float)$pedido['longitude'] : null);
+        // 1. Campos explícitos latitud/longitud — máxima prioridad
+        $lat = isset($pedido['latitud'])  && is_numeric($pedido['latitud'])  ? (float)$pedido['latitud']  : null;
+        $lng = isset($pedido['longitud']) && is_numeric($pedido['longitud']) ? (float)$pedido['longitud'] : null;
 
+        // 2. Campo coordenadas "lat,lng" — segunda prioridad
         if (($lat === null || $lng === null) && !empty($pedido['coordenadas'])) {
             $parts = array_map('trim', explode(',', $pedido['coordenadas']));
             if (count($parts) === 2 && is_numeric($parts[0]) && is_numeric($parts[1])) {
                 $lat = (float)$parts[0];
                 $lng = (float)$parts[1];
             }
+        }
+
+        // 3. Fallback: extraer del comentario — menor prioridad
+        if ($lat === null || $lng === null) {
+            [$lat, $lng] = $this->extraerCoordenadasDeTexto($pedido['comentario'] ?? null);
         }
 
         return [
