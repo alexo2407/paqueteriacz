@@ -738,7 +738,7 @@ class LogisticaController {
         }
 
         $page   = max(1, (int)($_GET['page'] ?? 1));
-        $limit  = 300;
+        $limit  = 20;
         $offset = ($page - 1) * $limit;
         $onlyUnread = isset($_GET['unread']) && $_GET['unread'] === 'true';
         $search = trim($_GET['q'] ?? '');
