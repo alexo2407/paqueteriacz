@@ -10,7 +10,7 @@ class AddressService {
         if (empty($cp)) return null;
         // Upper + Trim + Quitar espacios y guiones
         $cp = strtoupper(trim((string)$cp));
-        return str_replace([' ', '-'], '', $cp);
+        return str_replace([' ', '.'], '', $cp);
     }
 
     /**

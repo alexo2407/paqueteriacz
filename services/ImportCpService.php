@@ -604,7 +604,7 @@ class ImportCpService
     {
         if (trim($cp) === '') return null;
         $cp = strtoupper(trim($cp));
-        return str_replace([' ', '-', '.'], '', $cp);
+        return str_replace([' ', '.'], '', $cp);
     }
 
     /** Precarga toda la tabla paises en arrays indexados por id, nombre e iso */

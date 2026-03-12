@@ -619,6 +619,7 @@ try {
 
 <script src="https://maps.googleapis.com/maps/api/js?key=<?= API_MAP ?>&callback=initMap" async defer></script>
 <script src="<?= RUTA_URL ?>js/pedidos-validation.js?v=<?= time() ?>"></script>
+<script src="<?= RUTA_URL ?>vista/js/codigos_postales_autocomplete.js?v=<?= time() ?>"></script>
 <script>
     let map;
     let marker;
