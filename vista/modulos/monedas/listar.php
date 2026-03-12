@@ -51,7 +51,7 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                 <table class="table table-hover align-middle w-100 tablas">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 50px;">#</th>
+                            <th style="width: 50px;">ID</th>
                             <th>Moneda</th>
                             <th>Código</th>
                             <th>Tasa USD</th>
@@ -61,7 +61,7 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                     <tbody>
                         <?php foreach ($monedas as $key => $value): ?>
                             <tr>
-                                <td class="fw-bold text-muted text-center"><?= ($key + 1) ?></td>
+                                <td class="fw-bold text-muted text-center font-monospace"><?= (int)$value['id'] ?></td>
                                 <td>
                                     <span class="fw-bold text-dark"><?= htmlspecialchars($value["nombre"]) ?></span>
                                 </td>
