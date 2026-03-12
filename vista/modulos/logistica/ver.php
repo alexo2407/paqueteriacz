@@ -231,9 +231,14 @@ include("vista/includes/header.php");
                                 </div>
                                 <?php
                                     // Resolver nombres geográficos desde IDs FK
-                                    $nomDepto = $nomMuni = $nomBarrio = null;
+                                    $nomPais = $nomDepto = $nomMuni = $nomBarrio = null;
                                     try {
                                         $dbTmp = (new Conexion())->conectar();
+                                        if (!empty($pedido['id_pais'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM paises WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => $pedido['id_pais']]);
+                                            $nomPais = $st->fetchColumn();
+                                        }
                                         if (!empty($pedido['id_departamento'])) {
                                             $st = $dbTmp->prepare("SELECT nombre FROM departamentos WHERE id = :id LIMIT 1");
                                             $st->execute([':id' => $pedido['id_departamento']]);
@@ -254,6 +259,12 @@ include("vista/includes/header.php");
                                     if (!$nomBarrio && !empty($pedido['zona'])) $nomBarrio = $pedido['zona'];
                                 ?>
                                 <div class="row row-cols-2 row-cols-md-4 g-2 mt-1">
+                                    <?php if ($nomPais): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">País</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($nomPais) ?></span>
+                                    </div>
+                                    <?php endif; ?>
                                     <?php if (!empty($pedido['codigo_postal'])): ?>
                                     <div class="col">
                                         <span class="small text-muted d-block">Código Postal</span>
