@@ -3466,7 +3466,7 @@ class PedidosModel
                     ) AS efectividad
                 FROM pedidos_productos pp
                 JOIN pedidos       ped ON pp.id_pedido   = ped.id
-                JOIN productos     pr  ON pp.id_producto = pr.id
+                JOIN productos     pr  ON pp.id_producto = pr.id AND pr.activo = 1
                 LEFT JOIN estados_pedidos ep ON ped.id_estado = ep.id
                 $whereClause
                 GROUP BY pp.id_producto, pr.nombre
