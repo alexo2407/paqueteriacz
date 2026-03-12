@@ -538,6 +538,12 @@ class PedidoApiController
         $latitud  = isset($data['latitud'])  && is_numeric($data['latitud'])  ? (float)$data['latitud']  : null;
         $longitud = isset($data['longitud']) && is_numeric($data['longitud']) ? (float)$data['longitud'] : null;
 
+        // Si ambos son 0.0, tratar como no provistos (inválidos)
+        if ($latitud === 0.0 && $longitud === 0.0) {
+            $latitud  = null;
+            $longitud = null;
+        }
+
         // 2. Campo coordenadas "lat,lng" — segunda prioridad
         if (($latitud === null || $longitud === null) && !empty($data['coordenadas'])) {
             $parts = array_map('trim', explode(',', $data['coordenadas']));
@@ -547,7 +553,13 @@ class PedidoApiController
             }
         }
 
-        // 3. Fallback: extraer del comentario — menor prioridad
+        // Si coordenadas resultó en 0,0 también se descarta
+        if ($latitud === 0.0 && $longitud === 0.0) {
+            $latitud  = null;
+            $longitud = null;
+        }
+
+        // 3. Fallback: extraer del comentario — si lat/lng están vacíos o eran 0,0
         if ($latitud === null || $longitud === null) {
             [$latitud, $longitud] = $this->extraerCoordenadasDeTexto($data['comentario'] ?? null);
         }
@@ -769,6 +781,12 @@ class PedidoApiController
         $lat = isset($pedido['latitud'])  && is_numeric($pedido['latitud'])  ? (float)$pedido['latitud']  : null;
         $lng = isset($pedido['longitud']) && is_numeric($pedido['longitud']) ? (float)$pedido['longitud'] : null;
 
+        // Si ambos son 0.0, tratar como no provistos (inválidos)
+        if ($lat === 0.0 && $lng === 0.0) {
+            $lat = null;
+            $lng = null;
+        }
+
         // 2. Campo coordenadas "lat,lng" — segunda prioridad
         if (($lat === null || $lng === null) && !empty($pedido['coordenadas'])) {
             $parts = array_map('trim', explode(',', $pedido['coordenadas']));
@@ -778,7 +796,13 @@ class PedidoApiController
             }
         }
 
-        // 3. Fallback: extraer del comentario — menor prioridad
+        // Si coordenadas resultó en 0,0 también se descarta
+        if ($lat === 0.0 && $lng === 0.0) {
+            $lat = null;
+            $lng = null;
+        }
+
+        // 3. Fallback: extraer del comentario — si lat/lng están vacíos o eran 0,0
         if ($lat === null || $lng === null) {
             [$lat, $lng] = $this->extraerCoordenadasDeTexto($pedido['comentario'] ?? null);
         }
