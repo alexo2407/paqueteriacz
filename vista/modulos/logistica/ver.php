@@ -254,10 +254,41 @@ include("vista/includes/header.php");
                                             $st->execute([':id' => $pedido['id_barrio']]);
                                             $nomBarrio = $st->fetchColumn();
                                         }
+
+                                        // ── FALLBACK: auto-prefijo por país ──────────────────────────────
+                                        // Si faltan depto/municipio y hay codigo_postal + id_pais,
+                                        // agregar prefijo del país y buscar en codigos_postales.
+                                        // Solo para display, no modifica la BD.
+                                        if ((!$nomDepto || !$nomMuni) && !empty($pedido['codigo_postal']) && !empty($pedido['id_pais'])) {
+                                            require_once 'services/AddressService.php';
+                                            $cpDisplay = AddressService::normalizarCP($pedido['codigo_postal'], (int)$pedido['id_pais']);
+                                            if ($cpDisplay !== strtoupper(trim($pedido['codigo_postal']))) {
+                                                $st = $dbTmp->prepare("
+                                                    SELECT d.nombre AS nom_depto,
+                                                           m.nombre AS nom_muni,
+                                                           b.nombre AS nom_barrio
+                                                    FROM codigos_postales cp
+                                                    LEFT JOIN departamentos d ON d.id = cp.id_departamento
+                                                    LEFT JOIN municipios    m ON m.id = cp.id_municipio
+                                                    LEFT JOIN barrios       b ON b.id = cp.id_barrio
+                                                    WHERE cp.id_pais = :id_pais AND cp.codigo_postal = :cp
+                                                    LIMIT 1
+                                                ");
+                                                $st->execute([':id_pais' => (int)$pedido['id_pais'], ':cp' => $cpDisplay]);
+                                                $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                                                if ($cpRow) {
+                                                    if (!$nomDepto && $cpRow['nom_depto']) $nomDepto = $cpRow['nom_depto'];
+                                                    if (!$nomMuni  && $cpRow['nom_muni'])  $nomMuni  = $cpRow['nom_muni'];
+                                                    if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                                }
+                                            }
+                                        }
+                                        // ────────────────────────────────────────────────────────────────
                                     } catch(Exception $e) {}
                                     // Fallback: zona es campo texto libre en pedidos
                                     if (!$nomBarrio && !empty($pedido['zona'])) $nomBarrio = $pedido['zona'];
                                 ?>
+
                                 <div class="row row-cols-2 row-cols-md-4 g-2 mt-1">
                                     <?php if ($nomPais): ?>
                                     <div class="col">
