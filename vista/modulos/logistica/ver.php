@@ -260,25 +260,25 @@ include("vista/includes/header.php");
                                         // agregar prefijo del país y buscar en codigos_postales.
                                         // Solo para display, no modifica la BD.
                                         if ((!$nomDepto || !$nomMuni) && !empty($pedido['codigo_postal']) && !empty($pedido['id_pais'])) {
-                                            require_once 'services/AddressService.php';
+                                            require_once __DIR__ . '/../../../services/AddressService.php';
                                             $cpDisplay = AddressService::normalizarCP($pedido['codigo_postal'], (int)$pedido['id_pais']);
                                             if ($cpDisplay !== strtoupper(trim($pedido['codigo_postal']))) {
                                                 $st = $dbTmp->prepare("
                                                     SELECT d.nombre AS nom_depto,
-                                                           m.nombre AS nom_muni,
+                                                           mu.nombre AS nom_muni,
                                                            b.nombre AS nom_barrio
                                                     FROM codigos_postales cp
-                                                    LEFT JOIN departamentos d ON d.id = cp.id_departamento
-                                                    LEFT JOIN municipios    m ON m.id = cp.id_municipio
-                                                    LEFT JOIN barrios       b ON b.id = cp.id_barrio
+                                                    LEFT JOIN departamentos d  ON d.id  = cp.id_departamento
+                                                    LEFT JOIN municipios    mu ON mu.id = cp.id_municipio
+                                                    LEFT JOIN barrios       b  ON b.id  = cp.id_barrio
                                                     WHERE cp.id_pais = :id_pais AND cp.codigo_postal = :cp
                                                     LIMIT 1
                                                 ");
                                                 $st->execute([':id_pais' => (int)$pedido['id_pais'], ':cp' => $cpDisplay]);
                                                 $cpRow = $st->fetch(PDO::FETCH_ASSOC);
                                                 if ($cpRow) {
-                                                    if (!$nomDepto && $cpRow['nom_depto']) $nomDepto = $cpRow['nom_depto'];
-                                                    if (!$nomMuni  && $cpRow['nom_muni'])  $nomMuni  = $cpRow['nom_muni'];
+                                                    if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                                    if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
                                                     if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
                                                 }
                                             }
