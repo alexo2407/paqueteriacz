@@ -287,22 +287,36 @@ include("vista/includes/header.php");
                                                 $cpFound = true;
                                             }
 
-                                            // Nivel 1: agregar prefijo si hay id_pais y no encontró en nivel 0
-                                            if (!$cpFound && !empty($pedido['id_pais'])) {
-                                                require_once __DIR__ . '/../../../services/AddressService.php';
-                                                $cpConPrefijo = AddressService::normalizarCP($pedido['codigo_postal'], (int)$pedido['id_pais']);
-                                                if ($cpConPrefijo !== $cpBruto) {
-                                                    $st = $dbTmp->prepare($cpSql);
-                                                    $st->execute([':cp' => $cpConPrefijo]);
-                                                    $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                                                    if ($cpRow) {
-                                                        if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
-                                                        if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
-                                                        if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                            // Nivel 1: agregar prefijo del país al CP numérico
+                                            // Si id_pais es NULL pero hay id_moneda, deriva el país desde la moneda
+                                            // (paises.id_moneda_local → prefijo_postal)
+                                            if (!$cpFound) {
+                                                $idPaisEfectivo = !empty($pedido['id_pais']) ? (int)$pedido['id_pais'] : null;
+
+                                                // Derivar país desde moneda si falta
+                                                if (!$idPaisEfectivo && !empty($pedido['id_moneda'])) {
+                                                    $stPais = $dbTmp->prepare("SELECT id FROM paises WHERE id_moneda_local = :id_moneda LIMIT 1");
+                                                    $stPais->execute([':id_moneda' => (int)$pedido['id_moneda']]);
+                                                    $idPaisEfectivo = (int)($stPais->fetchColumn() ?: 0) ?: null;
+                                                }
+
+                                                if ($idPaisEfectivo) {
+                                                    require_once __DIR__ . '/../../../services/AddressService.php';
+                                                    $cpConPrefijo = AddressService::normalizarCP($pedido['codigo_postal'], $idPaisEfectivo);
+                                                    if ($cpConPrefijo !== $cpBruto) {
+                                                        $st = $dbTmp->prepare($cpSql);
+                                                        $st->execute([':cp' => $cpConPrefijo]);
+                                                        $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                                                        if ($cpRow) {
+                                                            if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                                            if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                                                            if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
+
 
                                         // ────────────────────────────────────────────────────────────────
 
