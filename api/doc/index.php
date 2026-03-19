@@ -957,6 +957,45 @@
                             <tr><td><code>zona</code></td><td>string</td><td>Nombre de la zona. Opcional.</td></tr>
                         </tbody>
                     </table>
+
+                    <h4 data-lang="en">📍 Optional Fields - Special Address <span class="badge bg-secondary">For orders without postal code</span></h4>
+                    <h4 data-lang="es">📍 Campos Opcionales - Dirección Especial <span class="badge bg-secondary">Para pedidos sin código postal</span></h4>
+                    
+                    <div class="alert alert-warning" data-lang="en">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>When to use:</strong> Use these fields when the order destination does <strong>not</strong> have a registered postal code in the system. 
+                        These are text-based fields for special orders (e.g. international clients like Panama). 
+                        If <code>codigo_postal</code> is provided, these fields are stored but <strong>not displayed</strong> in views.
+                    </div>
+                    <div class="alert alert-warning" data-lang="es">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <strong>Cuándo usarlos:</strong> Usa estos campos cuando el destino del pedido <strong>no</strong> tiene un código postal registrado en el sistema. 
+                        Son campos de texto libre para pedidos especiales (ej. clientes internacionales como Panamá). 
+                        Si se envía <code>codigo_postal</code>, estos campos se guardan pero <strong>no se muestran</strong> en las vistas.
+                    </div>
+
+                    <table class="table table-sm table-bordered" data-lang="en">
+                        <thead><tr><th>Field</th><th>Type</th><th>Max Length</th><th>Description</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>departmentName</code></td><td>string</td><td>150</td><td>Department/Province name (text)</td></tr>
+                            <tr><td><code>municipalitiesName</code></td><td>string</td><td>150</td><td>Municipality/City name (text)</td></tr>
+                            <tr><td><code>postalCode</code></td><td>string</td><td>20</td><td>Postal code (text, not homologated)</td></tr>
+                            <tr><td><code>Location</code></td><td>string</td><td>255</td><td>Location reference (landmarks, plaza, etc.)</td></tr>
+                            <tr><td><code>betweenStreets</code></td><td>string</td><td>255</td><td>Cross streets reference</td></tr>
+                        </tbody>
+                    </table>
+                    
+                    <table class="table table-sm table-bordered" data-lang="es">
+                        <thead><tr><th>Campo</th><th>Tipo</th><th>Largo Máx.</th><th>Descripción</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>departmentName</code></td><td>string</td><td>150</td><td>Nombre del departamento/provincia (texto)</td></tr>
+                            <tr><td><code>municipalitiesName</code></td><td>string</td><td>150</td><td>Nombre del municipio/ciudad (texto)</td></tr>
+                            <tr><td><code>postalCode</code></td><td>string</td><td>20</td><td>Código postal (texto, no homologado)</td></tr>
+                            <tr><td><code>Location</code></td><td>string</td><td>255</td><td>Referencia de ubicación (punto de referencia, plaza, etc.)</td></tr>
+                            <tr><td><code>betweenStreets</code></td><td>string</td><td>255</td><td>Referencia de entre calles</td></tr>
+                        </tbody>
+                    </table>
+
                     <h4 data-lang="en">👥 Optional Fields - Assignments</h4>
                     <h4 data-lang="es">👥 Campos Opcionales - Asignaciones</h4>
                     
@@ -1067,11 +1106,34 @@
     // id_pais, id_departamento, id_municipio se auto-rellenan desde el CP
 }</code></pre>
 
-                    <h4 data-lang="en">📝 Example: Manual location fields (no postal code)</h4>
-                    <h4 data-lang="es">📝 Ejemplo: Campos de ubicación manuales (sin código postal)</h4>
+                    <h4 data-lang="en">📝 Example: Special Order (no postal code, custom address fields)</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Pedido Especial (sin código postal, campos de dirección personalizados)</h4>
                     <pre class="code-block line-numbers"><code class="language-json">{
     "numero_orden": 697897,
     "destinatario": "Ana Sofia Ramos",
+    "id_cliente": 9,
+    "telefono": "50761234567",
+    "direccion": "Calle 50, Edificio Global Bank, Piso 3",
+    "comentario": "Entregar en recepción.",
+    "id_proveedor": 12,
+    "fecha_entrega": "2026-03-20",
+    "precio_total_local": 320.00,
+    "es_combo": 0,
+    "departmentName": "Panamá",
+    "municipalitiesName": "San Miguelito",
+    "postalCode": "0801",
+    "Location": "Plaza Central, frente al supermercado",
+    "betweenStreets": "Entre Calle 5ta y Avenida Balboa",
+    "productos": [
+        { "producto_id": 49, "cantidad": 5 }
+    ]
+}</code></pre>
+
+                    <h4 data-lang="en">📝 Example: Manual location fields (IDs)</h4>
+                    <h4 data-lang="es">📝 Ejemplo: Campos de ubicación manuales (IDs)</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 697898,
+    "destinatario": "Roberto Fuentes",
     "id_cliente": 9,
     "telefono": "(502) 4444-9876",
     "direccion": "18 Calle 2-10 Zona 15",
