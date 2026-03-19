@@ -16,7 +16,7 @@ class PaisModel
     public static function listar()
     {
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare('SELECT id, nombre, codigo_iso FROM paises ORDER BY nombre ASC');
+        $stmt = $db->prepare('SELECT id, nombre, codigo_iso, prefijo_postal FROM paises ORDER BY nombre ASC');
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -29,7 +29,7 @@ class PaisModel
     public static function obtenerPorId($id)
     {
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare('SELECT id, nombre, codigo_iso FROM paises WHERE id = :id');
+        $stmt = $db->prepare('SELECT id, nombre, codigo_iso, prefijo_postal FROM paises WHERE id = :id');
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -39,14 +39,16 @@ class PaisModel
      * Crear un nuevo país.
      * @param string $nombre
      * @param string|null $codigo_iso
+     * @param string|null $prefijo_postal
      * @return int ID creado
      */
-    public static function crear($nombre, $codigo_iso = null)
+    public static function crear($nombre, $codigo_iso = null, $prefijo_postal = null)
     {
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare('INSERT INTO paises (nombre, codigo_iso) VALUES (:nombre, :codigo_iso)');
+        $stmt = $db->prepare('INSERT INTO paises (nombre, codigo_iso, prefijo_postal) VALUES (:nombre, :codigo_iso, :prefijo_postal)');
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':codigo_iso', $codigo_iso ?: null, $codigo_iso ? PDO::PARAM_STR : PDO::PARAM_NULL);
+        $stmt->bindValue(':prefijo_postal', $prefijo_postal ?: null, $prefijo_postal ? PDO::PARAM_STR : PDO::PARAM_NULL);
         $stmt->execute();
         $nuevoId = (int)$db->lastInsertId();
         
@@ -57,7 +59,7 @@ class PaisModel
             'crear',
             AuditoriaModel::getIdUsuarioActual(),
             null,
-            ['nombre' => $nombre, 'codigo_iso' => $codigo_iso]
+            ['nombre' => $nombre, 'codigo_iso' => $codigo_iso, 'prefijo_postal' => $prefijo_postal]
         );
         
         return $nuevoId;
@@ -68,17 +70,19 @@ class PaisModel
      * @param int $id
      * @param string $nombre
      * @param string|null $codigo_iso
+     * @param string|null $prefijo_postal
      * @return bool True si se actualizó.
      */
-    public static function actualizar($id, $nombre, $codigo_iso = null)
+    public static function actualizar($id, $nombre, $codigo_iso = null, $prefijo_postal = null)
     {
         // Obtener datos anteriores para auditoría
         $datosAnteriores = self::obtenerPorId($id);
         
         $db = (new Conexion())->conectar();
-        $stmt = $db->prepare('UPDATE paises SET nombre = :nombre, codigo_iso = :codigo_iso WHERE id = :id');
+        $stmt = $db->prepare('UPDATE paises SET nombre = :nombre, codigo_iso = :codigo_iso, prefijo_postal = :prefijo_postal WHERE id = :id');
         $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
         $stmt->bindValue(':codigo_iso', $codigo_iso ?: null, $codigo_iso ? PDO::PARAM_STR : PDO::PARAM_NULL);
+        $stmt->bindValue(':prefijo_postal', $prefijo_postal ?: null, $prefijo_postal ? PDO::PARAM_STR : PDO::PARAM_NULL);
         $stmt->bindValue(':id', (int)$id, PDO::PARAM_INT);
         $resultado = $stmt->execute();
         
@@ -90,7 +94,7 @@ class PaisModel
                 'actualizar',
                 AuditoriaModel::getIdUsuarioActual(),
                 $datosAnteriores,
-                ['nombre' => $nombre, 'codigo_iso' => $codigo_iso]
+                ['nombre' => $nombre, 'codigo_iso' => $codigo_iso, 'prefijo_postal' => $prefijo_postal]
             );
         }
         

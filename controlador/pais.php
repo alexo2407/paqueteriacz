@@ -36,9 +36,10 @@ class PaisesController
     public function crear(array $data)
     {
         $nombre = trim($data['nombre'] ?? '');
-        $codigo = trim($data['codigo_iso'] ?? null);
+        $codigo = trim($data['codigo_iso'] ?? '') ?: null;
+        $prefijo = strtoupper(trim($data['prefijo_postal'] ?? '')) ?: null;
         if ($nombre === '') return ['success' => false, 'message' => 'Nombre obligatorio.', 'id' => null];
-        $id = PaisModel::crear($nombre, $codigo);
+        $id = PaisModel::crear($nombre, $codigo, $prefijo);
         return $id ? ['success' => true, 'message' => 'País creado.', 'id' => $id] : ['success' => false, 'message' => 'No fue posible crear.','id'=>null];
     }
 
@@ -51,9 +52,10 @@ class PaisesController
     public function actualizar($id, array $data)
     {
         $nombre = trim($data['nombre'] ?? '');
-        $codigo = trim($data['codigo_iso'] ?? null);
+        $codigo = trim($data['codigo_iso'] ?? '') ?: null;
+        $prefijo = strtoupper(trim($data['prefijo_postal'] ?? '')) ?: null;
         if ($nombre === '') return ['success' => false, 'message' => 'Nombre obligatorio.'];
-        $ok = PaisModel::actualizar($id, $nombre, $codigo);
+        $ok = PaisModel::actualizar($id, $nombre, $codigo, $prefijo);
         return $ok ? ['success' => true, 'message' => 'País actualizado.'] : ['success' => false, 'message' => 'No fue posible actualizar.'];
     }
 

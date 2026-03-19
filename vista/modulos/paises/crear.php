@@ -47,6 +47,15 @@
                         </div>
                         <div class="form-text">Código internacional de 2 o 3 letras (Opcional).</div>
                     </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Prefijo Postal <span class="badge bg-info ms-1" style="font-size:.75em;">Nuevo</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="bi bi-mailbox"></i></span>
+                            <input class="form-control text-uppercase" name="prefijo_postal" placeholder="Ej: CR, PA, NI, UYU" maxlength="5" />
+                        </div>
+                        <div class="form-text">Prefijo que se antepone a los códigos postales de este país (Ej: <code>CR</code>10101). Dejar vacío si los CPs no usan prefijo.</div>
+                    </div>
                 </div>
 
                 <div class="card-footer bg-light p-3 d-flex justify-content-end gap-2 border-top-0">
