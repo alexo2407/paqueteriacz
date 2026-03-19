@@ -14,7 +14,7 @@
     cargarRecursos($paginaActual); 
     
     ?>
-    <title>Aplicacion App</title>
+    <title>RutaEx-Latam | Logistics</title>
 </head>
 
 <body>
