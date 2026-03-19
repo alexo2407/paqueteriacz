@@ -25,8 +25,8 @@ $id_pais      = isset($_GET['id_pais'])      ? (int)$_GET['id_pais']      : null
 $id_municipio = isset($_GET['id_municipio']) ? (int)$_GET['id_municipio'] : null;
 $id_barrio    = isset($_GET['id_barrio'])    ? (int)$_GET['id_barrio']    : null;
 
-// Normalización obligatoria
-$normalized_cp = AddressService::normalizarCP($cp_raw);
+// Normalización obligatoria — si viene id_pais, se auto-agrega el prefijo del país
+$normalized_cp = AddressService::normalizarCP($cp_raw, $id_pais);
 
 try {
     switch ($action) {

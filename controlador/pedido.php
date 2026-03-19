@@ -814,7 +814,7 @@ class PedidosController {
         // 3. Resolver Homologación de Código Postal
         $cpVal = $data['codigo_postal'] ?? null;
         if ($idPais && $cpVal) {
-            $cp_norm = AddressService::normalizarCP($cpVal);
+            $cp_norm = AddressService::normalizarCP($cpVal, $idPais);
             $payload['codigo_postal'] = $cp_norm; // Guardar normalizado
 
             $homologacion = AddressService::resolverHomologacion($idPais, $cp_norm, [
@@ -991,7 +991,7 @@ class PedidosController {
             $cpVal = $data['codigo_postal'] ?? null;
             $idPais = $data['id_pais'] ?? null;
             if ($idPais && $cpVal) {
-                $cp_norm = AddressService::normalizarCP($cpVal);
+                $cp_norm = AddressService::normalizarCP($cpVal, is_numeric($idPais) ? (int)$idPais : null);
                 $data['codigo_postal'] = $cp_norm;
 
                 $homologacion = AddressService::resolverHomologacion($idPais, $cp_norm, [
