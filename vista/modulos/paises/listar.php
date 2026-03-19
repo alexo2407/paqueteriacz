@@ -54,6 +54,7 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                             <th style="width: 60px;">ID</th>
                             <th>País</th>
                             <th>Código ISO</th>
+                            <th>Prefijo Postal</th>
                             <th class="text-end">Acciones</th>
                         </tr>
                     </thead>
@@ -66,6 +67,13 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                                 </td>
                                 <td>
                                     <span class="badge bg-light text-dark border font-monospace"><?= htmlspecialchars($value["codigo_iso"] ?? '-') ?></span>
+                                </td>
+                                <td>
+                                    <?php if (!empty($value['prefijo_postal'])): ?>
+                                        <span class="badge bg-info text-white font-monospace"><?= htmlspecialchars($value['prefijo_postal']) ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted small">—</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
