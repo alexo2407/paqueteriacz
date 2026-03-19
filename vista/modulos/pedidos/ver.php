@@ -340,8 +340,42 @@ if (!empty($fechaEntregaRaw)) {
                                             $st->execute([':id' => $pedido['id_barrio']]);
                                             $nomBarrio = $st->fetchColumn() ?: null;
                                         }
+
+                                        // ── FALLBACK: auto-prefijo por país ──────────────────────────────
+                                        // Si aún faltan depto/municipio y hay codigo_postal + id_pais,
+                                        // intentar encontrar el CP en codigos_postales agregando el prefijo
+                                        // del país (ej: 20101 → CR20101). Solo para display, no modifica BD.
+                                        if ((!$nomDepto || !$nomMuni) && !empty($pedido['codigo_postal']) && !empty($pedido['id_pais'])) {
+                                            require_once 'services/AddressService.php';
+                                            $cpDisplay = AddressService::normalizarCP($pedido['codigo_postal'], (int)$pedido['id_pais']);
+
+                                            if ($cpDisplay !== strtoupper(trim($pedido['codigo_postal']))) {
+                                                // El prefijo fue agregado — buscar en codigos_postales
+                                                $st = $dbTmp->prepare("
+                                                    SELECT cp.id_departamento, cp.id_municipio, cp.id_barrio,
+                                                           d.nombre AS nom_depto,
+                                                           m.nombre AS nom_muni,
+                                                           b.nombre AS nom_barrio
+                                                    FROM codigos_postales cp
+                                                    LEFT JOIN departamentos d ON d.id = cp.id_departamento
+                                                    LEFT JOIN municipios    m ON m.id = cp.id_municipio
+                                                    LEFT JOIN barrios       b ON b.id = cp.id_barrio
+                                                    WHERE cp.id_pais = :id_pais AND cp.codigo_postal = :cp
+                                                    LIMIT 1
+                                                ");
+                                                $st->execute([':id_pais' => (int)$pedido['id_pais'], ':cp' => $cpDisplay]);
+                                                $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                                                if ($cpRow) {
+                                                    if (!$nomDepto && $cpRow['nom_depto']) $nomDepto = $cpRow['nom_depto'];
+                                                    if (!$nomMuni  && $cpRow['nom_muni'])  $nomMuni  = $cpRow['nom_muni'];
+                                                    if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                                }
+                                            }
+                                        }
+                                        // ────────────────────────────────────────────────────────────────
                                     } catch (Exception $e) {}
                                 ?>
+
                                 <dl class="row location-grid mb-0">
                                     <?php if (!empty($pedido['zona'])): ?>
                                     <div class="col-6">
