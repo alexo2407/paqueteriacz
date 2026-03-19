@@ -299,35 +299,11 @@ include("vista/includes/header.php");
                                                         if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
                                                         if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
                                                         if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
-                                                        $cpFound = true;
                                                     }
                                                 }
                                             }
-
-                                            // Nivel 2: sufijo numérico (10110 → busca %10110)
-                                            // Solo si el CP es puramente numérico y no se encontró antes
-                                            if (!$cpFound && (!$nomDepto || !$nomMuni) && ctype_digit($cpBruto)) {
-                                                $st = $dbTmp->prepare("
-                                                    SELECT d.nombre AS nom_depto,
-                                                           mu.nombre AS nom_muni,
-                                                           b.nombre AS nom_barrio
-                                                    FROM codigos_postales cp
-                                                    LEFT JOIN departamentos d  ON d.id  = cp.id_departamento
-                                                    LEFT JOIN municipios    mu ON mu.id = cp.id_municipio
-                                                    LEFT JOIN barrios       b  ON b.id  = cp.id_barrio
-                                                    WHERE cp.codigo_postal LIKE :cp
-                                                      AND cp.id_departamento IS NOT NULL
-                                                    LIMIT 1
-                                                ");
-                                                $st->execute([':cp' => '%' . $cpBruto]);
-                                                $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                                                if ($cpRow) {
-                                                    if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
-                                                    if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
-                                                    if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
-                                                }
-                                            }
                                         }
+
                                         // ────────────────────────────────────────────────────────────────
 
 
