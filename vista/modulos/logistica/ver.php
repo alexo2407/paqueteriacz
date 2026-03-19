@@ -311,7 +311,44 @@ include("vista/includes/header.php");
                                                             if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
                                                             if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
                                                             if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                                            $cpFound = true;
                                                         }
+                                                    }
+                                                }
+                                            }
+
+                                            // Nivel 2: rellenar con ceros a la izquierda (sin prefijo)
+                                            // Cubre casos como "1" → "0001", "10" → "0010"
+                                            if (!$cpFound && ctype_digit($cpBruto)) {
+                                                $cpPadded = str_pad($cpBruto, 4, '0', STR_PAD_LEFT);
+                                                if ($cpPadded !== $cpBruto) {
+                                                    $st = $dbTmp->prepare($cpSql);
+                                                    $st->execute([':cp' => $cpPadded]);
+                                                    $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                                                    if ($cpRow) {
+                                                        if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                                        if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                                                        if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                                        $cpFound = true;
+                                                    }
+                                                }
+                                            }
+
+                                            // Nivel 3: prefijo del país + ceros a la izquierda
+                                            // Cubre casos como "1" con id_pais=6 → "GT0001"
+                                            if (!$cpFound && ctype_digit($cpBruto) && !empty($idPaisEfectivo ?? null)) {
+                                                $cpPaddedConPrefijo = AddressService::normalizarCP(
+                                                    str_pad($cpBruto, 4, '0', STR_PAD_LEFT),
+                                                    $idPaisEfectivo
+                                                );
+                                                if ($cpPaddedConPrefijo !== $cpBruto) {
+                                                    $st = $dbTmp->prepare($cpSql);
+                                                    $st->execute([':cp' => $cpPaddedConPrefijo]);
+                                                    $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                                                    if ($cpRow) {
+                                                        if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                                        if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                                                        if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
                                                     }
                                                 }
                                             }
