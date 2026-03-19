@@ -256,13 +256,43 @@ include("vista/includes/header.php");
                                         }
 
                                         // ── FALLBACK: auto-prefijo por país ──────────────────────────────
-                                        // Si faltan depto/municipio y hay codigo_postal + id_pais,
-                                        // agregar prefijo del país y buscar en codigos_postales.
+                                        // Nivel 1: si hay id_pais, agregar prefijo y buscar exacto
+                                        // Nivel 2: si id_pais es NULL o no encontró, buscar por sufijo numérico
                                         // Solo para display, no modifica la BD.
-                                        if ((!$nomDepto || !$nomMuni) && !empty($pedido['codigo_postal']) && !empty($pedido['id_pais'])) {
-                                            require_once __DIR__ . '/../../../services/AddressService.php';
-                                            $cpDisplay = AddressService::normalizarCP($pedido['codigo_postal'], (int)$pedido['id_pais']);
-                                            if ($cpDisplay !== strtoupper(trim($pedido['codigo_postal']))) {
+                                        if ((!$nomDepto || !$nomMuni) && !empty($pedido['codigo_postal'])) {
+                                            $cpBruto = strtoupper(trim($pedido['codigo_postal']));
+                                            $cpFound = false;
+
+                                            // Nivel 1: con prefijo del país
+                                            if (!empty($pedido['id_pais'])) {
+                                                require_once __DIR__ . '/../../../services/AddressService.php';
+                                                $cpConPrefijo = AddressService::normalizarCP($pedido['codigo_postal'], (int)$pedido['id_pais']);
+                                                if ($cpConPrefijo !== $cpBruto) {
+                                                    $st = $dbTmp->prepare("
+                                                        SELECT d.nombre AS nom_depto,
+                                                               mu.nombre AS nom_muni,
+                                                               b.nombre AS nom_barrio
+                                                        FROM codigos_postales cp
+                                                        LEFT JOIN departamentos d  ON d.id  = cp.id_departamento
+                                                        LEFT JOIN municipios    mu ON mu.id = cp.id_municipio
+                                                        LEFT JOIN barrios       b  ON b.id  = cp.id_barrio
+                                                        WHERE cp.id_pais = :id_pais AND cp.codigo_postal = :cp
+                                                        LIMIT 1
+                                                    ");
+                                                    $st->execute([':id_pais' => (int)$pedido['id_pais'], ':cp' => $cpConPrefijo]);
+                                                    $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                                                    if ($cpRow) {
+                                                        if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                                        if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                                                        if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                                        $cpFound = true;
+                                                    }
+                                                }
+                                            }
+
+                                            // Nivel 2: sin id_pais (o si nivel 1 no encontró nada)
+                                            // Busca el CP como sufijo en codigos_postales (ej: '10110' coincide con 'CR10110')
+                                            if (!$cpFound && (!$nomDepto || !$nomMuni) && ctype_digit($cpBruto)) {
                                                 $st = $dbTmp->prepare("
                                                     SELECT d.nombre AS nom_depto,
                                                            mu.nombre AS nom_muni,
@@ -271,10 +301,11 @@ include("vista/includes/header.php");
                                                     LEFT JOIN departamentos d  ON d.id  = cp.id_departamento
                                                     LEFT JOIN municipios    mu ON mu.id = cp.id_municipio
                                                     LEFT JOIN barrios       b  ON b.id  = cp.id_barrio
-                                                    WHERE cp.id_pais = :id_pais AND cp.codigo_postal = :cp
+                                                    WHERE cp.codigo_postal LIKE :cp
+                                                      AND cp.id_departamento IS NOT NULL
                                                     LIMIT 1
                                                 ");
-                                                $st->execute([':id_pais' => (int)$pedido['id_pais'], ':cp' => $cpDisplay]);
+                                                $st->execute([':cp' => '%' . $cpBruto]);
                                                 $cpRow = $st->fetch(PDO::FETCH_ASSOC);
                                                 if ($cpRow) {
                                                     if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
@@ -284,6 +315,7 @@ include("vista/includes/header.php");
                                             }
                                         }
                                         // ────────────────────────────────────────────────────────────────
+
                                     } catch(Exception $e) {}
                                     // Fallback: zona es campo texto libre en pedidos
                                     if (!$nomBarrio && !empty($pedido['zona'])) $nomBarrio = $pedido['zona'];
