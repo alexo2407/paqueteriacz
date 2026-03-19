@@ -49,7 +49,7 @@ class PedidoApiController
         // Normalización de Código Postal y Homologación
         if (!empty($data['codigo_postal'])) {
              require_once __DIR__ . '/../../services/AddressService.php';
-             $cp_norm = AddressService::normalizarCP($data['codigo_postal'], isset($data['id_pais']) ? (int)$data['id_pais'] : null);
+             $cp_norm = AddressService::normalizarCP($data['codigo_postal']);
              $data['codigo_postal'] = $cp_norm;
              
              // Intentar resolver id_codigo_postal
@@ -174,7 +174,7 @@ class PedidoApiController
             // Normalización de Código Postal y Homologación
             if (!empty($pedido['codigo_postal'])) {
                  require_once __DIR__ . '/../../services/AddressService.php';
-                 $cp_norm = AddressService::normalizarCP($pedido['codigo_postal'], isset($pedido['id_pais']) ? (int)$pedido['id_pais'] : null);
+                 $cp_norm = AddressService::normalizarCP($pedido['codigo_postal']);
                  $pedido['codigo_postal'] = $cp_norm;
                  
                  $homologacion = AddressService::resolverHomologacion(
@@ -260,8 +260,7 @@ class PedidoApiController
         if (empty($data['codigo_postal'])) return;
 
         require_once __DIR__ . '/../../services/AddressService.php';
-        $idPaisData = !empty($data['id_pais']) && is_numeric($data['id_pais']) ? (int)$data['id_pais'] : null;
-        $cp_norm = AddressService::normalizarCP($data['codigo_postal'], $idPaisData);
+        $cp_norm = AddressService::normalizarCP($data['codigo_postal']);
         
         $cp_info = null;
 
