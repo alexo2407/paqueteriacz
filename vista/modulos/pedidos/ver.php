@@ -318,31 +318,98 @@ if (!empty($fechaEntregaRaw)) {
                                     Ubicación de Entrega
                                 </div>
                                 
+                                <?php
+                                    // Resolver nombres geográficos desde IDs FK
+                                    $nomDepto = $pedido['departamento'] ?? null;
+                                    $nomMuni = $pedido['municipio'] ?? null;
+                                    $nomBarrio = $pedido['barrio'] ?? null;
+                                    try {
+                                        $dbTmp = (new Conexion())->conectar();
+                                        if (!$nomDepto && !empty($pedido['id_departamento'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM departamentos WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => $pedido['id_departamento']]);
+                                            $nomDepto = $st->fetchColumn() ?: null;
+                                        }
+                                        if (!$nomMuni && !empty($pedido['id_municipio'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM municipios WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => $pedido['id_municipio']]);
+                                            $nomMuni = $st->fetchColumn() ?: null;
+                                        }
+                                        if (!$nomBarrio && !empty($pedido['id_barrio'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM barrios WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => $pedido['id_barrio']]);
+                                            $nomBarrio = $st->fetchColumn() ?: null;
+                                        }
+                                    } catch (Exception $e) {}
+                                ?>
                                 <dl class="row location-grid mb-0">
+                                    <?php if (!empty($pedido['zona'])): ?>
                                     <div class="col-6">
                                         <dt>Zona</dt>
-                                        <dd><?= htmlspecialchars($pedido['zona'] ?? '—') ?></dd>
+                                        <dd><?= htmlspecialchars($pedido['zona']) ?></dd>
                                     </div>
+                                    <?php endif; ?>
+                                    <?php if ($nomDepto): ?>
                                     <div class="col-6">
                                         <dt>Departamento</dt>
-                                        <dd><?= htmlspecialchars($pedido['departamento'] ?? $pedido['id_departamento'] ?? '—') ?></dd>
+                                        <dd><?= htmlspecialchars($nomDepto) ?></dd>
                                     </div>
+                                    <?php endif; ?>
+                                    <?php if ($nomMuni): ?>
                                     <div class="col-6">
                                         <dt>Municipio</dt>
-                                        <dd><?= htmlspecialchars($pedido['municipio'] ?? $pedido['id_municipio'] ?? '—') ?></dd>
+                                        <dd><?= htmlspecialchars($nomMuni) ?></dd>
                                     </div>
+                                    <?php endif; ?>
+                                    <?php if ($nomBarrio): ?>
                                     <div class="col-6">
                                         <dt>Barrio</dt>
-                                        <dd><?= htmlspecialchars($pedido['barrio'] ?? $pedido['id_barrio'] ?? '—') ?></dd>
+                                        <dd><?= htmlspecialchars($nomBarrio) ?></dd>
                                     </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['codigo_postal'])): ?>
                                     <div class="col-12">
                                         <dt>Código Postal</dt>
-                                        <dd><?= htmlspecialchars($pedido['codigo_postal'] ?? '—') ?></dd>
+                                        <dd><?= htmlspecialchars($pedido['codigo_postal']) ?></dd>
                                     </div>
+                                    <?php endif; ?>
                                     <div class="col-12">
                                         <dt>Dirección Completa</dt>
                                         <dd class="p-2 bg-white rounded border border-light"><?= htmlspecialchars($pedido['direccion'] ?? '—') ?></dd>
                                     </div>
+                                    <?php if (empty($pedido['codigo_postal'])): ?>
+                                    <!-- Campos de dirección especial (pedidos sin código postal homologado) -->
+                                    <?php if (!empty($pedido['departmentName'])): ?>
+                                    <div class="col-6">
+                                        <dt>Departamento</dt>
+                                        <dd><?= htmlspecialchars($pedido['departmentName']) ?></dd>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['municipalitiesName'])): ?>
+                                    <div class="col-6">
+                                        <dt>Municipio</dt>
+                                        <dd><?= htmlspecialchars($pedido['municipalitiesName']) ?></dd>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['postalCode'])): ?>
+                                    <div class="col-6">
+                                        <dt>Código Postal</dt>
+                                        <dd><?= htmlspecialchars($pedido['postalCode']) ?></dd>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['Location'])): ?>
+                                    <div class="col-6">
+                                        <dt>Ubicación</dt>
+                                        <dd><?= htmlspecialchars($pedido['Location']) ?></dd>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['betweenStreets'])): ?>
+                                    <div class="col-12">
+                                        <dt>Entre Calles</dt>
+                                        <dd><?= htmlspecialchars($pedido['betweenStreets']) ?></dd>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php endif; ?>
                                     <div class="col-12 mb-0">
                                         <dt>Coordenadas</dt>
                                         <dd class="mb-0">

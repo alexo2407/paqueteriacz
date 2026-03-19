@@ -50,6 +50,29 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
                         <dt class="col-sm-4">Dirección</dt>
                         <dd class="col-sm-8"><?= nl2br(htmlspecialchars($pedido['direccion'])) ?></dd>
 
+                        <?php if (empty($pedido['codigo_postal'])): ?>
+                        <?php if (!empty($pedido['departmentName'])): ?>
+                        <dt class="col-sm-4">Departamento</dt>
+                        <dd class="col-sm-8"><?= htmlspecialchars($pedido['departmentName']) ?></dd>
+                        <?php endif; ?>
+                        <?php if (!empty($pedido['municipalitiesName'])): ?>
+                        <dt class="col-sm-4">Municipio</dt>
+                        <dd class="col-sm-8"><?= htmlspecialchars($pedido['municipalitiesName']) ?></dd>
+                        <?php endif; ?>
+                        <?php if (!empty($pedido['postalCode'])): ?>
+                        <dt class="col-sm-4">Código Postal</dt>
+                        <dd class="col-sm-8"><?= htmlspecialchars($pedido['postalCode']) ?></dd>
+                        <?php endif; ?>
+                        <?php if (!empty($pedido['Location'])): ?>
+                        <dt class="col-sm-4">Ubicación</dt>
+                        <dd class="col-sm-8"><?= htmlspecialchars($pedido['Location']) ?></dd>
+                        <?php endif; ?>
+                        <?php if (!empty($pedido['betweenStreets'])): ?>
+                        <dt class="col-sm-4">Entre Calles</dt>
+                        <dd class="col-sm-8"><?= htmlspecialchars($pedido['betweenStreets']) ?></dd>
+                        <?php endif; ?>
+                        <?php endif; ?>
+
                         <dt class="col-sm-4">Estado</dt>
                         <dd class="col-sm-8">
                             <?php

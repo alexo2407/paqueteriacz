@@ -125,7 +125,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente','fecha_entrega'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','municipalitiesName','postalCode','departmentName','Location','betweenStreets','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente','fecha_entrega'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -291,6 +291,21 @@ class PedidosModel
                             case 'id_barrio':
                                 $params[':id_barrio'] = $row['id_barrio'] ?? null;
                                 break;
+                            case 'municipalitiesName':
+                                $params[':municipalitiesName'] = $row['municipalitiesName'] ?? null;
+                                break;
+                            case 'postalCode':
+                                $params[':postalCode'] = $row['postalCode'] ?? null;
+                                break;
+                            case 'departmentName':
+                                $params[':departmentName'] = $row['departmentName'] ?? null;
+                                break;
+                            case 'Location':
+                                $params[':Location'] = $row['Location'] ?? null;
+                                break;
+                            case 'betweenStreets':
+                                $params[':betweenStreets'] = $row['betweenStreets'] ?? null;
+                                break;
                         }
                     }
 
@@ -451,7 +466,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor', 'fecha_entrega'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','municipalitiesName','postalCode','departmentName','Location','betweenStreets','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor', 'fecha_entrega'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -578,6 +593,21 @@ class PedidosModel
                     case 'id_estado':
                         $params[':id_estado'] = 1;
                         break;
+                    case 'municipalitiesName':
+                        $params[':municipalitiesName'] = $data['municipalitiesName'] ?? null;
+                        break;
+                    case 'postalCode':
+                        $params[':postalCode'] = $data['postalCode'] ?? null;
+                        break;
+                    case 'departmentName':
+                        $params[':departmentName'] = $data['departmentName'] ?? null;
+                        break;
+                    case 'Location':
+                        $params[':Location'] = $data['Location'] ?? null;
+                        break;
+                    case 'betweenStreets':
+                        $params[':betweenStreets'] = $data['betweenStreets'] ?? null;
+                        break;
                     case 'fecha_entrega':
                         $val = $data['fecha_entrega'] ?? null;
                         if ($val === '' || $val === null) {
@@ -671,6 +701,11 @@ class PedidosModel
                         p.id_barrio,
                         p.codigo_postal,
                         p.id_cliente,
+                        p.municipalitiesName,
+                        p.postalCode,
+                        p.departmentName,
+                        p.Location,
+                        p.betweenStreets,
                         ST_Y(p.coordenadas) AS latitud,
                         ST_X(p.coordenadas) AS longitud,
                         ep.nombre_estado AS nombre_estado
@@ -792,7 +827,12 @@ class PedidosModel
                     p.barrio,
                     p.codigo_postal,
                     p.zona,
-                    p.comentario
+                    p.comentario,
+                    p.municipalitiesName,
+                    p.postalCode,
+                    p.departmentName,
+                    p.Location,
+                    p.betweenStreets
                 FROM pedidos p
                 {$whereClause}
                 ORDER BY p.fecha_ingreso DESC
@@ -1056,6 +1096,28 @@ class PedidosModel
                     $fecha = date_create($val);
                     $params[':fecha_entrega'] = $fecha ? date_format($fecha, 'Y-m-d') : null;
                 }
+            }
+
+            // Campos especiales de dirección
+            if (isset($data['municipalitiesName'])) {
+                $fields[] = 'municipalitiesName = :municipalitiesName';
+                $params[':municipalitiesName'] = $data['municipalitiesName'] !== '' ? $data['municipalitiesName'] : null;
+            }
+            if (isset($data['postalCode'])) {
+                $fields[] = 'postalCode = :postalCode';
+                $params[':postalCode'] = $data['postalCode'] !== '' ? $data['postalCode'] : null;
+            }
+            if (isset($data['departmentName'])) {
+                $fields[] = 'departmentName = :departmentName';
+                $params[':departmentName'] = $data['departmentName'] !== '' ? $data['departmentName'] : null;
+            }
+            if (isset($data['Location'])) {
+                $fields[] = 'Location = :Location';
+                $params[':Location'] = $data['Location'] !== '' ? $data['Location'] : null;
+            }
+            if (isset($data['betweenStreets'])) {
+                $fields[] = 'betweenStreets = :betweenStreets';
+                $params[':betweenStreets'] = $data['betweenStreets'] !== '' ? $data['betweenStreets'] : null;
             }
 
             // Execute UPDATE if there are fields to update
@@ -1454,7 +1516,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente', 'fecha_entrega'];
+            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','municipalitiesName','postalCode','departmentName','Location','betweenStreets','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente', 'fecha_entrega'];
             
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1510,7 +1572,12 @@ class PedidosModel
                 'id_proveedor' => 'proveedor',
                 'id_cliente' => 'id_cliente',
                 'id_codigo_postal' => 'id_codigo_postal',
-                'fecha_entrega' => 'fecha_entrega'
+                'fecha_entrega' => 'fecha_entrega',
+                'municipalitiesName' => 'municipalitiesName',
+                'postalCode' => 'postalCode',
+                'departmentName' => 'departmentName',
+                'Location' => 'Location',
+                'betweenStreets' => 'betweenStreets'
             ];
 
             foreach ($map as $col => $key) {

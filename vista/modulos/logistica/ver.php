@@ -290,6 +290,43 @@ include("vista/includes/header.php");
                                     </div>
                                     <?php endif; ?>
                                 </div>
+
+                                <?php if (empty($pedido['codigo_postal'])): ?>
+                                <!-- Campos de dirección especial (pedidos sin código postal homologado) -->
+                                <div class="row row-cols-2 row-cols-md-4 g-2 mt-2 pt-2 border-top">
+                                    <?php if (!empty($pedido['departmentName'])): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Departamento</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['departmentName']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['municipalitiesName'])): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Municipio</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['municipalitiesName']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['postalCode'])): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Código Postal</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['postalCode']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['Location'])): ?>
+                                    <div class="col">
+                                        <span class="small text-muted d-block">Ubicación</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['Location']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['betweenStreets'])): ?>
+                                    <div class="col-12">
+                                        <span class="small text-muted d-block">Entre Calles</span>
+                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['betweenStreets']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                                <?php endif; ?>
+
                             </div>
                         </div>
 
