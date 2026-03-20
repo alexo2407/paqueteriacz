@@ -2416,6 +2416,161 @@ foreach ($response['data'] as $cambio) {
                     </div>
                 </div>
 
+                <!-- Estado actual de pedidos -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">📦 Current Order Status</h2>
+                    <h2 class="section-title" data-lang="es">📦 Estado Actual de Pedidos</h2>
+
+                    <p data-lang="en">Returns the <strong>current state</strong> of each order directly from the <code>pedidos</code> table. Unlike <code>/historial</code> (which shows state changes), this endpoint shows every order with its present status — including orders that have never had a recorded state change.</p>
+                    <p data-lang="es">Devuelve el <strong>estado actual</strong> de cada pedido directamente desde la tabla <code>pedidos</code>. A diferencia de <code>/historial</code> (que muestra cambios de estado), este endpoint muestra todos los pedidos con su estado vigente — incluyendo pedidos que nunca tuvieron un cambio de estado registrado.</p>
+
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-get">GET</span> /api/pedidos/estado_pedidos
+                        <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">💡 When to use this vs /historial:</strong>
+                        <strong data-lang="es">💡 ¿Cuándo usar este vs /historial?</strong>
+                        <ul class="mb-0 mt-2" data-lang="en">
+                            <li>Use <code>/estado_pedidos</code> to know <strong>where an order is right now</strong>.</li>
+                            <li>Use <code>/historial</code> to see <strong>how it got there</strong> (the full audit trail of transitions).</li>
+                        </ul>
+                        <ul class="mb-0 mt-2" data-lang="es">
+                            <li>Usa <code>/estado_pedidos</code> para saber <strong>dónde está un pedido ahora mismo</strong>.</li>
+                            <li>Usa <code>/historial</code> para ver <strong>cómo llegó ahí</strong> (trazabilidad completa de transiciones).</li>
+                        </ul>
+                    </div>
+
+                    <!-- Parámetros -->
+                    <h4 class="mt-4" data-lang="en">Query Parameters</h4>
+                    <h4 class="mt-4" data-lang="es">Parámetros de Consulta</h4>
+
+                    <div class="table-responsive" data-lang="en">
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th><th>Example</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>—</td><td>Exact order number</td><td><code>81154737</code></td></tr>
+                                <tr><td><code>id_estado</code></td><td>integer</td><td>—</td><td>Filter by current state ID</td><td><code>1</code></td></tr>
+                                <tr><td><code>id_cliente</code></td><td>integer</td><td>—</td><td>Filter by client ID</td><td><code>5</code></td></tr>
+                                <tr><td><code>id_proveedor</code></td><td>integer</td><td>—</td><td>Filter by provider/messenger ID</td><td><code>3</code></td></tr>
+                                <tr><td><code>fecha_desde</code></td><td>date</td><td>—</td><td>Order entry date start (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
+                                <tr><td><code>fecha_hasta</code></td><td>date</td><td>—</td><td>Order entry date end (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td><td><code>2</code></td></tr>
+                                <tr><td><code>limit</code></td><td>integer</td><td>20</td><td>Records per page (max 100)</td><td><code>50</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-responsive" data-lang="es">
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>Parámetro</th><th>Tipo</th><th>Defecto</th><th>Descripción</th><th>Ejemplo</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>—</td><td>Número de orden exacto</td><td><code>81154737</code></td></tr>
+                                <tr><td><code>id_estado</code></td><td>entero</td><td>—</td><td>Filtrar por ID de estado actual</td><td><code>1</code></td></tr>
+                                <tr><td><code>id_cliente</code></td><td>entero</td><td>—</td><td>Filtrar por ID de cliente</td><td><code>5</code></td></tr>
+                                <tr><td><code>id_proveedor</code></td><td>entero</td><td>—</td><td>Filtrar por ID de proveedor/mensajero</td><td><code>3</code></td></tr>
+                                <tr><td><code>fecha_desde</code></td><td>fecha</td><td>—</td><td>Fecha ingreso desde (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
+                                <tr><td><code>fecha_hasta</code></td><td>fecha</td><td>—</td><td>Fecha ingreso hasta (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>page</code></td><td>entero</td><td>1</td><td>Número de página</td><td><code>2</code></td></tr>
+                                <tr><td><code>limit</code></td><td>entero</td><td>20</td><td>Registros por página (máx 100)</td><td><code>50</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Ejemplos -->
+                    <h4 class="mt-4" data-lang="en">Usage Examples</h4>
+                    <h4 class="mt-4" data-lang="es">Ejemplos de Uso</h4>
+
+                    <h5 data-lang="en">1. All orders (paginated)</h5>
+                    <h5 data-lang="es">1. Todos los pedidos (paginado)</h5>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h5 data-lang="en">2. Specific order</h5>
+                    <h5 data-lang="es">2. Pedido específico</h5>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos?numero_orden=81154737
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h5 data-lang="en">3. All orders currently "En bodega"</h5>
+                    <h5 data-lang="es">3. Todos los pedidos actualmente en bodega</h5>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos?id_estado=1&amp;page=1&amp;limit=50
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h5 data-lang="en">4. Orders by date range</h5>
+                    <h5 data-lang="es">4. Pedidos por rango de fecha</h5>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos?fecha_desde=2026-03-01&amp;fecha_hasta=2026-03-20
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <!-- Respuesta -->
+                    <h4 class="mt-4" data-lang="en">Response <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 class="mt-4" data-lang="es">Respuesta <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Se encontraron 3 pedidos.",
+    "data": [
+        {
+            "id": 45,
+            "numero_orden": "81154737",
+            "destinatario": "Juan Pérez",
+            "id_estado": 1,
+            "estado_actual": "En bodega",
+            "fecha_ingreso": "2026-03-10 09:00:00",
+            "fecha_actualizacion": "2026-03-10 09:00:00"
+        },
+        {
+            "id": 46,
+            "numero_orden": "81154738",
+            "destinatario": "María López",
+            "id_estado": 3,
+            "estado_actual": "Entregado",
+            "fecha_ingreso": "2026-03-11 10:30:00",
+            "fecha_actualizacion": "2026-03-12 14:20:00"
+        }
+    ],
+    "pagination": {
+        "total": 3,
+        "per_page": 20,
+        "current_page": 1,
+        "total_pages": 1,
+        "has_next": false,
+        "has_prev": false
+    }
+}</code></pre>
+
+                    <!-- Campos -->
+                    <h4 class="mt-4" data-lang="en">Response Fields</h4>
+                    <h4 class="mt-4" data-lang="es">Campos de la Respuesta</h4>
+                    <div class="table-responsive" data-lang="en">
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id</code></td><td>integer</td><td>Internal order ID</td></tr>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>Order number (client reference)</td></tr>
+                                <tr><td><code>destinatario</code></td><td>string</td><td>Recipient name</td></tr>
+                                <tr><td><code>id_estado</code></td><td>integer</td><td>Current state ID</td></tr>
+                                <tr><td><code>estado_actual</code></td><td>string</td><td>Current state name</td></tr>
+                                <tr><td><code>fecha_ingreso</code></td><td>datetime</td><td>Date the order was registered</td></tr>
+                                <tr><td><code>fecha_actualizacion</code></td><td>datetime</td><td>Date of last update</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-responsive" data-lang="es">
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>id</code></td><td>entero</td><td>ID interno del pedido</td></tr>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>Número de orden (referencia del cliente)</td></tr>
+                                <tr><td><code>destinatario</code></td><td>string</td><td>Nombre del destinatario</td></tr>
+                                <tr><td><code>id_estado</code></td><td>entero</td><td>ID del estado actual</td></tr>
+                                <tr><td><code>estado_actual</code></td><td>string</td><td>Nombre del estado actual</td></tr>
+                                <tr><td><code>fecha_ingreso</code></td><td>datetime</td><td>Fecha en que se registró el pedido</td></tr>
+                                <tr><td><code>fecha_actualizacion</code></td><td>datetime</td><td>Fecha de la última actualización</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
             </div>
             <!-- /Tab: Historial de Estados -->
 
