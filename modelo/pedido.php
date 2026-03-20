@@ -2191,6 +2191,58 @@ class PedidosModel
 
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // ── Fallback: si no hay historial pero sí hay filtro de pedido concreto,
+        //    devolver el estado actual del pedido como entrada sintética "Estado inicial"
+        if ($total === 0 && (!empty($filtros['numero_orden']) || !empty($filtros['id_pedido']))) {
+            try {
+                if (!empty($filtros['numero_orden'])) {
+                    $fallbackStmt = $db->prepare(
+                        "SELECT p.id, p.numero_orden, p.id_estado, p.fecha_ingreso,
+                                ep.nombre_estado
+                         FROM pedidos p
+                         LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                         WHERE p.numero_orden = :numero_orden
+                         LIMIT 1"
+                    );
+                    $fallbackStmt->execute([':numero_orden' => $filtros['numero_orden']]);
+                } else {
+                    $fallbackStmt = $db->prepare(
+                        "SELECT p.id, p.numero_orden, p.id_estado, p.fecha_ingreso,
+                                ep.nombre_estado
+                         FROM pedidos p
+                         LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                         WHERE p.id = :id_pedido
+                         LIMIT 1"
+                    );
+                    $fallbackStmt->execute([':id_pedido' => $filtros['id_pedido']]);
+                }
+
+                $pedido = $fallbackStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($pedido) {
+                    // Entrada sintética: el pedido existe pero nunca tuvo cambio de estado registrado
+                    $data = [[
+                        'id'                 => null,
+                        'id_pedido'          => (int)$pedido['id'],
+                        'numero_orden'       => $pedido['numero_orden'],
+                        'id_estado_anterior' => null,
+                        'estado_anterior'    => null,
+                        'id_estado_nuevo'    => $pedido['id_estado'] ? (int)$pedido['id_estado'] : null,
+                        'estado_nuevo'       => $pedido['nombre_estado'] ?? 'Sin estado',
+                        'comentario'         => 'Estado inicial del pedido',
+                        'id_usuario'         => null,
+                        'realizado_por'      => 'Sistema',
+                        'fecha_cambio'       => $pedido['fecha_ingreso'],
+                    ]];
+                    $total      = 1;
+                    $totalPages = 1;
+                }
+            } catch (\Throwable $e) {
+                // Si falla el fallback, no interrumpir: devolvemos array vacío
+                error_log('[obtenerHistorialEstadosFiltrado] Fallback error: ' . $e->getMessage());
+            }
+        }
+
         return [
             'data' => $data,
             'pagination' => [
