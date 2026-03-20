@@ -626,9 +626,8 @@ include("vista/includes/header.php");
                                         $detalle = "Cambios: " . implode(', ', array_unique($labels));
                                     }
                                 }
-                            <?php
                                 // Si no hay ningún detalle útil, mostrar texto genérico
-                                if (empty($detalle) && empty($comentarioBulk ?? null) && $cambio['accion'] !== 'crear') {
+                                if (empty($detalle) && empty($comentarioBulk) && $cambio['accion'] !== 'crear') {
                                     $detalle = "Actualización de estado procesada por el sistema.";
                                 }
                             ?>
