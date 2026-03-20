@@ -594,11 +594,17 @@ class LogisticaModel {
         }
 
         // ── 3. Cargar todos los estados en memoria ─────────────────────────
+        // normalizeEstado: unifica guión largo Unicode (–, U+2013) con guión normal (-)
+        // para que Excel no rompa el match al editar el CSV/XLSX.
+        $normalizeEstado = fn(string $s): string =>
+            strtolower(str_replace("\xE2\x80\x93", '-', trim($s)));  // E2 80 93 = –
+
         $estadosByNombre = [];
         $estadosById     = [];
         $stmtE = $db->query("SELECT id, nombre_estado FROM estados_pedidos");
         foreach ($stmtE->fetchAll(PDO::FETCH_ASSOC) as $e) {
-            $estadosByNombre[strtolower(trim($e['nombre_estado']))] = (int)$e['id'];
+            // Indexar con la clave normalizada (guión largo → guión normal)
+            $estadosByNombre[$normalizeEstado($e['nombre_estado'])] = (int)$e['id'];
             $estadosById[(int)$e['id']] = trim($e['nombre_estado']);
         }
 
@@ -612,7 +618,8 @@ class LogisticaModel {
             $ip   = isset($row['id_pedido'])    && $row['id_pedido']    !== null ? (int)$row['id_pedido'] : null;
             $no   = isset($row['numero_orden']) && $row['numero_orden'] !== null ? (string)$row['numero_orden'] : null;
             $comentario    = $row['comentario']    ?? null;
-            $estadoNombre  = isset($row['estado'])    ? strtolower(trim((string)$row['estado']))    : null;
+            // Normalizar nombre de estado del Excel (guión largo → guión normal)
+            $estadoNombre  = isset($row['estado']) ? $normalizeEstado((string)$row['estado']) : null;
             $idEstadoRaw   = isset($row['id_estado']) && $row['id_estado'] !== null ? (int)$row['id_estado'] : null;
             $motivo        = $row['motivo']          ?? null;
             $fechaEntrega     = isset($row['fecha_entrega'])     && $row['fecha_entrega']     !== null ? trim((string)$row['fecha_entrega'])     : null;
