@@ -291,13 +291,15 @@ include("vista/includes/header.php");
                                             // Si id_pais es NULL pero hay id_moneda, deriva el país desde la moneda
                                             // (paises.id_moneda_local → prefijo_postal)
                                             if (!$cpFound) {
-                                                $idPaisEfectivo = !empty($pedido['id_pais']) ? (int)$pedido['id_pais'] : null;
-
-                                                // Derivar país desde moneda si falta
-                                                if (!$idPaisEfectivo && !empty($pedido['id_moneda'])) {
+                                                // Priorizar moneda sobre id_pais (la moneda es más confiable)
+                                                $idPaisEfectivo = null;
+                                                if (!empty($pedido['id_moneda'])) {
                                                     $stPais = $dbTmp->prepare("SELECT id FROM paises WHERE id_moneda_local = :id_moneda LIMIT 1");
                                                     $stPais->execute([':id_moneda' => (int)$pedido['id_moneda']]);
                                                     $idPaisEfectivo = (int)($stPais->fetchColumn() ?: 0) ?: null;
+                                                }
+                                                if (!$idPaisEfectivo && !empty($pedido['id_pais'])) {
+                                                    $idPaisEfectivo = (int)$pedido['id_pais'];
                                                 }
 
                                                 if ($idPaisEfectivo) {

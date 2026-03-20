@@ -49,7 +49,7 @@ class PedidoApiController
         // Normalización de Código Postal y Homologación
         if (!empty($data['codigo_postal'])) {
              require_once __DIR__ . '/../../services/AddressService.php';
-             $cp_norm = AddressService::normalizarCP($data['codigo_postal']);
+             $cp_norm = AddressService::normalizarCP($data['codigo_postal'], isset($data['id_pais']) ? (int)$data['id_pais'] : null);
              $data['codigo_postal'] = $cp_norm;
              
              // Intentar resolver id_codigo_postal
@@ -174,7 +174,7 @@ class PedidoApiController
             // Normalización de Código Postal y Homologación
             if (!empty($pedido['codigo_postal'])) {
                  require_once __DIR__ . '/../../services/AddressService.php';
-                 $cp_norm = AddressService::normalizarCP($pedido['codigo_postal']);
+                 $cp_norm = AddressService::normalizarCP($pedido['codigo_postal'], isset($pedido['id_pais']) ? (int)$pedido['id_pais'] : null);
                  $pedido['codigo_postal'] = $cp_norm;
                  
                  $homologacion = AddressService::resolverHomologacion(
@@ -260,15 +260,43 @@ class PedidoApiController
         if (empty($data['codigo_postal'])) return;
 
         require_once __DIR__ . '/../../services/AddressService.php';
-        $cp_norm = AddressService::normalizarCP($data['codigo_postal']);
+
+        // Si no viene id_pais, derivar desde la moneda (paises.id_moneda_local)
+        if (empty($data['id_pais'])) {
+            try {
+                $dbCp = (new Conexion())->conectar();
+                // Intentar obtener id_moneda: del request, o derivar del proveedor
+                $monedaParaPais = !empty($data['id_moneda']) ? (int)$data['id_moneda'] : null;
+                if (!$monedaParaPais && !empty($data['id_proveedor'])) {
+                    $stMon = $dbCp->prepare("SELECT p.id_moneda_local FROM usuarios u INNER JOIN paises p ON p.id = u.id_pais WHERE u.id = :id LIMIT 1");
+                    $stMon->execute([':id' => (int)$data['id_proveedor']]);
+                    $monedaParaPais = (int)($stMon->fetchColumn() ?: 0) ?: null;
+                }
+                if ($monedaParaPais) {
+                    $stPais = $dbCp->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
+                    $stPais->execute([':m' => $monedaParaPais]);
+                    $paisDerivado = (int)($stPais->fetchColumn() ?: 0) ?: null;
+                    if ($paisDerivado) {
+                        $data['id_pais'] = $paisDerivado;
+                    }
+                }
+            } catch (Exception $e) {
+                // silently continue
+            }
+        }
+
+        $cp_norm = AddressService::normalizarCP($data['codigo_postal'], 
+            !empty($data['id_pais']) ? (int)$data['id_pais'] : null);
         
         $cp_info = null;
 
         // 1. Si tenemos id_pais, buscar específico
         if (!empty($data['id_pais']) && is_numeric($data['id_pais'])) {
             $cp_info = CodigosPostalesModel::buscar((int)$data['id_pais'], $cp_norm);
-        } else {
-            // 2. Si no tenemos id_pais, buscar globalmente
+        }
+        
+        // 2. Si no encontró con país específico, buscar globalmente
+        if (!$cp_info) {
             $global_results = CodigosPostalesModel::buscarGlobal($cp_norm);
             if (count($global_results) > 0) {
                 // Si hay resultados, e.g. todos pertenecen al mismo país o solo hay uno, lo tomamos

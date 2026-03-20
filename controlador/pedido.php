@@ -813,8 +813,21 @@ class PedidosController {
 
         // 3. Resolver Homologación de Código Postal
         $cpVal = $data['codigo_postal'] ?? null;
+        // Si no hay id_pais, derivar desde la moneda (más confiable)
+        if (!$idPais && $moneda) {
+            try {
+                $dbCpForm = (new Conexion())->conectar();
+                $stPaisM = $dbCpForm->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
+                $stPaisM->execute([':m' => (int)$moneda]);
+                $paisDerivado = (int)($stPaisM->fetchColumn() ?: 0) ?: null;
+                if ($paisDerivado) {
+                    $idPais = $paisDerivado;
+                    $payload['id_pais'] = $paisDerivado;
+                }
+            } catch (Exception $e) { /* silently continue */ }
+        }
         if ($idPais && $cpVal) {
-            $cp_norm = AddressService::normalizarCP($cpVal);
+            $cp_norm = AddressService::normalizarCP($cpVal, $idPais);
             $payload['codigo_postal'] = $cp_norm; // Guardar normalizado
 
             $homologacion = AddressService::resolverHomologacion($idPais, $cp_norm, [
@@ -990,8 +1003,21 @@ class PedidosController {
             // Integrar Homologación de Código Postal
             $cpVal = $data['codigo_postal'] ?? null;
             $idPais = $data['id_pais'] ?? null;
+            // Si no hay id_pais, derivar desde la moneda (más confiable)
+            if (!$idPais && !empty($data['moneda'])) {
+                try {
+                    $dbCpEdit = (new Conexion())->conectar();
+                    $stPaisM = $dbCpEdit->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
+                    $stPaisM->execute([':m' => (int)$data['moneda']]);
+                    $paisDerivado = (int)($stPaisM->fetchColumn() ?: 0) ?: null;
+                    if ($paisDerivado) {
+                        $idPais = $paisDerivado;
+                        $data['id_pais'] = $paisDerivado;
+                    }
+                } catch (Exception $e) { /* silently continue */ }
+            }
             if ($idPais && $cpVal) {
-                $cp_norm = AddressService::normalizarCP($cpVal);
+                $cp_norm = AddressService::normalizarCP($cpVal, $idPais);
                 $data['codigo_postal'] = $cp_norm;
 
                 $homologacion = AddressService::resolverHomologacion($idPais, $cp_norm, [

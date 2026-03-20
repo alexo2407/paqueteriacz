@@ -234,12 +234,129 @@ class LogisticaController {
             $sheet->getStyle($cellC)->applyFromArray($boldStyleProd);
         }
 
+        // Conexión y query para fallback de CP
+        require_once __DIR__ . '/../services/AddressService.php';
+        $dbExcel = (new Conexion())->conectar();
+        $cpSql = "
+            SELECT d.nombre AS nom_depto,
+                   mu.nombre AS nom_muni,
+                   b.nombre AS nom_barrio
+            FROM codigos_postales cp
+            LEFT JOIN departamentos d  ON d.id  = cp.id_departamento
+            LEFT JOIN municipios    mu ON mu.id = cp.id_municipio
+            LEFT JOIN barrios       b  ON b.id  = cp.id_barrio
+            WHERE cp.codigo_postal = :cp
+              AND cp.id_departamento IS NOT NULL
+            LIMIT 1
+        ";
+
         // Datos
         $fila = 2;
         foreach ($pedidos as $p) {
             $fechaFmt     = !empty($p['fecha_ingreso'])     ? date('d/m/Y', strtotime($p['fecha_ingreso']))     : '';
             $fechaEntrega = !empty($p['fecha_entrega'])     ? date('d/m/Y', strtotime($p['fecha_entrega']))     : '';
             $fechaLiq     = !empty($p['fecha_liquidacion']) ? date('d/m/Y', strtotime($p['fecha_liquidacion'])) : '';
+
+            // ── Fallback CP: resolver departamento/municipio/barrio desde código postal ──
+            $nomDepto  = $p['nombre_departamento'] ?? '';
+            $nomMuni   = $p['nombre_municipio']    ?? '';
+            $nomBarrio = $p['nombre_barrio']       ?? '';
+            $nomPais   = $p['nombre_pais']         ?? '';
+
+            if ((!$nomDepto || !$nomMuni) && !empty($p['codigo_postal'])) {
+                try {
+                    $cpBruto = strtoupper(trim($p['codigo_postal']));
+                    $cpFound = false;
+                    $cpDisplay = $cpBruto;
+
+                    // Nivel 0: búsqueda exacta
+                    $st = $dbExcel->prepare($cpSql);
+                    $st->execute([':cp' => $cpBruto]);
+                    $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                    if ($cpRow) {
+                        if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                        if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                        if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                        $cpFound = true;
+                        $cpDisplay = $cpBruto;
+                    }
+
+                    // Nivel 1: agregar prefijo del país
+                    // Priorizar moneda sobre id_pais (la moneda es más confiable)
+                    if (!$cpFound) {
+                        $idPaisEfectivo = null;
+                        if (!empty($p['id_moneda'])) {
+                            $stPais = $dbExcel->prepare("SELECT id FROM paises WHERE id_moneda_local = :id_moneda LIMIT 1");
+                            $stPais->execute([':id_moneda' => (int)$p['id_moneda']]);
+                            $idPaisEfectivo = (int)($stPais->fetchColumn() ?: 0) ?: null;
+                        }
+                        if (!$idPaisEfectivo && !empty($p['id_pais'])) {
+                            $idPaisEfectivo = (int)$p['id_pais'];
+                        }
+                        if ($idPaisEfectivo && !$nomPais) {
+                            $stNomPais = $dbExcel->prepare("SELECT nombre FROM paises WHERE id = :id LIMIT 1");
+                            $stNomPais->execute([':id' => $idPaisEfectivo]);
+                            $nomPaisRes = $stNomPais->fetchColumn();
+                            if ($nomPaisRes) $nomPais = $nomPaisRes;
+                        }
+                        if ($idPaisEfectivo) {
+                            $cpConPrefijo = AddressService::normalizarCP($p['codigo_postal'], $idPaisEfectivo);
+                            if ($cpConPrefijo !== $cpBruto) {
+                                $st = $dbExcel->prepare($cpSql);
+                                $st->execute([':cp' => $cpConPrefijo]);
+                                $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                                if ($cpRow) {
+                                    if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                    if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                                    if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                    $cpFound = true;
+                                    $cpDisplay = $cpConPrefijo;
+                                }
+                            }
+                        }
+                    }
+
+                    // Nivel 2: rellenar con ceros a la izquierda (sin prefijo)
+                    if (!$cpFound && ctype_digit($cpBruto)) {
+                        $cpPadded = str_pad($cpBruto, 4, '0', STR_PAD_LEFT);
+                        if ($cpPadded !== $cpBruto) {
+                            $st = $dbExcel->prepare($cpSql);
+                            $st->execute([':cp' => $cpPadded]);
+                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                            if ($cpRow) {
+                                if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                                if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                $cpFound = true;
+                                $cpDisplay = $cpPadded;
+                            }
+                        }
+                    }
+
+                    // Nivel 3: prefijo del país + ceros a la izquierda
+                    if (!$cpFound && ctype_digit($cpBruto) && !empty($idPaisEfectivo ?? null)) {
+                        $cpPaddedConPrefijo = AddressService::normalizarCP(
+                            str_pad($cpBruto, 4, '0', STR_PAD_LEFT),
+                            $idPaisEfectivo
+                        );
+                        if ($cpPaddedConPrefijo !== $cpBruto) {
+                            $st = $dbExcel->prepare($cpSql);
+                            $st->execute([':cp' => $cpPaddedConPrefijo]);
+                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                            if ($cpRow) {
+                                if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
+                                if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
+                                if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
+                                $cpDisplay = $cpPaddedConPrefijo;
+                            }
+                        }
+                    }
+                } catch (Exception $e) {
+                    // silently continue, fallback is best-effort
+                }
+            }
+            // Fallback: zona como barrio
+            if (!$nomBarrio && !empty($p['zona'])) $nomBarrio = $p['zona'];
 
             $sheet->setCellValue("A{$fila}", $p['numero_orden']        ?? '');
             $sheet->setCellValue("B{$fila}", $fechaFmt);
@@ -248,11 +365,11 @@ class LogisticaController {
             $sheet->setCellValue("E{$fila}", $p['direccion']           ?? '');
             $sheet->setCellValue("F{$fila}", $p['comentario']          ?? '');
             $sheet->setCellValue("G{$fila}", $p['zona']                ?? '');
-            $sheet->setCellValue("H{$fila}", $p['codigo_postal']       ?? '');
-            $sheet->setCellValue("I{$fila}", $p['nombre_pais']         ?? '');
-            $sheet->setCellValue("J{$fila}", $p['nombre_departamento'] ?? '');
-            $sheet->setCellValue("K{$fila}", $p['nombre_municipio']    ?? '');
-            $sheet->setCellValue("L{$fila}", $p['nombre_barrio']       ?? '');
+            $sheet->setCellValue("H{$fila}", $cpDisplay ?? ($p['codigo_postal'] ?? ''));
+            $sheet->setCellValue("I{$fila}", $nomPais);
+            $sheet->setCellValue("J{$fila}", $nomDepto);
+            $sheet->setCellValue("K{$fila}", $nomMuni);
+            $sheet->setCellValue("L{$fila}", $nomBarrio);
             $sheet->setCellValue("M{$fila}", $p['estado']              ?? '');
             $sheet->setCellValue("N{$fila}", $fechaEntrega);
             $sheet->setCellValue("O{$fila}", $fechaLiq);

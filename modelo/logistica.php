@@ -90,6 +90,8 @@ class LogisticaModel {
                         p.comentario,
                         p.id_cliente,
                         p.id_proveedor,
+                        p.id_pais,
+                        p.id_moneda,
                         ep.nombre_estado AS estado,
                         m.codigo AS moneda,
                         pa.nombre AS nombre_pais,
