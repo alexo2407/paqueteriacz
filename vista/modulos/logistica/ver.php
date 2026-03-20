@@ -567,6 +567,7 @@ include("vista/includes/header.php");
                                 
                                 $titulo = "Actualización de Pedido";
                                 $detalle = "";
+                                $comentarioBulk = null; // se llena solo en cambios de estado con comentario
                                 $badgeColor = CLR_LOGISTICA; // azul por defecto
 
                                 if ($cambio['accion'] == 'crear') {
@@ -577,7 +578,8 @@ include("vista/includes/header.php");
                                     // 1. Si hay cambio de estado (Formato Nuevo)
                                     if (isset($datosNuevos['estado'])) {
                                         $titulo = "Cambio de Estado: " . htmlspecialchars($datosNuevos['estado']);
-                                        $detalle = $datosNuevos['observaciones'] ?? 'Sin observaciones.';
+                                        $detalle = $datosNuevos['observaciones'] ?? null;
+                                        $comentarioBulk = $datosNuevos['comentario'] ?? null;
                                         $badgeColor = getBadgeColor($datosNuevos['estado'], $estadoColores);
                                     } 
                                     // 2. Si es formato antiguo pero cambió el ID del estado (ej: bulk update)
@@ -587,7 +589,8 @@ include("vista/includes/header.php");
                                         // Prioridad: motivo del bulk → observaciones → texto genérico
                                         $detalle = $datosNuevos['motivo']
                                             ?? $datosNuevos['observaciones']
-                                            ?? "Actualización de estado procesada por el sistema.";
+                                            ?? null;
+                                        $comentarioBulk = $datosNuevos['comentario'] ?? null;
                                         $badgeColor = getBadgeColor($nombreEs, $estadoColores);
                                     }
                                     // 3. Otros cambios — mostrar etiquetas amigables
@@ -623,6 +626,11 @@ include("vista/includes/header.php");
                                         $detalle = "Cambios: " . implode(', ', array_unique($labels));
                                     }
                                 }
+                            <?php
+                                // Si no hay ningún detalle útil, mostrar texto genérico
+                                if (empty($detalle) && empty($comentarioBulk ?? null) && $cambio['accion'] !== 'crear') {
+                                    $detalle = "Actualización de estado procesada por el sistema.";
+                                }
                             ?>
                             <div class="d-flex mb-3 pb-3 border-bottom position-relative">
                                 <div class="flex-shrink-0 me-3">
@@ -635,7 +643,18 @@ include("vista/includes/header.php");
                                         <h6 class="mb-1 fw-bold"><?= $titulo ?></h6>
                                         <small class="text-muted"><?= date('d/m/Y H:i', strtotime($cambio['created_at'])) ?></small>
                                     </div>
-                                    <p class="mb-0 text-muted small"><?= $detalle ?></p>
+                                    <?php if (!empty($detalle)): ?>
+                                    <p class="mb-1 text-muted small">
+                                        <i class="bi bi-chat-right-text me-1"></i>
+                                        <strong>Motivo:</strong> <?= htmlspecialchars($detalle) ?>
+                                    </p>
+                                    <?php endif; ?>
+                                    <?php if (!empty($comentarioBulk ?? null)): ?>
+                                    <p class="mb-0 text-muted small">
+                                        <i class="bi bi-pencil me-1"></i>
+                                        <strong>Comentario:</strong> <?= htmlspecialchars($comentarioBulk) ?>
+                                    </p>
+                                    <?php endif; ?>
                                     <div class="small mt-1 text-secondary fst-italic">
                                         Por: <?= htmlspecialchars($cambio['usuario_nombre'] ?? 'Sistema') ?>
                                     </div>
