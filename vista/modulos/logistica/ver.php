@@ -234,7 +234,13 @@ include("vista/includes/header.php");
                                     $nomPais = $nomDepto = $nomMuni = $nomBarrio = null;
                                     try {
                                         $dbTmp = (new Conexion())->conectar();
-                                        if (!empty($pedido['id_pais'])) {
+                                        // Priorizar moneda sobre id_pais para derivar país
+                                        if (!empty($pedido['id_moneda'])) {
+                                            $st = $dbTmp->prepare("SELECT p.nombre FROM paises p WHERE p.id_moneda_local = :m LIMIT 1");
+                                            $st->execute([':m' => (int)$pedido['id_moneda']]);
+                                            $nomPais = $st->fetchColumn() ?: null;
+                                        }
+                                        if (!$nomPais && !empty($pedido['id_pais'])) {
                                             $st = $dbTmp->prepare("SELECT nombre FROM paises WHERE id = :id LIMIT 1");
                                             $st->execute([':id' => $pedido['id_pais']]);
                                             $nomPais = $st->fetchColumn();
