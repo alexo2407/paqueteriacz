@@ -1360,7 +1360,7 @@ include "vista/includes/header.php";
               <thead class="table-dark">
                 <tr>
                   <th>#Línea</th><th>ID Pedido</th><th># Orden</th>
-                  <th>Nuevo Comentario</th><th>Nuevo Estado ID</th>
+                  <th>Nuevo Comentario</th><th>Motivo</th><th>Nuevo Estado ID</th>
                 </tr>
               </thead>
               <tbody id="bulkPreviewBody"></tbody>
@@ -1573,6 +1573,7 @@ include "vista/includes/header.php";
                      '<td>' + escHtml(row.id_pedido) + '</td>' +
                      '<td>' + escHtml(row.numero_orden) + '</td>' +
                      '<td>' + escHtml(row.nuevo_comentario || '—') + '</td>' +
+                     '<td>' + escHtml(row.motivo || '—') + '</td>' +
                      '<td>' + escHtml(row.nuevo_id_estado !== null ? row.nuevo_id_estado : '—') + '</td>';
       tbody.appendChild(tr);
     });
