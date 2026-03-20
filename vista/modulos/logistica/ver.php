@@ -580,11 +580,14 @@ include("vista/includes/header.php");
                                         $detalle = $datosNuevos['observaciones'] ?? 'Sin observaciones.';
                                         $badgeColor = getBadgeColor($datosNuevos['estado'], $estadoColores);
                                     } 
-                                    // 2. Si es formato antiguo pero cambió el ID del estado
+                                    // 2. Si es formato antiguo pero cambió el ID del estado (ej: bulk update)
                                     elseif (isset($datosNuevos['id_estado'])) {
                                         $nombreEs = $mapaEstados[$datosNuevos['id_estado']] ?? "Estado #" . $datosNuevos['id_estado'];
                                         $titulo = "Cambio de Estado: " . htmlspecialchars($nombreEs);
-                                        $detalle = "Actualización de estado procesada por el sistema.";
+                                        // Prioridad: motivo del bulk → observaciones → texto genérico
+                                        $detalle = $datosNuevos['motivo']
+                                            ?? $datosNuevos['observaciones']
+                                            ?? "Actualización de estado procesada por el sistema.";
                                         $badgeColor = getBadgeColor($nombreEs, $estadoColores);
                                     }
                                     // 3. Otros cambios — mostrar etiquetas amigables
