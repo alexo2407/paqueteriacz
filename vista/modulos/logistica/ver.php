@@ -232,6 +232,13 @@ include("vista/includes/header.php");
                                 <?php
                                     // Resolver nombres geográficos desde IDs FK
                                     $nomPais = $nomDepto = $nomMuni = $nomBarrio = null;
+
+                                    // ── Prioridad 0: campos libres de dirección especial ──────────────
+                                    // Si el pedido viene con texto libre (pedidos internacionales / sin CP
+                                    // homologado), usarlos directamente como nombre del depto/muni.
+                                    if (!empty($pedido['departmentName']))   $nomDepto  = $pedido['departmentName'];
+                                    if (!empty($pedido['municipalitiesName'])) $nomMuni  = $pedido['municipalitiesName'];
+
                                     try {
                                         $dbTmp = (new Conexion())->conectar();
                                         // Priorizar moneda sobre id_pais para derivar país
@@ -404,30 +411,24 @@ include("vista/includes/header.php");
                                     <?php endif; ?>
                                 </div>
 
-                                <?php if (empty($pedido['codigo_postal'])): ?>
-                                <!-- Campos de dirección especial (pedidos sin código postal homologado) -->
+                                <?php
+                                // Mostrar campos de referencia extra SIEMPRE que tengan dato
+                                // (Location y betweenStreets son complementarios a cualquier dirección)
+                                $tieneExtras = !empty($pedido['postalCode'])
+                                            || !empty($pedido['Location'])
+                                            || !empty($pedido['betweenStreets']);
+                                ?>
+                                <?php if ($tieneExtras): ?>
                                 <div class="row row-cols-2 row-cols-md-4 g-2 mt-2 pt-2 border-top">
-                                    <?php if (!empty($pedido['departmentName'])): ?>
-                                    <div class="col">
-                                        <span class="small text-muted d-block">Departamento</span>
-                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['departmentName']) ?></span>
-                                    </div>
-                                    <?php endif; ?>
-                                    <?php if (!empty($pedido['municipalitiesName'])): ?>
-                                    <div class="col">
-                                        <span class="small text-muted d-block">Municipio</span>
-                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['municipalitiesName']) ?></span>
-                                    </div>
-                                    <?php endif; ?>
                                     <?php if (!empty($pedido['postalCode'])): ?>
                                     <div class="col">
-                                        <span class="small text-muted d-block">Código Postal</span>
+                                        <span class="small text-muted d-block">Código Postal (ref.)</span>
                                         <span class="fw-semibold"><?= htmlspecialchars($pedido['postalCode']) ?></span>
                                     </div>
                                     <?php endif; ?>
                                     <?php if (!empty($pedido['Location'])): ?>
                                     <div class="col">
-                                        <span class="small text-muted d-block">Ubicación</span>
+                                        <span class="small text-muted d-block">Referencia / Ubicación</span>
                                         <span class="fw-semibold"><?= htmlspecialchars($pedido['Location']) ?></span>
                                     </div>
                                     <?php endif; ?>
