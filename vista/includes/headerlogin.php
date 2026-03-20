@@ -212,3 +212,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- ── Detección automática de timezone ───────────────────────────────────
+     Intl.DateTimeFormat detecta la zona horaria del navegador del usuario
+     (ej: "America/Managua", "America/Panama", "America/New_York").
+     Se envía al servidor para que las fechas se muestren en hora local.
+─────────────────────────────────────────────────────────────────────────── -->
+<script>
+(function() {
+    try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (tz) {
+            fetch(RUTA_URL + 'api/utils/set_timezone.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ timezone: tz }),
+                credentials: 'same-origin'
+            });
+        }
+    } catch(e) { /* silencioso si el navegador no soporta Intl */ }
+})();
+</script>

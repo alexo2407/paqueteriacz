@@ -138,4 +138,55 @@ function getClientIp(): ?string
     
     return null;
 }
+
+/**
+ * Convierte una fecha/hora UTC de la base de datos a la hora local del usuario.
+ *
+ * Uso en vistas:
+ *   <?= localDate($row['created_at']) ?>          → "20/03/2026 14:35"
+ *   <?= localDate($row['created_at'], 'd/m/Y') ?> → "20/03/2026"
+ *   <?= localDate($row['created_at'], 'H:i') ?>   → "08:35"
+ *
+ * La timezone se toma de $_SESSION['user_timezone'] (detectada automáticamente
+ * por el navegador al hacer login). Si no existe, muestra la hora UTC.
+ *
+ * @param string|null $utcDatetime  Fecha en formato MySQL: 'Y-m-d H:i:s' (guardada en UTC)
+ * @param string      $format       Formato de salida (default: 'd/m/Y H:i')
+ * @param string|null $fallback     Texto cuando la fecha es null/vacía (default: '—')
+ * @return string Fecha formateada en la timezone del usuario
+ */
+function localDate(?string $utcDatetime, string $format = 'd/m/Y H:i', string $fallback = '—'): string
+{
+    if (empty($utcDatetime) || $utcDatetime === '0000-00-00 00:00:00') {
+        return $fallback;
+    }
+
+    // Leer la timezone del usuario desde la sesión
+    $userTz = 'UTC';
+    if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_timezone'])) {
+        $userTz = $_SESSION['user_timezone'];
+    }
+
+    try {
+        $dt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
+        $dt->setTimezone(new DateTimeZone($userTz));
+        return $dt->format($format);
+    } catch (Exception $e) {
+        return $utcDatetime; // fallback: mostrar tal cual
+    }
+}
+
+/**
+ * Devuelve la timezone activa del usuario (o 'UTC' por defecto).
+ * Útil para mostrarla en la UI o pasarla a JS.
+ *
+ * @return string  Ej: 'America/Managua'
+ */
+function getUserTimezone(): string
+{
+    if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_timezone'])) {
+        return $_SESSION['user_timezone'];
+    }
+    return 'UTC';
+}
 ?>

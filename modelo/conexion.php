@@ -57,6 +57,12 @@ class Conexion
                 $options
             );
 
+            // Sincronizar la zona horaria de MySQL con la que PHP usa en esta sesión.
+            // date('P') devuelve el offset actual, ej. "-06:00" para America/Managua.
+            // Esto garantiza que NOW() en MySQL coincida con date() en PHP.
+            $tz = date('P'); // ej. -06:00
+            $this->conexion->exec("SET time_zone = '$tz'");
+
         return $this->conexion;
     }
 
