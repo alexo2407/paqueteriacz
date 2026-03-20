@@ -2070,6 +2070,104 @@ class PedidosModel
     }
 
     /**
+     * Obtener el estado actual de los pedidos con filtros y paginación.
+     *
+     * @param array $filtros {
+     *   numero_orden?: string,   Número de orden exacto
+     *   id_estado?: int,         Filtrar por estado actual
+     *   id_cliente?: int,        Filtrar por cliente
+     *   id_proveedor?: int,      Filtrar por proveedor
+     *   fecha_desde?: string,    Fecha ingreso desde (Y-m-d)
+     *   fecha_hasta?: string,    Fecha ingreso hasta (Y-m-d)
+     * }
+     * @param int $page  Página actual (1-indexed)
+     * @param int $limit Registros por página (máx 100)
+     * @return array { data: array, pagination: array }
+     */
+    public static function obtenerEstadoActualPedidos(array $filtros = [], int $page = 1, int $limit = 20): array {
+        $db = (new Conexion())->conectar();
+
+        $where  = [];
+        $params = [];
+
+        if (!empty($filtros['numero_orden'])) {
+            $where[]  = 'p.numero_orden = :numero_orden';
+            $params[':numero_orden'] = trim($filtros['numero_orden']);
+        }
+
+        if (!empty($filtros['id_estado']) && is_numeric($filtros['id_estado'])) {
+            $where[]  = 'p.id_estado = :id_estado';
+            $params[':id_estado'] = (int)$filtros['id_estado'];
+        }
+
+        if (!empty($filtros['id_cliente']) && is_numeric($filtros['id_cliente'])) {
+            $where[]  = 'p.id_cliente = :id_cliente';
+            $params[':id_cliente'] = (int)$filtros['id_cliente'];
+        }
+
+        if (!empty($filtros['id_proveedor']) && is_numeric($filtros['id_proveedor'])) {
+            $where[]  = 'p.id_proveedor = :id_proveedor';
+            $params[':id_proveedor'] = (int)$filtros['id_proveedor'];
+        }
+
+        if (!empty($filtros['fecha_desde'])) {
+            $where[]  = 'DATE(p.fecha_ingreso) >= :fecha_desde';
+            $params[':fecha_desde'] = $filtros['fecha_desde'];
+        }
+
+        if (!empty($filtros['fecha_hasta'])) {
+            $where[]  = 'DATE(p.fecha_ingreso) <= :fecha_hasta';
+            $params[':fecha_hasta'] = $filtros['fecha_hasta'];
+        }
+
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+        // Contar total
+        $countStmt = $db->prepare("SELECT COUNT(*) FROM pedidos p $whereClause");
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        $limit      = max(1, min(100, $limit));
+        $page       = max(1, $page);
+        $totalPages = $total > 0 ? (int)ceil($total / $limit) : 1;
+        $offset     = ($page - 1) * $limit;
+
+        $sql = "SELECT
+                    p.id,
+                    p.numero_orden,
+                    p.destinatario,
+                    p.id_estado,
+                    ep.nombre_estado  AS estado_actual,
+                    p.fecha_ingreso,
+                    p.updated_at      AS fecha_actualizacion
+                FROM pedidos p
+                LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                $whereClause
+                ORDER BY p.fecha_ingreso DESC
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'pagination' => [
+                'total'        => $total,
+                'per_page'     => $limit,
+                'current_page' => $page,
+                'total_pages'  => $totalPages,
+                'has_next'     => $page < $totalPages,
+                'has_prev'     => $page > 1,
+            ]
+        ];
+    }
+
+    /**
      * Obtener historial de cambios de estado con filtros avanzados y paginación.
      *
      * @param array $filtros {
