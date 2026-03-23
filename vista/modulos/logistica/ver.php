@@ -385,9 +385,10 @@ include("vista/includes/header.php");
                                                 if ($apiKey) {
                                                     $geoUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
                                                             . http_build_query([
-                                                                'latlng'   => "$lat,$lng",
-                                                                'key'      => $apiKey,
-                                                                'language' => 'es',
+                                                                'latlng'      => "$lat,$lng",
+                                                                'key'         => $apiKey,
+                                                                'language'    => 'es',
+                                                                'result_type' => 'postal_code|locality|administrative_area_level_1|administrative_area_level_2',
                                                             ]);
                                                     $ctx = stream_context_create([
                                                         'http' => ['timeout' => 4, 'method' => 'GET'],
