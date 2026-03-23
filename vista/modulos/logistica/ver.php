@@ -369,9 +369,85 @@ include("vista/includes/header.php");
                                             }
                                         }
 
+                                        // Si el pedido trajo CP pero no se encontró en ningún nivel → marcarlo
+                                        $cp_origen_no_homologado = !empty($pedido['codigo_postal']) && !($cpFound ?? false);
 
                                         // ────────────────────────────────────────────────────────────────
 
+                                        // ── Nivel 4: Geocoding por coordenadas (Google Maps) ──────────────
+                                        // Solo si aún faltan depto/municipio Y el pedido tiene coordenadas
+                                        // válidas. Es de solo display: no modifica la BD.
+                                        if ((!$nomDepto || !$nomMuni) && $hasCoords) {
+                                            try {
+                                                $lat = (float)$pedido['latitud'];
+                                                $lng = (float)$pedido['longitud'];
+                                                $apiKey = defined('API_MAP') ? API_MAP : '';
+                                                if ($apiKey) {
+                                                    $geoUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
+                                                            . http_build_query([
+                                                                'latlng'   => "$lat,$lng",
+                                                                'key'      => $apiKey,
+                                                                'language' => 'es',
+                                                            ]);
+                                                    $ctx = stream_context_create([
+                                                        'http' => ['timeout' => 4, 'method' => 'GET'],
+                                                    ]);
+                                                    $geoRaw = @file_get_contents($geoUrl, false, $ctx);
+                                                    if ($geoRaw) {
+                                                        $geoJson = json_decode($geoRaw, true);
+                                                        if (!empty($geoJson['results'][0]['address_components'])) {
+                                                            $geoCP    = null;
+                                                            $geoDepto = null;
+                                                            $geoMuni  = null;
+                                                            foreach ($geoJson['results'][0]['address_components'] as $comp) {
+                                                                $types = $comp['types'];
+                                                                if (in_array('postal_code', $types))                    $geoCP    = $comp['long_name'];
+                                                                if (in_array('administrative_area_level_1', $types))    $geoDepto = $comp['long_name'];
+                                                                if (in_array('locality', $types)
+                                                                    || in_array('administrative_area_level_2', $types)) $geoMuni  = $comp['long_name'];
+                                                            }
+
+                                                            // Si Google devolvió un CP, buscarlo en el catálogo homologado
+                                                            $cpEnCatalogo = false;
+                                                            if ($geoCP && empty($pedido['codigo_postal'])) {
+                                                                $stGeoCP = $dbTmp->prepare("
+                                                                    SELECT d.nombre AS nom_depto, m.nombre AS nom_muni
+                                                                    FROM codigos_postales cp
+                                                                    LEFT JOIN departamentos d ON d.id = cp.id_departamento
+                                                                    LEFT JOIN municipios    m ON m.id = cp.id_municipio
+                                                                    WHERE cp.codigo_postal = :cp
+                                                                      AND cp.activo = 1
+                                                                      AND cp.id_departamento IS NOT NULL
+                                                                    LIMIT 1
+                                                                ");
+                                                                $stGeoCP->execute([':cp' => strtoupper(trim($geoCP))]);
+                                                                $rowGeoCP = $stGeoCP->fetch(PDO::FETCH_ASSOC);
+
+                                                                if ($rowGeoCP) {
+                                                                    // CP existe en catálogo → datos confiables, sin marcador ✦
+                                                                    $cpEnCatalogo = true;
+                                                                    if (!$nomDepto && $rowGeoCP['nom_depto']) $nomDepto = $rowGeoCP['nom_depto'];
+                                                                    if (!$nomMuni  && $rowGeoCP['nom_muni'])  $nomMuni  = $rowGeoCP['nom_muni'];
+                                                                    $pedido['_cp_geocodificado']       = $geoCP;
+                                                                    $pedido['_cp_en_catalogo']         = true;
+                                                                } else {
+                                                                    // CP NO existe en catálogo → sugerido, marcarlo
+                                                                    $pedido['_cp_geocodificado']       = $geoCP;
+                                                                    $pedido['_cp_en_catalogo']         = false;
+                                                                }
+                                                            }
+
+                                                            // Depto/Municipio de Google como último recurso (texto libre con ✦)
+                                                            if (!$nomDepto && $geoDepto) $nomDepto = $geoDepto . ' ✦';
+                                                            if (!$nomMuni  && $geoMuni)  $nomMuni  = $geoMuni  . ' ✦';
+                                                        }
+                                                    }
+                                                }
+                                            } catch(Exception $geoEx) {
+                                                // silently continue — el display de coordenadas ya cubre el caso
+                                            }
+                                        }
+                                        // ─────────────────────────────────────────────────────────────────
 
                                     } catch(Exception $e) {}
                                     // Fallback: zona es campo texto libre en pedidos
@@ -387,8 +463,23 @@ include("vista/includes/header.php");
                                     <?php endif; ?>
                                     <?php if (!empty($pedido['codigo_postal'])): ?>
                                     <div class="col">
-                                        <span class="small text-muted d-block">Código Postal</span>
-                                        <span class="fw-semibold"><?= htmlspecialchars($pedido['codigo_postal']) ?></span>
+                                        <?php if (!empty($cp_origen_no_homologado)): ?>
+                                            <span class="small text-muted d-block">Código Postal <span class="text-warning" title="CP recibido del origen, no existe en el catálogo homologado">✦ no en catálogo</span></span>
+                                            <span class="fw-semibold text-warning"><?= htmlspecialchars($pedido['codigo_postal']) ?></span>
+                                        <?php else: ?>
+                                            <span class="small text-muted d-block">Código Postal</span>
+                                            <span class="fw-semibold"><?= htmlspecialchars($pedido['codigo_postal']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php elseif (!empty($pedido['_cp_geocodificado'])): ?>
+                                    <div class="col">
+                                        <?php if (!empty($pedido['_cp_en_catalogo'])): ?>
+                                            <span class="small text-muted d-block">Código Postal <span class="text-success" title="Obtenido por GPS y verificado en catálogo">✔ verificado</span></span>
+                                            <span class="fw-semibold text-success"><?= htmlspecialchars($pedido['_cp_geocodificado']) ?></span>
+                                        <?php else: ?>
+                                            <span class="small text-muted d-block">Código Postal <span class="text-warning" title="Obtenido por coordenadas GPS · no existe en el catálogo homologado">✦ no en catálogo</span></span>
+                                            <span class="fw-semibold text-warning"><?= htmlspecialchars($pedido['_cp_geocodificado']) ?></span>
+                                        <?php endif; ?>
                                     </div>
                                     <?php endif; ?>
                                     <?php if ($nomDepto): ?>
