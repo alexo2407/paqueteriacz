@@ -407,9 +407,10 @@ include("vista/includes/header.php");
                                                                     || in_array('administrative_area_level_2', $types)) $geoMuni  = $comp['long_name'];
                                                             }
 
-                                                            // Si Google devolvió un CP, buscarlo en el catálogo homologado
+                                                            // Si Google devuelve CP: buscarlo en catálogo
+                                                            // Aplica tanto cuando no hay CP (empty) como cuando el CP de origen no está homologado
                                                             $cpEnCatalogo = false;
-                                                            if ($geoCP && empty($pedido['codigo_postal'])) {
+                                                            if ($geoCP && (empty($pedido['codigo_postal']) || !empty($cp_origen_no_homologado))) {
                                                                 $stGeoCP = $dbTmp->prepare("
                                                                     SELECT d.nombre AS nom_depto, m.nombre AS nom_muni
                                                                     FROM codigos_postales cp
@@ -424,16 +425,19 @@ include("vista/includes/header.php");
                                                                 $rowGeoCP = $stGeoCP->fetch(PDO::FETCH_ASSOC);
 
                                                                 if ($rowGeoCP) {
-                                                                    // CP existe en catálogo → datos confiables, sin marcador ✦
                                                                     $cpEnCatalogo = true;
                                                                     if (!$nomDepto && $rowGeoCP['nom_depto']) $nomDepto = $rowGeoCP['nom_depto'];
                                                                     if (!$nomMuni  && $rowGeoCP['nom_muni'])  $nomMuni  = $rowGeoCP['nom_muni'];
-                                                                    $pedido['_cp_geocodificado']       = $geoCP;
-                                                                    $pedido['_cp_en_catalogo']         = true;
+                                                                }
+
+                                                                if (empty($pedido['codigo_postal'])) {
+                                                                    // Sin CP propio → mostrar geocodificado como principal
+                                                                    $pedido['_cp_geocodificado'] = $geoCP;
+                                                                    $pedido['_cp_en_catalogo']   = $cpEnCatalogo;
                                                                 } else {
-                                                                    // CP NO existe en catálogo → sugerido, marcarlo
-                                                                    $pedido['_cp_geocodificado']       = $geoCP;
-                                                                    $pedido['_cp_en_catalogo']         = false;
+                                                                    // CP de origen no homologado → guardar como sugerencia secundaria
+                                                                    $pedido['_cp_sugerido_por_geocoding'] = $geoCP;
+                                                                    $pedido['_cp_sugerido_en_catalogo']   = $cpEnCatalogo;
                                                                 }
                                                             }
 
@@ -466,6 +470,16 @@ include("vista/includes/header.php");
                                         <?php if (!empty($cp_origen_no_homologado)): ?>
                                             <span class="small text-muted d-block">Código Postal <span class="text-warning" title="CP recibido del origen, no existe en el catálogo homologado">✦ no en catálogo</span></span>
                                             <span class="fw-semibold text-warning"><?= htmlspecialchars($pedido['codigo_postal']) ?></span>
+                                            <?php if (!empty($pedido['_cp_sugerido_por_geocoding'])): ?>
+                                                <span class="small d-block mt-1">
+                                                    <i class="bi bi-geo-alt text-info me-1"></i>
+                                                    <?php if (!empty($pedido['_cp_sugerido_en_catalogo'])): ?>
+                                                        <span class="text-success" title="CP sugerido por GPS, existe en catálogo">Sugerido GPS: <strong><?= htmlspecialchars($pedido['_cp_sugerido_por_geocoding']) ?></strong> ✔</span>
+                                                    <?php else: ?>
+                                                        <span class="text-info" title="CP sugerido por GPS, tampoco existe en catálogo">Sugerido GPS: <strong><?= htmlspecialchars($pedido['_cp_sugerido_por_geocoding']) ?></strong></span>
+                                                    <?php endif; ?>
+                                                </span>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="small text-muted d-block">Código Postal</span>
                                             <span class="fw-semibold"><?= htmlspecialchars($pedido['codigo_postal']) ?></span>
