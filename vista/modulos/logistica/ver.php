@@ -268,14 +268,69 @@ include("vista/includes/header.php");
                                             $nomBarrio = $st->fetchColumn();
                                         }
 
-                                        // ── FALLBACK: resolución de CP para display ───────────────────────
-                                        // Nivel 0: búsqueda exacta (cubre CPs ya prefijados: CR10110)
-                                        // Nivel 1: agrega prefijo del país si se conoce (10110 + CR → CR10110)
-                                        // Nivel 2: sufijo numérico LIKE (10110 → %10110, cuando id_pais=NULL)
+                                        // ── Verificar si el CP existe en el catálogo (siempre, independiente del fallback) ──
+                                        // Se hace ANTES del bloque de fallback para que $cpFound sea siempre confiable.
+                                        $cpFound = false;
+                                        $idPaisEfectivo = null;
+                                        if (!empty($pedido['codigo_postal'])) {
+                                            $cpBruto = strtoupper(trim($pedido['codigo_postal']));
+                                            $cpCheckSql = "
+                                                SELECT COUNT(*) FROM codigos_postales
+                                                WHERE codigo_postal = :cp AND id_departamento IS NOT NULL
+                                            ";
+                                            // Nivel 0: exacto
+                                            $stChk = $dbTmp->prepare($cpCheckSql);
+                                            $stChk->execute([':cp' => $cpBruto]);
+                                            if ((int)$stChk->fetchColumn() > 0) { $cpFound = true; }
+
+                                            // Nivel 1: con prefijo de país
+                                            if (!$cpFound) {
+                                                if (!empty($pedido['id_moneda'])) {
+                                                    $stP = $dbTmp->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
+                                                    $stP->execute([':m' => (int)$pedido['id_moneda']]);
+                                                    $idPaisEfectivo = (int)($stP->fetchColumn() ?: 0) ?: null;
+                                                }
+                                                if (!$idPaisEfectivo && !empty($pedido['id_pais'])) {
+                                                    $idPaisEfectivo = (int)$pedido['id_pais'];
+                                                }
+                                                if ($idPaisEfectivo) {
+                                                    require_once __DIR__ . '/../../../services/AddressService.php';
+                                                    $cpConPrefijo = AddressService::normalizarCP($pedido['codigo_postal'], $idPaisEfectivo);
+                                                    if ($cpConPrefijo !== $cpBruto) {
+                                                        $stChk2 = $dbTmp->prepare($cpCheckSql);
+                                                        $stChk2->execute([':cp' => $cpConPrefijo]);
+                                                        if ((int)$stChk2->fetchColumn() > 0) { $cpFound = true; }
+                                                    }
+                                                }
+                                            }
+
+                                            // Nivel 2: ceros a la izquierda
+                                            if (!$cpFound && ctype_digit($cpBruto)) {
+                                                $cpPadded = str_pad($cpBruto, 4, '0', STR_PAD_LEFT);
+                                                if ($cpPadded !== $cpBruto) {
+                                                    $stChk3 = $dbTmp->prepare($cpCheckSql);
+                                                    $stChk3->execute([':cp' => $cpPadded]);
+                                                    if ((int)$stChk3->fetchColumn() > 0) { $cpFound = true; }
+                                                }
+                                            }
+
+                                            // Nivel 3: prefijo + ceros
+                                            if (!$cpFound && ctype_digit($cpBruto) && $idPaisEfectivo) {
+                                                $cpPad2 = AddressService::normalizarCP(str_pad($cpBruto, 4, '0', STR_PAD_LEFT), $idPaisEfectivo);
+                                                if ($cpPad2 !== $cpBruto) {
+                                                    $stChk4 = $dbTmp->prepare($cpCheckSql);
+                                                    $stChk4->execute([':cp' => $cpPad2]);
+                                                    if ((int)$stChk4->fetchColumn() > 0) { $cpFound = true; }
+                                                }
+                                            }
+                                        }
+
+                                        // Marcar CP como "no en catálogo" solo si realmente no existe en ningún nivel
+                                        $cp_origen_no_homologado = !empty($pedido['codigo_postal']) && !$cpFound;
+
+                                        // ── FALLBACK: rellenar depto/muni si faltan usando la misma búsqueda ──
                                         // Solo para display, no modifica la BD.
                                         if ((!$nomDepto || !$nomMuni) && !empty($pedido['codigo_postal'])) {
-                                            $cpBruto = strtoupper(trim($pedido['codigo_postal']));
-                                            $cpFound = false;
                                             $cpSql = "
                                                 SELECT d.nombre AS nom_depto,
                                                        mu.nombre AS nom_muni,
@@ -289,76 +344,22 @@ include("vista/includes/header.php");
                                                 LIMIT 1
                                             ";
 
-                                            // Nivel 0: búsqueda exacta con el CP tal como está guardado
+                                            // Nivel 0: exacto
                                             $st = $dbTmp->prepare($cpSql);
-                                            $st->execute([':cp' => $cpBruto]);
+                                            $st->execute([':cp' => $cpBruto ?? strtoupper(trim($pedido['codigo_postal']))]);
                                             $cpRow = $st->fetch(PDO::FETCH_ASSOC);
                                             if ($cpRow) {
                                                 if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
                                                 if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
                                                 if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
-                                                $cpFound = true;
                                             }
 
-                                            // Nivel 1: agregar prefijo del país al CP numérico
-                                            // Si id_pais es NULL pero hay id_moneda, deriva el país desde la moneda
-                                            // (paises.id_moneda_local → prefijo_postal)
-                                            if (!$cpFound) {
-                                                // Priorizar moneda sobre id_pais (la moneda es más confiable)
-                                                $idPaisEfectivo = null;
-                                                if (!empty($pedido['id_moneda'])) {
-                                                    $stPais = $dbTmp->prepare("SELECT id FROM paises WHERE id_moneda_local = :id_moneda LIMIT 1");
-                                                    $stPais->execute([':id_moneda' => (int)$pedido['id_moneda']]);
-                                                    $idPaisEfectivo = (int)($stPais->fetchColumn() ?: 0) ?: null;
-                                                }
-                                                if (!$idPaisEfectivo && !empty($pedido['id_pais'])) {
-                                                    $idPaisEfectivo = (int)$pedido['id_pais'];
-                                                }
-
-                                                if ($idPaisEfectivo) {
-                                                    require_once __DIR__ . '/../../../services/AddressService.php';
-                                                    $cpConPrefijo = AddressService::normalizarCP($pedido['codigo_postal'], $idPaisEfectivo);
-                                                    if ($cpConPrefijo !== $cpBruto) {
-                                                        $st = $dbTmp->prepare($cpSql);
-                                                        $st->execute([':cp' => $cpConPrefijo]);
-                                                        $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                                                        if ($cpRow) {
-                                                            if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
-                                                            if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
-                                                            if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
-                                                            $cpFound = true;
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            // Nivel 2: rellenar con ceros a la izquierda (sin prefijo)
-                                            // Cubre casos como "1" → "0001", "10" → "0010"
-                                            if (!$cpFound && ctype_digit($cpBruto)) {
-                                                $cpPadded = str_pad($cpBruto, 4, '0', STR_PAD_LEFT);
-                                                if ($cpPadded !== $cpBruto) {
+                                            // Nivel 1: con prefijo
+                                            if ((!$nomDepto || !$nomMuni) && $idPaisEfectivo) {
+                                                $cpConPrefijo = $cpConPrefijo ?? AddressService::normalizarCP($pedido['codigo_postal'], $idPaisEfectivo);
+                                                if ($cpConPrefijo !== ($cpBruto ?? '')) {
                                                     $st = $dbTmp->prepare($cpSql);
-                                                    $st->execute([':cp' => $cpPadded]);
-                                                    $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                                                    if ($cpRow) {
-                                                        if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
-                                                        if (!$nomMuni   && $cpRow['nom_muni'])   $nomMuni   = $cpRow['nom_muni'];
-                                                        if (!$nomBarrio && $cpRow['nom_barrio']) $nomBarrio = $cpRow['nom_barrio'];
-                                                        $cpFound = true;
-                                                    }
-                                                }
-                                            }
-
-                                            // Nivel 3: prefijo del país + ceros a la izquierda
-                                            // Cubre casos como "1" con id_pais=6 → "GT0001"
-                                            if (!$cpFound && ctype_digit($cpBruto) && !empty($idPaisEfectivo ?? null)) {
-                                                $cpPaddedConPrefijo = AddressService::normalizarCP(
-                                                    str_pad($cpBruto, 4, '0', STR_PAD_LEFT),
-                                                    $idPaisEfectivo
-                                                );
-                                                if ($cpPaddedConPrefijo !== $cpBruto) {
-                                                    $st = $dbTmp->prepare($cpSql);
-                                                    $st->execute([':cp' => $cpPaddedConPrefijo]);
+                                                    $st->execute([':cp' => $cpConPrefijo]);
                                                     $cpRow = $st->fetch(PDO::FETCH_ASSOC);
                                                     if ($cpRow) {
                                                         if (!$nomDepto  && $cpRow['nom_depto'])  $nomDepto  = $cpRow['nom_depto'];
@@ -368,9 +369,6 @@ include("vista/includes/header.php");
                                                 }
                                             }
                                         }
-
-                                        // Si el pedido trajo CP pero no se encontró en ningún nivel → marcarlo
-                                        $cp_origen_no_homologado = !empty($pedido['codigo_postal']) && !($cpFound ?? false);
 
                                         // ────────────────────────────────────────────────────────────────
 
