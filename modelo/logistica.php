@@ -104,10 +104,20 @@ class LogisticaModel {
                     LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
                     LEFT JOIN monedas m ON p.id_moneda = m.id
                     LEFT JOIN paises pa ON p.id_pais = pa.id
-                    LEFT JOIN departamentos d ON p.id_departamento = d.id
-                    LEFT JOIN municipios mu ON p.id_municipio = mu.id
-                    LEFT JOIN barrios b ON p.id_barrio = b.id
-                    LEFT JOIN usuarios uc ON p.id_cliente = uc.id
+                    -- Homologación via codigo_postal: resuelve depto/muni cuando las FKs del pedido son NULL
+                    LEFT JOIN (
+                        SELECT MIN(id) AS id,
+                               codigo_postal,
+                               MIN(id_departamento) AS id_departamento,
+                               MIN(id_municipio)    AS id_municipio
+                        FROM codigos_postales
+                        WHERE id_departamento IS NOT NULL
+                        GROUP BY codigo_postal
+                    ) cp_hom ON cp_hom.codigo_postal = p.codigo_postal
+                    LEFT JOIN departamentos d  ON d.id  = COALESCE(p.id_departamento, cp_hom.id_departamento)
+                    LEFT JOIN municipios    mu ON mu.id = COALESCE(p.id_municipio,    cp_hom.id_municipio)
+                    LEFT JOIN barrios       b  ON b.id  = p.id_barrio
+                    LEFT JOIN usuarios uc ON p.id_cliente  = uc.id
                     LEFT JOIN usuarios up ON p.id_proveedor = up.id
                     WHERE {$filterField} = :user_id";
             

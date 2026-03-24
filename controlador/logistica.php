@@ -263,7 +263,8 @@ class LogisticaController {
             $fechaEntrega = !empty($p['fecha_entrega'])     ? date('d/m/Y', strtotime($p['fecha_entrega']))     : '';
             $fechaLiq     = !empty($p['fecha_liquidacion']) ? date('d/m/Y', strtotime($p['fecha_liquidacion'])) : '';
 
-            // ── Prioridad 1: datos directos guardados en el pedido ──
+            // El modelo ya resuelve depto/muni via COALESCE(FK, cp_hom) en SQL.
+            // Solo queda como fallback PHP el caso residual: CP sin prefijo de país.
             $nomPais      = $p['nombre_pais']         ?? '';
             $nomDepto     = $p['nombre_departamento'] ?? '';
             $nomMuni      = $p['nombre_municipio']    ?? '';
@@ -272,80 +273,41 @@ class LogisticaController {
             $deptoInferid = false;
             $muniInferido = false;
 
-            // ── Prioridad 2: fallback por código postal (solo si faltan depto o muni) ──
+            // Fallback residual: CP numérico sin prefijo (ej. "10110" → buscar "CR10110")
             if ((!$nomDepto || !$nomMuni) && !empty($p['codigo_postal'])) {
                 try {
                     $cpBruto = strtoupper(trim($p['codigo_postal']));
-                    $cpFound = false;
-
-                    // Nivel 0: búsqueda exacta con el CP tal como viene
-                    $st = $dbExcel->prepare($cpSql);
-                    $st->execute([':cp' => $cpBruto]);
-                    $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                    if ($cpRow) {
-                        $cpFound = true;
+                    $idPaisEfectivo = null;
+                    if (!empty($p['id_moneda'])) {
+                        $stP = $dbExcel->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
+                        $stP->execute([':m' => (int)$p['id_moneda']]);
+                        $idPaisEfectivo = (int)($stP->fetchColumn() ?: 0) ?: null;
                     }
-
-                    // Nivel 1: añadir prefijo del país al CP
-                    if (!$cpFound) {
-                        $idPaisEfectivo = null;
-                        if (!empty($p['id_moneda'])) {
-                            $stP = $dbExcel->prepare("SELECT id FROM paises WHERE id_moneda_local = :id_moneda LIMIT 1");
-                            $stP->execute([':id_moneda' => (int)$p['id_moneda']]);
-                            $idPaisEfectivo = (int)($stP->fetchColumn() ?: 0) ?: null;
-                        }
-                        if (!$idPaisEfectivo && !empty($p['id_pais'])) {
-                            $idPaisEfectivo = (int)$p['id_pais'];
-                        }
-                        if ($idPaisEfectivo) {
-                            $cpConPrefijo = AddressService::normalizarCP($p['codigo_postal'], $idPaisEfectivo);
-                            if ($cpConPrefijo !== $cpBruto) {
-                                $st = $dbExcel->prepare($cpSql);
-                                $st->execute([':cp' => $cpConPrefijo]);
-                                $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                                if ($cpRow) {
-                                    $cpFound   = true;
-                                    $cpDisplay = $cpConPrefijo; // mostrar CP normalizado
+                    if (!$idPaisEfectivo && !empty($p['id_pais'])) {
+                        $idPaisEfectivo = (int)$p['id_pais'];
+                    }
+                    if ($idPaisEfectivo) {
+                        require_once __DIR__ . '/../services/AddressService.php';
+                        $cpConPrefijo = AddressService::normalizarCP($p['codigo_postal'], $idPaisEfectivo);
+                        if ($cpConPrefijo !== $cpBruto) {
+                            $st = $dbExcel->prepare($cpSql);
+                            $st->execute([':cp' => $cpConPrefijo]);
+                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                            if ($cpRow) {
+                                if (!$nomDepto && !empty($cpRow['nom_depto'])) {
+                                    $nomDepto     = $cpRow['nom_depto'] . ' (*)';
+                                    $deptoInferid = true;
                                 }
+                                if (!$nomMuni && !empty($cpRow['nom_muni'])) {
+                                    $nomMuni      = $cpRow['nom_muni'] . ' (*)';
+                                    $muniInferido = true;
+                                }
+                                $cpDisplay = $cpConPrefijo;
                             }
                         }
                     }
-
-                    // Nivel 2: rellenar con ceros a la izquierda
-                    if (!$cpFound && ctype_digit($cpBruto)) {
-                        $cpPadded = str_pad($cpBruto, 4, '0', STR_PAD_LEFT);
-                        if ($cpPadded !== $cpBruto) {
-                            $st = $dbExcel->prepare($cpSql);
-                            $st->execute([':cp' => $cpPadded]);
-                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                            if ($cpRow) { $cpFound = true; }
-                        }
-                    }
-
-                    // Nivel 3: prefijo del país + ceros a la izquierda
-                    if (!$cpFound && ctype_digit($cpBruto) && !empty($idPaisEfectivo ?? null)) {
-                        $cpPad2 = AddressService::normalizarCP(str_pad($cpBruto, 4, '0', STR_PAD_LEFT), $idPaisEfectivo);
-                        if ($cpPad2 !== $cpBruto) {
-                            $st = $dbExcel->prepare($cpSql);
-                            $st->execute([':cp' => $cpPad2]);
-                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                            if ($cpRow) { $cpFound = true; }
-                        }
-                    }
-
-                    // Aplicar valores inferidos solo en lo que falta, marcando con (*)
-                    if ($cpFound && $cpRow) {
-                        if (!$nomDepto && !empty($cpRow['nom_depto'])) {
-                            $nomDepto     = $cpRow['nom_depto'] . ' (*)';
-                            $deptoInferid = true;
-                        }
-                        if (!$nomMuni && !empty($cpRow['nom_muni'])) {
-                            $nomMuni      = $cpRow['nom_muni'] . ' (*)';
-                            $muniInferido = true;
-                        }
-                    }
                 } catch (Exception $e) {
-                    // silently continue — el fallback es best-effort
+                    // silently continue
                 }
             }
 
