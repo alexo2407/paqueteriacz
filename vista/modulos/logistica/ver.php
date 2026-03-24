@@ -403,9 +403,10 @@ include("vista/includes/header.php");
                                                     $geoJson = json_decode($geoRaw, true);
                                                     if (!empty($geoJson['address'])) {
                                                         $addr = $geoJson['address'];
-                                                        $geoCP    = $addr['postcode'] ?? null;
-                                                        $geoDepto = $addr['state'] ?? null;
-                                                        $geoMuni  = $addr['city'] ?? $addr['town'] ?? $addr['village'] ?? $addr['municipality'] ?? null;
+                                                        $geoCP     = $addr['postcode'] ?? null;
+                                                        $geoDepto  = $addr['state'] ?? null;
+                                                        $geoMuni   = $addr['city'] ?? $addr['town'] ?? $addr['village'] ?? $addr['municipality'] ?? $addr['county'] ?? null;
+                                                        $geoBarrio = $addr['suburb'] ?? $addr['neighbourhood'] ?? null;
 
                                                         // Si Nominatim devuelve CP: buscarlo en catálogo
                                                         // Aplica tanto cuando no hay CP (empty) como cuando el CP de origen no está homologado
@@ -441,9 +442,10 @@ include("vista/includes/header.php");
                                                             }
                                                         }
 
-                                                        // Depto/Municipio de Nominatim como último recurso (texto libre con ✦)
-                                                        if (!$nomDepto && $geoDepto) $nomDepto = $geoDepto . ' ✦';
-                                                        if (!$nomMuni  && $geoMuni)  $nomMuni  = $geoMuni  . ' ✦';
+                                                        // Depto/Municipio/Barrio de Nominatim como último recurso (texto libre con ✦)
+                                                        if (!$nomDepto  && $geoDepto)  $nomDepto  = $geoDepto  . ' ✦';
+                                                        if (!$nomMuni   && $geoMuni)   $nomMuni   = $geoMuni   . ' ✦';
+                                                        if (!$nomBarrio && $geoBarrio) $nomBarrio = $geoBarrio . ' ✦';
                                                     }
                                                 }
                                             } catch(Exception $geoEx) {
