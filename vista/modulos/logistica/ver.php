@@ -374,78 +374,76 @@ include("vista/includes/header.php");
 
                                         // ────────────────────────────────────────────────────────────────
 
-                                        // ── Nivel 4: Geocoding por coordenadas (Google Maps) ──────────────
+                                        // ── Nivel 4: Geocoding por coordenadas (Nominatim / OpenStreetMap) ─
                                         // Solo si aún faltan depto/municipio Y el pedido tiene coordenadas
                                         // válidas. Es de solo display: no modifica la BD.
                                         if ((!$nomDepto || !$nomMuni) && $hasCoords) {
                                             try {
                                                 $lat = (float)$pedido['latitud'];
                                                 $lng = (float)$pedido['longitud'];
-                                                $apiKey = defined('API_MAP') ? API_MAP : '';
-                                                if ($apiKey) {
-                                                    $geoUrl = "https://maps.googleapis.com/maps/api/geocode/json?"
-                                                            . http_build_query([
-                                                                'latlng'      => "$lat,$lng",
-                                                                'key'         => $apiKey,
-                                                                'language'    => 'es',
-                                                                'result_type' => 'postal_code|locality|administrative_area_level_1|administrative_area_level_2',
-                                                            ]);
-                                                    $ctx = stream_context_create([
-                                                        'http' => ['timeout' => 4, 'method' => 'GET'],
-                                                    ]);
-                                                    $geoRaw = @file_get_contents($geoUrl, false, $ctx);
-                                                    if ($geoRaw) {
-                                                        $geoJson = json_decode($geoRaw, true);
-                                                        if (!empty($geoJson['results'][0]['address_components'])) {
-                                                            $geoCP    = null;
-                                                            $geoDepto = null;
-                                                            $geoMuni  = null;
-                                                            foreach ($geoJson['results'][0]['address_components'] as $comp) {
-                                                                $types = $comp['types'];
-                                                                if (in_array('postal_code', $types))                    $geoCP    = $comp['long_name'];
-                                                                if (in_array('administrative_area_level_1', $types))    $geoDepto = $comp['long_name'];
-                                                                if (in_array('locality', $types)
-                                                                    || in_array('administrative_area_level_2', $types)) $geoMuni  = $comp['long_name'];
+                                                $geoUrl = "https://nominatim.openstreetmap.org/reverse?"
+                                                        . http_build_query([
+                                                            'lat'            => $lat,
+                                                            'lon'            => $lng,
+                                                            'format'         => 'jsonv2',
+                                                            'addressdetails' => 1,
+                                                            'accept-language'=> 'es',
+                                                            'zoom'           => 18,
+                                                            'layer'          => 'address',
+                                                        ]);
+                                                $ctx = stream_context_create([
+                                                    'http' => [
+                                                        'timeout' => 4,
+                                                        'method'  => 'GET',
+                                                        'header'  => 'User-Agent: PaqueteriaCZ/1.0 (logistica)',
+                                                    ],
+                                                ]);
+                                                $geoRaw = @file_get_contents($geoUrl, false, $ctx);
+                                                if ($geoRaw) {
+                                                    $geoJson = json_decode($geoRaw, true);
+                                                    if (!empty($geoJson['address'])) {
+                                                        $addr = $geoJson['address'];
+                                                        $geoCP    = $addr['postcode'] ?? null;
+                                                        $geoDepto = $addr['state'] ?? null;
+                                                        $geoMuni  = $addr['city'] ?? $addr['town'] ?? $addr['village'] ?? $addr['municipality'] ?? null;
+
+                                                        // Si Nominatim devuelve CP: buscarlo en catálogo
+                                                        // Aplica tanto cuando no hay CP (empty) como cuando el CP de origen no está homologado
+                                                        $cpEnCatalogo = false;
+                                                        if ($geoCP && (empty($pedido['codigo_postal']) || !empty($cp_origen_no_homologado))) {
+                                                            $stGeoCP = $dbTmp->prepare("
+                                                                SELECT d.nombre AS nom_depto, m.nombre AS nom_muni
+                                                                FROM codigos_postales cp
+                                                                LEFT JOIN departamentos d ON d.id = cp.id_departamento
+                                                                LEFT JOIN municipios    m ON m.id = cp.id_municipio
+                                                                WHERE cp.codigo_postal = :cp
+                                                                  AND cp.activo = 1
+                                                                  AND cp.id_departamento IS NOT NULL
+                                                                LIMIT 1
+                                                            ");
+                                                            $stGeoCP->execute([':cp' => strtoupper(trim($geoCP))]);
+                                                            $rowGeoCP = $stGeoCP->fetch(PDO::FETCH_ASSOC);
+
+                                                            if ($rowGeoCP) {
+                                                                $cpEnCatalogo = true;
+                                                                if (!$nomDepto && $rowGeoCP['nom_depto']) $nomDepto = $rowGeoCP['nom_depto'];
+                                                                if (!$nomMuni  && $rowGeoCP['nom_muni'])  $nomMuni  = $rowGeoCP['nom_muni'];
                                                             }
 
-                                                            // Si Google devuelve CP: buscarlo en catálogo
-                                                            // Aplica tanto cuando no hay CP (empty) como cuando el CP de origen no está homologado
-                                                            $cpEnCatalogo = false;
-                                                            if ($geoCP && (empty($pedido['codigo_postal']) || !empty($cp_origen_no_homologado))) {
-                                                                $stGeoCP = $dbTmp->prepare("
-                                                                    SELECT d.nombre AS nom_depto, m.nombre AS nom_muni
-                                                                    FROM codigos_postales cp
-                                                                    LEFT JOIN departamentos d ON d.id = cp.id_departamento
-                                                                    LEFT JOIN municipios    m ON m.id = cp.id_municipio
-                                                                    WHERE cp.codigo_postal = :cp
-                                                                      AND cp.activo = 1
-                                                                      AND cp.id_departamento IS NOT NULL
-                                                                    LIMIT 1
-                                                                ");
-                                                                $stGeoCP->execute([':cp' => strtoupper(trim($geoCP))]);
-                                                                $rowGeoCP = $stGeoCP->fetch(PDO::FETCH_ASSOC);
-
-                                                                if ($rowGeoCP) {
-                                                                    $cpEnCatalogo = true;
-                                                                    if (!$nomDepto && $rowGeoCP['nom_depto']) $nomDepto = $rowGeoCP['nom_depto'];
-                                                                    if (!$nomMuni  && $rowGeoCP['nom_muni'])  $nomMuni  = $rowGeoCP['nom_muni'];
-                                                                }
-
-                                                                if (empty($pedido['codigo_postal'])) {
-                                                                    // Sin CP propio → mostrar geocodificado como principal
-                                                                    $pedido['_cp_geocodificado'] = $geoCP;
-                                                                    $pedido['_cp_en_catalogo']   = $cpEnCatalogo;
-                                                                } else {
-                                                                    // CP de origen no homologado → guardar como sugerencia secundaria
-                                                                    $pedido['_cp_sugerido_por_geocoding'] = $geoCP;
-                                                                    $pedido['_cp_sugerido_en_catalogo']   = $cpEnCatalogo;
-                                                                }
+                                                            if (empty($pedido['codigo_postal'])) {
+                                                                // Sin CP propio → mostrar geocodificado como principal
+                                                                $pedido['_cp_geocodificado'] = $geoCP;
+                                                                $pedido['_cp_en_catalogo']   = $cpEnCatalogo;
+                                                            } else {
+                                                                // CP de origen no homologado → guardar como sugerencia secundaria
+                                                                $pedido['_cp_sugerido_por_geocoding'] = $geoCP;
+                                                                $pedido['_cp_sugerido_en_catalogo']   = $cpEnCatalogo;
                                                             }
-
-                                                            // Depto/Municipio de Google como último recurso (texto libre con ✦)
-                                                            if (!$nomDepto && $geoDepto) $nomDepto = $geoDepto . ' ✦';
-                                                            if (!$nomMuni  && $geoMuni)  $nomMuni  = $geoMuni  . ' ✦';
                                                         }
+
+                                                        // Depto/Municipio de Nominatim como último recurso (texto libre con ✦)
+                                                        if (!$nomDepto && $geoDepto) $nomDepto = $geoDepto . ' ✦';
+                                                        if (!$nomMuni  && $geoMuni)  $nomMuni  = $geoMuni  . ' ✦';
                                                     }
                                                 }
                                             } catch(Exception $geoEx) {
