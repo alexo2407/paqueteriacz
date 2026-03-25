@@ -196,7 +196,7 @@ class LogisticaController {
             'J1' => 'Departamento',
             'K1' => 'Municipio',
             'L1' => 'Barrio',
-            'M1' => 'Ref. Ubicación',
+            'M1' => 'Barrio (texto libre)',
             'N1' => 'Entre Calles',
             'O1' => 'Depto. (texto libre)',
             'P1' => 'Municipio (texto libre)',
