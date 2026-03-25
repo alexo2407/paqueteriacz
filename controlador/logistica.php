@@ -196,10 +196,10 @@ class LogisticaController {
             'J1' => 'Departamento',
             'K1' => 'Municipio',
             'L1' => 'Barrio',
-            'M1' => 'Barrio (texto libre)',
-            'N1' => 'Entre Calles',
-            'O1' => 'Depto. (texto libre)',
-            'P1' => 'Municipio (texto libre)',
+            'M1' => 'Depto. (texto libre)',
+            'N1' => 'Municipio (texto libre)',
+            'O1' => 'Barrio (texto libre)',
+            'P1' => 'Entre Calles',
             'Q1' => 'CP (texto libre)',
             'R1' => 'Estado',
             'S1' => 'Fecha Entrega / Reprogramación',
@@ -361,11 +361,11 @@ class LogisticaController {
             $sheet->setCellValue("J{$fila}", $nomDepto);
             $sheet->setCellValue("K{$fila}", $nomMuni);
             $sheet->setCellValue("L{$fila}", $nomBarrio);
-            // Campos opcionales de dirección especial (M–Q)
-            $sheet->setCellValue("M{$fila}", $locationField);
-            $sheet->setCellValue("N{$fila}", $betweenStrField);
-            $sheet->setCellValue("O{$fila}", $deptNameField);
-            $sheet->setCellValue("P{$fila}", $muniNameField);
+            // Campos opcionales de dirección especial (M–Q): jerarquía geográfica
+            $sheet->setCellValue("M{$fila}", $deptNameField);
+            $sheet->setCellValue("N{$fila}", $muniNameField);
+            $sheet->setCellValue("O{$fila}", $locationField);
+            $sheet->setCellValue("P{$fila}", $betweenStrField);
             $sheet->setCellValue("Q{$fila}", $postalCodeField);
             // Resto de datos del pedido (R–X)
             $sheet->setCellValue("R{$fila}", $p['estado']              ?? '');
@@ -402,10 +402,10 @@ class LogisticaController {
         // Limitar ancho de columnas de texto largo
         $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(45); // Dirección
         $sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(45); // Comentario
-        $sheet->getColumnDimension('M')->setAutoSize(false)->setWidth(40); // Ref. Ubicación
-        $sheet->getColumnDimension('N')->setAutoSize(false)->setWidth(40); // Entre Calles
-        $sheet->getColumnDimension('O')->setAutoSize(false)->setWidth(30); // Depto. libre
-        $sheet->getColumnDimension('P')->setAutoSize(false)->setWidth(30); // Municipio libre
+        $sheet->getColumnDimension('M')->setAutoSize(false)->setWidth(30); // Depto. libre
+        $sheet->getColumnDimension('N')->setAutoSize(false)->setWidth(30); // Municipio libre
+        $sheet->getColumnDimension('O')->setAutoSize(false)->setWidth(40); // Barrio libre
+        $sheet->getColumnDimension('P')->setAutoSize(false)->setWidth(40); // Entre Calles
         $sheet->getColumnDimension('Q')->setAutoSize(false)->setWidth(20); // CP libre
 
         // Nombre del archivo
