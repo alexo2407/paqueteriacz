@@ -18,6 +18,27 @@ if (!isSuperAdmin()) {
 $tablaFiltro = $_GET['tabla'] ?? '';
 $accionFiltro = $_GET['accion'] ?? '';
 $usuarioFiltro = $_GET['usuario'] ?? '';
+$pedidoFiltro = isset($_GET['pedido']) ? trim($_GET['pedido']) : '';
+
+// Resolver numero_orden -> id interno del pedido
+$pedidoIdInterno = null;
+$pedidoNoEncontrado = false;
+if ($pedidoFiltro !== '') {
+    try {
+        require_once __DIR__ . '/../../../modelo/conexion.php';
+        $dbRes = (new Conexion())->conectar();
+        $stmtPed = $dbRes->prepare('SELECT id FROM pedidos WHERE numero_orden = :n LIMIT 1');
+        $stmtPed->execute([':n' => (int)$pedidoFiltro]);
+        $rowPed = $stmtPed->fetch(PDO::FETCH_ASSOC);
+        if ($rowPed) {
+            $pedidoIdInterno = (int)$rowPed['id'];
+        } else {
+            $pedidoNoEncontrado = true;
+        }
+    } catch (Exception $e) {
+        $pedidoNoEncontrado = true;
+    }
+}
 
 // Por defecto: últimos 7 días
 $fechaHoy = date('Y-m-d');
@@ -25,12 +46,21 @@ $fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-d', strtotime('-7 days'));
 $fechaFin = $_GET['fecha_fin'] ?? $fechaHoy;
 
 // Construir filtros
-$filtros = [
-    'fecha_inicio' => $fechaInicio,
-    'fecha_fin' => $fechaFin
-];
+$filtros = [];
 
-if ($tablaFiltro) $filtros['tabla'] = $tablaFiltro;
+// Si se filtra por pedido: buscar en todas las tablas y sin restricción de fechas
+if ($pedidoFiltro !== '' && $pedidoIdInterno !== null) {
+    $filtros['id_registro'] = $pedidoIdInterno;
+    $filtros['tabla'] = 'pedidos';
+    // Aplicar fechas solo si el usuario las cambió manualmente
+    if (isset($_GET['fecha_inicio'])) $filtros['fecha_inicio'] = $fechaInicio;
+    if (isset($_GET['fecha_fin']))   $filtros['fecha_fin']    = $fechaFin;
+} else {
+    $filtros['fecha_inicio'] = $fechaInicio;
+    $filtros['fecha_fin']    = $fechaFin;
+}
+
+if ($tablaFiltro && $pedidoFiltro === '') $filtros['tabla'] = $tablaFiltro;
 if ($accionFiltro) $filtros['accion'] = $accionFiltro;
 if ($usuarioFiltro) $filtros['id_usuario'] = (int)$usuarioFiltro;
 
@@ -81,6 +111,18 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
         </a>
     </div>
 
+    <?php if ($pedidoNoEncontrado): ?>
+    <div class="alert alert-warning d-flex align-items-center mb-3">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span>No se encontró ningún pedido con número de orden <strong><?php echo htmlspecialchars($pedidoFiltro); ?></strong>. Verifica el número e intenta de nuevo.</span>
+    </div>
+    <?php elseif ($pedidoFiltro !== '' && $pedidoIdInterno !== null): ?>
+    <div class="alert alert-info d-flex align-items-center mb-3">
+        <i class="bi bi-info-circle-fill me-2"></i>
+        <span>Mostrando historial del pedido <strong>#<?php echo htmlspecialchars($pedidoFiltro); ?></strong> &nbsp;<span class="badge bg-secondary">ID interno: <?php echo $pedidoIdInterno; ?></span></span>
+    </div>
+    <?php endif; ?>
+
     <!-- Filtros -->
     <div class="card mb-3">
         <div class="card-header bg-primary text-white">
@@ -89,6 +131,20 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
         <div class="card-body">
             <form method="GET">
                 <div class="row g-3">
+
+                    <!-- Búsqueda rápida por pedido -->
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold text-primary"><i class="bi bi-box-seam"></i> Pedido #</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-hash"></i></span>
+                            <input type="number" name="pedido" class="form-control" 
+                                   placeholder="ej: 1234"
+                                   value="<?php echo htmlspecialchars($pedidoFiltro); ?>"
+                                   min="1">
+                        </div>
+                        <div class="form-text">Filtra por número de pedido</div>
+                    </div>
+
                     <div class="col-md-2">
                         <label class="form-label small">Tabla</label>
                         <select name="tabla" class="form-select select2-searchable" data-placeholder="Seleccionar tabla...">
@@ -133,16 +189,13 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                         <input type="date" name="fecha_fin" class="form-control" value="<?php echo htmlspecialchars($fechaFin); ?>">
                     </div>
 
-                    <div class="col-md-2">
-                        <label class="form-label small">&nbsp;</label>
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary flex-fill">
-                                <i class="bi bi-funnel"></i> Filtrar
-                            </button>
-                            <a href="<?php echo RUTA_URL; ?>auditoria/historial" class="btn btn-outline-secondary">
-                                <i class="bi bi-x-circle"></i>
-                            </a>
-                        </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel"></i> Filtrar
+                        </button>
+                        <a href="<?php echo RUTA_URL; ?>auditoria/historial" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Limpiar
+                        </a>
                     </div>
                 </div>
             </form>

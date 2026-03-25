@@ -417,6 +417,11 @@ class AuditoriaModel
                 $where[] = 'a.id_usuario = :id_usuario';
                 $params[':id_usuario'] = (int)$filtros['id_usuario'];
             }
+
+            if (!empty($filtros['id_registro'])) {
+                $where[] = 'a.id_registro = :id_registro';
+                $params[':id_registro'] = (int)$filtros['id_registro'];
+            }
             
             if (!empty($filtros['fecha_inicio'])) {
                 $where[] = 'DATE(a.created_at) >= :fecha_inicio';
