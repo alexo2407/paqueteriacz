@@ -772,12 +772,12 @@ class PedidoApiController
             'es_combo' => $esCombo,
             'fecha_entrega' => $data['fecha_entrega'] ?? null,
             'id_codigo_postal' => $data['id_codigo_postal'] ?? null,
-            // Campos especiales de dirección
-            'municipalitiesName' => $data['municipalitiesName'] ?? null,
-            'postalCode' => $data['postalCode'] ?? null,
-            'departmentName' => $data['departmentName'] ?? null,
-            'Location' => $data['Location'] ?? null,
-            'betweenStreets' => $data['betweenStreets'] ?? null,
+            // Campos especiales de dirección (tolerante a variaciones de nombre)
+            'municipalitiesName' => $data['municipalitiesName'] ?? $data['municipalityName'] ?? null,
+            'postalCode'         => $data['postalCode']         ?? null,
+            'departmentName'     => $data['departmentName']     ?? null,
+            'Location'           => $data['Location']           ?? $data['location'] ?? null,
+            'betweenStreets'     => $data['betweenStreets']     ?? null,
         ];
 
         // Normalizar valores 0 a null
@@ -874,12 +874,12 @@ class PedidoApiController
             'es_combo' => $esCombo,
             'fecha_entrega' => $pedido['fecha_entrega'] ?? null,
             'id_codigo_postal' => $pedido['id_codigo_postal'] ?? null,
-            // Campos especiales de dirección
-            'municipalitiesName' => $pedido['municipalitiesName'] ?? null,
-            'postalCode' => $pedido['postalCode'] ?? null,
-            'departmentName' => $pedido['departmentName'] ?? null,
-            'Location' => $pedido['Location'] ?? null,
-            'betweenStreets' => $pedido['betweenStreets'] ?? null,
+            // Campos especiales de dirección (tolerante a variaciones de nombre)
+            'municipalitiesName' => $pedido['municipalitiesName'] ?? $pedido['municipalityName'] ?? null,
+            'postalCode'         => $pedido['postalCode']         ?? null,
+            'departmentName'     => $pedido['departmentName']     ?? null,
+            'Location'           => $pedido['Location']           ?? $pedido['location'] ?? null,
+            'betweenStreets'     => $pedido['betweenStreets']     ?? null,
         ];
     }
 
