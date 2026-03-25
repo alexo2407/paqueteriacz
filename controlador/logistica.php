@@ -182,7 +182,7 @@ class LogisticaController {
             if (count($prods) > $maxProductos) $maxProductos = count($prods);
         }
 
-        // Encabezados fijos A–S
+        // Encabezados fijos A–U
         $headersFixed = [
             'A1' => 'Núm. Orden',
             'B1' => 'Fecha Ingreso',
@@ -203,6 +203,8 @@ class LogisticaController {
             'Q1' => 'Moneda',
             'R1' => 'Cliente',
             'S1' => 'Proveedor',
+            'T1' => 'Ref. Ubicación',
+            'U1' => 'Entre Calles',
         ];
 
         $boldStyle = [
@@ -220,8 +222,9 @@ class LogisticaController {
             $sheet->getStyle($cell)->applyFromArray($boldStyle);
         }
 
-        // Encabezados dinámicos de productos a partir de columna T (índice 20)
-        $colInicioProd = 20; // T = 20 en PhpSpreadsheet (A=1)
+        // Encabezados dinámicos de productos a partir de columna V (índice 22)
+        // T=20 y U=21 están reservadas para Ref. Ubicación y Entre Calles
+        $colInicioProd = 22; // V = 22 en PhpSpreadsheet (A=1)
         for ($i = 0; $i < $maxProductos; $i++) {
             $num         = $i + 1;
             $colNombre   = $colInicioProd + ($i * 2);
@@ -273,7 +276,26 @@ class LogisticaController {
             $deptoInferid = false;
             $muniInferido = false;
 
-            // Fallback PHP: solo se ejecuta si el SQL no resolvió depto/muni.
+            // Campos opcionales de dirección especial (texto libre)
+            $locationField   = trim($p['Location']          ?? '');
+            $betweenStrField = trim($p['betweenStreets']     ?? '');
+            $deptNameField   = trim($p['departmentName']     ?? '');
+            $muniNameField   = trim($p['municipalitiesName'] ?? '');
+            $postalCodeField = trim($p['postalCode']         ?? '');
+
+            // Fallback con campos libres: si los campos estructurados están vacíos,
+            // usar los campos de texto libre enviados por el cliente (sin marcar con *).
+            if (!$nomDepto && $deptNameField !== '') {
+                $nomDepto = $deptNameField;
+            }
+            if (!$nomMuni && $muniNameField !== '') {
+                $nomMuni = $muniNameField;
+            }
+            if (!$cpDisplay && $postalCodeField !== '') {
+                $cpDisplay = $postalCodeField;
+            }
+
+            // Fallback PHP (CP homologación): solo se ejecuta si el SQL no resolvió depto/muni.
             // Nivel 0: búsqueda exacta con el CP tal como viene → dato confirmado, sin (*)
             // Nivel 1: agrega prefijo del país (CP transformado) → dato inferido, con (*)
             if ((!$nomDepto || !$nomMuni) && !empty($p['codigo_postal'])) {
@@ -347,6 +369,10 @@ class LogisticaController {
             $sheet->setCellValue("R{$fila}", $p['nombre_cliente']      ?? '');
             $sheet->setCellValue("S{$fila}", $p['nombre_proveedor']    ?? '');
 
+            // Columnas opcionales de dirección especial
+            $sheet->setCellValue("T{$fila}", $locationField);
+            $sheet->setCellValue("U{$fila}", $betweenStrField);
+
             // Pintar de amarillo las celdas con valores inferidos por fallback
             if ($deptoInferid) $sheet->getStyle("J{$fila}")->applyFromArray($styleInferido);
             if ($muniInferido) $sheet->getStyle("K{$fila}")->applyFromArray($styleInferido);
@@ -373,6 +399,8 @@ class LogisticaController {
         // Limitar ancho de columnas de texto largo
         $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(45); // Dirección
         $sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(45); // Comentario
+        $sheet->getColumnDimension('T')->setAutoSize(false)->setWidth(40); // Ref. Ubicación
+        $sheet->getColumnDimension('U')->setAutoSize(false)->setWidth(40); // Entre Calles
 
         // Nombre del archivo
         $timestamp = date('Ymd_Hi');
