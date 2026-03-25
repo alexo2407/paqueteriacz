@@ -279,6 +279,15 @@ class LogisticaController {
             $deptoInferid = false;
             $muniInferido = false;
 
+            // Fallback país: si id_pais no está seteado, inferir desde id_moneda
+            if (!$nomPais && !empty($p['id_moneda'])) {
+                try {
+                    $stPais = $dbExcel->prepare("SELECT nombre FROM paises WHERE id_moneda_local = :m LIMIT 1");
+                    $stPais->execute([':m' => (int)$p['id_moneda']]);
+                    $nomPais = $stPais->fetchColumn() ?: '';
+                } catch (Exception $e) { /* silently continue */ }
+            }
+
             // Campos opcionales de dirección especial (para columnas T–X)
             $locationField   = trim($p['Location']          ?? '');
             $betweenStrField = trim($p['betweenStreets']     ?? '');
