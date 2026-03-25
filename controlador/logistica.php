@@ -276,24 +276,9 @@ class LogisticaController {
             $deptoInferid = false;
             $muniInferido = false;
 
-            // Campos opcionales de dirección especial (texto libre)
-            $locationField   = trim($p['Location']          ?? '');
-            $betweenStrField = trim($p['betweenStreets']     ?? '');
-            $deptNameField   = trim($p['departmentName']     ?? '');
-            $muniNameField   = trim($p['municipalitiesName'] ?? '');
-            $postalCodeField = trim($p['postalCode']         ?? '');
-
-            // Fallback con campos libres: si los campos estructurados están vacíos,
-            // usar los campos de texto libre enviados por el cliente (sin marcar con *).
-            if (!$nomDepto && $deptNameField !== '') {
-                $nomDepto = $deptNameField;
-            }
-            if (!$nomMuni && $muniNameField !== '') {
-                $nomMuni = $muniNameField;
-            }
-            if (!$cpDisplay && $postalCodeField !== '') {
-                $cpDisplay = $postalCodeField;
-            }
+            // Campos opcionales de dirección especial (para columnas T y U)
+            $locationField   = trim($p['Location']      ?? '');
+            $betweenStrField = trim($p['betweenStreets'] ?? '');
 
             // Fallback PHP (CP homologación): solo se ejecuta si el SQL no resolvió depto/muni.
             // Nivel 0: búsqueda exacta con el CP tal como viene → dato confirmado, sin (*)
