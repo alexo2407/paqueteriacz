@@ -196,18 +196,18 @@ class LogisticaController {
             'J1' => 'Departamento',
             'K1' => 'Municipio',
             'L1' => 'Barrio',
-            'M1' => 'Estado',
-            'N1' => 'Fecha Entrega / Reprogramación',
-            'O1' => 'Fecha Liquidación',
-            'P1' => 'Total',
-            'Q1' => 'Moneda',
-            'R1' => 'Cliente',
-            'S1' => 'Proveedor',
-            'T1' => 'Ref. Ubicación',
-            'U1' => 'Entre Calles',
-            'V1' => 'Depto. (texto libre)',
-            'W1' => 'Municipio (texto libre)',
-            'X1' => 'CP (texto libre)',
+            'M1' => 'Ref. Ubicación',
+            'N1' => 'Entre Calles',
+            'O1' => 'Depto. (texto libre)',
+            'P1' => 'Municipio (texto libre)',
+            'Q1' => 'CP (texto libre)',
+            'R1' => 'Estado',
+            'S1' => 'Fecha Entrega / Reprogramación',
+            'T1' => 'Fecha Liquidación',
+            'U1' => 'Total',
+            'V1' => 'Moneda',
+            'W1' => 'Cliente',
+            'X1' => 'Proveedor',
         ];
 
         $boldStyle = [
@@ -226,7 +226,7 @@ class LogisticaController {
         }
 
         // Encabezados dinámicos de productos a partir de columna Y (índice 25)
-        // T–X reservadas para campos opcionales de dirección especial
+        // M–Q reservadas para campos opcionales de dirección especial
         $colInicioProd = 25; // Y = 25 en PhpSpreadsheet (A=1)
         for ($i = 0; $i < $maxProductos; $i++) {
             $num         = $i + 1;
@@ -352,20 +352,20 @@ class LogisticaController {
             $sheet->setCellValue("J{$fila}", $nomDepto);
             $sheet->setCellValue("K{$fila}", $nomMuni);
             $sheet->setCellValue("L{$fila}", $nomBarrio);
-            $sheet->setCellValue("M{$fila}", $p['estado']              ?? '');
-            $sheet->setCellValue("N{$fila}", $fechaEntrega);
-            $sheet->setCellValue("O{$fila}", $fechaLiq);
-            $sheet->setCellValue("P{$fila}", $p['precio_total_local']  ?? 0);
-            $sheet->setCellValue("Q{$fila}", $p['moneda']              ?? '');
-            $sheet->setCellValue("R{$fila}", $p['nombre_cliente']      ?? '');
-            $sheet->setCellValue("S{$fila}", $p['nombre_proveedor']    ?? '');
-
-            // Columnas opcionales de dirección especial
-            $sheet->setCellValue("T{$fila}", $locationField);
-            $sheet->setCellValue("U{$fila}", $betweenStrField);
-            $sheet->setCellValue("V{$fila}", $deptNameField);
-            $sheet->setCellValue("W{$fila}", $muniNameField);
-            $sheet->setCellValue("X{$fila}", $postalCodeField);
+            // Campos opcionales de dirección especial (M–Q)
+            $sheet->setCellValue("M{$fila}", $locationField);
+            $sheet->setCellValue("N{$fila}", $betweenStrField);
+            $sheet->setCellValue("O{$fila}", $deptNameField);
+            $sheet->setCellValue("P{$fila}", $muniNameField);
+            $sheet->setCellValue("Q{$fila}", $postalCodeField);
+            // Resto de datos del pedido (R–X)
+            $sheet->setCellValue("R{$fila}", $p['estado']              ?? '');
+            $sheet->setCellValue("S{$fila}", $fechaEntrega);
+            $sheet->setCellValue("T{$fila}", $fechaLiq);
+            $sheet->setCellValue("U{$fila}", $p['precio_total_local']  ?? 0);
+            $sheet->setCellValue("V{$fila}", $p['moneda']              ?? '');
+            $sheet->setCellValue("W{$fila}", $p['nombre_cliente']      ?? '');
+            $sheet->setCellValue("X{$fila}", $p['nombre_proveedor']    ?? '');
 
             // Pintar de amarillo las celdas con valores inferidos por fallback
             if ($deptoInferid) $sheet->getStyle("J{$fila}")->applyFromArray($styleInferido);
@@ -393,11 +393,11 @@ class LogisticaController {
         // Limitar ancho de columnas de texto largo
         $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(45); // Dirección
         $sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(45); // Comentario
-        $sheet->getColumnDimension('T')->setAutoSize(false)->setWidth(40); // Ref. Ubicación
-        $sheet->getColumnDimension('U')->setAutoSize(false)->setWidth(40); // Entre Calles
-        $sheet->getColumnDimension('V')->setAutoSize(false)->setWidth(30); // Depto. libre
-        $sheet->getColumnDimension('W')->setAutoSize(false)->setWidth(30); // Municipio libre
-        $sheet->getColumnDimension('X')->setAutoSize(false)->setWidth(20); // CP libre
+        $sheet->getColumnDimension('M')->setAutoSize(false)->setWidth(40); // Ref. Ubicación
+        $sheet->getColumnDimension('N')->setAutoSize(false)->setWidth(40); // Entre Calles
+        $sheet->getColumnDimension('O')->setAutoSize(false)->setWidth(30); // Depto. libre
+        $sheet->getColumnDimension('P')->setAutoSize(false)->setWidth(30); // Municipio libre
+        $sheet->getColumnDimension('Q')->setAutoSize(false)->setWidth(20); // CP libre
 
         // Nombre del archivo
         $timestamp = date('Ymd_Hi');
