@@ -17,6 +17,9 @@ class PedidoApiController
 {
     public function crear(array $jsonData, bool $autoEnqueue = false, int $authUserId = 0, $authUserRole = ''): array
     {
+        // Guardar copia del request original del cliente (antes de auto-asignaciones)
+        $requestOriginal = $jsonData;
+
         $data = $jsonData;
 
         // Autocompletar ubicación desde código postal antes de validar
@@ -39,11 +42,14 @@ class PedidoApiController
         // Validar la estructura del pedido
         $validacion = $this->validar($data);
         if (!$validacion["success"]) {
-            return [
+            $response = [
                 "success" => false,
                 "message" => "VALIDATION_ERROR",
                 "fields" => $validacion["fields"] ?? []
             ];
+            // Auditoría: request rechazado por validación
+            $this->registrarAuditoriaAPI($requestOriginal, $response);
+            return $response;
         }
 
         // Normalización de Código Postal (sin auto-asignar id_codigo_postal)
@@ -56,11 +62,13 @@ class PedidoApiController
         // El chequeo de existeNumeroOrden ahora está dentro de validar(), 
         // pero por seguridad si por alguna razón fallara allí:
         if (PedidosModel::existeNumeroOrden($data["numero_orden"], $data['id_cliente'])) {
-            return [
+            $response = [
                 "success" => false,
                 "message" => "VALIDATION_ERROR",
                 "fields" => ["numero_orden" => "El número de orden ya existe para este cliente."]
             ];
+            $this->registrarAuditoriaAPI($requestOriginal, $response);
+            return $response;
         }
 
         // Procesar productos
@@ -99,12 +107,17 @@ class PedidoApiController
                 error_log("Error auto_enqueue: " . $e->getMessage());
             }
         }
-        
-        return [
+
+        $response = [
             "success" => true,
             "message" => "Pedido creado correctamente.",
             "data" => $pedidoPayload['numero_orden']
         ];
+
+        // Auditoría: registrar request original del cliente con el status del response
+        $this->registrarAuditoriaAPI($requestOriginal, $response, $nuevoId);
+
+        return $response;
     }
 
     public function crearMultiple(array $payload, bool $autoEnqueue = false, int $authUserId = 0, $authUserRole = ''): array
@@ -123,6 +136,9 @@ class PedidoApiController
         $isProvider = is_string($authUserRole) && strcasecmp(trim($authUserRole), 'Proveedor') === 0;
 
         foreach ($payload['pedidos'] as $pedido) {
+            // Guardar copia del request original de este pedido
+            $requestOriginal = $pedido;
+
             $itemResult = ['numero_orden' => $pedido['numero_orden'] ?? null, 'success' => false];
 
             // Autocompletar ubicación desde código postal antes de validar
@@ -152,6 +168,7 @@ class PedidoApiController
             if (!$valid['success']) {
                 $itemResult['error'] = "VALIDATION_ERROR";
                 $itemResult['fields'] = $valid['fields'] ?? [];
+                $this->registrarAuditoriaAPI($requestOriginal, $itemResult);
                 $results[] = $itemResult;
                 continue;
             }
@@ -167,6 +184,7 @@ class PedidoApiController
             if (PedidosModel::existeNumeroOrden($pedido["numero_orden"], $pedido['id_cliente'])) {
                 $itemResult['error'] = "VALIDATION_ERROR";
                 $itemResult['fields'] = ["numero_orden" => "El número de orden ya existe para este cliente."];
+                $this->registrarAuditoriaAPI($requestOriginal, $itemResult);
                 $results[] = $itemResult;
                 continue;
             }
@@ -179,6 +197,7 @@ class PedidoApiController
 
             if (count($items) === 0) {
                 $itemResult['error'] = 'El pedido debe incluir al menos un producto válido.';
+                $this->registrarAuditoriaAPI($requestOriginal, $itemResult);
                 $results[] = $itemResult;
                 continue;
             }
@@ -187,6 +206,9 @@ class PedidoApiController
                 $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items);
                 $itemResult['success'] = true;
                 $itemResult['id_pedido'] = $nuevoId;
+
+                // Auditoría: request original + response exitoso
+                $this->registrarAuditoriaAPI($requestOriginal, $itemResult, $nuevoId);
 
                 // Acumular para notificación de lote (una sola al final)
                 if ($nuevoId) {
@@ -212,6 +234,7 @@ class PedidoApiController
                 $results[] = $itemResult;
             } catch (Exception $e) {
                 $itemResult['error'] = 'Error al insertar pedido: ' . $e->getMessage();
+                $this->registrarAuditoriaAPI($requestOriginal, $itemResult);
                 $results[] = $itemResult;
             }
         }
@@ -925,6 +948,43 @@ class PedidoApiController
         } catch (Exception $e) {
             error_log("Error obteniendo moneda del proveedor: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Registrar auditoría del request API: guarda el request original del cliente
+     * y el status del response para trazabilidad fiel.
+     *
+     * - datos_anteriores = request original del cliente (antes de auto-asignaciones)
+     * - datos_nuevos = response status (success, message, error, fields)
+     *
+     * @param array $requestOriginal Request JSON tal como lo envió el cliente
+     * @param array $response Respuesta generada por la API (success, message, etc.)
+     * @param int|null $pedidoId ID del pedido creado (null si falló)
+     */
+    private function registrarAuditoriaAPI(array $requestOriginal, array $response, ?int $pedidoId = null): void
+    {
+        try {
+            require_once __DIR__ . '/../../modelo/auditoria.php';
+
+            $datosResponse = [
+                'api_status'  => !empty($response['success']) ? 'OK' : 'ERROR',
+                'message'     => $response['message'] ?? $response['error'] ?? null,
+            ];
+            if (!empty($response['fields'])) {
+                $datosResponse['validation_errors'] = $response['fields'];
+            }
+
+            AuditoriaModel::registrar(
+                'api_requests',
+                $pedidoId ?? 0,
+                !empty($response['success']) ? 'crear' : 'rechazar',
+                AuditoriaModel::getIdUsuarioActual(),
+                $requestOriginal,   // datos_anteriores = lo que envió el cliente
+                $datosResponse      // datos_nuevos = status del response
+            );
+        } catch (Exception $e) {
+            error_log("Error auditoria API request: " . $e->getMessage());
         }
     }
 
