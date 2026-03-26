@@ -46,26 +46,11 @@ class PedidoApiController
             ];
         }
 
-        // Normalización de Código Postal y Homologación
+        // Normalización de Código Postal (sin auto-asignar id_codigo_postal)
         if (!empty($data['codigo_postal'])) {
              require_once __DIR__ . '/../../services/AddressService.php';
              $cp_norm = AddressService::normalizarCP($data['codigo_postal'], isset($data['id_pais']) ? (int)$data['id_pais'] : null);
              $data['codigo_postal'] = $cp_norm;
-             
-             // Intentar resolver id_codigo_postal
-             $homologacion = AddressService::resolverHomologacion(
-                 isset($data['id_pais']) ? (int)$data['id_pais'] : 0,
-                 $cp_norm,
-                 [
-                     'id_departamento' => $data['id_departamento'] ?? null,
-                     'id_municipio' => $data['id_municipio'] ?? null,
-                     'zona' => $data['zona'] ?? null
-                 ]
-             );
-             
-             if ($homologacion && isset($homologacion['id'])) {
-                 $data['id_codigo_postal'] = $homologacion['id'];
-             }
         }
 
         // El chequeo de existeNumeroOrden ahora está dentro de validar(), 
@@ -171,25 +156,11 @@ class PedidoApiController
                 continue;
             }
 
-            // Normalización de Código Postal y Homologación
+            // Normalización de Código Postal (sin auto-asignar id_codigo_postal)
             if (!empty($pedido['codigo_postal'])) {
                  require_once __DIR__ . '/../../services/AddressService.php';
                  $cp_norm = AddressService::normalizarCP($pedido['codigo_postal'], isset($pedido['id_pais']) ? (int)$pedido['id_pais'] : null);
                  $pedido['codigo_postal'] = $cp_norm;
-                 
-                 $homologacion = AddressService::resolverHomologacion(
-                     isset($pedido['id_pais']) ? (int)$pedido['id_pais'] : 0,
-                     $cp_norm,
-                     [
-                         'id_departamento' => $pedido['id_departamento'] ?? null,
-                         'id_municipio' => $pedido['id_municipio'] ?? null,
-                         'zona' => $pedido['zona'] ?? null
-                     ]
-                 );
-                 
-                 if ($homologacion && isset($homologacion['id'])) {
-                     $pedido['id_codigo_postal'] = $homologacion['id'];
-                 }
             }
 
             // Unicidad
