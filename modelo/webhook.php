@@ -131,6 +131,41 @@ class WebhookModel
     }
 
     /**
+     * Disparar webhook buscando los datos del pedido por ID.
+     * Útil para integrar desde controladores que solo manejan ID de pedido.
+     * 
+     * @param int $idPedido
+     * @param int $idEstadoNuevo
+     */
+    public static function dispararPorPedidoId(int $idPedido, int $idEstadoNuevo): void
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            
+            // 1. Obtener nombre del nuevo estado
+            $st = $db->prepare('SELECT nombre_estado FROM estados_pedidos WHERE id = :id LIMIT 1');
+            $st->execute([':id' => $idEstadoNuevo]);
+            $nombreEstado = $st->fetchColumn() ?: "Estado $idEstadoNuevo";
+
+            // 2. Obtener datos del pedido (numero_orden e id_cliente)
+            $st = $db->prepare('SELECT numero_orden, id_cliente FROM pedidos WHERE id = :id LIMIT 1');
+            $st->execute([':id' => $idPedido]);
+            $pedido = $st->fetch(PDO::FETCH_ASSOC);
+
+            if ($pedido && $pedido['id_cliente']) {
+                self::dispararSiAplica(
+                    $idPedido,
+                    (string)$pedido['numero_orden'],
+                    $nombreEstado,
+                    (int)$pedido['id_cliente']
+                );
+            }
+        } catch (Exception $e) {
+            error_log("[Webhook] Error en dispararPorPedidoId ($idPedido): " . $e->getMessage());
+        }
+    }
+
+    /**
      * Disparar webhook si el cliente tiene uno configurado.
      * 
      * Este es el método principal que se llama desde actualizarPedido().

@@ -478,6 +478,14 @@ class LogisticaModel {
 
             $db->commit();
 
+            // [Webhook] Notificar cambio de estado a API externo
+            try {
+                require_once __DIR__ . '/webhook.php';
+                WebhookModel::dispararPorPedidoId((int)$pedidoId, (int)$idEstadoNuevo);
+            } catch (Exception $webEx) {
+                error_log("[Webhook] Error en actualizarEstado pedido $pedidoId: " . $webEx->getMessage());
+            }
+
             // ── Crear notificación logística ──────────────────────────────────
             try {
                 require_once __DIR__ . '/logistica_notification.php';
@@ -829,6 +837,17 @@ class LogisticaModel {
 
                 if ($ok && $stmt->rowCount() > 0) {
                     $actualizados++;
+                    
+                    // [Webhook] Notificar cambio de estado a API externo
+                    if ($nuevoIdEstado !== null) {
+                        try {
+                            require_once __DIR__ . '/webhook.php';
+                            WebhookModel::dispararPorPedidoId((int)$idPedido, (int)$nuevoIdEstado);
+                        } catch (Exception $webEx) {
+                            error_log("[Webhook] Error en bulkCommit pedido $idPedido: " . $webEx->getMessage());
+                        }
+                    }
+
                     // Auditoría
                     $antes  = [];
                     $nuevos = [];

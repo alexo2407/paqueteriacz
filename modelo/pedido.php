@@ -1227,27 +1227,9 @@ class PedidosModel
                 if ($huboCambioEstado) {
                     try {
                         require_once __DIR__ . '/webhook.php';
-                        // Obtener nombre del nuevo estado
-                        $stmtEstNombre = $db->prepare('SELECT nombre_estado FROM estados_pedidos WHERE id = :id LIMIT 1');
-                        $stmtEstNombre->execute([':id' => $nuevoEstado]);
-                        $nombreEstadoNuevo = $stmtEstNombre->fetchColumn() ?: "Estado $nuevoEstado";
-                        
-                        // Obtener numero_orden y id_cliente del pedido
-                        $stmtWebhookData = $db->prepare('SELECT numero_orden, id_cliente FROM pedidos WHERE id = :id LIMIT 1');
-                        $stmtWebhookData->execute([':id' => (int)$data['id_pedido']]);
-                        $webhookData = $stmtWebhookData->fetch(PDO::FETCH_ASSOC);
-                        
-                        if ($webhookData && $webhookData['id_cliente']) {
-                            WebhookModel::dispararSiAplica(
-                                (int)$data['id_pedido'],
-                                (string)$webhookData['numero_orden'],
-                                $nombreEstadoNuevo,
-                                (int)$webhookData['id_cliente']
-                            );
-                        }
+                        WebhookModel::dispararPorPedidoId((int)$data['id_pedido'], (int)$nuevoEstado);
                     } catch (Exception $e) {
                         error_log("[Webhook] Error disparando webhook pedido {$data['id_pedido']}: " . $e->getMessage());
-                        // Nunca interrumpir el flujo principal
                     }
                 }
 
