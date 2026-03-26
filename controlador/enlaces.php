@@ -109,6 +109,7 @@ class EnlacesController
                 // Dashboard principal: solo Admin y Proveedor
                 // Clientes tienen su propio dashboard en logistica/dashboard
                 'dashboard'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'webhooks'        => [ROL_NOMBRE_ADMIN],
             ];
 
             $userRoleNames = $_SESSION['roles_nombres'] ?? [];

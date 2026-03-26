@@ -55,6 +55,7 @@ class EnlacesModel
             "crm",
             "logistica",
             "codigos_postales",
+            "webhooks",
             "salir"
         ];
 
@@ -70,9 +71,13 @@ class EnlacesModel
                 $archivo .= "/" . $accion . ".php";
             } else {
                 // Casos especiales: módulos sin acción que necesitan redirección
-                if ($modulo === 'seguimiento' || $modulo === 'codigos_postales') {
+                if ($modulo === 'seguimiento' || $modulo === 'codigos_postales' || $modulo === 'webhooks') {
                     // Redirigir módulos sin acción a su archivo index/listar
-                    $archivo .= ($modulo === 'seguimiento' ? "/listar.php" : "/index.php");
+                    if ($modulo === 'seguimiento') {
+                        $archivo .= "/listar.php";
+                    } else {
+                        $archivo .= "/index.php";
+                    }
                 } else {
                     $archivo .= ".php";
                 }
