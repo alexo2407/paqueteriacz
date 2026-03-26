@@ -300,7 +300,7 @@ class LogisticaController {
             // Fallback PHP (CP homologación): solo se ejecuta si el SQL no resolvió depto/muni.
             // Nivel 0: búsqueda exacta con el CP tal como viene → dato confirmado, sin (*)
             // Nivel 1: agrega prefijo del país (CP transformado) → dato inferido, con (*)
-            if ((!$nomDepto || !$nomMuni) && !empty($p['codigo_postal'])) {
+            if ((!$nomDepto || !$nomMuni || !$nomBarrio) && !empty($p['codigo_postal'])) {
                 try {
                     $cpBruto = strtoupper(trim($p['codigo_postal']));
 
@@ -316,7 +316,7 @@ class LogisticaController {
 
                     // Nivel 1: agrega prefijo del país (ej. "10110" → "CR10110")
                     // Solo si aún faltan datos y el CP no tenía ya el prefijo
-                    if ((!$nomDepto || !$nomMuni)) {
+                    if ((!$nomDepto || !$nomMuni || !$nomBarrio)) {
                         $idPaisEfectivo = null;
                         if (!empty($p['id_moneda'])) {
                             $stP = $dbExcel->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");

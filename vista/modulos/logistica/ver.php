@@ -330,7 +330,7 @@ include("vista/includes/header.php");
 
                                         // ── FALLBACK: rellenar depto/muni si faltan usando la misma búsqueda ──
                                         // Solo para display, no modifica la BD.
-                                        if ((!$nomDepto || !$nomMuni) && !empty($pedido['codigo_postal'])) {
+                                        if ((!$nomDepto || !$nomMuni || !$nomBarrio) && !empty($pedido['codigo_postal'])) {
                                             $cpSql = "
                                                 SELECT d.nombre AS nom_depto,
                                                        mu.nombre AS nom_muni,
@@ -355,7 +355,7 @@ include("vista/includes/header.php");
                                             }
 
                                             // Nivel 1: con prefijo
-                                            if ((!$nomDepto || !$nomMuni) && $idPaisEfectivo) {
+                                            if ((!$nomDepto || !$nomMuni || !$nomBarrio) && $idPaisEfectivo) {
                                                 $cpConPrefijo = $cpConPrefijo ?? AddressService::normalizarCP($pedido['codigo_postal'], $idPaisEfectivo);
                                                 if ($cpConPrefijo !== ($cpBruto ?? '')) {
                                                     $st = $dbTmp->prepare($cpSql);
