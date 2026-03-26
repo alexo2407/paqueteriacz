@@ -316,8 +316,8 @@ class LogisticaController {
 
                     // Nivel 1: agrega prefijo del país (ej. "10110" → "CR10110")
                     // Solo si aún faltan datos y el CP no tenía ya el prefijo
+                    $idPaisEfectivo = null;
                     if ((!$nomDepto || !$nomMuni || !$nomBarrio)) {
-                        $idPaisEfectivo = null;
                         if (!empty($p['id_moneda'])) {
                             $stP = $dbExcel->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
                             $stP->execute([':m' => (int)$p['id_moneda']]);
@@ -347,6 +347,54 @@ class LogisticaController {
                                     }
                                     $cpDisplay = $cpConPrefijo;
                                 }
+                            }
+                        }
+                    }
+
+                    // Nivel 2: ceros a la izquierda (ej. "574" → "0574")
+                    if ((!$nomDepto || !$nomMuni || !$nomBarrio) && ctype_digit($cpBruto)) {
+                        $cpPadded = str_pad($cpBruto, 4, '0', STR_PAD_LEFT);
+                        if ($cpPadded !== $cpBruto) {
+                            $st = $dbExcel->prepare($cpSql);
+                            $st->execute([':cp' => $cpPadded]);
+                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                            if ($cpRow) {
+                                if (!$nomDepto && !empty($cpRow['nom_depto'])) {
+                                    $nomDepto     = $cpRow['nom_depto'] . ' (*)';
+                                    $deptoInferid = true;
+                                }
+                                if (!$nomMuni && !empty($cpRow['nom_muni'])) {
+                                    $nomMuni      = $cpRow['nom_muni'] . ' (*)';
+                                    $muniInferido = true;
+                                }
+                                if (!$nomBarrio && !empty($cpRow['nom_barrio'])) {
+                                    $nomBarrio = $cpRow['nom_barrio'] . ' (*)';
+                                }
+                                $cpDisplay = $cpPadded;
+                            }
+                        }
+                    }
+
+                    // Nivel 3: prefijo + ceros a la izquierda (ej. "574" → "GT0574")
+                    if ((!$nomDepto || !$nomMuni || !$nomBarrio) && ctype_digit($cpBruto) && $idPaisEfectivo) {
+                        $cpPadPrefijo = AddressService::normalizarCP(str_pad($cpBruto, 4, '0', STR_PAD_LEFT), $idPaisEfectivo);
+                        if ($cpPadPrefijo !== $cpBruto) {
+                            $st = $dbExcel->prepare($cpSql);
+                            $st->execute([':cp' => $cpPadPrefijo]);
+                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
+                            if ($cpRow) {
+                                if (!$nomDepto && !empty($cpRow['nom_depto'])) {
+                                    $nomDepto     = $cpRow['nom_depto'] . ' (*)';
+                                    $deptoInferid = true;
+                                }
+                                if (!$nomMuni && !empty($cpRow['nom_muni'])) {
+                                    $nomMuni      = $cpRow['nom_muni'] . ' (*)';
+                                    $muniInferido = true;
+                                }
+                                if (!$nomBarrio && !empty($cpRow['nom_barrio'])) {
+                                    $nomBarrio = $cpRow['nom_barrio'] . ' (*)';
+                                }
+                                $cpDisplay = $cpPadPrefijo;
                             }
                         }
                     }
