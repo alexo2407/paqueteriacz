@@ -398,54 +398,6 @@ class LogisticaController {
                             }
                         }
                     }
-
-                    // Nivel 4: ceros a la izquierda a 5 dígitos (formato LogisPro: "6001" → "06001")
-                    if ((!$nomDepto || !$nomMuni || !$nomBarrio) && ctype_digit($cpBruto)) {
-                        $cpPad5 = str_pad($cpBruto, 5, '0', STR_PAD_LEFT);
-                        if ($cpPad5 !== $cpBruto) {
-                            $st = $dbExcel->prepare($cpSql);
-                            $st->execute([':cp' => $cpPad5]);
-                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                            if ($cpRow) {
-                                if (!$nomDepto && !empty($cpRow['nom_depto'])) {
-                                    $nomDepto     = $cpRow['nom_depto'] . ' (*)';
-                                    $deptoInferid = true;
-                                }
-                                if (!$nomMuni && !empty($cpRow['nom_muni'])) {
-                                    $nomMuni      = $cpRow['nom_muni'] . ' (*)';
-                                    $muniInferido = true;
-                                }
-                                if (!$nomBarrio && !empty($cpRow['nom_barrio'])) {
-                                    $nomBarrio = $cpRow['nom_barrio'] . ' (*)';
-                                }
-                                $cpDisplay = $cpPad5;
-                            }
-                        }
-                    }
-
-                    // Nivel 5: prefijo + ceros a 5 dígitos (ej. "6001" → "GT06001")
-                    if ((!$nomDepto || !$nomMuni || !$nomBarrio) && ctype_digit($cpBruto) && $idPaisEfectivo) {
-                        $cpPad5Prefijo = AddressService::normalizarCP(str_pad($cpBruto, 5, '0', STR_PAD_LEFT), $idPaisEfectivo);
-                        if ($cpPad5Prefijo !== $cpBruto) {
-                            $st = $dbExcel->prepare($cpSql);
-                            $st->execute([':cp' => $cpPad5Prefijo]);
-                            $cpRow = $st->fetch(PDO::FETCH_ASSOC);
-                            if ($cpRow) {
-                                if (!$nomDepto && !empty($cpRow['nom_depto'])) {
-                                    $nomDepto     = $cpRow['nom_depto'] . ' (*)';
-                                    $deptoInferid = true;
-                                }
-                                if (!$nomMuni && !empty($cpRow['nom_muni'])) {
-                                    $nomMuni      = $cpRow['nom_muni'] . ' (*)';
-                                    $muniInferido = true;
-                                }
-                                if (!$nomBarrio && !empty($cpRow['nom_barrio'])) {
-                                    $nomBarrio = $cpRow['nom_barrio'] . ' (*)';
-                                }
-                                $cpDisplay = $cpPad5Prefijo;
-                            }
-                        }
-                    }
                 } catch (Exception $e) {
                     // silently continue
                 }

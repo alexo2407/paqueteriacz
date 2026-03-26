@@ -323,26 +323,6 @@ include("vista/includes/header.php");
                                                     if ((int)$stChk4->fetchColumn() > 0) { $cpFound = true; }
                                                 }
                                             }
-
-                                            // Nivel 4: ceros a la izquierda a 5 dígitos (formato LogisPro)
-                                            if (!$cpFound && ctype_digit($cpBruto)) {
-                                                $cpPad5 = str_pad($cpBruto, 5, '0', STR_PAD_LEFT);
-                                                if ($cpPad5 !== $cpBruto) {
-                                                    $stChk5 = $dbTmp->prepare($cpCheckSql);
-                                                    $stChk5->execute([':cp' => $cpPad5]);
-                                                    if ((int)$stChk5->fetchColumn() > 0) { $cpFound = true; }
-                                                }
-                                            }
-
-                                            // Nivel 5: prefijo + ceros a 5 dígitos
-                                            if (!$cpFound && ctype_digit($cpBruto) && $idPaisEfectivo) {
-                                                $cpPad5Pref = AddressService::normalizarCP(str_pad($cpBruto, 5, '0', STR_PAD_LEFT), $idPaisEfectivo);
-                                                if ($cpPad5Pref !== $cpBruto) {
-                                                    $stChk6 = $dbTmp->prepare($cpCheckSql);
-                                                    $stChk6->execute([':cp' => $cpPad5Pref]);
-                                                    if ((int)$stChk6->fetchColumn() > 0) { $cpFound = true; }
-                                                }
-                                            }
                                         }
 
                                         // Marcar CP como "no en catálogo" solo si realmente no existe en ningún nivel

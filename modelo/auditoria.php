@@ -432,6 +432,16 @@ class AuditoriaModel
                 $where[] = 'DATE(a.created_at) <= :fecha_fin';
                 $params[':fecha_fin'] = $filtros['fecha_fin'];
             }
+
+            // Filtro de seguridad: solo registros de pedidos del propietario (subquery eficiente)
+            if (isset($filtros['propietario']) && is_array($filtros['propietario'])) {
+                $campo = $filtros['propietario']['campo']; // 'id_cliente' o 'id_proveedor'
+                // Sanitizar campo para evitar inyección (solo permitir campos válidos)
+                if (in_array($campo, ['id_cliente', 'id_proveedor'], true)) {
+                    $where[] = "a.id_registro IN (SELECT id FROM pedidos WHERE $campo = :propietario_uid)";
+                    $params[':propietario_uid'] = (int)$filtros['propietario']['uid'];
+                }
+            }
             
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
             

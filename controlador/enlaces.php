@@ -102,7 +102,7 @@ class EnlacesController
                 'municipios'      => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'barrios'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'seguimiento'     => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN],
-                'auditoria'       => [ROL_NOMBRE_ADMIN],
+                'auditoria'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'crm'             => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'],
                 'logistica'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE],
                 'codigos_postales' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_VENDEDOR, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],

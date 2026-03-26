@@ -8,10 +8,29 @@ require_once __DIR__ . '/../../../modelo/auditoria.php';
 start_secure_session();
 require_login();
 
-// Solo administradores pueden ver la auditoría
-if (!isSuperAdmin()) {
+// Determinar rol del usuario
+// NOTA LEGACY: ROL_NOMBRE_PROVEEDOR='Cliente', ROL_NOMBRE_CLIENTE='Proveedor' (invertidos en BD)
+// isCliente() = TRUE para quien CREA pedidos (id_cliente en pedidos) = "Proveedor logístico"
+// ROL_NOMBRE_PROVEEDOR en sesión = distribuidor (id_proveedor en pedidos)
+$esAdmin     = isSuperAdmin();
+$esProveedorLogistico = !$esAdmin && isCliente(); // Quien crea pedidos (id_cliente)
+$esDistribuidor       = !$esAdmin && !$esProveedorLogistico && in_array(ROL_NOMBRE_PROVEEDOR, $_SESSION['roles_nombres'] ?? [], true);
+
+// Si no es admin, ni proveedor logístico, ni distribuidor → denegar
+if (!$esAdmin && !$esProveedorLogistico && !$esDistribuidor) {
     header('Location: ' . RUTA_URL . 'dashboard');
     exit;
+}
+
+// Para no-admins: configurar filtro por propietario
+$userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+$filtroPropietario = null; // null = sin restricción (admin)
+
+if ($esProveedorLogistico) {
+    // isCliente()=TRUE = rol "Proveedor" en BD = distribuidor = id_proveedor en pedidos
+    $filtroPropietario = ['campo' => 'id_proveedor', 'uid' => (int)$userId];
+} elseif ($esDistribuidor) {
+    $filtroPropietario = ['campo' => 'id_cliente', 'uid' => (int)$userId];
 }
 
 // Obtener filtros
@@ -27,8 +46,17 @@ if ($pedidoFiltro !== '') {
     try {
         require_once __DIR__ . '/../../../modelo/conexion.php';
         $dbRes = (new Conexion())->conectar();
-        $stmtPed = $dbRes->prepare('SELECT id FROM pedidos WHERE numero_orden = :n LIMIT 1');
-        $stmtPed->execute([':n' => (int)$pedidoFiltro]);
+        
+        // Buscar pedido verificando que pertenece al usuario
+        if ($filtroPropietario) {
+            $campo = $filtroPropietario['campo'];
+            $stmtPed = $dbRes->prepare("SELECT id FROM pedidos WHERE numero_orden = :n AND $campo = :uid LIMIT 1");
+            $stmtPed->execute([':n' => (int)$pedidoFiltro, ':uid' => $filtroPropietario['uid']]);
+        } else {
+            $stmtPed = $dbRes->prepare('SELECT id FROM pedidos WHERE numero_orden = :n LIMIT 1');
+            $stmtPed->execute([':n' => (int)$pedidoFiltro]);
+        }
+        
         $rowPed = $stmtPed->fetch(PDO::FETCH_ASSOC);
         if ($rowPed) {
             $pedidoIdInterno = (int)$rowPed['id'];
@@ -63,6 +91,12 @@ if ($pedidoFiltro !== '' && $pedidoIdInterno !== null) {
 if ($tablaFiltro && $pedidoFiltro === '') $filtros['tabla'] = $tablaFiltro;
 if ($accionFiltro) $filtros['accion'] = $accionFiltro;
 if ($usuarioFiltro) $filtros['id_usuario'] = (int)$usuarioFiltro;
+
+// Para no-admins: forzar tabla=pedidos y filtrar solo sus pedidos via subquery
+if ($filtroPropietario !== null) {
+    $filtros['tabla'] = 'pedidos';
+    $filtros['propietario'] = $filtroPropietario;
+}
 
 // Obtener registros de auditoría
 $registros = AuditoriaModel::listar($filtros, 500);
@@ -104,9 +138,15 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2><i class="bi bi-clock-history"></i> Historial de Auditoría</h2>
-            <p class="text-muted mb-0">Registro de cambios realizados en el sistema</p>
+            <p class="text-muted mb-0">
+                <?php if ($esAdmin): ?>
+                    Registro de cambios realizados en el sistema
+                <?php else: ?>
+                    Registro de cambios en tus pedidos
+                <?php endif; ?>
+            </p>
         </div>
-        <a href="<?php echo RUTA_URL; ?>dashboard" class="btn btn-outline-secondary">
+        <a href="<?php echo RUTA_URL; ?><?= $esAdmin ? 'dashboard' : 'logistica/dashboard' ?>" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Volver
         </a>
     </div>
@@ -145,6 +185,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                         <div class="form-text">Filtra por número de pedido</div>
                     </div>
 
+                    <?php if ($esAdmin): ?>
                     <div class="col-md-2">
                         <label class="form-label small">Tabla</label>
                         <select name="tabla" class="form-select select2-searchable" data-placeholder="Seleccionar tabla...">
@@ -156,6 +197,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php endif; ?>
                     
                     <div class="col-md-2">
                         <label class="form-label small">Acción</label>
@@ -167,6 +209,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                         </select>
                     </div>
 
+                    <?php if ($esAdmin): ?>
                     <div class="col-md-2">
                         <label class="form-label small">Usuario</label>
                         <select name="usuario" class="form-select select2-searchable" data-placeholder="Buscar usuario...">
@@ -178,6 +221,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <?php endif; ?>
 
                     <div class="col-md-2">
                         <label class="form-label small">Fecha Inicio</label>
@@ -239,11 +283,11 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                         <tr>
                             <th>Fecha/Hora</th>
                             <th>Usuario</th>
-                            <th>Tabla</th>
+                            <?php if ($esAdmin): ?><th>Tabla</th><?php endif; ?>
                             <th>ID Registro</th>
                             <th>Acción</th>
                             <th>Detalles</th>
-                            <th>IP</th>
+                            <?php if ($esAdmin): ?><th>IP</th><?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -268,9 +312,11 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                 <td>
                                     <strong><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></strong>
                                 </td>
+                                <?php if ($esAdmin): ?>
                                 <td>
                                     <span class="badge bg-secondary"><?php echo htmlspecialchars($reg['tabla']); ?></span>
                                 </td>
+                                <?php endif; ?>
                                 <td>
                                     <code>#<?php echo $reg['id_registro']; ?></code>
                                 </td>
@@ -287,9 +333,11 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                         <i class="bi bi-eye"></i> Ver
                                     </button>
                                 </td>
+                                <?php if ($esAdmin): ?>
                                 <td>
                                     <small class="text-muted"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></small>
                                 </td>
+                                <?php endif; ?>
                             </tr>
 
                             <!-- Modal de detalles -->

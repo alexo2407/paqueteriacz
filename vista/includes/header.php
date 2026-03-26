@@ -433,7 +433,12 @@
             </a>
             <a href="<?= RUTA_URL ?>productos/listar" class="nav-link">
                 <i class="bi bi-box-seam"></i> Mis Productos
-
+            </a>
+            <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link">
+                <i class="bi bi-geo-fill"></i> Códigos Postales
+            </a>
+            <a href="<?= RUTA_URL ?>auditoria/historial" class="nav-link">
+                <i class="bi bi-clock-history"></i> Auditoría
             </a>
             <?php endif; ?>
 
@@ -513,6 +518,11 @@
             <a href="<?= RUTA_URL ?>api/doc/crmdoc.php" class="nav-link"><i class="bi bi-file-earmark-code"></i> Doc. CRM</a>
             <a href="<?= RUTA_URL ?>crm/database_doc" class="nav-link"><i class="bi bi-database"></i> Doc. Base de Datos</a>
             <a href="<?= RUTA_URL ?>crm/logistics_worker_doc" class="nav-link"><i class="bi bi-diagram-3"></i> Doc. Worker Logístico</a>
+            <?php endif; ?>
+            <?php if ($isProveedor && !$isAdmin): ?>
+            <hr class="sidebar-divider">
+            <div class="sidebar-label">Administración</div>
+            <a href="<?= RUTA_URL ?>auditoria/historial" class="nav-link"><i class="bi bi-clock-history"></i> Auditoría</a>
             <?php endif; ?>
 
             <!-- Logout -->
