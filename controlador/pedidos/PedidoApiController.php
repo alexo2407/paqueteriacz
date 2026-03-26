@@ -289,9 +289,7 @@ class PedidoApiController
 
         if ($cp_info) {
             if (empty($data['id_pais'])) $data['id_pais'] = $cp_info['id_pais'];
-            if (empty($data['id_departamento'])) $data['id_departamento'] = $cp_info['id_departamento'];
-            if (empty($data['id_municipio'])) $data['id_municipio'] = $cp_info['id_municipio'];
-            if (empty($data['id_barrio']) && !empty($cp_info['id_barrio'])) $data['id_barrio'] = $cp_info['id_barrio'];
+            // id_departamento, id_municipio, id_barrio: no auto-asignar, solo el cliente los define
         }
     }
 
