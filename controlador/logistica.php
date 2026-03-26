@@ -245,10 +245,12 @@ class LogisticaController {
         $dbExcel = (new Conexion())->conectar();
         $cpSql = "
             SELECT d.nombre AS nom_depto,
-                   mu.nombre AS nom_muni
+                   mu.nombre AS nom_muni,
+                   b.nombre AS nom_barrio
             FROM codigos_postales cp
             LEFT JOIN departamentos d  ON d.id  = cp.id_departamento
             LEFT JOIN municipios    mu ON mu.id = cp.id_municipio
+            LEFT JOIN barrios       b  ON b.id  = cp.id_barrio
             WHERE cp.codigo_postal = :cp
               AND cp.id_departamento IS NOT NULL
             LIMIT 1
@@ -307,8 +309,9 @@ class LogisticaController {
                     $st->execute([':cp' => $cpBruto]);
                     $cpRow = $st->fetch(PDO::FETCH_ASSOC);
                     if ($cpRow) {
-                        if (!$nomDepto && !empty($cpRow['nom_depto'])) $nomDepto = $cpRow['nom_depto'];
-                        if (!$nomMuni  && !empty($cpRow['nom_muni']))  $nomMuni  = $cpRow['nom_muni'];
+                        if (!$nomDepto  && !empty($cpRow['nom_depto']))  $nomDepto  = $cpRow['nom_depto'];
+                        if (!$nomMuni   && !empty($cpRow['nom_muni']))   $nomMuni   = $cpRow['nom_muni'];
+                        if (!$nomBarrio && !empty($cpRow['nom_barrio'])) $nomBarrio = $cpRow['nom_barrio'];
                     }
 
                     // Nivel 1: agrega prefijo del país (ej. "10110" → "CR10110")
@@ -338,6 +341,9 @@ class LogisticaController {
                                     if (!$nomMuni && !empty($cpRow['nom_muni'])) {
                                         $nomMuni      = $cpRow['nom_muni'] . ' (*)';
                                         $muniInferido = true;
+                                    }
+                                    if (!$nomBarrio && !empty($cpRow['nom_barrio'])) {
+                                        $nomBarrio = $cpRow['nom_barrio'] . ' (*)';
                                     }
                                     $cpDisplay = $cpConPrefijo;
                                 }
