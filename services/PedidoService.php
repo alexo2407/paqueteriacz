@@ -24,6 +24,7 @@ class PedidoService
     const ESTADO_EN_RUTA    = 2;
     const ESTADO_ENTREGADO  = 3;
     const ESTADO_DEVUELTO   = 7;
+    const ESTADO_RECHAZADO  = 9;  // Destinatario rechaza el paquete → igual que devolución
 
     /**
      * Aplica movimientos de stock según el nuevo estado del pedido.
@@ -52,6 +53,7 @@ class PedidoService
                 break;
 
             case self::ESTADO_DEVUELTO:
+            case self::ESTADO_RECHAZADO:  // Rechazado = destinatario no acepta → productos regresan
                 self::aplicarDevolucion($idPedido, $actorUserId, $db);
                 break;
 
