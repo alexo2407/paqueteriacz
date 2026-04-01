@@ -26,13 +26,14 @@ class LogisticaController {
         $offsetH    = ($pageH - 1) * $perPageH;
 
         // Filtros — todos los parámetros GET sanitizados
-        // Tab "En Proceso": defaults al 1° del mes actual hasta hoy
+        // Tab "En Proceso": SIN default de fecha → muestra TODOS los pedidos activos
+        // (sin importar mes de ingreso; el filtro de estados 1 y 2 ya los acota)
         $fechaDesde = isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== ''
             ? $_GET['fecha_desde']
-            : date('Y-m-01');
+            : '';
         $fechaHasta = isset($_GET['fecha_hasta']) && $_GET['fecha_hasta'] !== ''
             ? $_GET['fecha_hasta']
-            : date('Y-m-d');
+            : '';
         $search    = trim($_GET['search']    ?? '');
         $idCliente = isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0;
         $idEstado  = isset($_GET['id_estado'])  && is_numeric($_GET['id_estado'])  ? (int)$_GET['id_estado']  : 0;
