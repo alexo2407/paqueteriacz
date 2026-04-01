@@ -153,8 +153,8 @@ class LogisticaController {
             'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
             'search'      => $_GET['search'] ?? '',
             'id_cliente'  => isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0,
-            // Tab "En Proceso": ignorar id_estado del GET; el backend ya filtra a IDs 1 y 2 con $soloActivos
-            'id_estado'   => $soloActivos ? 0 : (isset($_GET['id_estado']) && is_numeric($_GET['id_estado']) ? (int)$_GET['id_estado'] : 0),
+            // Tab "En Proceso": respetar id_estado del GET (solo afecta a estados 1 y 2 por el IN(1,2) del modelo)
+            'id_estado'   => isset($_GET['id_estado']) && is_numeric($_GET['id_estado']) ? (int)$_GET['id_estado'] : 0,
         ];
 
         // Obtener TODOS los pedidos (sin paginación) - límite de seguridad 10 000
