@@ -667,13 +667,30 @@ if ($export && !empty($colsList)) {
             ?>
 
             <?php
+            // Obtener el nombre del estado seleccionado (si existe)
+            $nombreEstadoFiltro = 'Despacho / Salida'; // Por defecto universal
+            $iconoEstadoFiltro = 'bi-box-seam';
+            if ($idEstado > 0) {
+                foreach ($estados as $e) {
+                    if ($e['id'] == $idEstado) {
+                        $nombreEstadoFiltro = $e['nombre_estado'];
+                        if (stripos($nombreEstadoFiltro, 'entregado') !== false) {
+                            $iconoEstadoFiltro = 'bi-check-circle-fill';
+                        } elseif (stripos($nombreEstadoFiltro, 'ruta') !== false) {
+                            $iconoEstadoFiltro = 'bi-truck';
+                        }
+                        break;
+                    }
+                }
+            }
+
             // Lookup: tipo_movimiento -> label, color, icono
             $tipoMeta = [
-                'entrada'    => ['label' => 'Ingreso',          'bg' => '#2e7d32', 'fg' => '#fff', 'icon' => 'bi-plus-circle-fill'],
-                'salida'     => ['label' => 'En Ruta',          'bg' => '#bf360c', 'fg' => '#fff', 'icon' => 'bi-truck'],
-                'devolucion' => ['label' => 'Devuelto/Rechaz.', 'bg' => '#1565c0', 'fg' => '#fff', 'icon' => 'bi-reply-fill'],
-                'ajuste'     => ['label' => 'Ajuste manual',    'bg' => '#6a1b9a', 'fg' => '#fff', 'icon' => 'bi-wrench-adjustable'],
-                'otro'       => ['label' => 'Movimiento',       'bg' => '#546e7a', 'fg' => '#fff', 'icon' => 'bi-circle-fill'],
+                'entrada'    => ['label' => 'Ingreso',            'bg' => '#2e7d32', 'fg' => '#fff', 'icon' => 'bi-plus-circle-fill'],
+                'salida'     => ['label' => $nombreEstadoFiltro,  'bg' => '#bf360c', 'fg' => '#fff', 'icon' => $iconoEstadoFiltro],
+                'devolucion' => ['label' => 'Devuelto/Rechaz.',   'bg' => '#1565c0', 'fg' => '#fff', 'icon' => 'bi-reply-fill'],
+                'ajuste'     => ['label' => 'Ajuste manual',      'bg' => '#6a1b9a', 'fg' => '#fff', 'icon' => 'bi-wrench-adjustable'],
+                'otro'       => ['label' => 'Movimiento',         'bg' => '#546e7a', 'fg' => '#fff', 'icon' => 'bi-circle-fill'],
             ];
             ?>
 
