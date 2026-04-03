@@ -466,7 +466,7 @@ if ($export && !empty($colsList)) {
                 </ul>
             </div>
             <?php else: ?>
-            <button type="button" class="btn btn-outline-warning text-dark btn-sm fw-bold border-2" onclick="toggleEnlacePublico('habilitar')" title="Habilita un enlace público permanente para tus clientes">
+            <button type="button" class="btn btn-outline-warning text-white btn-sm fw-bold border-2" onclick="toggleEnlacePublico('habilitar')" title="Habilita un enlace público permanente para tus clientes">
                 <i class="bi bi-link-45deg fs-6"></i> Habilitar Enlace Público
             </button>
             <?php endif; ?>
