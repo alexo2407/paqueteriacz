@@ -94,7 +94,7 @@ class StockModel
         try {
             $db = (new Conexion())->conectar();
             // Ahora asumimos columnas: id_usuario, id_producto, cantidad
-            $stmt = $db->prepare('INSERT INTO stock (id_usuario, id_producto, cantidad) VALUES (:id_usuario, :id_producto, :cantidad)');
+            $stmt = $db->prepare('INSERT INTO stock (id_usuario, id_producto, cantidad, tipo_movimiento) VALUES (:id_usuario, :id_producto, :cantidad, "entrada")');
             $stmt->bindValue(':id_usuario', $data['id_usuario'], PDO::PARAM_INT);
             $stmt->bindValue(':id_producto', $data['id_producto'], PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $data['cantidad'], PDO::PARAM_INT);
@@ -245,7 +245,7 @@ class StockModel
 
             $cantidadPositiva = abs($cantidad);
             
-            $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, NOW())');
+            $stmt = $db->prepare('INSERT INTO stock (id_producto, id_usuario, cantidad, tipo_movimiento, updated_at) VALUES (:id_producto, :id_usuario, :cantidad, "entrada", NOW())');
             $stmt->bindValue(':id_producto', $idProducto, PDO::PARAM_INT);
             $stmt->bindValue(':id_usuario', $idUsuarioFinal, PDO::PARAM_INT);
             $stmt->bindValue(':cantidad', $cantidadPositiva, PDO::PARAM_INT);

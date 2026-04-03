@@ -34,12 +34,14 @@ if ($esAdmin) {
 // Obtener filtros de la URL
 $tipoFiltro = $_GET['tipo'] ?? '';
 
-// Por defecto: mes en curso
-$primerDiaMes = date('Y-m-01');
-$hoy = date('Y-m-d');
+// Por defecto: desde el inicio del año → fecha del último movimiento
+$db_temp = (new Conexion())->conectar();
+$lastMovRow = $db_temp->query('SELECT DATE(MAX(created_at)) AS ultima, DATE(MIN(created_at)) AS primera FROM stock')->fetch(PDO::FETCH_ASSOC);
+$ultimoMovimiento = $lastMovRow['ultima'] ?? date('Y-m-d');
+$inicioPorDefecto = date('Y-01-01');   // 1 enero del año actual
 
-$fechaInicio = $_GET['fecha_inicio'] ?? $primerDiaMes;
-$fechaFin = $_GET['fecha_fin'] ?? $hoy;
+$fechaInicio = $_GET['fecha_inicio'] ?? $inicioPorDefecto;
+$fechaFin    = $_GET['fecha_fin']    ?? $ultimoMovimiento;
 
 // Construir filtros
 $filtros = [];
@@ -272,10 +274,11 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
                                 $cantidadSigno = $cantidadReal >= 0 ? '+' : '';
                                 
                                 $fechaRaw = $mov['created_at'] ?? $mov['updated_at'] ?? null;
-                                $fechaFormateada = ($fechaRaw && strtotime($fechaRaw) > 86400) ? date('d/m/Y H:i', strtotime($fechaRaw)) : '<span class="text-muted">-</span>';
+                                $fechaTs  = ($fechaRaw && strtotime($fechaRaw) > 86400) ? strtotime($fechaRaw) : 0;
+                                $fechaFormateada = $fechaTs > 0 ? date('d/m/Y H:i', $fechaTs) : '<span class="text-muted">-</span>';
                             ?>
                                 <tr>
-                                    <td class="ps-4 text-nowrap"><?php echo $fechaFormateada; ?></td>
+                                    <td class="ps-4 text-nowrap" data-order="<?php echo $fechaTs; ?>"><?php echo $fechaFormateada; ?></td>
                                     <td><?php echo $tipoBadge; ?></td>
                                     <td>
                                         <div class="fw-bold text-dark"><?php echo $nombreProducto; ?></div>

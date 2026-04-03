@@ -27,7 +27,9 @@ $db              = (new Conexion())->conectar();
 
 // ── Leer filtros de la URL ────────────────────────────────────────────────────
 $fechaDesde  = $_GET['fecha_desde']  ?? date('Y-m-01');
-$fechaHasta  = $_GET['fecha_hasta']  ?? date('Y-m-t');   // último día del mes
+// Default "hasta": fecha del último movimiento en stock (no el fin de mes actual)
+$ultimoMovRow = $db->query('SELECT DATE(MAX(created_at)) AS ultima FROM stock')->fetch(PDO::FETCH_ASSOC);
+$fechaHasta   = $_GET['fecha_hasta']  ?? ($ultimoMovRow['ultima'] ?? date('Y-m-d'));
 $idCliente   = ($isRealCliente)   ? $currUserId : (int)($_GET['id_cliente']  ?? 0);
 $idProveedor = ($isRealProveedor) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
 $idEstado    = (int)($_GET['id_estado']   ?? 0);
@@ -120,6 +122,7 @@ $sqlMovs = "
         DATE(s.created_at)                                              AS fecha,
         pr.id                                                           AS id_producto,
         pr.nombre                                                       AS producto,
+        COALESCE(s.tipo_movimiento, 'otro')                             AS tipo_movimiento,
         SUM(CASE WHEN s.cantidad > 0 THEN  s.cantidad ELSE 0 END)      AS entradas,
         SUM(CASE WHEN s.cantidad < 0 THEN -s.cantidad ELSE 0 END)      AS salidas
     FROM stock s
@@ -127,7 +130,7 @@ $sqlMovs = "
     {$joinType} pedidos ped
         ON ped.id = s.referencia_id AND s.referencia_tipo = 'pedido'
     {$whereStr}
-    GROUP BY DATE(s.created_at), pr.id, pr.nombre
+    GROUP BY DATE(s.created_at), pr.id, pr.nombre, s.tipo_movimiento
     ORDER BY fecha ASC, pr.nombre ASC
 ";
 
@@ -158,15 +161,26 @@ if (!empty($productoIds)) {
 }
 
 // ── Construir pivot ───────────────────────────────────────────────────────────
-// pivot[$fecha][$idProducto] = ['entradas' => int, 'salidas' => int]
+// pivot[$fecha][$idProducto] = [
+//   'entradas' => int,  'salidas' => int,
+//   'tipos'    => ['salida' => ['e'=>0,'s'=>N], 'devolucion' => [...], ...]
+// ]
 $pivot    = [];
 $colsList = [];  // [id_producto => nombre]
 
 foreach ($rawMovs as $m) {
-    $pid = (int)$m['id_producto'];
-    $pivot[$m['fecha']][$pid] = [
-        'entradas' => (int)$m['entradas'],
-        'salidas'  => (int)$m['salidas'],
+    $pid  = (int)$m['id_producto'];
+    $tipo = $m['tipo_movimiento'];
+    $fecha = $m['fecha'];
+
+    if (!isset($pivot[$fecha][$pid])) {
+        $pivot[$fecha][$pid] = ['entradas' => 0, 'salidas' => 0, 'tipos' => []];
+    }
+    $pivot[$fecha][$pid]['entradas'] += (int)$m['entradas'];
+    $pivot[$fecha][$pid]['salidas']  += (int)$m['salidas'];
+    $pivot[$fecha][$pid]['tipos'][$tipo] = [
+        'e' => (int)$m['entradas'],
+        's' => (int)$m['salidas'],
     ];
     $colsList[$pid] = $m['producto'];
 }
@@ -196,15 +210,21 @@ foreach ($dateRange as $fecha) {
     $tieneMovimiento = false;
 
     foreach ($colsList as $pid => $pnombre) {
-        $e = $pivot[$fecha][$pid]['entradas'] ?? 0;
-        $s = $pivot[$fecha][$pid]['salidas']  ?? 0;
+        $e    = $pivot[$fecha][$pid]['entradas'] ?? 0;
+        $s    = $pivot[$fecha][$pid]['salidas']  ?? 0;
+        $tipos = $pivot[$fecha][$pid]['tipos']   ?? [];
 
         if ($e > 0 || $s > 0) $tieneMovimiento = true;
 
         $saldosAcum[$pid] = ($saldosAcum[$pid] ?? 0) + $e - $s;
 
-        $rowEntry['data'][$pid] = $e;
-        $rowSalid['data'][$pid] = $s;
+        // Pasar totales + desglose por tipo_movimiento a las filas
+        $rowEntry['data'][$pid] = ['total' => $e, 'tipos' => array_filter(
+            array_map(fn($t) => $t['e'], $tipos)
+        )];
+        $rowSalid['data'][$pid] = ['total' => $s, 'tipos' => array_filter(
+            array_map(fn($t) => $t['s'], $tipos)
+        )];
         $rowTotal['data'][$pid] = $saldosAcum[$pid];
     }
 
@@ -250,17 +270,42 @@ if ($export && !empty($colsList)) {
         'alignment' => ['horizontal' => 'center'],
     ]);
 
-    // ── Filas de datos: entrada + salida por día ──────────────────────────────
+    // ── Fila 3: Saldo Inicial (antes del período) ──────────────────────────────
     $excelRow = 3;
+    if (!empty($saldosIniciales)) {
+        $sheet->mergeCells("A{$excelRow}:B{$excelRow}");
+        $sheet->setCellValue("A{$excelRow}",
+            'SALDO INICIAL (antes del ' . date('d/m/Y', strtotime($fechaDesde)) . ')');
+        $c = 3;
+        foreach ($colsList as $pid => $pn) {
+            $si = $saldosIniciales[$pid] ?? 0;
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow;
+            $sheet->setCellValue($colLetter, $si);
+            $sheet->getStyle($colLetter)->getNumberFormat()->setFormatCode('+#,##0;-#,##0;0');
+            $c++;
+        }
+        $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'BBDEFB']],
+            'font' => ['color' => ['rgb' => '1565C0'], 'bold' => true],
+            'alignment' => ['horizontal' => 'center'],
+        ]);
+        $excelRow++;
+    }
+
+    // ── Filas de datos: entrada + salida por día ──────────────────────────────
     foreach ($filas as $grupo) {
         $fechaLabel = date('d/m/Y', strtotime($grupo['entry']['fecha']));
 
-        // Fila entrada
+        // Fila entrada — valores positivos con formato +N
         $sheet->setCellValue("A{$excelRow}", $fechaLabel);
         $sheet->setCellValue("B{$excelRow}", 'Entrada');
         $c = 3;
         foreach ($colsList as $pid => $pn) {
-            $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow, $grupo['entry']['data'][$pid] ?? 0);
+            $val = (int)($grupo['entry']['data'][$pid]['total'] ?? 0);
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow;
+            $sheet->setCellValue($colLetter, $val);
+            // Formato: muestra + para positivos, - para negativos, 0 para cero
+            $sheet->getStyle($colLetter)->getNumberFormat()->setFormatCode('+#,##0;-#,##0;0');
             $c++;
         }
         $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
@@ -269,12 +314,16 @@ if ($export && !empty($colsList)) {
         ]);
         $excelRow++;
 
-        // Fila salida
+        // Fila salida — valores guardados como negativos (para sumar correctamente)
         $sheet->setCellValue("A{$excelRow}", $fechaLabel);
         $sheet->setCellValue("B{$excelRow}", 'Salida');
         $c = 3;
         foreach ($colsList as $pid => $pn) {
-            $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow, $grupo['salida']['data'][$pid] ?? 0);
+            $val = (int)($grupo['salida']['data'][$pid]['total'] ?? 0);
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow;
+            // Guardamos negativo para que las fórmulas de Excel sumen correctamente
+            $sheet->setCellValue($colLetter, $val > 0 ? -$val : 0);
+            $sheet->getStyle($colLetter)->getNumberFormat()->setFormatCode('+#,##0;-#,##0;0');
             $c++;
         }
         $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
@@ -528,18 +577,18 @@ if ($export && !empty($colsList)) {
     <!-- Leyenda -->
     <div class="d-flex gap-4 mb-2 small flex-wrap px-1">
         <span class="d-flex align-items-center gap-1">
-            <span class="badge" style="background:#2e7d32">+</span>
-            Entradas del día
+            <span class="badge" style="background:#2e7d32"><i class="bi bi-arrow-up-short"></i> Entradas</span>
+            Unidades ingresadas ese día
         </span>
         <span class="d-flex align-items-center gap-1">
-            <span class="badge" style="background:#bf360c">−</span>
-            Salidas del día
+            <span class="badge" style="background:#bf360c"><i class="bi bi-arrow-down-short"></i> Salidas</span>
+            Unidades despachadas ese día
         </span>
         <span class="d-flex align-items-center gap-1">
             <span class="badge" style="background:#ffd600;color:#000">T</span>
-            Saldo acumulado (Total producto)
+            Saldo acumulado al cierre del día
         </span>
-        <span class="text-muted">Filas atenuadas = sin movimiento ese día</span>
+        <span class="text-muted">Filas atenuadas = sin movimiento ese día · <span style="color:#aaa">—</span> = sin actividad</span>
     </div>
 
     <!-- Tabla matricial -->
@@ -554,6 +603,51 @@ if ($export && !empty($colsList)) {
                 </tr>
             </thead>
             <tbody>
+                <!-- Fila Saldo Inicial — acumulado ANTES del período -->
+                <?php if (!empty($saldosIniciales)): ?>
+                <tr style="background:#e3f2fd;font-weight:600;font-size:.8rem">
+                    <td class="col-fecha" style="color:#1565c0">
+                        <i class="bi bi-bookmark-star-fill me-1"></i>
+                        Saldo inicial<br>
+                        <small class="fw-normal" style="font-size:.68rem;opacity:.75">
+                            Antes del <?= date('d/m/Y', strtotime($fechaDesde)) ?>
+                        </small>
+                    </td>
+                    <?php foreach ($colsList as $pid => $pn):
+                        $si = $saldosIniciales[$pid] ?? 0;
+                        if ($si > 0)      { $siColor = '#1565c0'; $siBg = '#bbdefb'; }
+                        elseif ($si < 0)  { $siColor = '#b71c1c'; $siBg = '#ffcdd2'; }
+                        else              { $siColor = '#546e7a'; $siBg = '#eceff1'; }
+                    ?>
+                    <td style="background:<?= $siBg ?>;color:<?= $siColor ?>;text-align:center">
+                        <?= number_format($si) ?>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+                <?php endif; ?>
+            <?php
+            // Sumatorias del período por producto
+            $totalEntradasPeriodo = [];
+            $totalSalidasPeriodo  = [];
+            foreach ($filas as $grupo) {
+                foreach ($colsList as $pid => $pn) {
+                    $totalEntradasPeriodo[$pid] = ($totalEntradasPeriodo[$pid] ?? 0) + (int)($grupo['entry']['data'][$pid]['total'] ?? 0);
+                    $totalSalidasPeriodo[$pid]  = ($totalSalidasPeriodo[$pid]  ?? 0) + (int)($grupo['salida']['data'][$pid]['total'] ?? 0);
+                }
+            }
+            ?>
+
+            <?php
+            // Lookup: tipo_movimiento -> label, color, icono
+            $tipoMeta = [
+                'entrada'    => ['label' => 'Ingreso',          'bg' => '#2e7d32', 'fg' => '#fff', 'icon' => 'bi-plus-circle-fill'],
+                'salida'     => ['label' => 'En Ruta',          'bg' => '#bf360c', 'fg' => '#fff', 'icon' => 'bi-truck'],
+                'devolucion' => ['label' => 'Devuelto/Rechaz.', 'bg' => '#1565c0', 'fg' => '#fff', 'icon' => 'bi-reply-fill'],
+                'ajuste'     => ['label' => 'Ajuste manual',    'bg' => '#6a1b9a', 'fg' => '#fff', 'icon' => 'bi-wrench-adjustable'],
+                'otro'       => ['label' => 'Movimiento',       'bg' => '#546e7a', 'fg' => '#fff', 'icon' => 'bi-circle-fill'],
+            ];
+            ?>
+
             <?php foreach ($filas as $grupo):
                 $sinMov = !$grupo['tiene_mov'];
                 $sMov   = $sinMov ? ' fila-sin-mov' : '';
@@ -561,34 +655,95 @@ if ($export && !empty($colsList)) {
                 <!-- Fila Entradas -->
                 <tr class="fila-entrada<?= $sMov ?>">
                     <td class="col-fecha text-nowrap">
+                        <i class="bi bi-arrow-up-circle-fill me-1" style="color:#2e7d32"></i>
                         <?= date('d/m/Y', strtotime($grupo['entry']['fecha'])) ?>
                     </td>
-                    <?php foreach ($colsList as $pid => $pn): ?>
-                    <td><?= $grupo['entry']['data'][$pid] > 0
-                            ? '+' . $grupo['entry']['data'][$pid]
-                            : '0' ?></td>
+                    <?php foreach ($colsList as $pid => $pn):
+                        $cell = $grupo['entry']['data'][$pid] ?? ['total' => 0, 'tipos' => []];
+                    ?>
+                    <td style="min-width:80px;vertical-align:middle">
+                    <?php if ($cell['total'] > 0): ?>
+                        <?php foreach ($cell['tipos'] as $tipo => $cant): ?>
+                        <?php $m = $tipoMeta[$tipo] ?? $tipoMeta['otro']; ?>
+                        <span class="badge d-inline-flex align-items-center gap-1 mb-1"
+                              style="background:<?= $m['bg'] ?>;color:<?= $m['fg'] ?>;font-size:.72rem"
+                              title="<?= $m['label'] ?>: <?= $cant ?> unidades">
+                            <i class="bi <?= $m['icon'] ?>"></i>
+                            <span><?= $cant ?></span>
+                            <small style="opacity:.8;font-size:.65rem"><?= $m['label'] ?></small>
+                        </span>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <span class="text-muted" style="opacity:.35">—</span>
+                    <?php endif; ?>
+                    </td>
                     <?php endforeach; ?>
                 </tr>
 
                 <!-- Fila Salidas -->
                 <tr class="fila-salida<?= $sMov ?>">
                     <td class="col-fecha text-nowrap text-muted" style="font-size:.7rem">
+                        <i class="bi bi-arrow-down-circle-fill me-1" style="color:#bf360c"></i>
                         <?= date('d/m/Y', strtotime($grupo['salida']['fecha'])) ?>
                     </td>
-                    <?php foreach ($colsList as $pid => $pn): ?>
-                    <td><?= $grupo['salida']['data'][$pid] > 0
-                            ? '−' . $grupo['salida']['data'][$pid]
-                            : '0' ?></td>
+                    <?php foreach ($colsList as $pid => $pn):
+                        $cell = $grupo['salida']['data'][$pid] ?? ['total' => 0, 'tipos' => []];
+                    ?>
+                    <td style="min-width:80px;vertical-align:middle">
+                    <?php if ($cell['total'] > 0): ?>
+                        <?php foreach ($cell['tipos'] as $tipo => $cant): ?>
+                        <?php $m = $tipoMeta[$tipo] ?? $tipoMeta['otro']; ?>
+                        <span class="badge d-inline-flex align-items-center gap-1 mb-1"
+                              style="background:<?= $m['bg'] ?>;color:<?= $m['fg'] ?>;font-size:.72rem"
+                              title="<?= $m['label'] ?>: <?= $cant ?> unidades">
+                            <i class="bi <?= $m['icon'] ?>"></i>
+                            <span><?= $cant ?></span>
+                            <small style="opacity:.8;font-size:.65rem"><?= $m['label'] ?></small>
+                        </span>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <span class="text-muted" style="opacity:.35">—</span>
+                    <?php endif; ?>
+                    </td>
                     <?php endforeach; ?>
                 </tr>
             <?php endforeach; ?>
 
-                <!-- Fila Total — saldo acumulado FINAL (una sola vez al final) -->
+                <!-- Fila Total — saldo acumulado FINAL -->
                 <?php $ultimoGrupo = end($filas); if ($ultimoGrupo): ?>
                 <tr class="fila-total">
-                    <td class="col-fecha">Total producto</td>
+                    <td class="col-fecha"><i class="bi bi-layers-fill me-1"></i>Saldo final</td>
+                    <?php foreach ($colsList as $pid => $pn):
+                        $saldo = $ultimoGrupo['total']['data'][$pid] ?? 0;
+                        if ($saldo <= 0)      { $bg = '#d32f2f'; $color = '#fff'; $icon = 'bi-exclamation-triangle-fill'; }
+                        elseif ($saldo <= 10) { $bg = '#f57f17'; $color = '#000'; $icon = 'bi-dash-circle-fill'; }
+                        else                  { $bg = '#2e7d32'; $color = '#fff'; $icon = 'bi-check-circle-fill'; }
+                    ?>
+                    <td style="background:<?= $bg ?>;color:<?= $color ?>;font-weight:700">
+                        <i class="bi <?= $icon ?> me-1"></i><?= number_format($saldo) ?>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+
+                <!-- Fila resumen del período -->
+                <tr style="background:#f0f4ff;font-size:.75rem;color:#37474f">
+                    <td class="col-fecha fw-semibold"><i class="bi bi-calendar-range me-1"></i>Resumen período</td>
                     <?php foreach ($colsList as $pid => $pn): ?>
-                    <td><?= number_format($ultimoGrupo['total']['data'][$pid] ?? 0) ?></td>
+                    <td>
+                        <?php if (($totalEntradasPeriodo[$pid] ?? 0) > 0): ?>
+                        <span class="d-block" style="color:#2e7d32">
+                            <i class="bi bi-arrow-up-short"></i><?= $totalEntradasPeriodo[$pid] ?>
+                        </span>
+                        <?php endif; ?>
+                        <?php if (($totalSalidasPeriodo[$pid] ?? 0) > 0): ?>
+                        <span class="d-block" style="color:#bf360c">
+                            <i class="bi bi-arrow-down-short"></i><?= $totalSalidasPeriodo[$pid] ?>
+                        </span>
+                        <?php endif; ?>
+                        <?php if (($totalEntradasPeriodo[$pid] ?? 0) === 0 && ($totalSalidasPeriodo[$pid] ?? 0) === 0): ?>
+                        <span class="text-muted" style="opacity:.4">—</span>
+                        <?php endif; ?>
+                    </td>
                     <?php endforeach; ?>
                 </tr>
                 <?php endif; ?>
