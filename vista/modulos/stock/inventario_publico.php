@@ -672,8 +672,8 @@ if ($export && !empty($colsList)) {
 
             <?php
             // Obtener el nombre del estado seleccionado (si existe)
-            $nombreEstadoFiltro = 'Despacho / Salida'; // Por defecto universal
-            $iconoEstadoFiltro = 'bi-box-seam';
+            $nombreEstadoFiltro = 'En Ruta'; // Por defecto
+            $iconoEstadoFiltro = 'bi-truck';
             if ($idEstado > 0) {
                 foreach ($estados as $e) {
                     if ($e['id'] == $idEstado) {
