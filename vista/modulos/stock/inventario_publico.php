@@ -17,9 +17,33 @@ require_once __DIR__ . '/../../../modelo/conexion.php';
 
 $isAdmin     = false;
 
-// Verificación de enlace público
+$errorHtml = <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Denegado</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #f8f9fa; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .error-card { background: #fff; padding: 3rem 2.5rem; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; max-width: 420px; width: 90%; margin: auto; }
+        .icon { font-size: 4rem; margin-bottom: 1rem; display: inline-block; }
+        h1 { font-size: 1.5rem; color: #212529; margin-bottom: 0.75rem; font-weight: 700; }
+        p { color: #6c757d; font-size: 1rem; line-height: 1.5; margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="icon">🔗</div>
+        <h1>Enlace Inválido</h1>
+        <p>El enlace al que intentas acceder está incompleto o mal formado. Por favor, verifica la URL.</p>
+    </div>
+</body>
+</html>
+HTML;
+
 if (!isset($_GET['u']) || !isset($_GET['t'])) {
-    die("<h2 style='font-family:sans-serif;color:#333;margin:2rem'>Enlace inválido o incompleto.</h2>");
+    die($errorHtml);
 }
 
 $u = (int)$_GET['u'];
@@ -31,8 +55,40 @@ $stmtToken = $db->prepare("SELECT token_enlace_publico FROM usuarios WHERE id = 
 $stmtToken->execute([':id' => $u]);
 $dbToken = $stmtToken->fetchColumn();
 
+$errorRevocadoHtml = <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enlace Revocado</title>
+    <style>
+        body { margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background-color: #f8f9fa; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        .error-card { background: #fff; padding: 3rem 2.5rem; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); text-align: center; max-width: 420px; width: 90%; margin: auto; border-top: 5px solid #dc3545; }
+        .icon-circle { width: 80px; height: 80px; background: #fff5f5; color: #dc3545; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1.5rem; }
+        h1 { font-size: 1.5rem; color: #212529; margin-bottom: 0.75rem; font-weight: 700; }
+        p { color: #6c757d; font-size: 1rem; line-height: 1.6; margin-bottom: 0; }
+        .footer-text { margin-top: 2rem; font-size: 0.8rem; color: #adb5bd; }
+    </style>
+</head>
+<body>
+    <div class="error-card">
+        <div class="icon-circle">
+            <svg xmlns="http://www.w3.org/.0" width="40" height="40" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+              <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+            </svg>
+        </div>
+        <h1>Acceso Denegado</h1>
+        <p>El enlace público de este inventario <strong>ya no es válido</strong> o ha sido revocado por el propietario.</p>
+        <div class="footer-text">Sistema de Logística Segura &copy;</div>
+    </div>
+</body>
+</html>
+HTML;
+
 if (empty($dbToken) || !hash_equals($dbToken, $t)) {
-    die("<h2 style='font-family:sans-serif;color:#333;margin:2rem'>El enlace público de este usuario ya no es válido o fue revocado.</h2>");
+    die($errorRevocadoHtml);
 }
 
 // Mockear el estado del usuario como si hubiera iniciado sesión
