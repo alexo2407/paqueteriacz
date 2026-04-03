@@ -15,20 +15,39 @@ require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
 require_once __DIR__ . '/../../../modelo/conexion.php';
 
-start_secure_session();
-require_login();
-$isAdmin     = isSuperAdmin();
-$currRol     = $_SESSION['rol'] ?? 0;
-// En este sistema, ID 4 se llama "Cliente" en BD y ID 5 se llama "Proveedor"
-$isRealCliente   = ($currRol == 4); 
-$isRealProveedor = ($currRol == 5);
-$currUserId      = getCurrentUserId();
-$db              = (new Conexion())->conectar();
+$isAdmin     = false;
 
-// Traer el token_enlace_publico del usuario
+// Verificación de enlace público
+if (!isset($_GET['u']) || !isset($_GET['t'])) {
+    die("<h2 style='font-family:sans-serif;color:#333;margin:2rem'>Enlace inválido o incompleto.</h2>");
+}
+
+$u = (int)$_GET['u'];
+$t = (string)$_GET['t'];
+
+$db = (new Conexion())->conectar();
+
 $stmtToken = $db->prepare("SELECT token_enlace_publico FROM usuarios WHERE id = :id");
-$stmtToken->execute([':id' => $currUserId]);
-$tokenEnlacePublico = $stmtToken->fetchColumn();
+$stmtToken->execute([':id' => $u]);
+$dbToken = $stmtToken->fetchColumn();
+
+if (empty($dbToken) || !hash_equals($dbToken, $t)) {
+    die("<h2 style='font-family:sans-serif;color:#333;margin:2rem'>El enlace público de este usuario ya no es válido o fue revocado.</h2>");
+}
+
+// Mockear el estado del usuario como si hubiera iniciado sesión
+$stmt = $db->prepare("SELECT id_rol FROM usuarios_roles WHERE id_usuario = :id");
+$stmt->execute([':id' => $u]);
+$rol = $stmt->fetchColumn();
+
+$currRol = $rol ? (int)$rol : 0;
+$isRealCliente   = ($currRol == ROL_PROVEEDOR); // 4
+$isRealProveedor = ($currRol == ROL_CLIENTE);   // 5
+$currUserId      = $u;
+
+// Inyectar en variable global para que permisos.php lo tome
+$GLOBALS['API_USER_ID'] = $u;
+$GLOBALS['API_USER_ROLE'] = $currRol;
 
 // ── Leer filtros de la URL ────────────────────────────────────────────────────
 $fechaDesde  = $_GET['fecha_desde']  ?? date('Y-m-01');
@@ -41,7 +60,8 @@ $idEstado    = (int)($_GET['id_estado']   ?? 0);
 $idProducto  = (int)($_GET['id_producto'] ?? 0);
 $export      = isset($_GET['export']) && $_GET['export'] === '1';
 
-// Token_enlace_publico ya cargado previamente
+// Token para generar el enlace público
+$publicUrlToken = hash('sha256', $currUserId . JWT_SECRET_KEY . 'P4Q-L1NK');
 
 // ── Cargar catálogos para los dropdowns ──────────────────────────────────────
 $estados = $db->query(
@@ -439,9 +459,7 @@ if ($export && !empty($colsList)) {
 </head>
 <body class="bg-light">
 
-<?php include __DIR__ . '/../../includes/header.php'; ?>
-
-<div class="container-fluid py-4">
+<div class="container-fluid py-4" style="max-width: 1400px; margin: 0 auto;">
 
     <!-- Cabecera -->
     <div class="inv-header d-flex justify-content-between align-items-center flex-wrap gap-3">
@@ -454,29 +472,7 @@ if ($export && !empty($colsList)) {
             </small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <?php if (!empty($tokenEnlacePublico)): ?>
-            <div class="dropdown">
-                <button class="btn btn-warning btn-sm fw-bold shadow-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-share fs-6"></i> Opciones de Enlace
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow">
-                    <li><button class="dropdown-item fw-semibold text-primary" onclick="copiarEnlacePublico()"><i class="bi bi-link-45deg me-2"></i>Copiar Enlace Público</button></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><button class="dropdown-item text-danger fw-semibold" onclick="toggleEnlacePublico('deshabilitar')"><i class="bi bi-trash me-2"></i>Revocar Acceso</button></li>
-                </ul>
-            </div>
-            <?php else: ?>
-            <button type="button" class="btn btn-outline-warning text-dark btn-sm fw-bold border-2" onclick="toggleEnlacePublico('habilitar')" title="Habilita un enlace público permanente para tus clientes">
-                <i class="bi bi-link-45deg fs-6"></i> Habilitar Enlace Público
-            </button>
-            <?php endif; ?>
-            <a href="<?= RUTA_URL ?>stock/movimientos" class="btn btn-outline-light btn-sm">
-                <i class="bi bi-journal-arrow-down me-1"></i>Movimientos
-            </a>
-            <a href="<?= RUTA_URL ?>stock/saldo" class="btn btn-outline-light btn-sm">
-                <i class="bi bi-bar-chart-steps me-1"></i>Saldo
-            </a>
-            <a href="<?= RUTA_URL ?>stock/inventario_periodo?<?= http_build_query(array_merge($_GET, ['export'=>'1'])) ?>"
+            <a href="<?= RUTA_URL ?>stock/inventario_publico?<?= http_build_query(array_merge($_GET, ['export'=>'1'])) ?>"
                class="btn btn-success btn-sm">
                 <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
             </a>
@@ -486,8 +482,10 @@ if ($export && !empty($colsList)) {
     <!-- Filtros -->
     <div class="card filter-card mb-4">
         <div class="card-body p-3">
-            <form method="GET" action="<?= RUTA_URL ?>stock/inventario_periodo"
+            <form method="GET" action="<?= RUTA_URL ?>stock/inventario_publico"
                   class="row g-2 align-items-end">
+                <input type="hidden" name="u" value="<?= $u ?>">
+                <input type="hidden" name="t" value="<?= $t ?>">
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
                         <i class="bi bi-calendar3"></i> Desde
@@ -502,56 +500,6 @@ if ($export && !empty($colsList)) {
                     <input type="date" name="fecha_hasta" class="form-control form-control-sm"
                            value="<?= htmlspecialchars($fechaHasta) ?>">
                 </div>
-                <?php if ($isRealCliente): ?>
-                <div class="col-md-2 col-6">
-                    <label class="form-label small fw-semibold mb-1">
-                        <i class="bi bi-person"></i> Cliente
-                    </label>
-                    <input type="text" class="form-control form-control-sm bg-light" 
-                           value="<?= htmlspecialchars($_SESSION['nombre'] ?? 'Mi Usuario') ?>" readonly disabled>
-                    <input type="hidden" name="id_cliente" value="<?= $currUserId ?>">
-                </div>
-                <?php else: ?>
-                <div class="col-md-2 col-6">
-                    <label class="form-label small fw-semibold mb-1">
-                        <i class="bi bi-person"></i> Cliente
-                    </label>
-                    <select name="id_cliente" class="form-select form-select-sm">
-                        <option value="0">Todos</option>
-                        <?php foreach ($clientes as $c): ?>
-                        <option value="<?= $c['id'] ?>"
-                                <?= $idCliente == $c['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($c['nombre']) ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php endif; ?>
-                <?php if ($isRealProveedor): ?>
-                <div class="col-md-2 col-6">
-                    <label class="form-label small fw-semibold mb-1">
-                        <i class="bi bi-truck"></i> Proveedor
-                    </label>
-                    <input type="text" class="form-control form-control-sm bg-light" 
-                           value="<?= htmlspecialchars($_SESSION['nombre'] ?? 'Mi Usuario') ?>" readonly disabled>
-                    <input type="hidden" name="id_proveedor" value="<?= $currUserId ?>">
-                </div>
-                <?php else: ?>
-                <div class="col-md-2 col-6">
-                    <label class="form-label small fw-semibold mb-1">
-                        <i class="bi bi-truck"></i> Proveedor
-                    </label>
-                    <select name="id_proveedor" class="form-select form-select-sm">
-                        <option value="0">Todos</option>
-                        <?php foreach ($proveedores as $p): ?>
-                        <option value="<?= $p['id'] ?>"
-                                <?= $idProveedor == $p['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($p['nombre']) ?>
-                        </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php endif; ?>
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
                         <i class="bi bi-flag"></i> Estado pedido
@@ -584,7 +532,7 @@ if ($export && !empty($colsList)) {
                     <button type="submit" class="btn btn-primary btn-sm flex-fill">
                         <i class="bi bi-funnel"></i>
                     </button>
-                    <a href="<?= RUTA_URL ?>stock/inventario_periodo"
+                    <a href="<?= RUTA_URL ?>stock/inventario_publico?u=<?= $u ?>&t=<?= $t ?>"
                        class="btn btn-outline-secondary btn-sm" title="Limpiar">
                         <i class="bi bi-x-lg"></i>
                     </a>
@@ -789,101 +737,7 @@ if ($export && !empty($colsList)) {
 
 </div>
 
-<?php include __DIR__ . '/../../includes/footer.php'; ?>
-
-<script>
-function toggleEnlacePublico(action) {
-    const actionText = action === 'habilitar' 
-        ? 'Esto generará un enlace público que podrás compartir con clientes externos.' 
-        : 'Los enlaces previos dejarán de funcionar permanentemente.';
-        
-    Swal.fire({
-        title: action === 'habilitar' ? '¿Activar enlace público?' : '¿Revocar acceso?',
-        text: actionText,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: action === 'habilitar' ? '#3085d6' : '#d33',
-        cancelButtonColor: '#adb5bd',
-        confirmButtonText: 'Sí, ' + action,
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-            
-            const formData = new FormData();
-            formData.append('action', action);
-
-            fetch('<?= RUTA_URL ?>ajax/enlaces_publicos.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: '¡Operación exitosa!',
-                        text: data.message,
-                        showConfirmButton: false,
-                        timer: 1500
-                    }).then(() => {
-                        window.location.reload();
-                    });
-                } else {
-                    Swal.fire('Error', data.message || 'Error desconocido', 'error');
-                }
-            })
-            .catch(err => Swal.fire('Error', 'Ocurrió un error en la conexión.', 'error'));
-        }
-    });
-}
-
-function copiarEnlacePublico() {
-    const urlParams = new URLSearchParams(window.location.search);
-    urlParams.set('u', '<?= $currUserId ?>');
-    urlParams.set('t', '<?= $tokenEnlacePublico ?>');
-    urlParams.delete('export'); // Nunca autodescargar
-    
-    const baseUrl = '<?= RUTA_URL ?>' + 'stock/inventario_publico';
-    const finalUrl = baseUrl + '?' + urlParams.toString();
-    
-    navigator.clipboard.writeText(finalUrl).then(() => {
-        Swal.fire({
-            icon: 'success',
-            title: 'Enlace copiado',
-            text: 'Cualquier persona que abra este enlace podrá ver esta tabla con las fechas seleccionadas pero no podrá modificar ni acceder a otros datos.',
-            confirmButtonText: 'Entendido'
-        });
-    }).catch(err => {
-        // Fallback por si navigator.clipboard falla en HTTP 
-        const textArea = document.createElement("textarea");
-        textArea.value = finalUrl;
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            Swal.fire({
-                icon: 'success',
-                title: 'Enlace copiado',
-                text: 'El enlace público ha sido copiado al portapapeles.',
-                timer: 2000,
-                showConfirmButton: false
-            });
-        } catch (err) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Copia manual requerida',
-                text: 'No se pudo copiar automáticamente. Este es tu enlace:',
-                input: 'text',
-                inputValue: finalUrl,
-                confirmButtonText: 'Cerrar'
-            });
-        }
-        document.body.removeChild(textArea);
-    });
-}
-</script>
+</div>
 
 </body>
 </html>

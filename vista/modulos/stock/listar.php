@@ -152,13 +152,13 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
             <form method="GET">
                 <div class="row g-3 align-items-end">
                     <?php if ($esAdmin && !empty($proveedores)): ?>
-                    <!-- Filtro por Proveedor (solo Admin) -->
+                    <!-- Filtro por Cliente (solo Admin) -->
                     <div class="col-md-3">
                         <label class="form-label fw-bold small text-muted">
-                            <i class="bi bi-person-badge"></i> Proveedor
+                            <i class="bi bi-person-badge"></i> Cliente
                         </label>
-                        <select name="proveedor" class="form-select select2-searchable" data-placeholder="Filtrar por proveedor...">
-                            <option value="">Todos los proveedores</option>
+                        <select name="proveedor" class="form-select select2-searchable" data-placeholder="Filtrar por cliente...">
+                            <option value="">Todos los clientes</option>
                             <?php foreach ($proveedores as $prov): ?>
                                 <option value="<?php echo $prov['id']; ?>" <?php echo $proveedorFiltro == $prov['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($prov['nombre']); ?>

@@ -256,18 +256,19 @@ function canViewProduct($producto) {
         return true;
     }
     
-    // Proveedor y Cliente solo pueden ver sus propios productos
-    $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
-    if ($userId === null) {
-        return false;
+    // Proveedor y Cliente solo pueden ver sus propios productos o los asignados
+    $filtro = getIdUsuarioCreadorFilter();
+    $cId = (int)$producto['id_usuario_creador'];
+
+    if (is_array($filtro)) {
+        return in_array($cId, $filtro, true);
     }
     
-    // Si es otro rol (ej. Vendedor), ver política. Por ahora asumimos que 
-    // si no es admin y tiene creador, solo el creador lo ve (privacy by default)
-    // O permitir si es Vendedor/Repartidor? 
-    // Por ahora mantenemos restricción estricta para Proveedor/Cliente
+    if ($filtro !== null) {
+        return $cId === $filtro;
+    }
     
-    return (int)$producto['id_usuario_creador'] === (int)$userId;
+    return false;
 }
 
 /**
@@ -302,9 +303,10 @@ function canEditProduct($producto) {
 /**
  * Obtiene el ID de usuario para usar como filtro de productos.
  * Admin: null (sin filtro, ve todos)
- * Proveedor/Cliente: su user_id (solo ve los suyos)
+ * Proveedor/Dueño tienda: su user_id (solo ve los suyos)
+ * Cliente/Repartidor Logística: array de user_ids incluyendo los suyos y los de sus clientes asignados
  * 
- * @return int|null ID de usuario para filtrar, o null para ver todos
+ * @return int|array|null ID(s) de usuario para filtrar, o null para ver todos
  */
 function getIdUsuarioCreadorFilter() {
     // Admin ve todos los productos
@@ -312,13 +314,34 @@ function getIdUsuarioCreadorFilter() {
         return null;
     }
     
-    // Proveedor y Cliente solo ven sus productos
-    if (isProveedor() || isCliente()) {
-        return $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
+    $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? $GLOBALS['API_USER_ID'] ?? null;
+    if (!$userId) return null;
+
+    // Cliente de Logística (es el verdadero "Proveedor/Mensajería" en el negocio)
+    // Ven los productos de los clientes a los que les manejan envíos.
+    if (isCliente()) {
+        try {
+            require_once __DIR__ . '/../modelo/conexion.php';
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT DISTINCT id_cliente FROM pedidos WHERE id_proveedor = :id");
+            $stmt->execute([':id' => $userId]);
+            $clientesAsignados = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $listaIds = array_map('intval', $clientesAsignados);
+            $listaIds[] = (int)$userId;
+            return array_unique($listaIds);
+            
+        } catch (Exception $e) {
+            return (int)$userId;
+        }
     }
     
-    // Otros roles (Vendedor) ven todos los productos por defecto
-    // Puedes cambiar esto si quieres restringir más
+    // Proveedor (es el verdadero "Dueño del Ecommerce/Cliente" en el negocio)
+    // Solo ve sus propios productos.
+    if (isProveedor()) {
+        return (int)$userId;
+    }
+    
     return null;
 }
 

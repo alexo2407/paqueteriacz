@@ -21,6 +21,22 @@ $filtroUsuarioCreador = getIdUsuarioCreadorFilter();
 $categoriaFiltro = $_GET['categoria'] ?? '';
 $marcaFiltro = $_GET['marca'] ?? '';
 $estadoFiltro = $_GET['estado'] ?? '';
+$proveedorFiltro = $_GET['proveedor'] ?? '';
+
+// Si es admin y hay filtro de cliente/proveedor en GET, usarlo
+if (isSuperAdmin() && $proveedorFiltro !== '') {
+    $filtroUsuarioCreador = (int)$proveedorFiltro;
+}
+
+// Obtener lista de clientes/proveedores para el admin
+$listaProveedores = [];
+if (isSuperAdmin()) {
+    require_once __DIR__ . '/../../../modelo/usuario.php';
+    $usuarioModel = new UsuarioModel();
+    // Proveedor en la base de datos de paqueteriacz (ID 4 o ROL_NOMBRE_PROVEEDOR = 'Cliente') 
+    // almacena a los clientes de e-commerce.
+    $listaProveedores = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
+}
 
 // Construir filtros
 $filtros = [];
@@ -34,11 +50,15 @@ if (empty($filtros)) {
 } else {
     // Si hay filtros adicionales, usar listarConFiltros y luego filtrar por usuario
     $productos = ProductoModel::listarConFiltros($filtros);
-    // Aplicar filtro de usuario manualmente si es proveedor
+    // Aplicar filtro de usuario manualmente si es proveedor/cliente
     if ($filtroUsuarioCreador !== null) {
         $productos = array_filter($productos, function($p) use ($filtroUsuarioCreador) {
-            return (isset($p['id_usuario_creador']) && (int)$p['id_usuario_creador'] === $filtroUsuarioCreador)
-                   || !isset($p['id_usuario_creador']) || $p['id_usuario_creador'] === null;
+            $cId = isset($p['id_usuario_creador']) ? (int)$p['id_usuario_creador'] : null;
+            if ($cId === null) return true; // Todos ven los productos del sistema/base
+            if (is_array($filtroUsuarioCreador)) {
+                return in_array($cId, $filtroUsuarioCreador, true);
+            }
+            return $cId === $filtroUsuarioCreador;
         });
         $productos = array_values($productos); // Re-indexar
     }
@@ -178,7 +198,24 @@ sort($marcasUnicas);
             <div class="filter-container">
                 <form method="GET">
                     <div class="row g-3">
-                        <div class="col-md-3">
+                        <?php if (isSuperAdmin() && !empty($listaProveedores)): ?>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold text-muted">Cliente</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white"><i class="bi bi-person-badge"></i></span>
+                                <select name="proveedor" class="form-select select2-searchable" data-placeholder="Buscar cliente...">
+                                    <option value="">Todos los clientes</option>
+                                    <?php foreach ($listaProveedores as $prov): ?>
+                                        <option value="<?php echo $prov['id']; ?>" <?php echo $proveedorFiltro == $prov['id'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($prov['nombre']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                        
+                        <div class="col-md-<?php echo isSuperAdmin() && !empty($listaProveedores) ? '2' : '3'; ?>">
                             <label class="form-label small fw-bold text-muted">Categoría</label>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text bg-white"><i class="bi bi-tags"></i></span>
@@ -235,7 +272,7 @@ sort($marcasUnicas);
                             </div>
                         </div>
                         
-                        <div class="col-md-2 d-flex align-items-end">
+                        <div class="col-md-1 d-flex align-items-end">
                             <button type="submit" class="btn btn-primary w-100 btn-sm" style="height: 34px;">
                                 <i class="bi bi-funnel me-1"></i> Filtrar
                             </button>

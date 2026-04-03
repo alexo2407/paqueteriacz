@@ -431,9 +431,6 @@
                 <span class="badge bg-danger"><?= $unreadCount ?></span>
                 <?php endif; ?>
             </a>
-            <a href="<?= RUTA_URL ?>productos/listar" class="nav-link">
-                <i class="bi bi-box-seam"></i> Mis Productos
-            </a>
             <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link">
                 <i class="bi bi-geo-fill"></i> Códigos Postales
             </a>
@@ -462,7 +459,7 @@
             <?php endif; ?>
 
             <!-- Inventario -->
-            <?php if ($isAdmin || $isProveedor): ?>
+            <?php if ($isAdmin || $isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Inventario</div>
             <a href="<?= RUTA_URL ?>productos/listar" class="nav-link"><i class="bi bi-grid"></i> Productos</a>

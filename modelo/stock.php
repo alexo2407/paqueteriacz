@@ -346,8 +346,18 @@ class StockModel
             }
             
             if (!empty($filtros['id_usuario'])) {
-                $where[] = 's.id_usuario = :id_usuario';
-                $params[':id_usuario'] = $filtros['id_usuario'];
+                if (is_array($filtros['id_usuario'])) {
+                    if (empty($filtros['id_usuario'])) {
+                         $where[] = '1 = 0';
+                    } else {
+                         $inIds = implode(',', array_map('intval', $filtros['id_usuario']));
+                         $where[] = "(s.id_usuario IN ($inIds) OR p.id_usuario_creador IN ($inIds))";
+                    }
+                } else {
+                    $where[] = '(s.id_usuario = :id_usuario OR p.id_usuario_creador = :id_usuario_prod)';
+                    $params[':id_usuario'] = $filtros['id_usuario'];
+                    $params[':id_usuario_prod'] = $filtros['id_usuario'];
+                }
             }
             
             $whereClause = implode(' AND ', $where);

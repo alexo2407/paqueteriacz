@@ -37,7 +37,9 @@ class EnlacesController
         $modulo = $segmentos[0] ?? 'inicio';
         $modulosPublicos = ['inicio', 'login', '', 'api', 'recuperar-password', 'reset-password'];
 
-        if (!in_array($modulo, $modulosPublicos, true)) {
+        $isRutaPublicaExtendida = in_array($modulo, $modulosPublicos, true) || strpos($url, 'stock/inventario_publico') === 0;
+
+        if (!$isRutaPublicaExtendida) {
             require_once __DIR__ . '/../utils/session.php';
             start_secure_session();
 
@@ -94,8 +96,9 @@ class EnlacesController
             $allowedByModule = [
                 'pedidos'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'usuarios'        => [ROL_NOMBRE_ADMIN],
-                'stock'           => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'productos'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'stock'           => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'productos'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'categorias'      => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'monedas'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'paises'          => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'departamentos'   => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],

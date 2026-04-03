@@ -29,7 +29,19 @@ class ProductoModel
             
             // Filtro por usuario creador
             if ($idUsuarioCreador !== null) {
-                $whereClauses[] = 'p.id_usuario_creador = :id_usuario_creador';
+                if (is_array($idUsuarioCreador)) {
+                    if (empty($idUsuarioCreador)) {
+                        $whereClauses[] = '1 = 0';
+                    } else {
+                        $placeholders = [];
+                        foreach ($idUsuarioCreador as $i => $v) {
+                            $placeholders[] = ':id_usr_creador_'.$i;
+                        }
+                        $whereClauses[] = 'p.id_usuario_creador IN (' . implode(',', $placeholders) . ')';
+                    }
+                } else {
+                    $whereClauses[] = 'p.id_usuario_creador = :id_usuario_creador';
+                }
             }
             
             // Filtro por productos activos (por defecto true)
@@ -74,7 +86,13 @@ class ProductoModel
             $stmt = $db->prepare($sql);
             
             if ($idUsuarioCreador !== null) {
-                $stmt->bindValue(':id_usuario_creador', $idUsuarioCreador, PDO::PARAM_INT);
+                if (is_array($idUsuarioCreador)) {
+                    foreach ($idUsuarioCreador as $i => $v) {
+                        $stmt->bindValue(':id_usr_creador_'.$i, $v, PDO::PARAM_INT);
+                    }
+                } else {
+                    $stmt->bindValue(':id_usuario_creador', $idUsuarioCreador, PDO::PARAM_INT);
+                }
             }
             
             $stmt->execute();
