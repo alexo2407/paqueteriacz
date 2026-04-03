@@ -1,153 +1,153 @@
 <?php
 
-/**
- * PedidoService
- *
- * Servicio central para cambios de estado de pedidos con movimientos de stock.
- * Debe llamarse DENTRO de una transacción activa ($db->beginTransaction() ya hecho).
- *
- * Estados que mueven stock:
- *   1  – En bodega     → RESERVA (sin tocar stock físico)
- *   2  – En ruta       → SALIDA física + libera reserva
- *   3  – Entregado     → Sin movimiento
- *   7  – Devuelto      → ENTRADA por devolución
- */
-
-include_once __DIR__ . '/../modelo/conexion.php';
-include_once __DIR__ . '/../modelo/stock.php';
-include_once __DIR__ . '/../modelo/inventario.php';
-
-class PedidoService
-{
-    // IDs de estado que disparan movimientos
-    const ESTADO_EN_BODEGA  = 1;
-    const ESTADO_EN_RUTA    = 2;
-    const ESTADO_ENTREGADO  = 3;
-    const ESTADO_DEVUELTO   = 7;
-    const ESTADO_RECHAZADO  = 9;  // Destinatario rechaza el paquete → igual que devolución
-
     /**
-     * Aplica movimientos de stock según el nuevo estado del pedido.
-     * Debe llamarse dentro de la transacción del método que cambia estado.
+     * PedidoService
      *
-     * @param int  $idPedido     ID del pedido
-     * @param int  $nuevoEstado  ID del nuevo estado (1,2,3,7,...)
-     * @param int  $actorUserId  ID del usuario que realiza el cambio
-     * @param PDO  $db           Conexión PDO activa (con transacción en curso)
-     * @return void
-     * @throws Exception si ocurre un error irrecuperable
+     * Servicio central para cambios de estado de pedidos con movimientos de stock.
+     * Debe llamarse DENTRO de una transacción activa ($db->beginTransaction() ya hecho).
+     *
+     * Estados que mueven stock:
+     *   1  – En bodega     → RESERVA (sin tocar stock físico)
+     *   2  – En ruta       → SALIDA física + libera reserva
+     *   3  – Entregado     → Sin movimiento
+     *   7  – Devuelto      → ENTRADA por devolución
      */
-    public static function aplicarStockPorEstado(int $idPedido, int $nuevoEstado, int $actorUserId, PDO $db): void
+
+    include_once __DIR__ . '/../modelo/conexion.php';
+    include_once __DIR__ . '/../modelo/stock.php';
+    include_once __DIR__ . '/../modelo/inventario.php';
+
+    class PedidoService
     {
-        switch ($nuevoEstado) {
-            case self::ESTADO_EN_BODEGA:
-                self::aplicarReserva($idPedido, $actorUserId, $db);
-                break;
+        // IDs de estado que disparan movimientos
+        const ESTADO_EN_BODEGA  = 1;
+        const ESTADO_EN_RUTA    = 2;
+        const ESTADO_ENTREGADO  = 3;
+        const ESTADO_DEVUELTO   = 7;
+        const ESTADO_RECHAZADO  = 9;  // Destinatario rechaza el paquete → igual que devolución
 
-            case self::ESTADO_EN_RUTA:
-                self::aplicarSalidaFisica($idPedido, $actorUserId, $db);
-                break;
+        /**
+         * Aplica movimientos de stock según el nuevo estado del pedido.
+         * Debe llamarse dentro de la transacción del método que cambia estado.
+         *
+         * @param int  $idPedido     ID del pedido
+         * @param int  $nuevoEstado  ID del nuevo estado (1,2,3,7,...)
+         * @param int  $actorUserId  ID del usuario que realiza el cambio
+         * @param PDO  $db           Conexión PDO activa (con transacción en curso)
+         * @return void
+         * @throws Exception si ocurre un error irrecuperable
+         */
+        public static function aplicarStockPorEstado(int $idPedido, int $nuevoEstado, int $actorUserId, PDO $db): void
+        {
+            switch ($nuevoEstado) {
+                case self::ESTADO_EN_BODEGA:
+                    self::aplicarReserva($idPedido, $actorUserId, $db);
+                    break;
 
-            case self::ESTADO_ENTREGADO:
-                // Sin movimiento de stock – la salida ya se hizo en estado 2
-                break;
+                case self::ESTADO_EN_RUTA:
+                    self::aplicarSalidaFisica($idPedido, $actorUserId, $db);
+                    break;
 
-            case self::ESTADO_DEVUELTO:
-            case self::ESTADO_RECHAZADO:  // Rechazado = destinatario no acepta → productos regresan
-                self::aplicarDevolucion($idPedido, $actorUserId, $db);
-                break;
+                case self::ESTADO_ENTREGADO:
+                    // Sin movimiento de stock – la salida ya se hizo en estado 2
+                    break;
 
-            // Cualquier otro estado: sin movimiento de stock
+                case self::ESTADO_DEVUELTO:
+                case self::ESTADO_RECHAZADO:  // Rechazado = destinatario no acepta → productos regresan
+                    self::aplicarDevolucion($idPedido, $actorUserId, $db);
+                    break;
+
+                    // Cualquier otro estado: sin movimiento de stock
+            }
         }
-    }
 
     // =========================================================================
     // ESTADO 1 – RESERVA
     // =========================================================================
 
-    /**
-     * Reserva stock por cada producto del pedido.
-     * Idempotente: si la reserva ya existe para ese pedido+producto, no la duplica.
-     * Actualiza inventario.cantidad_reservada (el trigger no lo hace).
-     */
-    private static function aplicarReserva(int $idPedido, int $actorUserId, PDO $db): void
-    {
-        $productos = self::obtenerProductosPedido($idPedido, $db);
+        /**
+         * Reserva stock por cada producto del pedido.
+         * Idempotente: si la reserva ya existe para ese pedido+producto, no la duplica.
+         * Actualiza inventario.cantidad_reservada (el trigger no lo hace).
+         */
+        private static function aplicarReserva(int $idPedido, int $actorUserId, PDO $db): void
+        {
+            $productos = self::obtenerProductosPedido($idPedido, $db);
 
-        foreach ($productos as $p) {
-            $idProducto = (int)$p['id_producto'];
-            $cantidad   = max(0, (int)$p['cantidad'] - (int)($p['cantidad_devuelta'] ?? 0));
+            foreach ($productos as $p) {
+                $idProducto = (int)$p['id_producto'];
+                $cantidad   = max(0, (int)$p['cantidad'] - (int)($p['cantidad_devuelta'] ?? 0));
 
-            if ($cantidad <= 0) continue;
+                if ($cantidad <= 0) continue;
 
-            // Idempotencia: INSERT IGNORE si ya existe la reserva
-            $stmt = $db->prepare('
+                // Idempotencia: INSERT IGNORE si ya existe la reserva
+                $stmt = $db->prepare('
                 INSERT IGNORE INTO pedido_reservas_stock
                     (id_pedido, id_producto, cantidad, liberada)
                 VALUES
                     (:id_pedido, :id_producto, :cantidad, 0)
             ');
-            $stmt->execute([
-                ':id_pedido'   => $idPedido,
-                ':id_producto' => $idProducto,
-                ':cantidad'    => $cantidad,
-            ]);
+                $stmt->execute([
+                    ':id_pedido'   => $idPedido,
+                    ':id_producto' => $idProducto,
+                    ':cantidad'    => $cantidad,
+                ]);
 
-            // Solo si se insertó (no era duplicado) actualizamos inventario
-            if ($stmt->rowCount() > 0) {
-                $stmt2 = $db->prepare('
+                // Solo si se insertó (no era duplicado) actualizamos inventario
+                if ($stmt->rowCount() > 0) {
+                    $stmt2 = $db->prepare('
                     UPDATE inventario
                     SET cantidad_reservada = cantidad_reservada + :cantidad,
                         updated_at         = NOW()
                     WHERE id_producto = :id_producto AND ubicacion = :ubicacion
                 ');
-                $stmt2->execute([
-                    ':cantidad'    => $cantidad,
-                    ':id_producto' => $idProducto,
-                    ':ubicacion'   => 'Principal',
-                ]);
+                    $stmt2->execute([
+                        ':cantidad'    => $cantidad,
+                        ':id_producto' => $idProducto,
+                        ':ubicacion'   => 'Principal',
+                    ]);
+                }
             }
         }
-    }
 
     // =========================================================================
     // ESTADO 2 – SALIDA FÍSICA
     // =========================================================================
 
-    /**
-     * Registra la salida física del stock al pasar a "En ruta".
-     * Idempotente: si ya existe una salida para este pedido, no la duplica.
-     * Libera las reservas existentes.
-     */
-    private static function aplicarSalidaFisica(int $idPedido, int $actorUserId, PDO $db): void
-    {
-        // Verificar si ya existe una salida para este pedido
-        $stmt = $db->prepare('
+        /**
+         * Registra la salida física del stock al pasar a "En ruta".
+         * Idempotente: si ya existe una salida para este pedido, no la duplica.
+         * Libera las reservas existentes.
+         */
+        private static function aplicarSalidaFisica(int $idPedido, int $actorUserId, PDO $db): void
+        {
+            // Verificar si ya existe una salida para este pedido
+            $stmt = $db->prepare('
             SELECT COUNT(*) FROM stock
             WHERE referencia_tipo = :tipo
               AND referencia_id   = :id
               AND tipo_movimiento = :movimiento
         ');
-        $stmt->execute([
-            ':tipo'       => 'pedido',
-            ':id'         => $idPedido,
-            ':movimiento' => 'salida',
-        ]);
+            $stmt->execute([
+                ':tipo'       => 'pedido',
+                ':id'         => $idPedido,
+                ':movimiento' => 'salida',
+            ]);
 
-        if ((int)$stmt->fetchColumn() > 0) {
-            return; // Ya se registró la salida, no duplicar
-        }
+            if ((int)$stmt->fetchColumn() > 0) {
+                return; // Ya se registró la salida, no duplicar
+            }
 
-        $productos = self::obtenerProductosPedido($idPedido, $db);
+            $productos = self::obtenerProductosPedido($idPedido, $db);
 
-        foreach ($productos as $p) {
-            $idProducto = (int)$p['id_producto'];
-            $cantidad   = max(0, (int)$p['cantidad'] - (int)($p['cantidad_devuelta'] ?? 0));
+            foreach ($productos as $p) {
+                $idProducto = (int)$p['id_producto'];
+                $cantidad   = max(0, (int)$p['cantidad'] - (int)($p['cantidad_devuelta'] ?? 0));
 
-            if ($cantidad <= 0) continue;
+                if ($cantidad <= 0) continue;
 
-            // INSERT en stock con cantidad negativa (el trigger actualiza inventario.cantidad_disponible)
-            $stmt = $db->prepare('
+                // INSERT en stock con cantidad negativa (el trigger actualiza inventario.cantidad_disponible)
+                $stmt = $db->prepare('
                 INSERT INTO stock
                     (id_producto, id_usuario, cantidad, tipo_movimiento,
                      referencia_tipo, referencia_id, motivo,
@@ -157,114 +157,114 @@ class PedidoService
                      :ref_tipo, :ref_id, :motivo,
                      :origen, :destino)
             ');
-            $stmt->execute([
-                ':id_producto' => $idProducto,
-                ':id_usuario'  => $actorUserId,
-                ':cantidad'    => -$cantidad,
-                ':tipo'        => 'salida',
-                ':ref_tipo'    => 'pedido',
-                ':ref_id'      => $idPedido,
-                ':motivo'      => 'Salida por cambio a En ruta o proceso',
-                ':origen'      => 'Bodega',
-                ':destino'     => 'Principal',
-            ]);
+                $stmt->execute([
+                    ':id_producto' => $idProducto,
+                    ':id_usuario'  => $actorUserId,
+                    ':cantidad'    => -$cantidad,
+                    ':tipo'        => 'salida',
+                    ':ref_tipo'    => 'pedido',
+                    ':ref_id'      => $idPedido,
+                    ':motivo'      => 'Salida por cambio a En ruta o proceso',
+                    ':origen'      => 'Bodega',
+                    ':destino'     => 'Principal',
+                ]);
 
-            // Liberar reserva si existía
-            $reserva = self::obtenerReserva($idPedido, $idProducto, $db);
-            if ($reserva && !(int)$reserva['liberada']) {
-                // Reducir cantidad_reservada en inventario
-                $stmt2 = $db->prepare('
+                // Liberar reserva si existía
+                $reserva = self::obtenerReserva($idPedido, $idProducto, $db);
+                if ($reserva && !(int)$reserva['liberada']) {
+                    // Reducir cantidad_reservada en inventario
+                    $stmt2 = $db->prepare('
                     UPDATE inventario
                     SET cantidad_reservada = GREATEST(0, cantidad_reservada - :cantidad),
                         updated_at         = NOW()
                     WHERE id_producto = :id_producto AND ubicacion = :ubicacion
                 ');
-                $stmt2->execute([
-                    ':cantidad'    => (int)$reserva['cantidad'],
-                    ':id_producto' => $idProducto,
-                    ':ubicacion'   => 'Principal',
-                ]);
+                    $stmt2->execute([
+                        ':cantidad'    => (int)$reserva['cantidad'],
+                        ':id_producto' => $idProducto,
+                        ':ubicacion'   => 'Principal',
+                    ]);
 
-                // Marcar reserva como liberada
-                $stmt3 = $db->prepare('
+                    // Marcar reserva como liberada
+                    $stmt3 = $db->prepare('
                     UPDATE pedido_reservas_stock
                     SET liberada = 1, updated_at = NOW()
                     WHERE id_pedido = :id_pedido AND id_producto = :id_producto
                 ');
-                $stmt3->execute([
-                    ':id_pedido'   => $idPedido,
-                    ':id_producto' => $idProducto,
-                ]);
+                    $stmt3->execute([
+                        ':id_pedido'   => $idPedido,
+                        ':id_producto' => $idProducto,
+                    ]);
+                }
             }
         }
-    }
 
     // =========================================================================
     // ESTADO 7 – DEVOLUCIÓN
     // =========================================================================
 
-    /**
-     * Registra entrada de stock por devolución.
-     *
-     * Lógica:
-     *  - Si cantidad_devuelta = 0 en pedidos_productos, se asume devolución total
-     *    y se usa la cantidad completa del pedido.
-     *  - Si el pedido tuvo salida física (estuvo "En ruta"): registra ENTRADA de devolución.
-     *  - Si el pedido NUNCA salió (se devuelve desde "En bodega"): solo libera la reserva
-     *    sin agregar stock que nunca salió, para no inflar el inventario.
-     *
-     * Idempotente: no duplica movimientos ya registrados.
-     */
-    private static function aplicarDevolucion(int $idPedido, int $actorUserId, PDO $db): void
-    {
-        // Verificar si hubo salida física para este pedido
-        $stmtSalida = $db->prepare('
+        /**
+         * Registra entrada de stock por devolución.
+         *
+         * Lógica:
+         *  - Si cantidad_devuelta = 0 en pedidos_productos, se asume devolución total
+         *    y se usa la cantidad completa del pedido.
+         *  - Si el pedido tuvo salida física (estuvo "En ruta"): registra ENTRADA de devolución.
+         *  - Si el pedido NUNCA salió (se devuelve desde "En bodega"): solo libera la reserva
+         *    sin agregar stock que nunca salió, para no inflar el inventario.
+         *
+         * Idempotente: no duplica movimientos ya registrados.
+         */
+        private static function aplicarDevolucion(int $idPedido, int $actorUserId, PDO $db): void
+        {
+            // Verificar si hubo salida física para este pedido
+            $stmtSalida = $db->prepare('
             SELECT COUNT(*) FROM stock
             WHERE referencia_tipo = :tipo
               AND referencia_id   = :id
               AND tipo_movimiento = :movimiento
         ');
-        $stmtSalida->execute([
-            ':tipo'       => 'pedido',
-            ':id'         => $idPedido,
-            ':movimiento' => 'salida',
-        ]);
-        $huboSalidaFisica = (int)$stmtSalida->fetchColumn() > 0;
+            $stmtSalida->execute([
+                ':tipo'       => 'pedido',
+                ':id'         => $idPedido,
+                ':movimiento' => 'salida',
+            ]);
+            $huboSalidaFisica = (int)$stmtSalida->fetchColumn() > 0;
 
-        $productos = self::obtenerProductosPedido($idPedido, $db);
+            $productos = self::obtenerProductosPedido($idPedido, $db);
 
-        foreach ($productos as $p) {
-            $idProducto   = (int)$p['id_producto'];
-            $cantDevuelta = (int)($p['cantidad_devuelta'] ?? 0);
+            foreach ($productos as $p) {
+                $idProducto   = (int)$p['id_producto'];
+                $cantDevuelta = (int)($p['cantidad_devuelta'] ?? 0);
 
-            // Fix: si cantidad_devuelta = 0, asumir devolución total
-            if ($cantDevuelta <= 0) {
-                $cantDevuelta = (int)$p['cantidad'];
-            }
+                // Fix: si cantidad_devuelta = 0, asumir devolución total
+                if ($cantDevuelta <= 0) {
+                    $cantDevuelta = (int)$p['cantidad'];
+                }
 
-            if ($cantDevuelta <= 0) continue;
+                if ($cantDevuelta <= 0) continue;
 
-            if ($huboSalidaFisica) {
-                // ── Caso normal: pedido pasó por "En Ruta" ──────────────────
-                // El stock ya salió físicamente → registrar ENTRADA de devolución
+                if ($huboSalidaFisica) {
+                    // ── Caso normal: pedido pasó por "En Ruta" ──────────────────
+                    // El stock ya salió físicamente → registrar ENTRADA de devolución
 
-                // Idempotencia: no duplicar si ya existe devolución registrada
-                $stmtCheck = $db->prepare('
+                    // Idempotencia: no duplicar si ya existe devolución registrada
+                    $stmtCheck = $db->prepare('
                     SELECT COUNT(*) FROM stock
                     WHERE referencia_tipo = :tipo
                       AND referencia_id   = :id
                       AND id_producto     = :id_producto
                       AND tipo_movimiento = :movimiento
                 ');
-                $stmtCheck->execute([
-                    ':tipo'        => 'pedido',
-                    ':id'          => $idPedido,
-                    ':id_producto' => $idProducto,
-                    ':movimiento'  => 'devolucion',
-                ]);
-                if ((int)$stmtCheck->fetchColumn() > 0) continue;
+                    $stmtCheck->execute([
+                        ':tipo'        => 'pedido',
+                        ':id'          => $idPedido,
+                        ':id_producto' => $idProducto,
+                        ':movimiento'  => 'devolucion',
+                    ]);
+                    if ((int)$stmtCheck->fetchColumn() > 0) continue;
 
-                $stmt = $db->prepare('
+                    $stmt = $db->prepare('
                     INSERT INTO stock
                         (id_producto, id_usuario, cantidad, tipo_movimiento,
                          referencia_tipo, referencia_id, motivo,
@@ -274,84 +274,83 @@ class PedidoService
                          :ref_tipo, :ref_id, :motivo,
                          :origen, :destino)
                 ');
-                $stmt->execute([
-                    ':id_producto' => $idProducto,
-                    ':id_usuario'  => $actorUserId,
-                    ':cantidad'    => $cantDevuelta,
-                    ':tipo'        => 'devolucion',
-                    ':ref_tipo'    => 'pedido',
-                    ':ref_id'      => $idPedido,
-                    ':motivo'      => 'Devolución de pedido #' . $idPedido,
-                    ':origen'      => 'Ruta',
-                    ':destino'     => 'Bodega',
-                ]);
+                    $stmt->execute([
+                        ':id_producto' => $idProducto,
+                        ':id_usuario'  => $actorUserId,
+                        ':cantidad'    => $cantDevuelta,
+                        ':tipo'        => 'devolucion',
+                        ':ref_tipo'    => 'pedido',
+                        ':ref_id'      => $idPedido,
+                        ':motivo'      => 'Devolución de pedido #' . $idPedido,
+                        ':origen'      => 'Ruta',
+                        ':destino'     => 'Bodega',
+                    ]);
+                } else {
+                    // ── Caso especial: pedido devuelto desde "En Bodega" ─────────
+                    // El stock NUNCA salió físicamente → solo liberar la reserva
+                    // (no agregar stock que nunca salió para no inflar inventario)
 
-            } else {
-                // ── Caso especial: pedido devuelto desde "En Bodega" ─────────
-                // El stock NUNCA salió físicamente → solo liberar la reserva
-                // (no agregar stock que nunca salió para no inflar inventario)
-
-                $reserva = self::obtenerReserva($idPedido, $idProducto, $db);
-                if ($reserva && !(int)$reserva['liberada']) {
-                    $stmt2 = $db->prepare('
+                    $reserva = self::obtenerReserva($idPedido, $idProducto, $db);
+                    if ($reserva && !(int)$reserva['liberada']) {
+                        $stmt2 = $db->prepare('
                         UPDATE inventario
                         SET cantidad_reservada = GREATEST(0, cantidad_reservada - :cantidad),
                             updated_at         = NOW()
                         WHERE id_producto = :id_producto AND ubicacion = :ubicacion
                     ');
-                    $stmt2->execute([
-                        ':cantidad'    => (int)$reserva['cantidad'],
-                        ':id_producto' => $idProducto,
-                        ':ubicacion'   => 'Principal',
-                    ]);
+                        $stmt2->execute([
+                            ':cantidad'    => (int)$reserva['cantidad'],
+                            ':id_producto' => $idProducto,
+                            ':ubicacion'   => 'Principal',
+                        ]);
 
-                    $stmt3 = $db->prepare('
+                        $stmt3 = $db->prepare('
                         UPDATE pedido_reservas_stock
                         SET liberada = 1, updated_at = NOW()
                         WHERE id_pedido = :id_pedido AND id_producto = :id_producto
                     ');
-                    $stmt3->execute([
-                        ':id_pedido'   => $idPedido,
-                        ':id_producto' => $idProducto,
-                    ]);
+                        $stmt3->execute([
+                            ':id_pedido'   => $idPedido,
+                            ':id_producto' => $idProducto,
+                        ]);
+                    }
                 }
             }
         }
-    }
 
     // =========================================================================
     // Helpers internos
     // =========================================================================
 
-    /**
-     * Obtener productos de un pedido con sus cantidades.
-     */
-    private static function obtenerProductosPedido(int $idPedido, PDO $db): array
-    {
-        $stmt = $db->prepare('
+        /**
+         * Obtener productos de un pedido con sus cantidades.
+         */
+        private static function obtenerProductosPedido(int $idPedido, PDO $db): array
+        {
+            $stmt = $db->prepare('
             SELECT id_producto, cantidad, COALESCE(cantidad_devuelta, 0) AS cantidad_devuelta
             FROM pedidos_productos
             WHERE id_pedido = :id_pedido
         ');
-        $stmt->execute([':id_pedido' => $idPedido]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+            $stmt->execute([':id_pedido' => $idPedido]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
 
-    /**
-     * Obtener fila de reserva para un pedido+producto.
-     */
-    private static function obtenerReserva(int $idPedido, int $idProducto, PDO $db): ?array
-    {
-        $stmt = $db->prepare('
+        /**
+         * Obtener fila de reserva para un pedido+producto.
+         */
+        private static function obtenerReserva(int $idPedido, int $idProducto, PDO $db): ?array
+        {
+            $stmt = $db->prepare('
             SELECT * FROM pedido_reservas_stock
             WHERE id_pedido = :id_pedido AND id_producto = :id_producto
             LIMIT 1
         ');
-        $stmt->execute([
-            ':id_pedido'   => $idPedido,
-            ':id_producto' => $idProducto,
-        ]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row ?: null;
+            $stmt->execute([
+                ':id_pedido'   => $idPedido,
+                ':id_producto' => $idProducto,
+            ]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        }
     }
-}

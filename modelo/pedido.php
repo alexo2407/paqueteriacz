@@ -1466,28 +1466,33 @@ class PedidosModel
                 number_format((float)$pedido['latitud'], 8, '.', '')
             );
 
-            // Verificar disponibilidad de stock para cada producto antes de insertar.
-            // Bloqueamos las filas relevantes con FOR UPDATE para evitar condiciones de carrera.
-            $stockCheckStmt = $db->prepare('SELECT COALESCE(SUM(cantidad), 0) AS stock_total FROM stock WHERE id_producto = :id_producto FOR UPDATE');
-            // 1. Validar stock para todos los items antes de insertar nada
-            // Esto previene insertar un pedido si falta stock de algún producto.
+            // 1. Validar stock neto disponible para todos los items antes de insertar nada.
+            // obtenerStockTotal() descuenta reservas activas (pedidos En Bodega nuevos) además
+            // de los movimientos físicos, garantizando que ambos flujos convivan correctamente.
+            // Se bloquean las filas en stock con FOR UPDATE para evitar condiciones de carrera.
             $calculatedTotalUSD = 0;
             foreach ($items as $item) {
-                $prodId = (int)$item['id_producto'];
+                $prodId           = (int)$item['id_producto'];
                 $cantidadSolicitada = (int)$item['cantidad'];
-                
-                // Obtener datos del producto (Validación y Precio)
+
+                // Obtener datos del producto (nombre, precio) — solo para metadatos
                 $productoData = ProductoModel::obtenerPorId($prodId);
-                
                 if (!$productoData) {
                     throw new Exception("Producto ID $prodId no encontrado.");
                 }
 
-                // Validar Stock
-                $stockActual = (int)($productoData['stock_total'] ?? 0);
-                
+                // Bloquear filas de stock del producto dentro de la transacción
+                $lockStmt = $db->prepare('SELECT id FROM stock WHERE id_producto = :id FOR UPDATE');
+                $lockStmt->execute([':id' => $prodId]);
+
+                // Validar stock neto: SUM(stock) - reservas activas (ambos flujos)
+                $stockActual = ProductoModel::obtenerStockTotal($prodId) ?? 0;
+
                 if ($stockActual < $cantidadSolicitada) {
-                    throw new Exception("Stock insuficiente para el producto '{$productoData['nombre']}'. Disponible: $stockActual, Solicitado: $cantidadSolicitada.");
+                    throw new Exception(
+                        "Stock insuficiente para el producto '{$productoData['nombre']}'. " .
+                        "Disponible: $stockActual, Solicitado: $cantidadSolicitada."
+                    );
                 }
 
                 // Calcular Precio USD
@@ -1617,26 +1622,27 @@ class PedidosModel
                 error_log("[DEBUG] Pedido INSERT SUCCESS - ID: " . $pedidoId);
             }
 
-            // 3. Insertar items y descontar stock
+            // 3. Insertar items en pedidos_productos
             $detalleStmt = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
-            
-            require_once __DIR__ . '/stock.php'; // Asegurar que StockModel está disponible
 
             foreach ($items as $item) {
                 $prodId = (int)$item['id_producto'];
-                $cant = (int)$item['cantidad'];
+                $cant   = (int)$item['cantidad'];
 
-                // Insertar detalle
-                $detalleStmt->bindValue(':id_pedido', $pedidoId, PDO::PARAM_INT);
-                $detalleStmt->bindValue(':id_producto', $prodId, PDO::PARAM_INT);
-                $detalleStmt->bindValue(':cantidad', $cant, PDO::PARAM_INT);
+                $detalleStmt->bindValue(':id_pedido',  $pedidoId, PDO::PARAM_INT);
+                $detalleStmt->bindValue(':id_producto', $prodId,  PDO::PARAM_INT);
+                $detalleStmt->bindValue(':cantidad',    $cant,    PDO::PARAM_INT);
                 $detalleStmt->execute();
-
-                // Descontar stock (PHP logic)
-                // Usamos el id_vendedor del pedido como responsable del movimiento, si existe
-                $vendedorId = isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null;
-                StockModel::registrarSalida($prodId, $cant, $vendedorId, $db, 'pedido', $pedidoId);
             }
+
+            // 4. Aplicar movimiento de stock según el estado inicial del pedido.
+            // Se usa PedidoService para mantener consistencia con el flujo de cambios
+            // de estado (reserva en En Bodega → salida física en En Ruta).
+            // Los pedidos anteriores al 2026-04-03 usaban StockModel::registrarSalida()
+            // directamente al crear; esos registros se conservan sin modificar.
+            require_once __DIR__ . '/../services/PedidoService.php';
+            $estadoInicial = (int)($pedido['estado'] ?? 1);
+            PedidoService::aplicarStockPorEstado($pedidoId, $estadoInicial, $resolvedFallbackUser, $db);
 
             if (defined('DEBUG') && DEBUG) {
                 error_log("[DEBUG] Committing transaction for pedido ID: " . $pedidoId);

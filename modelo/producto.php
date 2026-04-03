@@ -54,9 +54,17 @@ class ProductoModel
                         p.imagen_url,
                         p.es_combo,
                         p.id_usuario_creador,
-                        COALESCE(SUM(s.cantidad), 0) AS stock_total
+                        COALESCE(SUM(s.cantidad), 0)
+                        - COALESCE(MAX(reservas.total_reservado), 0) AS stock_total
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
+                    LEFT JOIN (
+                        SELECT prs.id_producto, SUM(prs.cantidad) AS total_reservado
+                        FROM pedido_reservas_stock prs
+                        JOIN pedidos ped ON ped.id = prs.id_pedido
+                        WHERE prs.liberada = 0 AND ped.id_estado = 1
+                        GROUP BY prs.id_producto
+                    ) reservas ON reservas.id_producto = p.id
                     {$whereClause}
                     GROUP BY p.id, p.sku, p.nombre, p.descripcion, p.precio_usd, 
                              p.categoria_id, p.marca, p.unidad_medida, p.stock_minimo, 
@@ -99,9 +107,17 @@ class ProductoModel
                     p.id_usuario_creador,
                     p.created_at,
                     p.updated_at,
-                    COALESCE(SUM(s.cantidad), 0) AS stock_total
+                    COALESCE(SUM(s.cantidad), 0)
+                    - COALESCE(MAX(reservas.total_reservado), 0) AS stock_total
                 FROM productos p
                 LEFT JOIN stock s ON s.id_producto = p.id
+                LEFT JOIN (
+                    SELECT prs.id_producto, SUM(prs.cantidad) AS total_reservado
+                    FROM pedido_reservas_stock prs
+                    JOIN pedidos ped ON ped.id = prs.id_pedido
+                    WHERE prs.liberada = 0 AND ped.id_estado = 1
+                    GROUP BY prs.id_producto
+                ) reservas ON reservas.id_producto = p.id
                 WHERE p.id = :id
                 GROUP BY p.id
             ');
@@ -160,15 +176,42 @@ class ProductoModel
     }
 
     /**
-     * Obtener stock total disponible para un producto (suma de stock.cantidad)
-     * Devuelve null si ocurre un error o no existe el producto
+     * Obtener stock neto disponible para un producto.
+     *
+     * Fórmula: SUM(stock.cantidad) - reservas_activas
+     *
+     * - SUM(stock.cantidad): acumula entradas (+), salidas (-) y devoluciones (+).
+     *   Los pedidos creados antes del 2026-04-03 ya tienen su salida registrada aquí.
+     * - reservas_activas: pedidos En Bodega creados con el nuevo flujo (PedidoService)
+     *   que aún no tienen salida física en stock pero sí reserva en pedido_reservas_stock.
+     *
+     * Así ambos flujos (viejo y nuevo) conviven y el número resultante siempre
+     * representa el stock real libre para asignar a nuevos pedidos.
+     *
+     * @param int $id ID del producto
+     * @return int|null Stock neto disponible o null en error
      */
     public static function obtenerStockTotal($id)
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT COALESCE(SUM(cantidad), 0) as stock_total FROM stock WHERE id_producto = :id');
-            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $stmt = $db->prepare('
+                SELECT
+                    COALESCE(SUM(s.cantidad), 0)
+                    - COALESCE((
+                        SELECT SUM(prs.cantidad)
+                        FROM pedido_reservas_stock prs
+                        JOIN pedidos p ON p.id = prs.id_pedido
+                        WHERE prs.id_producto = :id2
+                          AND prs.liberada = 0
+                          AND p.id_estado = 1
+                    ), 0)
+                    AS stock_total
+                FROM stock s
+                WHERE s.id_producto = :id
+            ');
+            $stmt->bindValue(':id',  $id, PDO::PARAM_INT);
+            $stmt->bindValue(':id2', $id, PDO::PARAM_INT);
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if ($row === false) return null;
@@ -537,10 +580,21 @@ class ProductoModel
                         p.nombre,
                         p.sku,
                         p.stock_minimo,
-                        COALESCE(SUM(s.cantidad), 0) AS stock_actual,
-                        (p.stock_minimo - COALESCE(SUM(s.cantidad), 0)) as faltante
+                        COALESCE(SUM(s.cantidad), 0)
+                        - COALESCE(MAX(reservas.total_reservado), 0) AS stock_actual,
+                        (p.stock_minimo - (
+                            COALESCE(SUM(s.cantidad), 0)
+                            - COALESCE(MAX(reservas.total_reservado), 0)
+                        )) AS faltante
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
+                    LEFT JOIN (
+                        SELECT prs.id_producto, SUM(prs.cantidad) AS total_reservado
+                        FROM pedido_reservas_stock prs
+                        JOIN pedidos ped ON ped.id = prs.id_pedido
+                        WHERE prs.liberada = 0 AND ped.id_estado = 1
+                        GROUP BY prs.id_producto
+                    ) reservas ON reservas.id_producto = p.id
                     WHERE p.activo = TRUE {$whereUsuario}
                     GROUP BY p.id
                     HAVING stock_actual < p.stock_minimo
@@ -712,9 +766,17 @@ class ProductoModel
                         p.activo,
                         p.imagen_url,
                         p.id_usuario_creador,
-                        COALESCE(SUM(s.cantidad), 0) AS stock_total
+                        COALESCE(SUM(s.cantidad), 0)
+                        - COALESCE(MAX(reservas.total_reservado), 0) AS stock_total
                     FROM productos p
                     LEFT JOIN stock s ON s.id_producto = p.id
+                    LEFT JOIN (
+                        SELECT prs.id_producto, SUM(prs.cantidad) AS total_reservado
+                        FROM pedido_reservas_stock prs
+                        JOIN pedidos ped ON ped.id = prs.id_pedido
+                        WHERE prs.liberada = 0 AND ped.id_estado = 1
+                        GROUP BY prs.id_producto
+                    ) reservas ON reservas.id_producto = p.id
                     {$whereClause}
                     GROUP BY p.id
                     {$havingClause}
