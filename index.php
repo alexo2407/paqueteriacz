@@ -72,8 +72,8 @@ if ($enlaceSolicitado === null || $enlaceSolicitado === '') {
         if ((isClienteCRM($userId) || isProveedorCRM($userId)) && !isUserAdmin($userId)) {
            header('Location: ' . RUTA_URL . 'crm/notificaciones');
         } elseif (isUserCliente($userId) && !isUserAdmin($userId)) {
-            // Usuarios Logística (Cliente) van a su dashboard
-            header('Location: ' . RUTA_URL . 'logistica/dashboard');
+            // Usuarios Logística (Cliente) van a su tracking de estados
+            header('Location: ' . RUTA_URL . 'seguimiento/admin_tracking');
         } else {
             // Otros roles van al dashboard general
             header('Location: ' . RUTA_URL . 'dashboard');
@@ -93,8 +93,8 @@ if ($primerSegmento === 'inicio' && !empty($_SESSION['registrado'])) {
     if ((isClienteCRM($userId) || isProveedorCRM($userId)) && !isUserAdmin($userId)) {
         header('Location: ' . RUTA_URL . 'crm/notificaciones');
     } elseif (isUserCliente($userId) && !isUserAdmin($userId)) {
-        // Usuarios Logística (Cliente) van a su dashboard
-        header('Location: ' . RUTA_URL . 'logistica/dashboard');
+        // Usuarios Logística (Cliente) van a su tracking de estados
+        header('Location: ' . RUTA_URL . 'seguimiento/admin_tracking');
     } else {
         // Otros roles van al dashboard general
         header('Location: ' . RUTA_URL . 'dashboard');

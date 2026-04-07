@@ -149,6 +149,14 @@ try {
         $filtros['id_usuario'] = (int)$_GET['id_usuario'];
     }
 
+    if (!empty($_GET['id_cliente']) && is_numeric($_GET['id_cliente'])) {
+        $filtros['id_cliente'] = (int)$_GET['id_cliente'];
+    }
+
+    if (!empty($_GET['id_proveedor']) && is_numeric($_GET['id_proveedor'])) {
+        $filtros['id_proveedor'] = (int)$_GET['id_proveedor'];
+    }
+
     // ── Paginación ─────────────────────────────────────────────────────────
     $page  = isset($_GET['page'])  ? max(1, (int)$_GET['page'])             : 1;
     $limit = isset($_GET['limit']) ? max(1, min(100, (int)$_GET['limit']))  : 20;

@@ -104,13 +104,13 @@ class EnlacesController
                 'departamentos'   => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'municipios'      => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'barrios'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'seguimiento'     => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN],
+                'seguimiento'     => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE, ROL_NOMBRE_PROVEEDOR],
                 'auditoria'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'crm'             => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'],
                 'logistica'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE],
                 'codigos_postales' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_VENDEDOR, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 // Dashboard principal: solo Admin y Proveedor
-                // Clientes tienen su propio dashboard en logistica/dashboard
+                // Clientes tienen su propio tracking de estados
                 'dashboard'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'webhooks'        => [ROL_NOMBRE_ADMIN],
             ];
@@ -125,12 +125,15 @@ class EnlacesController
             if (!$isAdmin && !$isPerfilRoute && isset($allowedByModule[$modulo])) {
                 $permitidos = $allowedByModule[$modulo];
                 if (!is_array($userRoleNames) || count(array_intersect($permitidos, $userRoleNames)) === 0) {
-                    // Si es cliente intentando acceder al dashboard principal → redirigir a su dashboard
-                    if ($modulo === 'dashboard' && in_array(ROL_NOMBRE_CLIENTE, $userRoleNames, true)) {
-                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'logistica/dashboard' : 'index.php?enlace=logistica/dashboard'));
+                    // Si es cliente intentando acceder a una ruta sin permiso → redirigir a su tracking
+                    if (in_array(ROL_NOMBRE_CLIENTE, $userRoleNames, true)) {
+                        if ($modulo !== 'dashboard') {
+                            set_flash('error', 'Acceso denegado para tu rol.');
+                        }
+                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'seguimiento/admin_tracking' : 'index.php?enlace=seguimiento/admin_tracking'));
                     } else {
                         set_flash('error', 'Acceso denegado para tu rol.');
-                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'logistica/dashboard' : 'index.php?enlace=logistica/dashboard'));
+                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard'));
                     }
                     exit;
                 }

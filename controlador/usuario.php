@@ -256,9 +256,13 @@ class UsuariosController
             $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
             $isClienteCRM = in_array(ROL_NOMBRE_CLIENTE_CRM, $rolesNombres, true);  // CRM
             $isProveedorCRM = in_array(ROL_NOMBRE_PROVEEDOR_CRM, $rolesNombres, true);  // CRM
-            $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true); // Logística
             
-            // Si es repartidor (y no es admin), redirigir a su página de seguimiento
+            // NutraTrade (ID 4, name "Cliente") -> ROL_NOMBRE_PROVEEDOR maps to "Cliente" string
+            $isNutraTradeClient = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) || ($_SESSION['rol'] == (defined('ROL_PROVEEDOR') ? ROL_PROVEEDOR : 4));
+            // RutaEX (ID 5, name "Proveedor") -> ROL_NOMBRE_CLIENTE maps to "Proveedor" string
+            $isMensajero = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true) || ($_SESSION['rol'] == (defined('ROL_CLIENTE') ? ROL_CLIENTE : 5));
+
+            // Dependiendo del rol, lo redirigimos a donde corresponde
             if ($isRepartidor && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'seguimiento/listar' : 'index.php?enlace=seguimiento/listar';
@@ -266,7 +270,6 @@ class UsuariosController
                 exit;
             }
             
-            // Si es usuario CRM (cliente o proveedor) y no es admin, redirigir a notificaciones CRM
             if (($isClienteCRM || $isProveedorCRM) && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'crm/notificaciones' : 'index.php?enlace=crm/notificaciones';
@@ -274,15 +277,23 @@ class UsuariosController
                 exit;
             }
 
-            // Si es Cliente de Logística y no es admin, redirigir a su dashboard de logística
-            if ($isCliente && !$isAdmin) {
+            // Clientes Logísticos (ej. NutraTrade) van directo a su Tracking
+            if ($isNutraTradeClient && !$isAdmin) {
+                set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
+                $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'seguimiento/admin_tracking' : 'index.php?enlace=seguimiento/admin_tracking';
+                header('Location: ' . $redirectUrl);
+                exit;
+            }
+            
+            // Proveedores Logísticos / Mensajeros (ej. RutaEX) van a logística
+            if ($isMensajero && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'logistica/dashboard' : 'index.php?enlace=logistica/dashboard';
                 header('Location: ' . $redirectUrl);
                 exit;
             }
-            
-            // Para otros roles, redirigir a dashboard
+
+            // Para otros roles (Admin), redirigir a dashboard principal
             set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
             $dashboardUrl = defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard';
             header('Location: ' . $dashboardUrl);

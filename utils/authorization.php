@@ -60,7 +60,7 @@ function require_role($rolesPermitidos) {
         if (in_array(ROL_NOMBRE_REPARTIDOR, $userRoles)) {
             header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'seguimiento/listar');
         } elseif (in_array(ROL_NOMBRE_CLIENTE, $userRoles)) {
-            header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'logistica/dashboard');
+            header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'seguimiento/admin_tracking');
         } else {
             header('Location: ' . (defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/') . 'dashboard');
         }

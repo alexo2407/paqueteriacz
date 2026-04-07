@@ -1607,5 +1607,71 @@ class PedidosController {
         }
         exit;
     }
+
+    /**
+     * Buscar historial de estados con filtros avanzados para el panel administrativo.
+     * Soporta: numero_orden, fecha_desde, fecha_hasta, id_cliente (vendedor), id_proveedor (logística).
+     */
+    public function adminTrackingSearch() {
+        require_once __DIR__ . '/../utils/session.php';
+        header('Content-Type: application/json');
+
+        // Solo permitir a administradores o roles autorizados de logística
+        require_once __DIR__ . '/../utils/permissions.php';
+        $rolesNames = $_SESSION['roles_nombres'] ?? [];
+        $sessionRol = $_SESSION['rol'] ?? 0;
+        $currentUserId = getCurrentUserId();
+        
+        // Nota sobre inversión: 
+        // ID 4 (ROL_PROVEEDOR en código) = NutraTrade (Nombre "Cliente" en UI) -> Almacenado en id_proveedor
+        // ID 5 (ROL_CLIENTE en código)   = Mensajería (Nombre "Proveedor" en UI) -> Almacenado en id_cliente
+        $isNutraTrade = isProveedor() || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
+        $isMensajeria = isCliente()   || $sessionRol == 5 || in_array('Proveedor', $rolesNames) || in_array('proveedor', $rolesNames);
+        $isAdmin      = isAdmin();
+
+        if (!$isAdmin && !$isNutraTrade && !$isMensajeria) {
+             echo json_encode(['success' => false, 'message' => 'Acceso denegado.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+             exit;
+        }
+
+        $filtros = [];
+        if (!empty($_GET['numero_orden'])) $filtros['numero_orden'] = trim($_GET['numero_orden']);
+        if (!empty($_GET['fecha_desde']))  $filtros['fecha_desde']  = $_GET['fecha_desde'];
+        if (!empty($_GET['fecha_hasta']))  $filtros['fecha_hasta']  = $_GET['fecha_hasta'];
+        
+        // Seguridad: Filtrado dinámico según el rol
+        if (!$isAdmin) {
+            if ($isNutraTrade) {
+                // NutraTrade puede ser cliente o proveedor dependiendo del pedido (Inconsistencia DB)
+                // Usamos un filtro especial que busque en ambas columnas
+                $filtros['id_usuario_pertenencia'] = $currentUserId;
+            } else if ($isMensajeria) {
+                // Mensajería/RutaEX se guarda usualmente como id_cliente
+                $filtros['id_cliente'] = $currentUserId;
+            }
+        } else {
+            // Admin puede filtrar por cualquier campo pasado en la URL
+            if (!empty($_GET['id_cliente']))   $filtros['id_cliente']   = (int)$_GET['id_cliente'];
+            if (!empty($_GET['id_proveedor'])) $filtros['id_proveedor'] = (int)$_GET['id_proveedor'];
+        }
+
+        $page  = isset($_GET['page'])  ? (int)$_GET['page']  : 1;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 100;
+
+        try {
+            $resultado = PedidosModel::obtenerHistorialEstadosFiltrado($filtros, $page, $limit);
+            echo json_encode([
+                'success' => true,
+                'data' => $resultado['data'] ?? [],
+                'pagination' => $resultado['pagination'] ?? null
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al buscar seguimiento: ' . $e->getMessage()
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
 }
 

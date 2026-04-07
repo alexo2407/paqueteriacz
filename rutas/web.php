@@ -172,6 +172,15 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
         $ctrl->historial($id);
         exit;
     }
+
+    if ($accion === 'adminTrackingSearch') {
+        require_once __DIR__ . '/../modelo/pedido.php';
+        require_once __DIR__ . '/../controlador/pedido.php';
+        
+        $ctrl = new PedidosController();
+        $ctrl->adminTrackingSearch();
+        exit;
+    }
 }
 
 // Handler para codigos_postales GET (AJAX lookup)

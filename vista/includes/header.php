@@ -1,4 +1,6 @@
 <?php
+    require_once __DIR__ . '/../../utils/permissions.php';
+
     // ── Roles / home URL ────────────────────────────────────────────────────
     $rolesNombres = $_SESSION['roles_nombres'] ?? [];
     $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
@@ -10,6 +12,9 @@
     $rolClienteCRM   = defined('ROL_NOMBRE_CLIENTE_CRM')   ? ROL_NOMBRE_CLIENTE_CRM   : 'Cliente CRM';
     $isProveedorCRM  = in_array($rolProveedorCRM, $rolesNombres, true);
     $isClienteCRM    = in_array($rolClienteCRM,   $rolesNombres, true);
+    $isNutraTradeClient = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) || ($_SESSION['rol'] ?? null) == (defined('ROL_PROVEEDOR') ? ROL_PROVEEDOR : 4);
+    $isMensajero     = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true) || ($_SESSION['rol'] ?? null) == (defined('ROL_CLIENTE') ? ROL_CLIENTE : 5);
+    
     $isClienteId     = in_array(ROL_CLIENTE, $_SESSION['roles'] ?? [], true) || ($_SESSION['rol'] ?? null) == ROL_CLIENTE;
     $isCliente       = $isClienteId || in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true);
 
@@ -17,7 +22,9 @@
         $homeUrl = RUTA_URL . 'seguimiento/listar';
     } elseif (($isProveedorCRM || $isClienteCRM) && !$isAdmin) {
         $homeUrl = RUTA_URL . 'crm/notificaciones';
-    } elseif ($isCliente && !$isAdmin) {
+    } elseif ($isNutraTradeClient && !$isAdmin) {
+        $homeUrl = RUTA_URL . 'seguimiento/admin_tracking';
+    } elseif ($isMensajero && !$isAdmin) {
         $homeUrl = RUTA_URL . 'logistica/dashboard';
     } else {
         $homeUrl = RUTA_URL . 'dashboard';
@@ -421,7 +428,7 @@
                 <i class="bi bi-speedometer2"></i> Dashboard
             </a>
             <?php endif; ?>
-            <?php if ($isCliente): ?>
+            <?php if ($isMensajero): ?>
             <a href="<?= RUTA_URL ?>logistica/dashboard" class="nav-link">
                 <i class="bi bi-truck"></i> Mis Pedidos
             </a>
@@ -431,6 +438,9 @@
                 <span class="badge bg-danger"><?= $unreadCount ?></span>
                 <?php endif; ?>
             </a>
+            <?php endif; ?>
+            
+            <?php if ($isCliente || $isProveedor || $isAdmin): ?>
             <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link">
                 <i class="bi bi-geo-fill"></i> Códigos Postales
             </a>
@@ -440,7 +450,7 @@
             <?php endif; ?>
 
             <!-- Operaciones -->
-            <?php if ($isAdmin || $isProveedor): ?>
+            <?php if ($isAdmin || $isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Operaciones</div>
             <a href="<?= RUTA_URL ?>pedidos/listar" class="nav-link">
@@ -449,6 +459,16 @@
             <?php if ($isAdmin): ?>
             <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="nav-link">
                 <i class="bi bi-plus-circle"></i> Nuevo Pedido
+            </a>
+            <?php endif; ?>
+
+            <?php 
+            // Tracking de Estados
+            if ($isAdmin || $isNutraTradeClient || $isCliente || $sessionRol == 4 || in_array('Cliente', $rolesNamesArr) || in_array('cliente', $rolesNamesArr)): 
+            ?>
+            <a href="<?= RUTA_URL ?>seguimiento/admin_tracking" class="nav-link">
+                <i class="bi bi-geo-fill"></i>
+                <span>Tracking de Estados</span>
             </a>
             <?php endif; ?>
             <?php endif; ?>
