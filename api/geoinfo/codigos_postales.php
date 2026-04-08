@@ -157,10 +157,15 @@ try {
             break;
     }
 } catch (Exception $e) {
+    error_log('[api/geoinfo/codigos_postales] Error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode([
+    $payload = [
         "ok" => false,
-        "error" => "Error interno del servidor: " . $e->getMessage(),
+        "error" => "Error interno del servidor",
         "code" => "INTERNAL_SERVER_ERROR"
-    ]);
+    ];
+    if (defined('DEBUG') && DEBUG) {
+        $payload['debug'] = $e->getMessage();
+    }
+    echo json_encode($payload);
 }

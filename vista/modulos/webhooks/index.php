@@ -3,6 +3,7 @@ $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
+require_once __DIR__ . '/../../../utils/csrf.php';
 require_once __DIR__ . '/../../../modelo/webhook.php';
 require_once __DIR__ . '/../../../modelo/usuario.php';
 
@@ -19,6 +20,7 @@ $mensaje = null;
 $tipoMensaje = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion'])) {
+    require_csrf_token($_POST['csrf_token'] ?? null);
     $accion = $_POST['accion'];
 
     try {
@@ -135,6 +137,7 @@ if (isset($_GET['editar']) && is_numeric($_GET['editar'])) {
                     <div class="d-flex gap-1">
                         <!-- Toggle activo -->
                         <form method="POST" class="d-inline">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="accion" value="toggle">
                             <input type="hidden" name="id" value="<?= $cfg['id'] ?>">
                             <button type="submit" class="btn btn-sm btn-<?= $cfg['activo'] ? 'light' : 'warning' ?>" title="<?= $cfg['activo'] ? 'Desactivar' : 'Activar' ?>">
@@ -147,6 +150,7 @@ if (isset($_GET['editar']) && is_numeric($_GET['editar'])) {
                         </button>
                         <!-- Eliminar -->
                         <form method="POST" class="d-inline" onsubmit="return confirm('¿Eliminar este webhook y todos sus logs?')">
+                            <?= csrf_field() ?>
                             <input type="hidden" name="accion" value="eliminar">
                             <input type="hidden" name="id" value="<?= $cfg['id'] ?>">
                             <button type="submit" class="btn btn-sm btn-danger" title="Eliminar">
@@ -313,6 +317,7 @@ if (isset($_GET['editar']) && is_numeric($_GET['editar'])) {
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST" id="formWebhook">
+                <?= csrf_field() ?>
                 <input type="hidden" name="accion" id="formAccion" value="crear">
                 <input type="hidden" name="id" id="formId" value="">
 

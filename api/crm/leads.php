@@ -43,24 +43,20 @@ try {
     $userData = $validacion['data'];
     $userId = (int)$userData['id'];
     
-    // DEBUG: Log para verificar roles
+    // DEBUG: Log para verificar roles (solo desarrollo)
     $userRoles = getRolesForUser($userId);
-    error_log("CRM API - User ID: {$userId}, Roles: " . json_encode($userRoles));
-    error_log("CRM API - isAdmin: " . (isUserAdmin($userId) ? 'true' : 'false'));
-    error_log("CRM API - isProveedor: " . (isProveedorCRM($userId) ? 'true' : 'false'));
+    if (defined('DEBUG') && DEBUG) {
+        error_log("CRM API - User ID: {$userId}, Roles: " . json_encode($userRoles));
+        error_log("CRM API - isAdmin: " . (isUserAdmin($userId) ? 'true' : 'false'));
+        error_log("CRM API - isProveedor: " . (isProveedorCRM($userId) ? 'true' : 'false'));
+    }
     
     // Verificar que es Proveedor o Admin
     if (!isProveedorCRM($userId) && !isUserAdmin($userId)) {
         http_response_code(403);
         echo json_encode([
             'success' => false, 
-            'message' => 'Acceso denegado: solo proveedores y administradores',
-            'debug' => [
-                'user_id' => $userId,
-                'roles' => $userRoles,
-                'is_admin' => isUserAdmin($userId),
-                'is_proveedor' => isProveedorCRM($userId)
-            ]
+            'message' => 'Acceso denegado: solo proveedores y administradores'
         ]);
         exit;
     }
@@ -69,9 +65,11 @@ try {
     $rawInput = file_get_contents("php://input");
     $data = json_decode($rawInput, true);
     
-    // Log para debugging
-    error_log("CRM API - Raw input: " . substr($rawInput, 0, 200));
-    error_log("CRM API - Decoded data: " . json_encode($data));
+    // Log para debugging (solo desarrollo)
+    if (defined('DEBUG') && DEBUG) {
+        error_log("CRM API - Raw input: " . substr($rawInput, 0, 200));
+        error_log("CRM API - Decoded data: " . json_encode($data));
+    }
     
     if (!$data || !is_array($data)) {
         http_response_code(400);

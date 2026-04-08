@@ -2,6 +2,7 @@
 
 <?php
 $usaDataTables = true;
+require_once __DIR__ . '/../../../utils/csrf.php';
 // Instanciar el controlador y obtener la lista de clientes
 $listarClientes = new ClientesController();
 $clientes = $listarClientes->mostrarClientesController();
@@ -179,9 +180,12 @@ if ($clientes) {
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
                                                 <!-- Botón para desactivar -->
-                                                <a href="<?= RUTA_URL ?>clientes/desactivar/<?php echo $cliente['ID_Cliente']; ?>" class="btn btn-danger btn-square" title="Inactivar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                                                    <i class="bi bi-trash"></i>
-                                                </a>
+                                                <form action="<?= RUTA_URL ?>clientes/desactivar/<?php echo $cliente['ID_Cliente']; ?>" method="POST" class="d-inline m-0">
+                                                    <?= csrf_field() ?>
+                                                    <button type="submit" class="btn btn-danger btn-square" title="Inactivar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;" onclick="return confirm('¿Deseas desactivar este cliente?')">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>

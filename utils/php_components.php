@@ -44,7 +44,9 @@ function render_tab_nav($tabs, $activeTab = null) {
     foreach ($tabs as $key => $tab) {
         $isActive = ($activeTab === null && $key === array_key_first($tabs)) || $activeTab === $key;
         $activeClass = $isActive ? 'active' : '';
-        $badge = isset($tab['count']) ? "<span class='badge bg-{$tab['badge-color'] ?? 'secondary'} ms-2'>{$tab['count']}</span>" : '';
+        $badgeColor = $tab['badge-color'] ?? 'secondary';
+        $badge = isset($tab['count']) ? "<span class='badge bg-{$badgeColor} ms-2'>{$tab['count']}</span>" : '';
+        $iconHtml = !empty($tab['icon']) ? "<i class='bi bi-{$tab['icon']}'></i> " : '';
         
         $html .= "
         <li class='nav-item' role='presentation'>
@@ -54,7 +56,7 @@ function render_tab_nav($tabs, $activeTab = null) {
                     data-bs-target='#{$key}' 
                     type='button' 
                     role='tab'>
-                {$tab['icon'] ? "<i class='bi bi-{$tab['icon']}'></i> " : ''}
+                {$iconHtml}
                 {$tab['label']}
                 {$badge}
             </button>
@@ -109,7 +111,9 @@ function render_action_bar($filtros = [], $busqueda = true, $sticky = false) {
     $html = "<div class='action-bar {$stickyClass}'><div class='row g-2'>";
     
     foreach ($filtros as $filtro) {
-        $html .= "<div class='col-md-{$filtro['col'] ?? 3}'>";
+        $col = isset($filtro['col']) ? (int)$filtro['col'] : 3;
+        $placeholder = $filtro['placeholder'] ?? '';
+        $html .= "<div class='col-md-{$col}'>";
         $html .= "<label class='form-label small'>{$filtro['label']}</label>";
         
         if ($filtro['type'] === 'select') {
@@ -119,7 +123,7 @@ function render_action_bar($filtros = [], $busqueda = true, $sticky = false) {
             }
             $html .= "</select>";
         } elseif ($filtro['type'] === 'date') {
-            $html .= "<input type='text' class='form-control datepicker' id='{$filtro['id']}' placeholder='{$filtro['placeholder'] ?? ''}'>";
+            $html .= "<input type='text' class='form-control datepicker' id='{$filtro['id']}' placeholder='{$placeholder}'>";
         }
         
         $html .= "</div>";

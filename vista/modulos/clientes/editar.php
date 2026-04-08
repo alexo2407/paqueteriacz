@@ -1,4 +1,5 @@
 <?php include("vista/includes/header.php") ?>
+<?php require_once __DIR__ . '/../../../utils/csrf.php'; ?>
 
 <style>
 .editar-cliente-card {
@@ -60,6 +61,7 @@
 
             // Verificar si se envió el formulario
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                require_csrf_token($_POST['csrf_token'] ?? null);
                 // Obtener datos del formulario
                 $idCliente = intval($_POST['id']);
                 $nombre = htmlspecialchars(trim($_POST['nombre']));
@@ -90,6 +92,7 @@
             <?php if ($cliente): ?>
                 <!-- Formulario de edición -->
                 <form action="" method="POST">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="id" value="<?= $cliente->ID_Cliente ?>">
 
                     <div class="form-section">

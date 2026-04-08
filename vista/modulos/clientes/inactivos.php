@@ -2,6 +2,7 @@
 
 <?php
 $usaDataTables = true;
+require_once __DIR__ . '/../../../utils/csrf.php';
 // Instanciar el controlador
 $clienteController = new ClientesController();
 
@@ -117,9 +118,12 @@ $totalInactivos = $clientesInactivos ? count($clientesInactivos) : 0;
                                 <td class="fw-bold text-secondary"><?php echo htmlspecialchars($cliente['Nombre']); ?></td>
                                 <td><span class="badge bg-secondary">Inactivo</span></td>
                                 <td class="text-end">
-                                    <a href="<?=RUTA_URL?>clientes/activar/<?php echo $cliente['ID_Cliente']; ?>" class="btn btn-success btn-sm btn-action-sm">
-                                        <i class="bi bi-check-circle"></i> Activar
-                                    </a>
+                                    <form action="<?= RUTA_URL ?>clientes/activar/<?php echo $cliente['ID_Cliente']; ?>" method="POST" class="d-inline m-0">
+                                        <?= csrf_field() ?>
+                                        <button type="submit" class="btn btn-success btn-sm btn-action-sm" onclick="return confirm('¿Deseas activar este cliente?')">
+                                            <i class="bi bi-check-circle"></i> Activar
+                                        </button>
+                                    </form>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

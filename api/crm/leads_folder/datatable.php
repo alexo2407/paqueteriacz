@@ -13,14 +13,17 @@ start_secure_session();
 header('Content-Type: application/json');
 
 try {
-    // Log para debugging
-    error_log("DataTables endpoint called - Session ID: " . session_id());
-    error_log("Session registrado: " . (isset($_SESSION['registrado']) ? 'YES' : 'NO'));
-    error_log("Session data: " . json_encode($_SESSION));
+    // Log para debugging (solo en desarrollo)
+    if (defined('DEBUG') && DEBUG) {
+        error_log("DataTables endpoint called - Session ID: " . session_id());
+        error_log("Session registrado: " . (isset($_SESSION['registrado']) ? 'YES' : 'NO'));
+    }
     
     // Verificar sesión activa
     if (!isset($_SESSION['registrado'])) {
-        error_log("DataTables: No authenticated session found");
+        if (defined('DEBUG') && DEBUG) {
+            error_log("DataTables: No authenticated session found");
+        }
         http_response_code(401);
         echo json_encode([
             'error' => 'No autenticado',
@@ -35,7 +38,7 @@ try {
     require_once __DIR__ . '/../../../modelo/crm_lead.php';
     require_once __DIR__ . '/../../../modelo/conexion.php';
     
-    $userId = (int)$_SESSION['id'];
+    $userId = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? $_SESSION['id'] ?? 0);
     
     // Verificar permisos (solo admin puede ver todos los leads)
     if (!isAdmin()) {
@@ -164,7 +167,7 @@ try {
     error_log("DataTables CRM Error: " . $e->getMessage());
     http_response_code(500);
     echo json_encode([
-        'error' => 'Error interno del servidor: ' . $e->getMessage(),
+        'error' => 'Error interno del servidor',
         'data' => [],
         'recordsTotal' => 0,
         'recordsFiltered' => 0

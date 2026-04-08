@@ -1,9 +1,18 @@
 <?php
+require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../utils/session.php';
+require_once __DIR__ . '/../../utils/permissions.php';
 require_once __DIR__ . '/../../utils/crm_roles.php';
 require_once __DIR__ . '/../../modelo/crm_notification.php';
 
 start_secure_session();
+
+if (!defined('DEBUG') || DEBUG !== true || empty($_SESSION['registrado']) || !isSuperAdmin()) {
+    http_response_code(404);
+    echo 'Not found';
+    exit;
+}
+
 $userId = $_SESSION['user_id'] ?? 0;
 
 header('Content-Type: text/html; charset=utf-8');

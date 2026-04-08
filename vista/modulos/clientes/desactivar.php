@@ -1,4 +1,6 @@
-<?php 
+<?php
+
+require_once __DIR__ . '/../../../utils/csrf.php';
 
 if (isset($_GET['enlace'])) {
     // Dividir la ruta
@@ -8,18 +10,27 @@ if (isset($_GET['enlace'])) {
     if (isset($ruta[1]) && $ruta[1] === 'desactivar' && isset($ruta[2]) && is_numeric($ruta[2])) {
         $idCliente = intval($ruta[2]); // Obtener el ID del cliente
 
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            require_once __DIR__ . '/../../../utils/session.php';
+            set_flash('error', 'Método no permitido para desactivar cliente.');
+            header("Location: " . RUTA_URL . "clientes/listar");
+            exit;
+        }
+
+        require_csrf_token($_POST['csrf_token'] ?? null);
+
         // Instanciar el controlador y activar el cliente
         $clienteAct = new ClientesController();
         $resultadoact = $clienteAct->estadoCliente($idCliente, 0);
 
         // Redirigir a la lista de clientes activos si se activa correctamente
         if ($resultadoact) {
-            require_once __DIR__ . '/../../utils/session.php';
+            require_once __DIR__ . '/../../../utils/session.php';
             set_flash('success', 'Cliente desactivado correctamente.');
             header("Location: " . RUTA_URL . "clientes/listar");
             exit;
         } else {
-            require_once __DIR__ . '/../../utils/session.php';
+            require_once __DIR__ . '/../../../utils/session.php';
             set_flash('error', 'Error al desactivar el cliente. Inténtelo nuevamente.');
             header("Location: " . RUTA_URL . "clientes/listar");
             exit;

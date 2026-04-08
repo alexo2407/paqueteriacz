@@ -5,8 +5,16 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../utils/session.php';
+require_once __DIR__ . '/../../utils/permissions.php';
 
 start_secure_session();
+
+// Bloquear endpoint en producción y para usuarios no admin
+if (!defined('DEBUG') || DEBUG !== true || empty($_SESSION['registrado']) || !isSuperAdmin()) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Not found']);
+    exit;
+}
 
 $debug = [
     'session_status' => session_status(),

@@ -40,9 +40,12 @@ class AuthMiddleware {
                 'data' => $userData
             ];
         } catch (Exception $e) {
+            if (defined('DEBUG') && DEBUG) {
+                error_log('Auth token validation error: ' . $e->getMessage());
+            }
             return [
                 'success' => false,
-                'message' => 'Invalid or expired token: ' . $e->getMessage()
+                'message' => 'Invalid or expired token'
             ];
         }
     }
