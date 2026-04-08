@@ -13,7 +13,7 @@
  *
  * Response:
  *  - success: bool
- *  - data: array de trabajos (job_type, status, created_at, updated_at)
+ *  - data: trabajos + última observación de estado
  */
 
 header('Access-Control-Allow-Origin: *');
@@ -33,17 +33,21 @@ try {
 
     require_once __DIR__ . '/../utils/responder.php';
 
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        responder(false, 'Método no permitido. Use GET.', null, 405);
+    }
+
     // Verificar autenticación
     $token = AuthMiddleware::obtenerTokenDeHeaders();
     if (!$token) {
-        responder(false, 'Token requerido', null, 401);
+        responder(false, 'Token de autorización requerido.', null, 401);
     }
 
     $auth = new AuthMiddleware();
     $validacion = $auth->validarToken($token);
     
     if (!$validacion['success']) {
-        responder(false, $validacion['message'], null, 401);
+        responder(false, 'Token inválido o expirado.', null, 401);
     }
 
     // 2. Validar parámetros (numero_orden O numeros_orden) OR return summary
@@ -65,10 +69,13 @@ try {
     }
 
     $controller = new PedidosController();
+    $authUserId = (int)($validacion['data']['id'] ?? 0);
+    $authUserRole = (int)($validacion['data']['rol'] ?? 0);
+    $isAdmin = ($authUserRole === (defined('ROL_ADMIN') ? ROL_ADMIN : 1));
     
     // --> MODO RESUMEN GENERAL (User Dashboard)
     if ($isSummary) {
-        $userId = $validacion['data']['id'] ?? 0;
+        $userId = $authUserId;
         
         if (!$userId) {
              responder(false, 'No se pudo identificar al usuario para el resumen', null, 400);
@@ -99,12 +106,33 @@ try {
         $itemStatus = [
             'numero_orden' => $numeroOrden,
             'found' => false,
-            'jobs' => []
+            'jobs' => [],
+            'observacion_estado' => null,
+            'fecha_observacion_estado' => null,
+            'observacion_por' => null
         ];
 
         if ($resultadoBusqueda['success'] && !empty($resultadoBusqueda['data'])) {
+            $pedido = $resultadoBusqueda['data'];
+            $idPedido = isset($pedido['id']) ? (int)$pedido['id'] : 0;
+            $idCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : 0;
+            $idProveedor = isset($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : 0;
+
+            // Validar pertenencia para evitar exponer estado de pedidos ajenos
+            $isOwner = ($authUserId > 0) && ($authUserId === $idCliente || $authUserId === $idProveedor);
+            if (!$isAdmin && !$isOwner) {
+                // Para no filtrar existencia de pedidos ajenos, se reporta como no encontrado
+                $results[] = $itemStatus;
+                continue;
+            }
+
+            // Pedido accesible y encontrado
             $itemStatus['found'] = true;
-            $idPedido = $resultadoBusqueda['data']['id'];
+
+            if ($idPedido <= 0) {
+                $results[] = $itemStatus;
+                continue;
+            }
             
             // Consultar trabajos
             $trabajos = LogisticsQueueService::obtenerPorPedido($idPedido);
@@ -118,6 +146,14 @@ try {
                     'error' => $job['status'] === 'failed' ? $job['last_error'] : null
                 ];
             }, $trabajos);
+
+            // Última observación registrada del cambio de estado
+            $historial = PedidosModel::obtenerHistorialEstados($idPedido);
+            if (!empty($historial)) {
+                $itemStatus['observacion_estado'] = $historial[0]['observaciones'] ?? null;
+                $itemStatus['fecha_observacion_estado'] = $historial[0]['created_at'] ?? null;
+                $itemStatus['observacion_por'] = $historial[0]['usuario_nombre'] ?? null;
+            }
         }
         
         $results[] = $itemStatus;
@@ -134,11 +170,14 @@ try {
         responder(true, "Estado trabajos pedido", [
             'numero_orden' => $single['numero_orden'],
             'has_jobs' => count($single['jobs']) > 0,
-            'jobs' => $single['jobs']
+            'jobs' => $single['jobs'],
+            'observacion_estado' => $single['observacion_estado'],
+            'fecha_observacion_estado' => $single['fecha_observacion_estado'],
+            'observacion_por' => $single['observacion_por']
         ], 200);
     }
 
 } catch (Throwable $e) {
     error_log("Error en api/pedidos/status.php: " . $e->getMessage());
-    responder(false, 'Error interno del servidor', null, 500);
+    responder(false, 'Error interno del servidor.', null, 500);
 }

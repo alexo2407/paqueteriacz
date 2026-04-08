@@ -690,6 +690,7 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             // Consulta para obtener los datos del pedido y su estado (adaptada al esquema actual)
             $sql = "SELECT 
+                        p.id,
                         p.numero_orden,
                         p.destinatario,
                         p.telefono,
@@ -701,6 +702,7 @@ class PedidosModel
                         p.id_barrio,
                         p.codigo_postal,
                         p.id_cliente,
+                        p.id_proveedor,
                         p.municipalitiesName,
                         p.postalCode,
                         p.departmentName,
@@ -717,7 +719,7 @@ class PedidosModel
             $stmt = $db->prepare($sql);
 
             // Asignar el parámetro
-            $stmt->bindParam(':numero_orden', $numeroOrden, PDO::PARAM_INT);
+            $stmt->bindParam(':numero_orden', $numeroOrden, PDO::PARAM_STR);
 
             // Ejecutar la consulta
             $stmt->execute();
@@ -2173,10 +2175,23 @@ class PedidosModel
                     p.destinatario,
                     p.id_estado,
                     ep.nombre_estado  AS estado_actual,
+                    h_last.observaciones AS observacion_estado,
+                    h_last.created_at AS fecha_observacion_estado,
+                    u_last.nombre AS observacion_por,
                     p.fecha_ingreso,
                     p.updated_at      AS fecha_actualizacion
                 FROM pedidos p
                 LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                LEFT JOIN (
+                    SELECT h1.id_pedido, h1.observaciones, h1.created_at, h1.id_usuario
+                    FROM pedidos_historial_estados h1
+                    INNER JOIN (
+                        SELECT id_pedido, MAX(id) AS max_id
+                        FROM pedidos_historial_estados
+                        GROUP BY id_pedido
+                    ) hm ON hm.id_pedido = h1.id_pedido AND hm.max_id = h1.id
+                ) h_last ON h_last.id_pedido = p.id
+                LEFT JOIN usuarios u_last ON u_last.id = h_last.id_usuario
                 $whereClause
                 ORDER BY p.fecha_ingreso DESC
                 LIMIT :limit OFFSET :offset";
@@ -3742,4 +3757,3 @@ class PedidosModel
         }
     }
 }
-

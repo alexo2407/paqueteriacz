@@ -20,17 +20,21 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../utils/autenticacion.php';
 require_once __DIR__ . '/../../utils/permissions.php';
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    responder(false, 'Método no permitido. Use GET.', null, 405);
+}
+
 // Verificar autenticación
 $token = AuthMiddleware::obtenerTokenDeHeaders();
 if (!$token) {
-    responder(false, 'Token requerido', null, 401);
+    responder(false, 'Token de autorización requerido.', null, 401);
     exit;
 }
 
 $auth = new AuthMiddleware();
 $check = $auth->validarToken($token);
 if (!$check['success']) {
-    responder(false, $check['message'], null, 401);
+    responder(false, 'Token inválido o expirado.', null, 401);
     exit;
 }
 
@@ -48,7 +52,8 @@ try {
     responder(true, 'Listado de pedidos', $result['data'], 200, $result['pagination']);
 
 } catch (Exception $e) {
-    responder(false, 'Error al obtener listado de pedidos: ' . $e->getMessage(), null, 500);
+    error_log('[api/pedidos/listar] Error: ' . $e->getMessage());
+    responder(false, 'Error interno del servidor.', null, 500);
 }
 
 ?>

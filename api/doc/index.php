@@ -1243,6 +1243,27 @@
     ]
 }</code></pre>
                  </div>
+
+                 <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Currency Management (Monedas)</h2>
+                    <h2 class="section-title" data-lang="es">Gestión de Monedas</h2>
+
+                    <p data-lang="en">Administrative endpoints to list, create, update and delete currencies.</p>
+                    <p data-lang="es">Endpoints administrativos para listar, crear, actualizar y eliminar monedas.</p>
+
+                    <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/monedas/listar</div>
+                    <div class="code-block"><span class="badge-endpoint badge-get">GET</span> /api/monedas/ver?id=1</div>
+                    <div class="code-block"><span class="badge-endpoint badge-post">POST</span> /api/monedas/crear</div>
+                    <div class="code-block"><span class="badge-endpoint badge-put">POST/PUT</span> /api/monedas/actualizar?id=1</div>
+                    <div class="code-block"><span class="badge-endpoint badge-delete">DELETE</span> /api/monedas/eliminar?id=1</div>
+
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">Auth:</strong>
+                        <strong data-lang="es">Auth:</strong>
+                        <span data-lang="en"> Requires Bearer token with permissions for currency administration.</span>
+                        <span data-lang="es"> Requiere Bearer token con permisos de administración de monedas.</span>
+                    </div>
+                 </div>
             </div>
             </div>
 
@@ -2416,6 +2437,75 @@ foreach ($response['data'] as $cambio) {
                     </div>
                 </div>
 
+                <!-- Estado de jobs logísticos -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">⚙️ Logistics Job Status</h2>
+                    <h2 class="section-title" data-lang="es">⚙️ Estado de Jobs Logísticos</h2>
+
+                    <p data-lang="en">Returns processing jobs related to logistics automation (validation, guide generation, tracking updates) for one or many orders.</p>
+                    <p data-lang="es">Devuelve los trabajos de procesamiento relacionados con automatización logística (validación, guía, tracking) para uno o varios pedidos.</p>
+
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-get">GET</span> /api/pedidos/status
+                        <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                    </div>
+
+                    <h4 class="mt-4" data-lang="en">Modes</h4>
+                    <h4 class="mt-4" data-lang="es">Modos</h4>
+                    <ul data-lang="en">
+                        <li><code>?numero_orden=87416381</code> Single order</li>
+                        <li><code>?numeros_orden=87416381,87416382</code> Batch (max 50)</li>
+                        <li>No params: provider dashboard summary</li>
+                    </ul>
+                    <ul data-lang="es">
+                        <li><code>?numero_orden=87416381</code> Pedido único</li>
+                        <li><code>?numeros_orden=87416381,87416382</code> Lote (máx 50)</li>
+                        <li>Sin parámetros: resumen de dashboard del proveedor</li>
+                    </ul>
+
+                    <h4 class="mt-4" data-lang="en">Single Response <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 class="mt-4" data-lang="es">Respuesta Single <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+  "success": true,
+  "message": "Estado trabajos pedido",
+  "data": {
+    "numero_orden": "87416381",
+    "has_jobs": true,
+    "jobs": [
+      {
+        "job_type": "validar_direccion",
+        "status": "completed",
+        "attempts": 1,
+        "updated_at": "2026-04-08 14:20:00",
+        "error": null
+      }
+    ],
+    "observacion_estado": "Estado cambiado automáticamente",
+    "fecha_observacion_estado": "2026-04-07 16:15:00",
+    "observacion_por": "Proveedor RutaEX Pulox CR"
+  }
+}</code></pre>
+
+                    <h4 class="mt-4" data-lang="en">Batch Response <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 class="mt-4" data-lang="es">Respuesta Batch <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+  "success": true,
+  "message": "Resultados batch",
+  "data": {
+    "results": [
+      {
+        "numero_orden": "87416381",
+        "found": true,
+        "jobs": [],
+        "observacion_estado": null,
+        "fecha_observacion_estado": null,
+        "observacion_por": null
+      }
+    ]
+  }
+}</code></pre>
+                </div>
+
                 <!-- Estado actual de pedidos -->
                 <div class="section-container">
                     <h2 class="section-title" data-lang="en">📦 Current Order Status</h2>
@@ -2515,6 +2605,9 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
             "destinatario": "Juan Pérez",
             "id_estado": 1,
             "estado_actual": "En bodega",
+            "observacion_estado": "Estado cambiado automáticamente",
+            "fecha_observacion_estado": "2026-03-10 09:10:00",
+            "observacion_por": "Proveedor RutaEX Pulox CR",
             "fecha_ingreso": "2026-03-10 09:00:00",
             "fecha_actualizacion": "2026-03-10 09:00:00"
         },
@@ -2524,6 +2617,9 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
             "destinatario": "María López",
             "id_estado": 3,
             "estado_actual": "Entregado",
+            "observacion_estado": null,
+            "fecha_observacion_estado": null,
+            "observacion_por": null,
             "fecha_ingreso": "2026-03-11 10:30:00",
             "fecha_actualizacion": "2026-03-12 14:20:00"
         }
@@ -2550,6 +2646,9 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
                                 <tr><td><code>destinatario</code></td><td>string</td><td>Recipient name</td></tr>
                                 <tr><td><code>id_estado</code></td><td>integer</td><td>Current state ID</td></tr>
                                 <tr><td><code>estado_actual</code></td><td>string</td><td>Current state name</td></tr>
+                                <tr><td><code>observacion_estado</code></td><td>string/null</td><td>Latest observation/comment for the order status</td></tr>
+                                <tr><td><code>fecha_observacion_estado</code></td><td>datetime/null</td><td>Timestamp of the latest observation</td></tr>
+                                <tr><td><code>observacion_por</code></td><td>string/null</td><td>User/provider who registered the latest observation</td></tr>
                                 <tr><td><code>fecha_ingreso</code></td><td>datetime</td><td>Date the order was registered</td></tr>
                                 <tr><td><code>fecha_actualizacion</code></td><td>datetime</td><td>Date of last update</td></tr>
                             </tbody>
@@ -2564,6 +2663,9 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
                                 <tr><td><code>destinatario</code></td><td>string</td><td>Nombre del destinatario</td></tr>
                                 <tr><td><code>id_estado</code></td><td>entero</td><td>ID del estado actual</td></tr>
                                 <tr><td><code>estado_actual</code></td><td>string</td><td>Nombre del estado actual</td></tr>
+                                <tr><td><code>observacion_estado</code></td><td>string/null</td><td>Última observación/comentario del estado</td></tr>
+                                <tr><td><code>fecha_observacion_estado</code></td><td>datetime/null</td><td>Fecha/hora de la última observación</td></tr>
+                                <tr><td><code>observacion_por</code></td><td>string/null</td><td>Usuario/proveedor que registró la observación</td></tr>
                                 <tr><td><code>fecha_ingreso</code></td><td>datetime</td><td>Fecha en que se registró el pedido</td></tr>
                                 <tr><td><code>fecha_actualizacion</code></td><td>datetime</td><td>Fecha de la última actualización</td></tr>
                             </tbody>

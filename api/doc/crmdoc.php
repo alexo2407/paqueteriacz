@@ -1334,6 +1334,14 @@ curl "http://localhost/paqueteriacz/api/crm/leads/1/timeline" \
     ],
     "unread_count": 1
 }</code></pre>
+
+            <h4 data-lang="en">Internal UI DataTables Endpoints</h4>
+            <h4 data-lang="es">Endpoints Internos para DataTables de UI</h4>
+            <p data-lang="en">Used by CRM web panels (server-side DataTables). Intended for internal web session usage.</p>
+            <p data-lang="es">Usados por paneles web del CRM (DataTables server-side). Diseñados para uso interno con sesión web.</p>
+
+            <div class="code-block"><span class="badge-endpoint badge-get">GET/POST</span> /api/crm/notifications_datatable.php</div>
+            <div class="code-block"><span class="badge-endpoint badge-get">GET/POST</span> /api/crm/updates_datatable.php</div>
         </div>
 
         <!-- System Metrics -->

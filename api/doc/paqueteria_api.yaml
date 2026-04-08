@@ -68,6 +68,30 @@ paths:
                 $ref: '#/components/schemas/ListResponse'
         '500':
           description: Error interno
+  /api/pedidos/status:
+    get:
+      summary: Consultar estado de jobs logísticos por pedido
+      tags: [Pedidos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: numero_orden
+          schema:
+            type: string
+          description: Número de orden (modo single)
+        - in: query
+          name: numeros_orden
+          schema:
+            type: string
+          description: Lista separada por comas (modo batch)
+      responses:
+        '200':
+          description: Estado de jobs o resumen
+        '401':
+          description: Token inválido o ausente
+        '404':
+          description: Pedido no encontrado
   /api/pedidos/crear:
     post:
       summary: Crear un nuevo pedido
@@ -104,6 +128,65 @@ paths:
           description: Token inválido o expirado
         '422':
           description: Validación fallida
+  /api/monedas/listar:
+    get:
+      summary: Listar monedas
+      tags: [Monedas]
+      responses:
+        '200':
+          description: Listado de monedas
+  /api/monedas/ver:
+    get:
+      summary: Ver moneda por ID
+      tags: [Monedas]
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Moneda encontrada
+        '404':
+          description: Moneda no encontrada
+  /api/monedas/crear:
+    post:
+      summary: Crear moneda
+      tags: [Monedas]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Moneda creada
+        '401':
+          description: Token inválido o ausente
+  /api/monedas/actualizar:
+    post:
+      summary: Actualizar moneda
+      tags: [Monedas]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Moneda actualizada
+    put:
+      summary: Actualizar moneda
+      tags: [Monedas]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Moneda actualizada
+  /api/monedas/eliminar:
+    delete:
+      summary: Eliminar moneda
+      tags: [Monedas]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Moneda eliminada
 components:
   securitySchemes:
     bearerAuth:

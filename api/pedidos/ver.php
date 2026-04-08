@@ -8,6 +8,10 @@ require_once __DIR__ . '/../../controlador/pedido.php';
 require_once __DIR__ . '/../utils/responder.php';
 require_once __DIR__ . '/../utils/autenticacion.php';
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    responder(false, 'Método no permitido. Use GET.', null, 405);
+}
+
 $auth = new AuthMiddleware();
 $token = AuthMiddleware::obtenerTokenDeHeaders();
 
@@ -19,7 +23,7 @@ if (!$token) {
 $validacion = $auth->validarToken($token);
 
 if (!$validacion['success']) {
-    responder(false, "No autorizado", null, 401);
+    responder(false, "Token inválido o expirado.", null, 401);
     exit;
 }
 
@@ -53,5 +57,6 @@ try {
 
     responder(true, "Detalle del pedido", $pedido, 200);
 } catch (Exception $e) {
-    responder(false, "Error: " . $e->getMessage(), null, 500);
+    error_log('[api/pedidos/ver] Error: ' . $e->getMessage());
+    responder(false, "Error interno del servidor.", null, 500);
 }
