@@ -81,19 +81,22 @@ class WebhookModel
     /**
      * Enviar cambio de estado al API del cliente.
      *
-     * @param string $jwt Token de autenticación
-     * @param array  $config Configuración del webhook
-     * @param string $numeroOrden Número de orden del pedido
-     * @param string $estadoNombre Nombre del nuevo estado
+     * @param string      $jwt Token de autenticación
+     * @param array       $config Configuración del webhook
+     * @param string      $numeroOrden Número de orden del pedido
+     * @param string      $estadoNombre Nombre del nuevo estado
+     * @param string|null $notes Observaciones/comentario del cambio de estado
      * @return array ['success' => bool, 'http_code' => int, 'response' => string]
      */
-    public static function enviarCambioEstado(string $jwt, array $config, string $numeroOrden, string $estadoNombre): array
+    public static function enviarCambioEstado(string $jwt, array $config, string $numeroOrden, string $estadoNombre, ?string $notes = null): array
     {
+        $notesValue = is_string($notes) ? trim($notes) : '';
         $payload = json_encode([
             'customersId' => (int)$config['customers_id'],
             'orderNumber' => $numeroOrden,
             'state'       => $estadoNombre,
-            'auditUser'   => $config['auth_user']
+            'auditUser'   => $config['auth_user'],
+            'Notes'       => $notesValue
         ]);
 
         $ch = curl_init($config['url_webhook']);
@@ -134,10 +137,11 @@ class WebhookModel
      * Disparar webhook buscando los datos del pedido por ID.
      * Útil para integrar desde controladores que solo manejan ID de pedido.
      * 
-     * @param int $idPedido
-     * @param int $idEstadoNuevo
+     * @param int         $idPedido
+     * @param int         $idEstadoNuevo
+     * @param string|null $notes Observaciones/comentario opcional del cambio
      */
-    public static function dispararPorPedidoId(int $idPedido, int $idEstadoNuevo): void
+    public static function dispararPorPedidoId(int $idPedido, int $idEstadoNuevo, ?string $notes = null): void
     {
         try {
             $db = (new Conexion())->conectar();
@@ -147,7 +151,25 @@ class WebhookModel
             $st->execute([':id' => $idEstadoNuevo]);
             $nombreEstado = $st->fetchColumn() ?: "Estado $idEstadoNuevo";
 
-            // 2. Obtener datos del pedido (numero_orden e id_cliente)
+            // 2. Resolver nota del cambio. Si no viene explícita, tomar la más reciente del historial.
+            $noteToSend = is_string($notes) ? trim($notes) : '';
+            if ($noteToSend === '') {
+                $st = $db->prepare("
+                    SELECT COALESCE(observaciones, '')
+                    FROM pedidos_historial_estados
+                    WHERE id_pedido = :id_pedido
+                      AND id_estado_nuevo = :id_estado
+                    ORDER BY created_at DESC, id DESC
+                    LIMIT 1
+                ");
+                $st->execute([
+                    ':id_pedido' => $idPedido,
+                    ':id_estado' => $idEstadoNuevo
+                ]);
+                $noteToSend = trim((string)$st->fetchColumn());
+            }
+
+            // 3. Obtener datos del pedido (numero_orden e id_cliente)
             $st = $db->prepare('SELECT numero_orden, id_cliente FROM pedidos WHERE id = :id LIMIT 1');
             $st->execute([':id' => $idPedido]);
             $pedido = $st->fetch(PDO::FETCH_ASSOC);
@@ -157,7 +179,8 @@ class WebhookModel
                     $idPedido,
                     (string)$pedido['numero_orden'],
                     $nombreEstado,
-                    (int)$pedido['id_cliente']
+                    (int)$pedido['id_cliente'],
+                    $noteToSend
                 );
             }
         } catch (Exception $e) {
@@ -171,12 +194,13 @@ class WebhookModel
      * Este es el método principal que se llama desde actualizarPedido().
      * NUNCA lanza excepciones — cualquier error se loguea silenciosamente.
      *
-     * @param int    $idPedido       ID interno del pedido
-     * @param string $numeroOrden    Número de orden visible
-     * @param string $estadoNombre   Nombre del estado nuevo
-     * @param int    $idCliente      ID del cliente dueño del pedido
+     * @param int         $idPedido       ID interno del pedido
+     * @param string      $numeroOrden    Número de orden visible
+     * @param string      $estadoNombre   Nombre del estado nuevo
+     * @param int         $idCliente      ID del cliente dueño del pedido
+     * @param string|null $notes          Observaciones/comentario del cambio
      */
-    public static function dispararSiAplica(int $idPedido, string $numeroOrden, string $estadoNombre, int $idCliente): void
+    public static function dispararSiAplica(int $idPedido, string $numeroOrden, string $estadoNombre, int $idCliente, ?string $notes = null): void
     {
         try {
             // 1. Buscar config de webhook para este cliente
@@ -191,14 +215,16 @@ class WebhookModel
             }
 
             // 3. Enviar cambio de estado
-            $resultado = self::enviarCambioEstado($jwt, $config, $numeroOrden, $estadoNombre);
+            $notesValue = is_string($notes) ? trim($notes) : '';
+            $resultado = self::enviarCambioEstado($jwt, $config, $numeroOrden, $estadoNombre, $notesValue);
 
             // 4. Registrar log
             $requestBody = json_encode([
                 'customersId' => (int)$config['customers_id'],
                 'orderNumber' => $numeroOrden,
                 'state'       => $estadoNombre,
-                'auditUser'   => $config['auth_user']
+                'auditUser'   => $config['auth_user'],
+                'Notes'       => $notesValue
             ]);
 
             self::registrarLog(

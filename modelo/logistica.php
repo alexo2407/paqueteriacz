@@ -481,7 +481,7 @@ class LogisticaModel {
             // [Webhook] Notificar cambio de estado a API externo
             try {
                 require_once __DIR__ . '/webhook.php';
-                WebhookModel::dispararPorPedidoId((int)$pedidoId, (int)$idEstadoNuevo);
+                WebhookModel::dispararPorPedidoId((int)$pedidoId, (int)$idEstadoNuevo, $observaciones ?? null);
             } catch (Exception $webEx) {
                 error_log("[Webhook] Error en actualizarEstado pedido $pedidoId: " . $webEx->getMessage());
             }
@@ -842,7 +842,7 @@ class LogisticaModel {
                     if ($nuevoIdEstado !== null) {
                         try {
                             require_once __DIR__ . '/webhook.php';
-                            WebhookModel::dispararPorPedidoId((int)$idPedido, (int)$nuevoIdEstado);
+                            WebhookModel::dispararPorPedidoId((int)$idPedido, (int)$nuevoIdEstado, $row['motivo'] ?? null);
                         } catch (Exception $webEx) {
                             error_log("[Webhook] Error en bulkCommit pedido $idPedido: " . $webEx->getMessage());
                         }
