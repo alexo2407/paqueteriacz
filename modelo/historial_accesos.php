@@ -25,22 +25,33 @@ class HistorialAccesosModel
             $db = (new Conexion())->conectar();
 
             $ip        = AuditoriaModel::getClientIp();
-            $pais      = self::resolverPais($ip);
-            $userAgent = isset($_SERVER['HTTP_USER_AGENT'])
-                ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500)
-                : null;
+            $geoData   = AuditoriaModel::resolverGeoYProxy($ip);
+            $pais      = $geoData['geo_string'];
+            $isProxy   = $geoData['is_proxy'];
+            
+            $userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
+            $parsedDev = AuditoriaModel::parseUserAgent($userAgent);
+            $deviceOs  = $parsedDev['os'];
+            $deviceBr  = $parsedDev['browser'];
+            
+            $sessionId = session_status() === PHP_SESSION_ACTIVE ? session_id() : null;
+            if (empty($sessionId)) { $sessionId = null; }
 
             $sql = 'INSERT INTO historial_accesos
-                        (id_usuario, ip_address, pais_origen, user_agent, tipo)
+                        (id_usuario, ip_address, pais_origen, user_agent, tipo, session_id, is_proxy, device_os, device_browser)
                     VALUES
-                        (:id_usuario, :ip_address, :pais_origen, :user_agent, :tipo)';
+                        (:id_usuario, :ip_address, :pais_origen, :user_agent, :tipo, :session_id, :is_proxy, :device_os, :device_browser)';
 
             $stmt = $db->prepare($sql);
-            $stmt->bindValue(':id_usuario',  $idUsuario,                PDO::PARAM_INT);
-            $stmt->bindValue(':ip_address',  $ip,                       $ip  === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':pais_origen', $pais,                     $pais === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':user_agent',  $userAgent,                $userAgent === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-            $stmt->bindValue(':tipo',        in_array($tipo, ['gui','api'], true) ? $tipo : 'gui', PDO::PARAM_STR);
+            $stmt->bindValue(':id_usuario',     $idUsuario, PDO::PARAM_INT);
+            $stmt->bindValue(':ip_address',     $ip,        $ip  === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':pais_origen',    $pais,      $pais === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':user_agent',     $userAgent, $userAgent === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':tipo',           in_array($tipo, ['gui','api'], true) ? $tipo : 'gui', PDO::PARAM_STR);
+            $stmt->bindValue(':session_id',     $sessionId, $sessionId === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':is_proxy',       $isProxy,   PDO::PARAM_INT);
+            $stmt->bindValue(':device_os',      $deviceOs,  $deviceOs === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':device_browser', $deviceBr,  $deviceBr === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
             $stmt->execute();
 
             return (int)$db->lastInsertId();
@@ -95,6 +106,10 @@ class HistorialAccesosModel
                         h.ip_address,
                         h.pais_origen,
                         h.user_agent,
+                        h.session_id,
+                        h.is_proxy,
+                        h.device_os,
+                        h.device_browser,
                         h.tipo,
                         h.created_at
                     FROM historial_accesos h
@@ -127,7 +142,7 @@ class HistorialAccesosModel
     {
         try {
             $db   = (new Conexion())->conectar();
-            $stmt = $db->query("SELECT DISTINCT pais_origen FROM historial_accesos WHERE pais_origen IS NOT NULL ORDER BY pais_origen ASC");
+            $stmt = $db->query(\"SELECT DISTINCT pais_origen FROM historial_accesos WHERE pais_origen IS NOT NULL ORDER BY pais_origen ASC\");
             return $stmt->fetchAll(PDO::FETCH_COLUMN);
         } catch (PDOException $e) {
             return [];
@@ -154,54 +169,5 @@ class HistorialAccesosModel
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Helpers privados (misma lógica que AuditoriaModel para evitar dep. circular)
-    // -----------------------------------------------------------------------
 
-    /**
-     * Resolver IP → nombre de país (en inglés) usando ip-api.com.
-     * IPs privadas/locales → 'Local'. Fallo/timeout → null.
-     */
-    private static function resolverPais(?string $ip): ?string
-    {
-        if ($ip === null) return null;
-
-        // Rangos privados / loopback → sin llamada externa
-        if (
-            $ip === '127.0.0.1' || $ip === '::1' ||
-            strpos($ip, '192.168.') === 0 ||
-            strpos($ip, '10.')      === 0 ||
-            strpos($ip, '172.16.')  === 0 ||
-            strpos($ip, '172.17.')  === 0 ||
-            strpos($ip, '172.18.')  === 0 ||
-            strpos($ip, '172.19.')  === 0 ||
-            strpos($ip, '172.2')    === 0 ||
-            strpos($ip, '172.30.')  === 0 ||
-            strpos($ip, '172.31.')  === 0 ||
-            strpos($ip, 'localhost') !== false
-        ) {
-            return 'Local';
-        }
-
-        try {
-            $ctx = stream_context_create([
-                'http' => [
-                    'timeout'       => 1,
-                    'ignore_errors' => true,
-                    'user_agent'    => 'PaqueteriaCZ-Audit/1.0',
-                ],
-            ]);
-            $raw = @file_get_contents('http://ip-api.com/json/' . rawurlencode($ip) . '?fields=status,country', false, $ctx);
-            if ($raw === false) return null;
-
-            $data = json_decode($raw, true);
-            if (isset($data['status']) && $data['status'] === 'success' && !empty($data['country'])) {
-                return (string)$data['country'];
-            }
-        } catch (\Throwable $e) {
-            // Silencioso
-        }
-
-        return null;
-    }
 }

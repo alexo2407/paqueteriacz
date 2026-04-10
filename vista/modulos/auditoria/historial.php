@@ -400,7 +400,27 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($registros as $reg):
+                        <?php 
+                        // Preparar un mapa para detectar cambios de país por usuario
+                        foreach ($registros as $idx => $reg):
+                            $userId = $reg['id_usuario'] ?? 0;
+                            $paisActual = $reg['pais_origen'] ?? 'Desconocido';
+                            
+                            // Buscar el país de la acción ANTERIOR del mismo usuario (en el array $registros)
+                            // Como el array viene ordenado por created_at DESC, la acción anterior
+                            // cronológicamente está en un índice MAYOR (idx + 1...).
+                            $cambioPais = false;
+                            $paisAnterior = null;
+                            for ($j = $idx + 1; $j < count($registros); $j++) {
+                                if (($registros[$j]['id_usuario'] ?? 0) == $userId) {
+                                    $paisAnterior = $registros[$j]['pais_origen'] ?? 'Desconocido';
+                                    if ($paisAnterior !== $paisActual) {
+                                        $cambioPais = true;
+                                    }
+                                    break; // Solo comparamos con el inmediatamente anterior en el tiempo
+                                }
+                            }
+
                             $badgeClass = match($reg['accion']) {
                                 'crear'      => 'badge-crear',
                                 'actualizar' => 'badge-actualizar',
@@ -428,11 +448,25 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                 'antes'      => $reg['datos_anteriores'] ? json_decode($reg['datos_anteriores'], true) : null,
                                 'despues'    => $reg['datos_nuevos']     ? json_decode($reg['datos_nuevos'], true)     : null,
                                 'ua'         => $reg['user_agent'] ?? null,
+                                'url'        => $reg['url_endpoint'] ?? null,
+                                'method'     => $reg['http_method'] ?? null,
+                                'session'    => $reg['session_id'] ?? null,
+                                'role'       => $reg['user_role'] ?? '—',
+                                'proxy'      => $reg['is_proxy'] ?? 0,
+                                'os'         => $reg['device_os'] ?? 'Unknown',
+                                'browser'    => $reg['device_browser'] ?? 'Unknown',
                             ], JSON_UNESCAPED_UNICODE);
                         ?>
                         <tr>
                             <td><small><?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?></small></td>
-                            <td><strong><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></strong></td>
+                            <td>
+                                <strong><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></strong>
+                                <?php if ($cambioPais): ?>
+                                    <span class="text-warning ms-1" title="Cambio de país detectado (Anterior: <?php echo htmlspecialchars($paisAnterior); ?>)">
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                    </span>
+                                <?php endif; ?>
+                            </td>
                             <?php if ($esAdmin): ?>
                             <td><span class="badge bg-secondary"><?php echo htmlspecialchars($reg['tabla']); ?></span></td>
                             <?php endif; ?>
@@ -452,12 +486,20 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                             <?php if ($esAdmin): ?>
                             <td><small class="text-muted"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></small></td>
                             <td>
-                                <?php
-                                    $pais = $reg['pais_origen'] ?? null;
-                                    if ($pais === 'Local')   echo '<span class="badge bg-secondary">🏠 Local</span>';
-                                    elseif ($pais)           echo '<small>' . htmlspecialchars($pais) . '</small>';
-                                    else                     echo '<small class="text-muted">—</small>';
-                                ?>
+                                <small>
+                                    <?php if ($cambioPais): ?><strong class="text-warning"><?php endif; ?>
+                                    <?php 
+                                        $pais = $reg['pais_origen'] ?? null;
+                                        $proxy = $reg['is_proxy'] ?? 0;
+                                        if ($proxy == 1) {
+                                            echo '<span class="text-danger" title="VPN o Proxy Detectado" data-bs-toggle="tooltip"><i class="bi bi-shield-fill-exclamation"></i> </span>';
+                                        }
+                                        if ($pais === 'Local')   echo '🏠 Local';
+                                        elseif ($pais)           echo htmlspecialchars((strlen($pais)>30?substr($pais,0,30).'...':$pais));
+                                        else                     echo '—';
+                                    ?>
+                                    <?php if ($cambioPais): ?></strong><?php endif; ?>
+                                </small>
                             </td>
                             <?php endif; ?>
                         </tr>
@@ -495,6 +537,16 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                         <code id="amIp"></code>
                     </div>
                 </div>
+                <!-- Seguridad / Contexto (Nuevo) -->
+                <div class="alert alert-secondary py-2 px-3 mb-4" style="border:1px solid #dee2e6; border-radius:8px;">
+                    <div class="d-flex justify-content-between flex-wrap gap-2" style="font-size:0.85rem;">
+                        <div><i class="bi bi-shield-check text-success" id="amProxyIcon"></i> <span id="amProxyText">Conexión Segura</span></div>
+                        <div><i class="bi bi-phone-fill text-muted"></i> <strong id="amDevice"></strong></div>
+                        <div><i class="bi bi-incognito text-muted"></i> Rol: <strong id="amRole"></strong></div>
+                        <div><i class="bi bi-link-45deg text-muted"></i> <span class="badge bg-dark" id="amMethod"></span> <code id="amUrl" class="text-dark"></code></div>
+                    </div>
+                </div>
+
                 <!-- Grid metadata -->
                 <div class="audit-info-grid">
                     <div class="audit-info-item">
@@ -558,15 +610,28 @@ $(document).ready(function () {
         /* Título */
         $('#amTitle').html('#' + d.id + ' &mdash; <span class="badge ' + d.badgeClass + ' ms-1">' + cap(d.accion) + '</span>');
 
-        /* Hero banner */
+        /* Hero banner y Contexto Seguridad */
         var hClass, hIcon, hText, hSub;
         if (d.pais === 'Local') {
             hClass = 'local';   hIcon = '🏠'; hText = 'Acceso local';    hSub = 'Red interna';
         } else if (d.pais) {
             hClass = 'known';   hIcon = '🌍'; hText = d.pais;            hSub = 'País de origen del cambio';
+            if (d.proxy == 1) {
+                hSub = '<span class="text-danger fw-bold"><i class="bi bi-shield-fill-exclamation"></i> ADVERTENCIA: VPN / PROXY DETECTADO</span>';
+                $('#amProxyIcon').removeClass('bi-shield-check text-success').addClass('bi-shield-fill-exclamation text-danger');
+                $('#amProxyText').html('<strong class="text-danger">IP Enmascarada (VPN/Proxy)</strong>');
+            } else {
+                $('#amProxyIcon').removeClass('bi-shield-fill-exclamation text-danger').addClass('bi-shield-check text-success');
+                $('#amProxyText').html('IP Directa');
+            }
         } else {
             hClass = 'unknown'; hIcon = '❓'; hText = 'País desconocido'; hSub = 'No se pudo determinar';
         }
+        
+        $('#amDevice').text((d.os || 'Unknown') + ' | ' + (d.browser || 'Unknown'));
+        $('#amRole').text(d.role || '—');
+        $('#amMethod').text(d.method || 'GET');
+        $('#amUrl').text(d.url || '—');
         $('#amHero').removeClass('known local unknown').addClass(hClass);
         $('#amIcon').text(hIcon);
         $('#amPais').text(hText);

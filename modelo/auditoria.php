@@ -33,9 +33,9 @@ class AuditoriaModel
             $db = (new Conexion())->conectar();
             
             $sql = 'INSERT INTO auditoria_cambios 
-                    (tabla, id_registro, accion, id_usuario, datos_anteriores, datos_nuevos, ip_address, pais_origen, user_agent) 
+                    (tabla, id_registro, accion, id_usuario, datos_anteriores, datos_nuevos, ip_address, pais_origen, user_agent, url_endpoint, http_method, session_id, user_role, is_proxy, device_os, device_browser) 
                     VALUES 
-                    (:tabla, :id_registro, :accion, :id_usuario, :datos_anteriores, :datos_nuevos, :ip_address, :pais_origen, :user_agent)';
+                    (:tabla, :id_registro, :accion, :id_usuario, :datos_anteriores, :datos_nuevos, :ip_address, :pais_origen, :user_agent, :url_endpoint, :http_method, :session_id, :user_role, :is_proxy, :device_os, :device_browser)';
             
             $stmt = $db->prepare($sql);
             
@@ -65,10 +65,26 @@ class AuditoriaModel
                 $stmt->bindValue(':datos_nuevos', $jsonNuevos, PDO::PARAM_STR);
             }
             
-            // Obtener IP, País de origen y User Agent
+            // Obtener contexto de ejecución
             $ipAddress  = self::getClientIp();
-            $paisOrigen = self::resolverPais($ipAddress);
+            $geoData    = self::resolverGeoYProxy($ipAddress);
+            $paisOrigen = $geoData['geo_string'];
+            $isProxy    = $geoData['is_proxy'];
             $userAgent  = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
+            
+            $parsedDevice   = self::parseUserAgent($userAgent);
+            $deviceOs       = $parsedDevice['os'];
+            $deviceBrowser  = $parsedDevice['browser'];
+            
+            $urlEndpoint = isset($_SERVER['REQUEST_URI']) ? substr($_SERVER['REQUEST_URI'], 0, 500) : null;
+            $httpMethod  = isset($_SERVER['REQUEST_METHOD']) ? substr($_SERVER['REQUEST_METHOD'], 0, 10) : null;
+            $sessionId   = session_status() === PHP_SESSION_ACTIVE ? session_id() : null;
+            if (empty($sessionId)) { $sessionId = null; }
+            
+            $userRole    = null;
+            if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
+                $userRole = implode(', ', $_SESSION['roles_nombres']);
+            }
             
             if ($ipAddress === null) {
                 $stmt->bindValue(':ip_address', null, PDO::PARAM_NULL);
@@ -86,6 +102,44 @@ class AuditoriaModel
                 $stmt->bindValue(':user_agent', null, PDO::PARAM_NULL);
             } else {
                 $stmt->bindValue(':user_agent', $userAgent, PDO::PARAM_STR);
+            }
+            
+            if ($urlEndpoint === null) {
+                $stmt->bindValue(':url_endpoint', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':url_endpoint', $urlEndpoint, PDO::PARAM_STR);
+            }
+            
+            if ($httpMethod === null) {
+                $stmt->bindValue(':http_method', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':http_method', $httpMethod, PDO::PARAM_STR);
+            }
+            
+            if ($sessionId === null) {
+                $stmt->bindValue(':session_id', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':session_id', $sessionId, PDO::PARAM_STR);
+            }
+            
+            if ($userRole === null) {
+                $stmt->bindValue(':user_role', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':user_role', $userRole, PDO::PARAM_STR);
+            }
+            
+            $stmt->bindValue(':is_proxy', $isProxy, PDO::PARAM_INT);
+            
+            if ($deviceOs === null) {
+                $stmt->bindValue(':device_os', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':device_os', $deviceOs, PDO::PARAM_STR);
+            }
+            
+            if ($deviceBrowser === null) {
+                $stmt->bindValue(':device_browser', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':device_browser', $deviceBrowser, PDO::PARAM_STR);
             }
             
             $stmt->execute();
@@ -359,13 +413,21 @@ class AuditoriaModel
      * @param string|null $ip Dirección IP del cliente
      * @return string|null Nombre del país en inglés, 'Local' o null
      */
-    private static function resolverPais(?string $ip): ?string
+    /**
+     * Resolver IP → País, Ciudad, Región, ISP y estado de Proxy (VPN/Cloud).
+     *
+     * @param string|null $ip Dirección IP del cliente
+     * @return array [ 'geo_string' => string|null, 'is_proxy' => int (0 o 1) ]
+     */
+    public static function resolverGeoYProxy(?string $ip): array
     {
+        $result = ['geo_string' => null, 'is_proxy' => 0];
+        
         if ($ip === null) {
-            return null;
+            return $result;
         }
 
-        // IPs definitivamente privadas/locales → no consultar API
+        // IPs privadas/locales
         if (
             $ip === '127.0.0.1' ||
             $ip === '::1' ||
@@ -380,34 +442,88 @@ class AuditoriaModel
             strpos($ip, '172.31.')  === 0 ||
             strpos($ip, 'localhost') !== false
         ) {
-            return 'Local';
+            $result['geo_string'] = 'Local';
+            return $result;
         }
 
         try {
-            $url = 'http://ip-api.com/json/' . rawurlencode($ip) . '?fields=status,country';
+            // Fields: status, country, regionName, city, isp, proxy, hosting
+            $url = 'http://ip-api.com/json/' . rawurlencode($ip) . '?fields=status,country,regionName,city,isp,proxy,hosting';
 
             $ctx = stream_context_create([
                 'http' => [
                     'timeout'        => 1,           // 1 segundo máximo
                     'ignore_errors'  => true,
-                    'user_agent'     => 'PaqueteriaCZ-Audit/1.0',
+                    'user_agent'     => 'PaqueteriaCZ-Audit/2.0',
                 ],
             ]);
 
             $raw = @file_get_contents($url, false, $ctx);
             if ($raw === false) {
-                return null;
+                return $result;
             }
 
             $data = json_decode($raw, true);
-            if (isset($data['status']) && $data['status'] === 'success' && !empty($data['country'])) {
-                return (string)$data['country'];
+            if (isset($data['status']) && $data['status'] === 'success') {
+                $country = $data['country'] ?? '';
+                $city = $data['city'] ?? '';
+                $region = $data['regionName'] ?? '';
+                $isp = $data['isp'] ?? '';
+                
+                // Formatear: Pais (Ciudad, Región) | ISP
+                $geo = $country;
+                if ($city || $region) {
+                    $geo .= " ($city, $region)";
+                }
+                if ($isp) {
+                    $geo .= " | $isp";
+                }
+                $result['geo_string'] = $geo;
+                
+                // Detección de Proxy / Hosting (VPN)
+                if (!empty($data['proxy']) || !empty($data['hosting'])) {
+                    $result['is_proxy'] = 1;
+                }
             }
         } catch (\Throwable $e) {
-            // Silenciar — no interrumpir el flujo de auditoría
+            // Silenciar
         }
 
-        return null;
+        return $result;
+    }
+
+    /**
+     * Intérprete ligero de User Agent para deducir OS y Navegador.
+     * 
+     * @param string|null $userAgent
+     * @return array [ 'os' => string|null, 'browser' => string|null ]
+     */
+    public static function parseUserAgent(?string $userAgent): array
+    {
+        $result = ['os' => null, 'browser' => null];
+        if (empty($userAgent)) return $result;
+
+        // Detección de OS
+        if (preg_match('/windows nt 10/i', $userAgent)) $result['os'] = 'Windows 10/11';
+        elseif (preg_match('/windows nt 6\.3/i', $userAgent)) $result['os'] = 'Windows 8.1';
+        elseif (preg_match('/windows nt 6\.2/i', $userAgent)) $result['os'] = 'Windows 8';
+        elseif (preg_match('/windows nt 6\.1/i', $userAgent)) $result['os'] = 'Windows 7';
+        elseif (preg_match('/macintosh|mac os x/i', $userAgent)) $result['os'] = 'Mac OS X';
+        elseif (preg_match('/linux/i', $userAgent)) {
+            $result['os'] = preg_match('/android/i', $userAgent) ? 'Android' : 'Linux';
+        }
+        elseif (preg_match('/iphone/i', $userAgent)) $result['os'] = 'iOS (iPhone)';
+        elseif (preg_match('/ipad/i', $userAgent)) $result['os'] = 'iOS (iPad)';
+
+        // Detección de Navegador
+        if (preg_match('/MSIE/i', $userAgent) || preg_match('/Trident/i', $userAgent)) $result['browser'] = 'Internet Explorer';
+        elseif (preg_match('/Edg/i', $userAgent)) $result['browser'] = 'Edge';
+        elseif (preg_match('/Firefox/i', $userAgent)) $result['browser'] = 'Firefox';
+        elseif (preg_match('/OPR/i', $userAgent) || preg_match('/Opera/i', $userAgent)) $result['browser'] = 'Opera';
+        elseif (preg_match('/Chrome/i', $userAgent)) $result['browser'] = 'Chrome';
+        elseif (preg_match('/Safari/i', $userAgent)) $result['browser'] = 'Safari';
+
+        return $result;
     }
 
     /**
@@ -525,6 +641,13 @@ class AuditoriaModel
                         a.ip_address,
                         a.pais_origen,
                         a.user_agent,
+                        a.url_endpoint,
+                        a.http_method,
+                        a.session_id,
+                        a.user_role,
+                        a.is_proxy,
+                        a.device_os,
+                        a.device_browser,
                         a.created_at
                     FROM auditoria_cambios a
                     LEFT JOIN usuarios u ON u.id = a.id_usuario
