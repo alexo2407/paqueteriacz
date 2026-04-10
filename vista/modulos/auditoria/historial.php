@@ -115,37 +115,127 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     <style>
-        .json-viewer {
-            background: #f8f9fa;
-            border-radius: 4px;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 12px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .badge-crear { background-color: #198754; }
-        .badge-actualizar { background-color: #0d6efd; }
-        .badge-eliminar { background-color: #dc3545; }
+        /* ── Audit modal styles ── */
+        .badge-crear     { background-color: #198754; }
+        .badge-actualizar{ background-color: #0d6efd; }
+        .badge-eliminar  { background-color: #dc3545; }
 
-        /* Banner de país de origen */
-        .audit-origin-banner {
+        /* Country hero banner */
+        .audit-country-hero {
             display: flex;
             align-items: center;
-            gap: 10px;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-bottom: 16px;
-            font-size: 0.92rem;
-            font-weight: 600;
-            border: 1.5px solid;
+            gap: 14px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
         }
-        .audit-origin-banner.known  { background:#eef7ff; border-color:#90c4f9; color:#0a4fa3; }
-        .audit-origin-banner.local  { background:#f4f5f7; border-color:#b0b7c3; color:#444; }
-        .audit-origin-banner.unknown{ background:#fff8e1; border-color:#ffe082; color:#7a5a00; }
-        .audit-origin-banner .flag  { font-size: 1.5rem; line-height:1; }
-        .audit-origin-banner .label { font-size: 0.72rem; font-weight:400; opacity:.75; display:block; margin-bottom:1px; }
-        .audit-origin-banner .country { font-size: 1.05rem; font-weight:700; }
+        .audit-country-hero.known   { background:#f0f7ff; border-color:#2d84e8; }
+        .audit-country-hero.local   { background:#f5f5f7; border-color:#8e8ea0; }
+        .audit-country-hero.unknown { background:#fffbeb; border-color:#f0a500; }
+        .audit-country-hero .hero-icon { font-size:2rem; line-height:1; flex-shrink:0; }
+        .audit-country-hero .hero-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: #6c757d;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .audit-country-hero .hero-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            line-height: 1.2;
+        }
+        .audit-country-hero .hero-ip {
+            margin-left: auto;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .audit-country-hero .hero-ip .hero-label { text-align:right; }
+        .audit-country-hero .hero-ip code {
+            font-size: .78rem;
+            background: rgba(0,0,0,.06);
+            padding: 2px 7px;
+            border-radius: 4px;
+            color: #444;
+        }
+
+        /* Metadata info pills */
+        .audit-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .audit-info-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px 13px;
+            border: 1px solid #e9ecef;
+        }
+        .audit-info-item .ai-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            color: #6c757d;
+            font-weight: 600;
+            margin-bottom: 3px;
+        }
+        .audit-info-item .ai-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #212529;
+        }
+
+        /* JSON diff blocks */
+        .audit-diff-block {
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 14px;
+            border: 1px solid #e9ecef;
+        }
+        .audit-diff-header {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 14px;
+            font-size: .8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+        }
+        .audit-diff-header.antes  { background:#fff1f1; color:#c0392b; border-bottom:1px solid #fad4d4; }
+        .audit-diff-header.despues{ background:#f0fff4; color:#1a7f4b; border-bottom:1px solid #c3f0d4; }
+        .audit-diff-body {
+            background: #fafafa;
+            padding: 12px 14px;
+            font-family: 'Fira Code', 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 220px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 0;
+            color: #2d3748;
+        }
+        .audit-ua-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 9px 13px;
+            font-size: .75rem;
+            color: #6c757d;
+            border: 1px solid #e9ecef;
+            word-break: break-all;
+        }
+        /* Modal header accent */
+        .modal-header.audit-header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            border-radius: 0;
+        }
+        .modal-header.audit-header .btn-close { filter: invert(1) grayscale(1) brightness(2); }
     </style>
 </head>
 <body>
@@ -369,91 +459,117 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                     ?>
                                 </td>
                                 <?php endif; ?>
-                            </tr>
-
-                            <!-- Modal de detalles -->
+                              <!-- Modal de detalles -->
                             <div class="modal fade" id="modalDetalles<?php echo $reg['id']; ?>" tabindex="-1">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title">
-                                                <i class="bi bi-info-circle"></i> Detalles de Auditoría #<?php echo $reg['id']; ?>
-                                            </h5>
+                                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                                    <div class="modal-content" style="border-radius:12px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+
+                                        <!-- ── Header oscuro elegante ── -->
+                                        <div class="modal-header audit-header py-3">
+                                            <div>
+                                                <span style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.6;font-weight:600">Registro de Auditoría</span>
+                                                <h5 class="modal-title mb-0" style="font-size:1rem;font-weight:700">
+                                                    #<?php echo $reg['id']; ?> &mdash;
+                                                    <span class="badge <?php echo $badgeClass; ?> ms-1">
+                                                        <?php echo ucfirst($reg['accion']); ?>
+                                                    </span>
+                                                </h5>
+                                            </div>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                      <div class="modal-body">
+                                        </div>
+
+                                        <!-- ── Body ── -->
+                                        <div class="modal-body p-4">
 
                                             <?php
-                                                /* ── Banner: País de origen del cambio ── */
                                                 $paiModal = $reg['pais_origen'] ?? null;
                                                 if ($paiModal === 'Local') {
-                                                    $bannerClass = 'local';
-                                                    $bannerIcon  = '🏠';
-                                                    $bannerText  = 'Acceso local (red interna)';
+                                                    $heroClass = 'local';
+                                                    $heroIcon  = '🏠';
+                                                    $heroText  = 'Acceso local';
+                                                    $heroSub   = 'Red interna';
                                                 } elseif ($paiModal) {
-                                                    $bannerClass = 'known';
-                                                    $bannerIcon  = '🌍';
-                                                    $bannerText  = htmlspecialchars($paiModal);
+                                                    $heroClass = 'known';
+                                                    $heroIcon  = '🌍';
+                                                    $heroText  = htmlspecialchars($paiModal);
+                                                    $heroSub   = 'País de origen del cambio';
                                                 } else {
-                                                    $bannerClass = 'unknown';
-                                                    $bannerIcon  = '❓';
-                                                    $bannerText  = 'País no disponible';
+                                                    $heroClass = 'unknown';
+                                                    $heroIcon  = '❓';
+                                                    $heroText  = 'País desconocido';
+                                                    $heroSub   = 'No se pudo determinar';
                                                 }
                                             ?>
-                                            <div class="audit-origin-banner <?php echo $bannerClass; ?>">
-                                                <span class="flag"><?php echo $bannerIcon; ?></span>
+
+                                            <!-- Country hero banner -->
+                                            <div class="audit-country-hero <?php echo $heroClass; ?>">
+                                                <span class="hero-icon"><?php echo $heroIcon; ?></span>
                                                 <div>
-                                                    <span class="label">País de origen del cambio</span>
-                                                    <span class="country"><?php echo $bannerText; ?></span>
+                                                    <div class="hero-label"><?php echo $heroSub; ?></div>
+                                                    <div class="hero-value"><?php echo $heroText; ?></div>
                                                 </div>
-                                                <div class="ms-auto text-end" style="font-size:.78rem;font-weight:400;opacity:.8">
-                                                    <span class="label">IP</span>
-                                                    <code style="font-size:.85rem"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></code>
+                                                <div class="hero-ip">
+                                                    <div class="hero-label">Dirección IP</div>
+                                                    <code><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></code>
                                                 </div>
                                             </div>
 
-                                            <div class="row mb-3">
-                                                <div class="col-md-6">
-                                                    <strong>Tabla:</strong> <?php echo htmlspecialchars($reg['tabla']); ?><br>
-                                                    <strong>ID Registro:</strong> #<?php echo $reg['id_registro']; ?><br>
-                                                    <strong>Acción:</strong>
-                                                    <span class="badge <?php echo $badgeClass; ?>"><?php echo ucfirst($reg['accion']); ?></span>
+                                            <!-- Metadata pills grid -->
+                                            <div class="audit-info-grid">
+                                                <div class="audit-info-item">
+                                                    <div class="ai-label"><i class="bi bi-person me-1"></i>Usuario</div>
+                                                    <div class="ai-value"><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></div>
                                                 </div>
-                                                <div class="col-md-6">
-                                                    <strong>Usuario:</strong> <?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?><br>
-                                                    <strong>Fecha:</strong> <?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?><br>
+                                                <div class="audit-info-item">
+                                                    <div class="ai-label"><i class="bi bi-clock me-1"></i>Fecha y Hora</div>
+                                                    <div class="ai-value"><?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?></div>
                                                 </div>
-                                            </div>                                     </div>
+                                                <div class="audit-info-item">
+                                                    <div class="ai-label"><i class="bi bi-table me-1"></i>Tabla afectada</div>
+                                                    <div class="ai-value"><?php echo htmlspecialchars($reg['tabla']); ?></div>
+                                                </div>
+                                                <div class="audit-info-item">
+                                                    <div class="ai-label"><i class="bi bi-hash me-1"></i>ID del Registro</div>
+                                                    <div class="ai-value">#<?php echo $reg['id_registro']; ?></div>
+                                                </div>
+                                            </div>
 
+                                            <!-- Datos anteriores -->
                                             <?php if (!empty($reg['datos_anteriores'])): ?>
-                                            <div class="mb-3">
-                                                <h6 class="text-danger"><i class="bi bi-arrow-left"></i> Datos Anteriores:</h6>
-                                                <div class="json-viewer">
-                                                    <pre><?php echo htmlspecialchars(json_encode(json_decode($reg['datos_anteriores']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+                                            <div class="audit-diff-block">
+                                                <div class="audit-diff-header antes">
+                                                    <i class="bi bi-dash-circle-fill"></i> Antes del cambio
                                                 </div>
+                                                <pre class="audit-diff-body"><?php echo htmlspecialchars(json_encode(json_decode($reg['datos_anteriores']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
                                             </div>
                                             <?php endif; ?>
 
+                                            <!-- Datos nuevos -->
                                             <?php if (!empty($reg['datos_nuevos'])): ?>
-                                            <div class="mb-3">
-                                                <h6 class="text-success"><i class="bi bi-arrow-right"></i> Datos Nuevos:</h6>
-                                                <div class="json-viewer">
-                                                    <pre><?php echo htmlspecialchars(json_encode(json_decode($reg['datos_nuevos']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
+                                            <div class="audit-diff-block">
+                                                <div class="audit-diff-header despues">
+                                                    <i class="bi bi-plus-circle-fill"></i> Después del cambio
                                                 </div>
+                                                <pre class="audit-diff-body"><?php echo htmlspecialchars(json_encode(json_decode($reg['datos_nuevos']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
                                             </div>
                                             <?php endif; ?>
 
+                                            <!-- User Agent -->
                                             <?php if (!empty($reg['user_agent'])): ?>
-                                            <div class="mb-3">
-                                                <h6><i class="bi bi-globe"></i> User Agent:</h6>
-                                                <small class="text-muted"><?php echo htmlspecialchars($reg['user_agent']); ?></small>
+                                            <div style="margin-top:4px">
+                                                <div class="ai-label mb-1"><i class="bi bi-laptop me-1"></i>Navegador / Cliente</div>
+                                                <div class="audit-ua-box"><?php echo htmlspecialchars($reg['user_agent']); ?></div>
                                             </div>
                                             <?php endif; ?>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+
+                                        </div><!-- /modal-body -->
+
+                                        <div class="modal-footer" style="border-top:1px solid #f0f0f0;padding:12px 20px">
+                                            <button type="button" class="btn btn-dark px-4" data-bs-dismiss="modal">Cerrar</button>
                                         </div>
                                     </div>
                                 </div>
+                            </div>             </div>
                             </div>
                         <?php endforeach; ?>
                     </tbody>
