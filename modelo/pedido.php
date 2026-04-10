@@ -1134,21 +1134,20 @@ class PedidosModel
                 // $params contiene los valores nuevos.
                 
                 $cambiosDetectados = [];
-                // Mapeo inverso de parámetros a nombres de columnas (simple)
+                // Columnas que se excluyen del diff de auditoría:
+                // - coordenadas: columna geometry; el SELECT * la devuelve en formato binario
+                //   que siempre difiere del string "POINT(x y)" usado en el UPDATE, generando
+                //   falsos positivos. El cambio real queda reflejado en latitud/longitud.
+                $columnsExcluidasAudit = ['coordenadas'];
+
                 foreach ($params as $key => $val) {
                      if ($key === ':id') continue;
-                     
-                     // Extraer nombre columna del key (ej: :precio_local -> precio_local)
-                     $colName = substr($key, 1); 
-                     
-                     // Casos especiales donde el param name no matchea exacto con columna de DB (si los hubiera)
-                     // En nuestra construcción anterior, usamos nombres de params iguales a columnas.
-                     // Ej: $params[':id_estado'] va a id_estado.
-                     
-                     // Verificar si realmente cambió (comparación laxa por tipos string/int)
+                     $colName = substr($key, 1); // :precio_local -> precio_local
+                     if (in_array($colName, $columnsExcluidasAudit, true)) continue;
+
                      $valAnterior = $datosAnteriores[$colName] ?? null;
-                     
-                     // Normalizar para comparación
+
+                     // Normalizar para comparación numérica vs string
                      if (is_numeric($val) && is_numeric($valAnterior)) {
                          if ((float)$val != (float)$valAnterior) {
                              $cambiosDetectados[$colName] = $val;
@@ -1157,26 +1156,24 @@ class PedidosModel
                          $cambiosDetectados[$colName] = $val;
                      }
                 }
-                
-                // Si hubo cambios, registramos auditoría
+
+                // UN SOLO registro de auditoría por acción, con TODOS los campos cambiados
                 if (!empty($cambiosDetectados)) {
-                     // Preparamos el array de 'antes' solo para las columnas que cambiaron
                      $datosAntesLog = [];
                      foreach ($cambiosDetectados as $col => $nuevoVal) {
                          $datosAntesLog[$col] = $datosAnteriores[$col] ?? null;
                      }
-                     
                      try {
                          AuditoriaModel::registrar(
                             'pedidos',
                             (int)$data['id_pedido'],
                             'actualizar',
-                            self::resolveCurrentUserId(), // Ojo: esto debe resolverse correctamente
+                            self::resolveCurrentUserId(),
                             $datosAntesLog,
                             $cambiosDetectados
                          );
                      } catch (Exception $e) {
-                         error_log("Error auditoria actualizarPedido: " . $e->getMessage());
+                         error_log('Error auditoria actualizarPedido: ' . $e->getMessage());
                      }
                 }
 
@@ -1897,7 +1894,12 @@ class PedidosModel
 
     /* cambiar  estados en los datatable */
 
-    public static function actualizarEstado($id_pedido, $estado, $observaciones = null) {
+    /**
+     * @param bool $skipAudit  Si true, omite el registro en auditoria_cambios.
+     *                         Usar cuando el caller (ej: actualizarPedido) ya generó
+     *                         un registro unificado para la misma acción.
+     */
+    public static function actualizarEstado($id_pedido, $estado, $observaciones = null, bool $skipAudit = false) {
         try {
             $db = (new Conexion())->conectar();
             
@@ -1937,15 +1939,17 @@ class PedidosModel
                         ':obs' => $observaciones
                     ]);
 
-                    // 2. Registrar auditoría interna (Sistema legacy)
-                    AuditoriaModel::registrar(
-                        'pedidos',
-                        $id_pedido,
-                        'actualizar',
-                        $userId,
-                        ['id_estado' => $estadoAnterior],
-                        ['id_estado' => $estado]
-                    );
+                    // 2. Registrar auditoría (se omite si el caller ya lo hizo)
+                    if (!$skipAudit) {
+                        AuditoriaModel::registrar(
+                            'pedidos',
+                            $id_pedido,
+                            'actualizar',
+                            $userId,
+                            ['id_estado' => $estadoAnterior],
+                            ['id_estado' => $estado]
+                        );
+                    }
                 }
                 
                 return $resultado;
