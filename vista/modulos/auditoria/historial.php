@@ -287,7 +287,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                             <th>ID Registro</th>
                             <th>Acción</th>
                             <th>Detalles</th>
-                            <?php if ($esAdmin): ?><th>IP</th><?php endif; ?>
+                            <?php if ($esAdmin): ?><th>IP</th><th>País</th><?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -337,6 +337,18 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                 <td>
                                     <small class="text-muted"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></small>
                                 </td>
+                                <td>
+                                    <?php
+                                        $pais = $reg['pais_origen'] ?? null;
+                                        if ($pais === 'Local') {
+                                            echo '<span class="badge bg-secondary">🏠 Local</span>';
+                                        } elseif ($pais) {
+                                            echo '<small>' . htmlspecialchars($pais) . '</small>';
+                                        } else {
+                                            echo '<small class="text-muted">—</small>';
+                                        }
+                                    ?>
+                                </td>
                                 <?php endif; ?>
                             </tr>
 
@@ -361,7 +373,17 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                                 <div class="col-md-6">
                                                     <strong>Usuario:</strong> <?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?><br>
                                                     <strong>Fecha:</strong> <?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?><br>
-                                                    <strong>IP:</strong> <?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?>
+                                                    <strong>IP:</strong> <?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?><br>
+                                                    <?php
+                                                        $pais = $reg['pais_origen'] ?? null;
+                                                        if ($pais === 'Local') {
+                                                            echo '<strong>País:</strong> <span class="badge bg-secondary">🏠 Local</span>';
+                                                        } elseif ($pais) {
+                                                            echo '<strong>País:</strong> 🌍 ' . htmlspecialchars($pais);
+                                                        } else {
+                                                            echo '<strong>País:</strong> <span class="text-muted">No disponible</span>';
+                                                        }
+                                                    ?>
                                                 </div>
                                             </div>
 

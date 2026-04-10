@@ -33,9 +33,9 @@ class AuditoriaModel
             $db = (new Conexion())->conectar();
             
             $sql = 'INSERT INTO auditoria_cambios 
-                    (tabla, id_registro, accion, id_usuario, datos_anteriores, datos_nuevos, ip_address, user_agent) 
+                    (tabla, id_registro, accion, id_usuario, datos_anteriores, datos_nuevos, ip_address, pais_origen, user_agent) 
                     VALUES 
-                    (:tabla, :id_registro, :accion, :id_usuario, :datos_anteriores, :datos_nuevos, :ip_address, :user_agent)';
+                    (:tabla, :id_registro, :accion, :id_usuario, :datos_anteriores, :datos_nuevos, :ip_address, :pais_origen, :user_agent)';
             
             $stmt = $db->prepare($sql);
             
@@ -65,14 +65,21 @@ class AuditoriaModel
                 $stmt->bindValue(':datos_nuevos', $jsonNuevos, PDO::PARAM_STR);
             }
             
-            // Obtener IP y User Agent
-            $ipAddress = self::getClientIp();
-            $userAgent = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
+            // Obtener IP, País de origen y User Agent
+            $ipAddress  = self::getClientIp();
+            $paisOrigen = self::resolverPais($ipAddress);
+            $userAgent  = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
             
             if ($ipAddress === null) {
                 $stmt->bindValue(':ip_address', null, PDO::PARAM_NULL);
             } else {
                 $stmt->bindValue(':ip_address', $ipAddress, PDO::PARAM_STR);
+            }
+
+            if ($paisOrigen === null) {
+                $stmt->bindValue(':pais_origen', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':pais_origen', $paisOrigen, PDO::PARAM_STR);
             }
             
             if ($userAgent === null) {
@@ -343,6 +350,67 @@ class AuditoriaModel
     }
 
     /**
+     * Resolver el país de origen a partir de una IP pública.
+     *
+     * - IPs privadas/locales (127.x, 10.x, 192.168.x, ::1, etc.) → retorna 'Local'
+     * - Llama a ip-api.com con timeout de 1 segundo
+     * - Si la llamada falla o hay timeout → retorna null (sin bloquear la auditoría)
+     *
+     * @param string|null $ip Dirección IP del cliente
+     * @return string|null Nombre del país en inglés, 'Local' o null
+     */
+    private static function resolverPais(?string $ip): ?string
+    {
+        if ($ip === null) {
+            return null;
+        }
+
+        // IPs definitivamente privadas/locales → no consultar API
+        if (
+            $ip === '127.0.0.1' ||
+            $ip === '::1' ||
+            strpos($ip, '192.168.') === 0 ||
+            strpos($ip, '10.')      === 0 ||
+            strpos($ip, '172.16.')  === 0 ||
+            strpos($ip, '172.17.')  === 0 ||
+            strpos($ip, '172.18.')  === 0 ||
+            strpos($ip, '172.19.')  === 0 ||
+            strpos($ip, '172.2')    === 0 ||
+            strpos($ip, '172.30.')  === 0 ||
+            strpos($ip, '172.31.')  === 0 ||
+            strpos($ip, 'localhost') !== false
+        ) {
+            return 'Local';
+        }
+
+        try {
+            $url = 'http://ip-api.com/json/' . rawurlencode($ip) . '?fields=status,country';
+
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout'        => 1,           // 1 segundo máximo
+                    'ignore_errors'  => true,
+                    'user_agent'     => 'PaqueteriaCZ-Audit/1.0',
+                ],
+            ]);
+
+            $raw = @file_get_contents($url, false, $ctx);
+            if ($raw === false) {
+                return null;
+            }
+
+            $data = json_decode($raw, true);
+            if (isset($data['status']) && $data['status'] === 'success' && !empty($data['country'])) {
+                return (string)$data['country'];
+            }
+        } catch (\Throwable $e) {
+            // Silenciar — no interrumpir el flujo de auditoría
+        }
+
+        return null;
+    }
+
+    /**
      * Obtener el ID del usuario actual.
      * 
      * Busca el ID en el siguiente orden de prioridad:
@@ -455,6 +523,7 @@ class AuditoriaModel
                         a.datos_anteriores,
                         a.datos_nuevos,
                         a.ip_address,
+                        a.pais_origen,
                         a.user_agent,
                         a.created_at
                     FROM auditoria_cambios a
