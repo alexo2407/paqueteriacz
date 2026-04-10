@@ -250,6 +250,14 @@ class UsuariosController
             // Limpiar posibles errores de login previos
             unset($_SESSION['login_error']);
 
+            // Registrar acceso en el historial (IP + país)
+            try {
+                require_once __DIR__ . '/../modelo/historial_accesos.php';
+                HistorialAccesosModel::registrar((int)$user['ID_Usuario'], 'gui');
+            } catch (\Throwable $e) {
+                error_log('HistorialAccesos GUI error: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            }
+
             // Determinar la URL de redirección según el rol del usuario
             $rolesNombres = $_SESSION['roles_nombres'] ?? [];
             $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);

@@ -51,6 +51,14 @@ class AuthController {
             // Generar el token JWT usando HS256
             $jwt = JWT::encode($payload, $this->secret_key, 'HS256');
 
+            // Registrar acceso en el historial (IP + país)
+            try {
+                require_once __DIR__ . '/../../modelo/historial_accesos.php';
+                HistorialAccesosModel::registrar((int)$user['ID_Usuario'], 'api');
+            } catch (\Throwable $e) {
+                error_log('HistorialAccesos API error: ' . $e->getMessage(), 3, __DIR__ . '/../../logs/errors.log');
+            }
+
             return [
                 'success' => true,
                 'token' => $jwt,
