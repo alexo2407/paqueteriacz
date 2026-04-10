@@ -516,12 +516,12 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                 </div>
                 <!-- Antes -->
                 <div id="amBlockAntes" class="audit-diff-block" style="display:none">
-                    <div class="audit-diff-header antes"><i class="bi bi-dash-circle-fill"></i> Antes del cambio</div>
+                    <div class="audit-diff-header antes" id="amLabelAntes"><i class="bi bi-dash-circle-fill"></i> Antes del cambio</div>
                     <pre class="audit-diff-body" id="amAntes"></pre>
                 </div>
-                <!-- Después -->
+                <!-- Después / Creado / Eliminado -->
                 <div id="amBlockDespues" class="audit-diff-block" style="display:none">
-                    <div class="audit-diff-header despues"><i class="bi bi-plus-circle-fill"></i> Después del cambio</div>
+                    <div class="audit-diff-header despues" id="amLabelDespues"><i class="bi bi-plus-circle-fill"></i> Después del cambio</div>
                     <pre class="audit-diff-body" id="amDespues"></pre>
                 </div>
                 <!-- UA -->
@@ -579,11 +579,36 @@ $(document).ready(function () {
         $('#amTabla').text(d.tabla);
         $('#amIdReg').text('#' + d.id_registro);
 
-        /* Diffs */
-        if (d.antes)   { $('#amAntes').text(JSON.stringify(d.antes, null, 2));   $('#amBlockAntes').show();   }
-        else           { $('#amBlockAntes').hide(); }
-        if (d.despues) { $('#amDespues').text(JSON.stringify(d.despues, null, 2)); $('#amBlockDespues').show(); }
-        else           { $('#amBlockDespues').hide(); }
+        /* Diffs — etiqueta según tipo de acción */
+        var labelAntes, labelDespues, iconAntes, iconDespues;
+        switch (d.accion) {
+            case 'crear':
+                labelAntes   = null;
+                iconDespues  = 'bi-plus-circle-fill';
+                labelDespues = 'Datos del registro creado';
+                break;
+            case 'eliminar':
+                iconAntes    = 'bi-trash-fill';
+                labelAntes   = 'Datos eliminados';
+                labelDespues = null;
+                break;
+            default: // actualizar
+                iconAntes    = 'bi-dash-circle-fill';
+                labelAntes   = 'Antes del cambio';
+                iconDespues  = 'bi-plus-circle-fill';
+                labelDespues = 'Después del cambio';
+        }
+        if (d.antes && labelAntes) {
+            $('#amLabelAntes').html('<i class="bi ' + iconAntes + '"></i> ' + labelAntes);
+            $('#amAntes').text(JSON.stringify(d.antes, null, 2));
+            $('#amBlockAntes').show();
+        } else { $('#amBlockAntes').hide(); }
+
+        if (d.despues && labelDespues) {
+            $('#amLabelDespues').html('<i class="bi ' + iconDespues + '"></i> ' + labelDespues);
+            $('#amDespues').text(JSON.stringify(d.despues, null, 2));
+            $('#amBlockDespues').show();
+        } else { $('#amBlockDespues').hide(); }
 
         /* UA */
         if (d.ua) { $('#amUa').text(d.ua); $('#amBlockUa').show(); }
