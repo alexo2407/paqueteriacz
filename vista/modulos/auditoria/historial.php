@@ -400,180 +400,138 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($registros as $reg): 
+                        <?php foreach ($registros as $reg):
                             $badgeClass = match($reg['accion']) {
-                                'crear' => 'badge-crear',
+                                'crear'      => 'badge-crear',
                                 'actualizar' => 'badge-actualizar',
-                                'eliminar' => 'badge-eliminar',
-                                default => 'bg-secondary'
+                                'eliminar'   => 'badge-eliminar',
+                                default      => 'bg-secondary'
                             };
                             $iconClass = match($reg['accion']) {
-                                'crear' => 'bi-plus-circle',
+                                'crear'      => 'bi-plus-circle',
                                 'actualizar' => 'bi-pencil',
-                                'eliminar' => 'bi-trash',
-                                default => 'bi-circle'
+                                'eliminar'   => 'bi-trash',
+                                default      => 'bi-circle'
                             };
+                            // Datos del modal serializados en JSON para el atributo data-*
+                            $paisVal   = $reg['pais_origen'] ?? null;
+                            $modalData = json_encode([
+                                'id'         => $reg['id'],
+                                'accion'     => $reg['accion'],
+                                'badgeClass' => $badgeClass,
+                                'tabla'      => $reg['tabla'],
+                                'id_registro'=> $reg['id_registro'],
+                                'usuario'    => $reg['usuario_nombre'] ?? 'Sistema',
+                                'fecha'      => date('d/m/Y H:i:s', strtotime($reg['created_at'])),
+                                'ip'         => $reg['ip_address'] ?? 'N/A',
+                                'pais'       => $paisVal,
+                                'antes'      => $reg['datos_anteriores'] ? json_decode($reg['datos_anteriores'], true) : null,
+                                'despues'    => $reg['datos_nuevos']     ? json_decode($reg['datos_nuevos'], true)     : null,
+                                'ua'         => $reg['user_agent'] ?? null,
+                            ], JSON_UNESCAPED_UNICODE);
                         ?>
-                            <tr>
-                                <td>
-                                    <small><?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?></small>
-                                </td>
-                                <td>
-                                    <strong><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></strong>
-                                </td>
-                                <?php if ($esAdmin): ?>
-                                <td>
-                                    <span class="badge bg-secondary"><?php echo htmlspecialchars($reg['tabla']); ?></span>
-                                </td>
-                                <?php endif; ?>
-                                <td>
-                                    <code>#<?php echo $reg['id_registro']; ?></code>
-                                </td>
-                                <td>
-                                    <span class="badge <?php echo $badgeClass; ?>">
-                                        <i class="bi <?php echo $iconClass; ?>"></i> 
-                                        <?php echo ucfirst($reg['accion']); ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-info" type="button" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#modalDetalles<?php echo $reg['id']; ?>">
-                                        <i class="bi bi-eye"></i> Ver
-                                    </button>
-                                </td>
-                                <?php if ($esAdmin): ?>
-                                <td>
-                                    <small class="text-muted"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></small>
-                                </td>
-                                <td>
-                                    <?php
-                                        $pais = $reg['pais_origen'] ?? null;
-                                        if ($pais === 'Local') {
-                                            echo '<span class="badge bg-secondary">🏠 Local</span>';
-                                        } elseif ($pais) {
-                                            echo '<small>' . htmlspecialchars($pais) . '</small>';
-                                        } else {
-                                            echo '<small class="text-muted">—</small>';
-                                        }
-                                    ?>
-                                </td>
-                                <?php endif; ?>
-                              <!-- Modal de detalles -->
-                            <div class="modal fade" id="modalDetalles<?php echo $reg['id']; ?>" tabindex="-1">
-                                <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                                    <div class="modal-content" style="border-radius:12px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.25)">
-
-                                        <!-- ── Header oscuro elegante ── -->
-                                        <div class="modal-header audit-header py-3">
-                                            <div>
-                                                <span style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.6;font-weight:600">Registro de Auditoría</span>
-                                                <h5 class="modal-title mb-0" style="font-size:1rem;font-weight:700">
-                                                    #<?php echo $reg['id']; ?> &mdash;
-                                                    <span class="badge <?php echo $badgeClass; ?> ms-1">
-                                                        <?php echo ucfirst($reg['accion']); ?>
-                                                    </span>
-                                                </h5>
-                                            </div>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-
-                                        <!-- ── Body ── -->
-                                        <div class="modal-body p-4">
-
-                                            <?php
-                                                $paiModal = $reg['pais_origen'] ?? null;
-                                                if ($paiModal === 'Local') {
-                                                    $heroClass = 'local';
-                                                    $heroIcon  = '🏠';
-                                                    $heroText  = 'Acceso local';
-                                                    $heroSub   = 'Red interna';
-                                                } elseif ($paiModal) {
-                                                    $heroClass = 'known';
-                                                    $heroIcon  = '🌍';
-                                                    $heroText  = htmlspecialchars($paiModal);
-                                                    $heroSub   = 'País de origen del cambio';
-                                                } else {
-                                                    $heroClass = 'unknown';
-                                                    $heroIcon  = '❓';
-                                                    $heroText  = 'País desconocido';
-                                                    $heroSub   = 'No se pudo determinar';
-                                                }
-                                            ?>
-
-                                            <!-- Country hero banner -->
-                                            <div class="audit-country-hero <?php echo $heroClass; ?>">
-                                                <span class="hero-icon"><?php echo $heroIcon; ?></span>
-                                                <div>
-                                                    <div class="hero-label"><?php echo $heroSub; ?></div>
-                                                    <div class="hero-value"><?php echo $heroText; ?></div>
-                                                </div>
-                                                <div class="hero-ip">
-                                                    <div class="hero-label">Dirección IP</div>
-                                                    <code><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></code>
-                                                </div>
-                                            </div>
-
-                                            <!-- Metadata pills grid -->
-                                            <div class="audit-info-grid">
-                                                <div class="audit-info-item">
-                                                    <div class="ai-label"><i class="bi bi-person me-1"></i>Usuario</div>
-                                                    <div class="ai-value"><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></div>
-                                                </div>
-                                                <div class="audit-info-item">
-                                                    <div class="ai-label"><i class="bi bi-clock me-1"></i>Fecha y Hora</div>
-                                                    <div class="ai-value"><?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?></div>
-                                                </div>
-                                                <div class="audit-info-item">
-                                                    <div class="ai-label"><i class="bi bi-table me-1"></i>Tabla afectada</div>
-                                                    <div class="ai-value"><?php echo htmlspecialchars($reg['tabla']); ?></div>
-                                                </div>
-                                                <div class="audit-info-item">
-                                                    <div class="ai-label"><i class="bi bi-hash me-1"></i>ID del Registro</div>
-                                                    <div class="ai-value">#<?php echo $reg['id_registro']; ?></div>
-                                                </div>
-                                            </div>
-
-                                            <!-- Datos anteriores -->
-                                            <?php if (!empty($reg['datos_anteriores'])): ?>
-                                            <div class="audit-diff-block">
-                                                <div class="audit-diff-header antes">
-                                                    <i class="bi bi-dash-circle-fill"></i> Antes del cambio
-                                                </div>
-                                                <pre class="audit-diff-body"><?php echo htmlspecialchars(json_encode(json_decode($reg['datos_anteriores']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
-                                            </div>
-                                            <?php endif; ?>
-
-                                            <!-- Datos nuevos -->
-                                            <?php if (!empty($reg['datos_nuevos'])): ?>
-                                            <div class="audit-diff-block">
-                                                <div class="audit-diff-header despues">
-                                                    <i class="bi bi-plus-circle-fill"></i> Después del cambio
-                                                </div>
-                                                <pre class="audit-diff-body"><?php echo htmlspecialchars(json_encode(json_decode($reg['datos_nuevos']), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)); ?></pre>
-                                            </div>
-                                            <?php endif; ?>
-
-                                            <!-- User Agent -->
-                                            <?php if (!empty($reg['user_agent'])): ?>
-                                            <div style="margin-top:4px">
-                                                <div class="ai-label mb-1"><i class="bi bi-laptop me-1"></i>Navegador / Cliente</div>
-                                                <div class="audit-ua-box"><?php echo htmlspecialchars($reg['user_agent']); ?></div>
-                                            </div>
-                                            <?php endif; ?>
-
-                                        </div><!-- /modal-body -->
-
-                                        <div class="modal-footer" style="border-top:1px solid #f0f0f0;padding:12px 20px">
-                                            <button type="button" class="btn btn-dark px-4" data-bs-dismiss="modal">Cerrar</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>             </div>
-                            </div>
+                        <tr>
+                            <td><small><?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?></small></td>
+                            <td><strong><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></strong></td>
+                            <?php if ($esAdmin): ?>
+                            <td><span class="badge bg-secondary"><?php echo htmlspecialchars($reg['tabla']); ?></span></td>
+                            <?php endif; ?>
+                            <td><code>#<?php echo $reg['id_registro']; ?></code></td>
+                            <td>
+                                <span class="badge <?php echo $badgeClass; ?>">
+                                    <i class="bi <?php echo $iconClass; ?>"></i>
+                                    <?php echo ucfirst($reg['accion']); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info btn-ver-detalle" type="button"
+                                        data-info='<?php echo htmlspecialchars($modalData, ENT_QUOTES, 'UTF-8'); ?>'>
+                                    <i class="bi bi-eye"></i> Ver
+                                </button>
+                            </td>
+                            <?php if ($esAdmin): ?>
+                            <td><small class="text-muted"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></small></td>
+                            <td>
+                                <?php
+                                    $pais = $reg['pais_origen'] ?? null;
+                                    if ($pais === 'Local')   echo '<span class="badge bg-secondary">🏠 Local</span>';
+                                    elseif ($pais)           echo '<small>' . htmlspecialchars($pais) . '</small>';
+                                    else                     echo '<small class="text-muted">—</small>';
+                                ?>
+                            </td>
+                            <?php endif; ?>
+                        </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div><!-- /container-fluid -->
+
+<!-- ════════════════════════════════════════
+     ÚNICO modal — se llena con JS al click
+     ════════════════════════════════════════ -->
+<div class="modal fade" id="auditModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:12px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+            <div class="modal-header audit-header py-3">
+                <div>
+                    <span style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.6;font-weight:600">Registro de Auditoría</span>
+                    <h5 class="modal-title mb-0" style="font-size:1rem;font-weight:700" id="amTitle">—</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Hero país -->
+                <div id="amHero" class="audit-country-hero">
+                    <span class="hero-icon" id="amIcon">🌍</span>
+                    <div>
+                        <div class="hero-label" id="amSub"></div>
+                        <div class="hero-value" id="amPais"></div>
+                    </div>
+                    <div class="hero-ip">
+                        <div class="hero-label">Dirección IP</div>
+                        <code id="amIp"></code>
+                    </div>
+                </div>
+                <!-- Grid metadata -->
+                <div class="audit-info-grid">
+                    <div class="audit-info-item">
+                        <div class="ai-label"><i class="bi bi-person me-1"></i>Usuario</div>
+                        <div class="ai-value" id="amUsuario"></div>
+                    </div>
+                    <div class="audit-info-item">
+                        <div class="ai-label"><i class="bi bi-clock me-1"></i>Fecha y Hora</div>
+                        <div class="ai-value" id="amFecha"></div>
+                    </div>
+                    <div class="audit-info-item">
+                        <div class="ai-label"><i class="bi bi-table me-1"></i>Tabla afectada</div>
+                        <div class="ai-value" id="amTabla"></div>
+                    </div>
+                    <div class="audit-info-item">
+                        <div class="ai-label"><i class="bi bi-hash me-1"></i>ID Registro</div>
+                        <div class="ai-value" id="amIdReg"></div>
+                    </div>
+                </div>
+                <!-- Antes -->
+                <div id="amBlockAntes" class="audit-diff-block" style="display:none">
+                    <div class="audit-diff-header antes"><i class="bi bi-dash-circle-fill"></i> Antes del cambio</div>
+                    <pre class="audit-diff-body" id="amAntes"></pre>
+                </div>
+                <!-- Después -->
+                <div id="amBlockDespues" class="audit-diff-block" style="display:none">
+                    <div class="audit-diff-header despues"><i class="bi bi-plus-circle-fill"></i> Después del cambio</div>
+                    <pre class="audit-diff-body" id="amDespues"></pre>
+                </div>
+                <!-- UA -->
+                <div id="amBlockUa" style="display:none;margin-top:8px">
+                    <div class="ai-label mb-1"><i class="bi bi-laptop me-1"></i>Navegador / Cliente</div>
+                    <div class="audit-ua-box" id="amUa"></div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #f0f0f0;padding:12px 20px">
+                <button type="button" class="btn btn-dark px-4" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -582,16 +540,60 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
-    $(document).ready(function() {
-        $('#tablaAuditoria').DataTable({
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
-            },
-            order: [[0, 'desc']],
-            pageLength: 25,
-            responsive: true
-        });
+$(document).ready(function () {
+
+    /* DataTables */
+    $('#tablaAuditoria').DataTable({
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json' },
+        order: [[0, 'desc']],
+        pageLength: 25,
+        responsive: true
     });
+
+    /* Abrir modal único */
+    $(document).on('click', '.btn-ver-detalle', function () {
+        var d;
+        try { d = JSON.parse(this.dataset.info); } catch(e) { return; }
+
+        /* Título */
+        $('#amTitle').html('#' + d.id + ' &mdash; <span class="badge ' + d.badgeClass + ' ms-1">' + cap(d.accion) + '</span>');
+
+        /* Hero banner */
+        var hClass, hIcon, hText, hSub;
+        if (d.pais === 'Local') {
+            hClass = 'local';   hIcon = '🏠'; hText = 'Acceso local';    hSub = 'Red interna';
+        } else if (d.pais) {
+            hClass = 'known';   hIcon = '🌍'; hText = d.pais;            hSub = 'País de origen del cambio';
+        } else {
+            hClass = 'unknown'; hIcon = '❓'; hText = 'País desconocido'; hSub = 'No se pudo determinar';
+        }
+        $('#amHero').removeClass('known local unknown').addClass(hClass);
+        $('#amIcon').text(hIcon);
+        $('#amPais').text(hText);
+        $('#amSub').text(hSub);
+        $('#amIp').text(d.ip);
+
+        /* Metadata */
+        $('#amUsuario').text(d.usuario);
+        $('#amFecha').text(d.fecha);
+        $('#amTabla').text(d.tabla);
+        $('#amIdReg').text('#' + d.id_registro);
+
+        /* Diffs */
+        if (d.antes)   { $('#amAntes').text(JSON.stringify(d.antes, null, 2));   $('#amBlockAntes').show();   }
+        else           { $('#amBlockAntes').hide(); }
+        if (d.despues) { $('#amDespues').text(JSON.stringify(d.despues, null, 2)); $('#amBlockDespues').show(); }
+        else           { $('#amBlockDespues').hide(); }
+
+        /* UA */
+        if (d.ua) { $('#amUa').text(d.ua); $('#amBlockUa').show(); }
+        else      { $('#amBlockUa').hide(); }
+
+        new bootstrap.Modal(document.getElementById('auditModal')).show();
+    });
+
+    function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+});
 </script>
 </body>
 </html>
