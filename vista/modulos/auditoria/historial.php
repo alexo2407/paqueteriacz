@@ -127,6 +127,25 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
         .badge-crear { background-color: #198754; }
         .badge-actualizar { background-color: #0d6efd; }
         .badge-eliminar { background-color: #dc3545; }
+
+        /* Banner de país de origen */
+        .audit-origin-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            border: 1.5px solid;
+        }
+        .audit-origin-banner.known  { background:#eef7ff; border-color:#90c4f9; color:#0a4fa3; }
+        .audit-origin-banner.local  { background:#f4f5f7; border-color:#b0b7c3; color:#444; }
+        .audit-origin-banner.unknown{ background:#fff8e1; border-color:#ffe082; color:#7a5a00; }
+        .audit-origin-banner .flag  { font-size: 1.5rem; line-height:1; }
+        .audit-origin-banner .label { font-size: 0.72rem; font-weight:400; opacity:.75; display:block; margin-bottom:1px; }
+        .audit-origin-banner .country { font-size: 1.05rem; font-weight:700; }
     </style>
 </head>
 <body>
@@ -361,31 +380,49 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                                 <i class="bi bi-info-circle"></i> Detalles de Auditoría #<?php echo $reg['id']; ?>
                                             </h5>
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                        </div>
-                                        <div class="modal-body">
+                                                      <div class="modal-body">
+
+                                            <?php
+                                                /* ── Banner: País de origen del cambio ── */
+                                                $paiModal = $reg['pais_origen'] ?? null;
+                                                if ($paiModal === 'Local') {
+                                                    $bannerClass = 'local';
+                                                    $bannerIcon  = '🏠';
+                                                    $bannerText  = 'Acceso local (red interna)';
+                                                } elseif ($paiModal) {
+                                                    $bannerClass = 'known';
+                                                    $bannerIcon  = '🌍';
+                                                    $bannerText  = htmlspecialchars($paiModal);
+                                                } else {
+                                                    $bannerClass = 'unknown';
+                                                    $bannerIcon  = '❓';
+                                                    $bannerText  = 'País no disponible';
+                                                }
+                                            ?>
+                                            <div class="audit-origin-banner <?php echo $bannerClass; ?>">
+                                                <span class="flag"><?php echo $bannerIcon; ?></span>
+                                                <div>
+                                                    <span class="label">País de origen del cambio</span>
+                                                    <span class="country"><?php echo $bannerText; ?></span>
+                                                </div>
+                                                <div class="ms-auto text-end" style="font-size:.78rem;font-weight:400;opacity:.8">
+                                                    <span class="label">IP</span>
+                                                    <code style="font-size:.85rem"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></code>
+                                                </div>
+                                            </div>
+
                                             <div class="row mb-3">
                                                 <div class="col-md-6">
                                                     <strong>Tabla:</strong> <?php echo htmlspecialchars($reg['tabla']); ?><br>
                                                     <strong>ID Registro:</strong> #<?php echo $reg['id_registro']; ?><br>
-                                                    <strong>Acción:</strong> 
+                                                    <strong>Acción:</strong>
                                                     <span class="badge <?php echo $badgeClass; ?>"><?php echo ucfirst($reg['accion']); ?></span>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <strong>Usuario:</strong> <?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?><br>
                                                     <strong>Fecha:</strong> <?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?><br>
-                                                    <strong>IP:</strong> <?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?><br>
-                                                    <?php
-                                                        $pais = $reg['pais_origen'] ?? null;
-                                                        if ($pais === 'Local') {
-                                                            echo '<strong>País:</strong> <span class="badge bg-secondary">🏠 Local</span>';
-                                                        } elseif ($pais) {
-                                                            echo '<strong>País:</strong> 🌍 ' . htmlspecialchars($pais);
-                                                        } else {
-                                                            echo '<strong>País:</strong> <span class="text-muted">No disponible</span>';
-                                                        }
-                                                    ?>
                                                 </div>
-                                            </div>
+                                            </div>                                     </div>
 
                                             <?php if (!empty($reg['datos_anteriores'])): ?>
                                             <div class="mb-3">
