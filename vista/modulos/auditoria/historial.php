@@ -635,7 +635,7 @@ $(document).ready(function () {
         $('#amHero').removeClass('known local unknown').addClass(hClass);
         $('#amIcon').text(hIcon);
         $('#amPais').text(hText);
-        $('#amSub').text(hSub);
+        $('#amSub').html(hSub);
         $('#amIp').text(d.ip);
 
         /* Metadata */
