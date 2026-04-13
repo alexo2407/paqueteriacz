@@ -648,20 +648,21 @@ $(document).ready(function () {
         var labelAntes, labelDespues, iconAntes, iconDespues;
         switch (d.accion) {
             case 'crear':
-                labelAntes   = null;
+                labelAntes   = d.tabla === 'api_requests' ? 'Request Payload' : null;
+                iconAntes    = 'bi-arrow-right-circle-fill';
                 iconDespues  = 'bi-plus-circle-fill';
-                labelDespues = 'Datos del registro creado';
+                labelDespues = d.tabla === 'api_requests' ? 'Response Status' : 'Datos del registro creado';
                 break;
             case 'eliminar':
                 iconAntes    = 'bi-trash-fill';
                 labelAntes   = 'Datos eliminados';
                 labelDespues = null;
                 break;
-            default: // actualizar
+            default: // actualizar u otros
                 iconAntes    = 'bi-dash-circle-fill';
-                labelAntes   = 'Antes del cambio';
+                labelAntes   = d.tabla === 'api_requests' ? 'Request Payload' : 'Antes del cambio';
                 iconDespues  = 'bi-plus-circle-fill';
-                labelDespues = 'Después del cambio';
+                labelDespues = d.tabla === 'api_requests' ? 'Response Status' : 'Después del cambio';
         }
         if (d.antes && labelAntes) {
             $('#amLabelAntes').html('<i class="bi ' + iconAntes + '"></i> ' + labelAntes);
