@@ -481,6 +481,22 @@ if (isset($ruta[0]) && $ruta[0] === 'barrios' && $_SERVER['REQUEST_METHOD'] === 
 
 
 // -----------------------
+// Manejo de productos (GET /productos/exportar)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'productos' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $accion = $ruta[1] ?? '';
+    if ($accion === 'exportar') {
+        require_once __DIR__ . '/../controlador/producto.php';
+        require_once __DIR__ . '/../modelo/producto.php';
+        require_once __DIR__ . '/../utils/session.php';
+        start_secure_session();
+        $ctrl = new ProductosController();
+        $ctrl->exportar();
+        exit;
+    }
+}
+
+// -----------------------
 // Manejo de productos (POST a ?enlace=productos/<accion>)
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -66,6 +66,7 @@ class ProductoModel
                         p.imagen_url,
                         p.es_combo,
                         p.id_usuario_creador,
+                        uc.nombre AS creador_nombre,
                         COALESCE(SUM(s.cantidad), 0)
                         - COALESCE(MAX(reservas.total_reservado), 0) AS stock_total
                     FROM productos p
@@ -77,10 +78,11 @@ class ProductoModel
                         WHERE prs.liberada = 0 AND ped.id_estado = 1
                         GROUP BY prs.id_producto
                     ) reservas ON reservas.id_producto = p.id
+                    LEFT JOIN usuarios uc ON uc.id = p.id_usuario_creador
                     {$whereClause}
                     GROUP BY p.id, p.sku, p.nombre, p.descripcion, p.precio_usd, 
                              p.categoria_id, p.marca, p.unidad_medida, p.stock_minimo, 
-                             p.stock_maximo, p.activo, p.imagen_url, p.es_combo, p.id_usuario_creador
+                             p.stock_maximo, p.activo, p.imagen_url, p.es_combo, p.id_usuario_creador, uc.nombre
                     ORDER BY p.nombre ASC";
             
             $stmt = $db->prepare($sql);
@@ -784,6 +786,7 @@ class ProductoModel
                         p.activo,
                         p.imagen_url,
                         p.id_usuario_creador,
+                        uc.nombre AS creador_nombre,
                         COALESCE(SUM(s.cantidad), 0)
                         - COALESCE(MAX(reservas.total_reservado), 0) AS stock_total
                     FROM productos p
@@ -795,6 +798,7 @@ class ProductoModel
                         WHERE prs.liberada = 0 AND ped.id_estado = 1
                         GROUP BY prs.id_producto
                     ) reservas ON reservas.id_producto = p.id
+                    LEFT JOIN usuarios uc ON uc.id = p.id_usuario_creador
                     {$whereClause}
                     GROUP BY p.id
                     {$havingClause}

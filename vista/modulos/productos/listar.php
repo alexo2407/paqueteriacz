@@ -126,6 +126,21 @@ sort($marcasUnicas);
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
+.btn-excel {
+    background: #107c41; /* Verde oficial de Excel */
+    color: #ffffff;
+    border: none;
+    padding: 0.6rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-excel:hover {
+    background: #185c37;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(16,124,65,0.4);
+}
 .btn-dashboard {
     background: rgba(255,255,255,0.2);
     color: white;
@@ -162,6 +177,18 @@ sort($marcasUnicas);
     padding: 0.875rem 0.75rem;
     vertical-align: middle;
 }
+.btn-filter-custom {
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+.btn-filter-custom:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2) !important;
+}
+.filter-container .form-label {
+    margin-bottom: 0.25rem;
+}
 </style>
     
 <div class="container-fluid py-3">
@@ -169,7 +196,7 @@ sort($marcasUnicas);
     <div class="card productos-card mb-4">
         <div class="productos-header">
             <div class="row align-items-center">
-                <div class="col-md-6 mb-3 mb-md-0">
+                <div class="col-md-5 mb-3 mb-md-0">
                     <div class="d-flex align-items-center gap-3">
                         <div class="bg-white bg-opacity-25 rounded-circle p-3">
                             <i class="bi bi-box-seam fs-3"></i>
@@ -180,8 +207,16 @@ sort($marcasUnicas);
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-7">
                     <div class="d-flex justify-content-md-end justify-content-center gap-2">
+                        <?php 
+                            $exportParams = $_GET;
+                            unset($exportParams['enlace']);
+                            $exportQueryStr = http_build_query($exportParams);
+                        ?>
+                        <a href="<?php echo RUTA_URL; ?>productos/exportar?<?php echo $exportQueryStr; ?>" class="btn btn-excel">
+                            <i class="bi bi-file-earmark-excel-fill me-1"></i> Exportar Catálogo
+                        </a>
                         <a href="<?php echo RUTA_URL; ?>productos/dashboard" class="btn btn-dashboard">
                             <i class="bi bi-speedometer2 me-1"></i> Dashboard
                         </a>
@@ -199,81 +234,66 @@ sort($marcasUnicas);
                 <form method="GET">
                     <div class="row g-3">
                         <?php if (isSuperAdmin() && !empty($listaProveedores)): ?>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold text-muted">Cliente</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white"><i class="bi bi-person-badge"></i></span>
-                                <select name="proveedor" class="form-select select2-searchable" data-placeholder="Buscar cliente...">
-                                    <option value="">Todos los clientes</option>
-                                    <?php foreach ($listaProveedores as $prov): ?>
-                                        <option value="<?php echo $prov['id']; ?>" <?php echo $proveedorFiltro == $prov['id'] ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($prov['nombre']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-person-badge text-primary me-1"></i>Cliente</label>
+                            <select name="proveedor" class="form-select select2-searchable shadow-sm" data-placeholder="Buscar cliente...">
+                                <option value="">Todos los clientes</option>
+                                <?php foreach ($listaProveedores as $prov): ?>
+                                    <option value="<?php echo $prov['id']; ?>" <?php echo $proveedorFiltro == $prov['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($prov['nombre']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <?php endif; ?>
                         
-                        <div class="col-md-<?php echo isSuperAdmin() && !empty($listaProveedores) ? '2' : '3'; ?>">
-                            <label class="form-label small fw-bold text-muted">Categoría</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white"><i class="bi bi-tags"></i></span>
-                                <select name="categoria" class="form-select select2-searchable" data-placeholder="Buscar categoría...">
-                                    <option value="">Todas las categorías</option>
-                                    <?php foreach ($categorias as $cat): ?>
-                                        <option value="<?php echo $cat['id']; ?>" <?php echo $categoriaFiltro == $cat['id'] ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($cat['nombre' ]);?>
-                                        </option>
-                                        <?php if (!empty($cat['subcategorias'])): ?>
-                                            <?php foreach ($cat['subcategorias'] as $subcat): ?>
-                                                <option value="<?php echo $subcat['id']; ?>" <?php echo $categoriaFiltro == $subcat['id'] ? 'selected' : ''; ?>>
-                                                    &nbsp;&nbsp;↳ <?php echo htmlspecialchars($subcat['nombre']); ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                        <div class="col-12 col-sm-6 col-lg-4 col-xl-<?php echo isSuperAdmin() && !empty($listaProveedores) ? '2' : '3'; ?>">
+                            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-tags text-primary me-1"></i>Categoría</label>
+                            <select name="categoria" class="form-select select2-searchable shadow-sm" data-placeholder="Buscar categoría...">
+                                <option value="">Todas las categorías</option>
+                                <?php foreach ($categorias as $cat): ?>
+                                    <option value="<?php echo $cat['id']; ?>" <?php echo $categoriaFiltro == $cat['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($cat['nombre' ]);?>
+                                    </option>
+                                    <?php if (!empty($cat['subcategorias'])): ?>
+                                        <?php foreach ($cat['subcategorias'] as $subcat): ?>
+                                            <option value="<?php echo $subcat['id']; ?>" <?php echo $categoriaFiltro == $subcat['id'] ? 'selected' : ''; ?>>
+                                                &nbsp;&nbsp;↳ <?php echo htmlspecialchars($subcat['nombre']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold text-muted">Marca</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white"><i class="bi bi-award"></i></span>
-                                <select name="marca" class="form-select select2-searchable" data-placeholder="Buscar marca...">
-                                    <option value="">Todas las marcas</option>
-                                    <?php foreach ($marcasUnicas as $marca): ?>
-                                        <option value="<?php echo htmlspecialchars($marca); ?>" <?php echo $marcaFiltro === $marca ? 'selected' : ''; ?>>
-                                            <?php echo htmlspecialchars($marca); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
+                        <div class="col-12 col-sm-6 col-lg-4 col-xl-<?php echo isSuperAdmin() && !empty($listaProveedores) ? '2' : '3'; ?>">
+                            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-award text-primary me-1"></i>Marca</label>
+                            <select name="marca" class="form-select select2-searchable shadow-sm" data-placeholder="Buscar marca...">
+                                <option value="">Todas las marcas</option>
+                                <?php foreach ($marcasUnicas as $marca): ?>
+                                    <option value="<?php echo htmlspecialchars($marca); ?>" <?php echo $marcaFiltro === $marca ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($marca); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         
-                        <div class="col-md-2">
-                            <label class="form-label small fw-bold text-muted">Estado</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white"><i class="bi bi-toggle-on"></i></span>
-                                <select name="estado" class="form-select select2-searchable" data-placeholder="Seleccionar estado...">
-                                    <option value="">Todos</option>
-                                    <option value="1" <?php echo $estadoFiltro === '1' ? 'selected' : ''; ?>>Activos</option>
-                                    <option value="0" <?php echo $estadoFiltro === '0' ? 'selected' : ''; ?>>Inactivos</option>
-                                </select>
-                            </div>
+                        <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-toggle-on text-primary me-1"></i>Estado</label>
+                            <select name="estado" class="form-select select2-searchable shadow-sm" data-placeholder="Seleccionar estado...">
+                                <option value="">Todos</option>
+                                <option value="1" <?php echo $estadoFiltro === '1' ? 'selected' : ''; ?>>Activos</option>
+                                <option value="0" <?php echo $estadoFiltro === '0' ? 'selected' : ''; ?>>Inactivos</option>
+                            </select>
                         </div>
                         
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Buscar</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                <input type="search" id="busquedaTabla" class="form-control" placeholder="Nombre, SKU...">
-                            </div>
+                        <div class="col-12 col-lg-auto col-xl-3">
+                            <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-search text-primary me-1"></i>Buscar</label>
+                            <input type="search" id="busquedaTabla" class="form-control form-control-sm shadow-sm" placeholder="Nombre, SKU..." style="height: 31px;">
                         </div>
                         
-                        <div class="col-md-1 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100 btn-sm" style="height: 34px;">
+                        <div class="col-12 col-lg-auto col-xl-1 d-flex flex-column justify-content-end">
+                            <button type="submit" class="btn btn-primary w-100 btn-sm btn-filter-custom shadow-sm" style="height: 31px;">
                                 <i class="bi bi-funnel me-1"></i> Filtrar
                             </button>
                         </div>

@@ -92,4 +92,87 @@ class ProductosController
         if (!$ok) return ['success' => false, 'message' => 'No fue posible eliminar el producto.'];
         return ['success' => true, 'message' => 'Producto eliminado correctamente.'];
     }
+
+    /**
+     * GET /productos/exportar — descarga XLSX de productos filtrados
+     */
+    public function exportar() {
+        if (empty($_SESSION['idUsuario'])) {
+            http_response_code(403);
+            echo 'Debes iniciar sesión.';
+            exit;
+        }
+
+        require_once __DIR__ . '/../utils/permissions.php';
+        $filtroUsuarioCreador = getIdUsuarioCreadorFilter();
+        
+        $filtros = [];
+        if (!empty($_GET['categoria'])) $filtros['categoria_id'] = $_GET['categoria'];
+        if (!empty($_GET['marca'])) $filtros['marca'] = $_GET['marca'];
+        if (isset($_GET['estado']) && $_GET['estado'] !== '') $filtros['activo'] = $_GET['estado'] === '1';
+        
+        if (isSuperAdmin() && !empty($_GET['proveedor'])) {
+            $filtroUsuarioCreador = (int)$_GET['proveedor'];
+        }
+
+        if (empty($filtros)) {
+            $productos = ProductoModel::listarConInventario($filtroUsuarioCreador, false);
+        } else {
+            $productos = ProductoModel::listarConFiltros($filtros);
+            if ($filtroUsuarioCreador !== null) {
+                $productos = array_filter($productos, function($p) use ($filtroUsuarioCreador) {
+                    $cId = isset($p['id_usuario_creador']) ? (int)$p['id_usuario_creador'] : null;
+                    if ($cId === null) return true;
+                    if (is_array($filtroUsuarioCreador)) {
+                        return in_array($cId, $filtroUsuarioCreador, true);
+                    }
+                    return $cId === $filtroUsuarioCreador;
+                });
+                $productos = array_values($productos);
+            }
+        }
+
+        $nombreArchivo = 'productos_export_' . date('Ymd_His') . '.xlsx';
+        require_once __DIR__ . '/../vendor/autoload.php';
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Productos');
+
+        $headers = ['ID', 'Nombre', 'Stock', 'Cliente / Creador'];
+        $col = 'A';
+        foreach ($headers as $h) {
+            $sheet->setCellValue($col . '1', $h);
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+            $col++;
+        }
+
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '107C41']], // Verde Excel
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ];
+        $sheet->getStyle('A1:D1')->applyFromArray($headerStyle);
+        $sheet->freezePane('A2');
+
+        $row = 2;
+        foreach ($productos as $p) {
+            $sheet->setCellValue('A' . $row, $p['id']);
+            $sheet->setCellValue('B' . $row, $p['nombre']);
+            $sheet->setCellValue('C' . $row, (int)($p['stock_total'] ?? 0));
+            $sheet->setCellValue('D' . $row, $p['creador_nombre'] ?: 'N/A');
+            $row++;
+        }
+
+        if ($row > 2) {
+            $sheet->getStyle('A1:D' . ($row - 1))->getBorders()->getAllBorders()
+                ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        }
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
 }
