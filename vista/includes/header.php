@@ -486,8 +486,10 @@
             <a href="<?= RUTA_URL ?>categorias/listar" class="nav-link"><i class="bi bi-folder2"></i> Categorías</a>
             <a href="<?= RUTA_URL ?>stock/listar" class="nav-link"><i class="bi bi-arrow-down-up"></i> Mov. de Stock</a>
             <a href="<?= RUTA_URL ?>stock/kardex" class="nav-link"><i class="bi bi-file-earmark-text"></i> Kardex</a>
+            <?php if ($isAdmin): ?>
             <a href="<?= RUTA_URL ?>stock/movimientos" class="nav-link"><i class="bi bi-journal-arrow-down"></i> Reporte Movimientos</a>
             <a href="<?= RUTA_URL ?>stock/saldo" class="nav-link"><i class="bi bi-bar-chart-steps"></i> Saldo por Producto</a>
+            <?php endif; ?>
             <a href="<?= RUTA_URL ?>stock/inventario_periodo" class="nav-link"><i class="bi bi-table"></i> Inventario Período</a>
             <a href="<?= RUTA_URL ?>stock/crear" class="nav-link"><i class="bi bi-plus-circle"></i> Nuevo Movimiento</a>
             <?php endif; ?>
