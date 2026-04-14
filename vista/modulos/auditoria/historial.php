@@ -443,7 +443,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                 'tabla'      => $reg['tabla'],
                                 'id_registro'=> $reg['id_registro'],
                                 'usuario'    => $reg['usuario_nombre'] ?? 'Sistema',
-                                'fecha'      => localDate($reg['created_at'], 'd/m/Y g:i:s a'),
+                                'fecha'      => humanizeDate($reg['created_at']),
                                 'ip'         => $reg['ip_address'] ?? 'N/A',
                                 'pais'       => $paisVal,
                                 'antes'      => $reg['datos_anteriores'] ? json_decode($reg['datos_anteriores'], true) : null,
@@ -459,7 +459,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                             ], JSON_UNESCAPED_UNICODE);
                         ?>
                         <tr>
-                            <td><small><?php echo localDate($reg['created_at'], 'd/m/Y g:i:s a'); ?></small></td>
+                            <td><small><?php echo humanizeDate($reg['created_at']); ?></small></td>
                             <td>
                                 <strong><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></strong>
                                 <?php if ($cambioPais): ?>
