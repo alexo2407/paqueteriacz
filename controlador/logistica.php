@@ -140,6 +140,7 @@ class LogisticaController {
         require_once "modelo/logistica.php";
         require_once __DIR__ . '/../utils/permissions.php';
         require_once __DIR__ . '/../vendor/autoload.php';
+        require_once __DIR__ . '/../helpers/helpers.php';
 
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $isProveedor = isCliente();
@@ -268,9 +269,9 @@ class LogisticaController {
         // Datos
         $fila = 2;
         foreach ($pedidos as $p) {
-            $fechaFmt     = !empty($p['fecha_ingreso'])     ? date('d/m/Y', strtotime($p['fecha_ingreso']))     : '';
-            $fechaEntrega = !empty($p['fecha_entrega'])     ? date('d/m/Y', strtotime($p['fecha_entrega']))     : '';
-            $fechaLiq     = !empty($p['fecha_liquidacion']) ? date('d/m/Y', strtotime($p['fecha_liquidacion'])) : '';
+            $fechaFmt     = localDate($p['fecha_ingreso'] ?? null, 'd/m/Y', '');
+            $fechaEntrega = localDate($p['fecha_entrega'] ?? null, 'd/m/Y', '');
+            $fechaLiq     = localDate($p['fecha_liquidacion'] ?? null, 'd/m/Y', '');
 
             // El modelo ya resuelve depto/muni via COALESCE(FK, cp_hom) en SQL.
             // Solo queda como fallback PHP el caso residual: CP sin prefijo de país.
@@ -726,6 +727,7 @@ class LogisticaController {
         require_once "modelo/logistica.php";
         require_once __DIR__ . '/../utils/permissions.php';
         require_once __DIR__ . '/../vendor/autoload.php';
+        require_once __DIR__ . '/../helpers/helpers.php';
 
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $isProveedor = isCliente();
@@ -789,8 +791,8 @@ class LogisticaController {
         // Datos
         $row = 2;
         foreach ($rows as $liq) {
-            $fechaIngreso     = !empty($liq['fecha_ingreso'])     ? date('d/m/Y', strtotime($liq['fecha_ingreso']))     : '';
-            $fechaLiquidacion = !empty($liq['fecha_liquidacion']) ? date('d/m/Y', strtotime($liq['fecha_liquidacion'])) : '';
+            $fechaIngreso     = localDate($liq['fecha_ingreso'] ?? null, 'd/m/Y', '');
+            $fechaLiquidacion = localDate($liq['fecha_liquidacion'] ?? null, 'd/m/Y', '');
 
             $sheet->setCellValue("A{$row}", $liq['numero_orden']       ?? '');
             $sheet->setCellValue("B{$row}", $liq['destinatario']       ?? '');
