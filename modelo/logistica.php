@@ -414,6 +414,15 @@ class LogisticaModel {
                 throw new Exception("Pedido no encontrado");
             }
  
+            // Completar con hora actual si las fechas manuales solo contienen "YYYY-MM-DD" (10 caracteres)
+            // Esto evita que por defecto queden grabadas a las 00:00:00, generando desconexión con los clientes.
+            if (!empty($fechaEntrega) && strlen(trim($fechaEntrega)) === 10) {
+                $fechaEntrega = trim($fechaEntrega) . ' ' . date('H:i:s');
+            }
+            if (!empty($fechaLiquidacion) && strlen(trim($fechaLiquidacion)) === 10) {
+                $fechaLiquidacion = trim($fechaLiquidacion) . ' ' . date('H:i:s');
+            }
+
             $db->beginTransaction();
 
             // Bloquear fila para evitar condiciones de carrera
