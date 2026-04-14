@@ -3,6 +3,7 @@ $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
+require_once __DIR__ . '/../../../helpers/helpers.php';
 require_once __DIR__ . '/../../../modelo/auditoria.php';
 
 start_secure_session();
@@ -442,7 +443,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                 'tabla'      => $reg['tabla'],
                                 'id_registro'=> $reg['id_registro'],
                                 'usuario'    => $reg['usuario_nombre'] ?? 'Sistema',
-                                'fecha'      => date('d/m/Y H:i:s', strtotime($reg['created_at'])),
+                                'fecha'      => localDate($reg['created_at'], 'd/m/Y g:i:s a'),
                                 'ip'         => $reg['ip_address'] ?? 'N/A',
                                 'pais'       => $paisVal,
                                 'antes'      => $reg['datos_anteriores'] ? json_decode($reg['datos_anteriores'], true) : null,
@@ -458,7 +459,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                             ], JSON_UNESCAPED_UNICODE);
                         ?>
                         <tr>
-                            <td><small><?php echo date('d/m/Y H:i:s', strtotime($reg['created_at'])); ?></small></td>
+                            <td><small><?php echo localDate($reg['created_at'], 'd/m/Y g:i:s a'); ?></small></td>
                             <td>
                                 <strong><?php echo htmlspecialchars($reg['usuario_nombre'] ?? 'Sistema'); ?></strong>
                                 <?php if ($cambioPais): ?>
