@@ -524,9 +524,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     return 'secondary';
                 };
 
+                const getFriendlyDate = (dateStr) => {
+                    if (!dateStr) return '';
+                    let dtStr = dateStr;
+                    if (!dtStr.includes('Z')) {
+                        dtStr = dtStr.replace(' ', 'T') + 'Z';
+                    }
+                    const d = new Date(dtStr);
+                    const now = new Date();
+                    const diffMs = now - d;
+                    const diffSec = Math.floor(diffMs / 1000);
+                    
+                    const tz = 'America/Managua';
+                    let mesStr = d.toLocaleDateString('es-ES', { timeZone: tz, month: 'short' }).replace('.', '');
+                    let dDia = d.toLocaleDateString('es-ES', { timeZone: tz, day: 'numeric' });
+                    let dYear = d.toLocaleDateString('es-ES', { timeZone: tz, year: 'numeric' });
+                    let nowYear = now.toLocaleDateString('es-ES', { timeZone: tz, year: 'numeric' });
+                    
+                    let yearAppend = dYear !== nowYear ? ' ' + dYear : '';
+                    const dateFormatted = `${dDia} de ${mesStr}${yearAppend}, ` + d.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+
+                    if (diffSec < 0) return dateFormatted;
+                    if (diffSec < 60) return `hace unos segundos (${dateFormatted})`;
+                    
+                    const diffMin = Math.floor(diffSec / 60);
+                    if (diffMin < 60) return `hace ${diffMin} minuto${diffMin === 1 ? '' : 's'} (${dateFormatted})`;
+                    
+                    const diffHour = Math.floor(diffMin / 60);
+                    if (diffHour < 24) return `hace ${diffHour} hora${diffHour === 1 ? '' : 's'} (${dateFormatted})`;
+                    
+                    const diffDay = Math.floor(diffHour / 24);
+                    if (diffDay === 1) return `ayer (${dateFormatted})`;
+                    if (diffDay < 7) return `hace ${diffDay} días (${dateFormatted})`;
+                    
+                    return dateFormatted;
+                };
+
                 let html = '<ul class="list-group list-group-flush">';
                 res.data.forEach(item => {
-                    const fecha = new Date(item.created_at).toLocaleString();
+                    const fecha = getFriendlyDate(item.created_at);
                     const usuario = item.usuario_nombre || 'Sistema';
                     
                     const colorAnt = getBadgeColor(item.estado_anterior_nombre);

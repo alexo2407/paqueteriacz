@@ -744,7 +744,7 @@ include("vista/includes/header.php");
                                 <div class="flex-grow-1">
                                     <div class="d-flex justify-content-between">
                                         <h6 class="mb-1 fw-bold"><?= $titulo ?></h6>
-                                        <small class="text-muted"><?= date('d/m/Y H:i', strtotime($cambio['created_at'])) ?></small>
+                                        <small class="text-muted text-end" style="font-size: 0.8rem;"><?= htmlspecialchars(humanizeDate($cambio['created_at'] ?? null)) ?></small>
                                     </div>
                                     <?php if (!empty($detalle)): ?>
                                     <p class="mb-1 text-muted small">

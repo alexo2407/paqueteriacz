@@ -162,7 +162,7 @@ function localDate(?string $utcDatetime, string $format = 'd/m/Y H:i', string $f
     }
 
     // Leer la timezone del usuario desde la sesión
-    $userTz = 'UTC';
+    $userTz = 'America/Managua';
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_timezone'])) {
         $userTz = $_SESSION['user_timezone'];
     }
@@ -187,6 +187,71 @@ function getUserTimezone(): string
     if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_timezone'])) {
         return $_SESSION['user_timezone'];
     }
-    return 'UTC';
+    return 'America/Managua';
+}
+
+/**
+ * Convierte una fecha/hora UTC a un formato relativo y humano en español.
+ * Ej: "hace 5 minutos (14 de abr, 14:35)"
+ *
+ * @param string|null $utcDatetime Fecha en formato MySQL: 'Y-m-d H:i:s' (guardada en UTC)
+ * @return string Fecha formateada relativa
+ */
+function humanizeDate(?string $utcDatetime): string
+{
+    if (empty($utcDatetime) || $utcDatetime === '0000-00-00 00:00:00') {
+        return '—';
+    }
+
+    $userTz = 'America/Managua';
+    if (session_status() === PHP_SESSION_ACTIVE && !empty($_SESSION['user_timezone'])) {
+        $userTz = $_SESSION['user_timezone'];
+    }
+
+    try {
+        $dt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
+        $now = new DateTime('now', new DateTimeZone('UTC'));
+        $seconds = $now->getTimestamp() - $dt->getTimestamp();
+        
+        $localDt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
+        $localDt->setTimezone(new DateTimeZone($userTz));
+
+        $meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        $mes = $meses[(int)$localDt->format('n') - 1];
+        
+        // Evitamos mostrar el año si es el actual
+        $yearAppend = '';
+        if ($localDt->format('Y') !== (new DateTime('now', new DateTimeZone($userTz)))->format('Y')) {
+            $yearAppend = ' ' . $localDt->format('Y');
+        }
+        
+        $formattedDate = $localDt->format('j') . " de $mes$yearAppend, " . $localDt->format('g:i a');
+
+        if ($seconds < 0) {
+            return $formattedDate; // En un caso anómalo, retornamos localDate
+        }
+        if ($seconds < 60) {
+            return "hace unos segundos ($formattedDate)";
+        }
+        if ($seconds < 3600) {
+            $m = floor($seconds / 60);
+            return "hace $m minuto" . ($m == 1 ? '' : 's') . " ($formattedDate)";
+        }
+        if ($seconds < 86400) {
+            $h = floor($seconds / 3600);
+            return "hace $h hora" . ($h == 1 ? '' : 's') . " ($formattedDate)";
+        }
+        if ($seconds < 172800) {
+            return "ayer ($formattedDate)";
+        }
+        if ($seconds < 604800) {
+            $d = floor($seconds / 86400);
+            return "hace $d días ($formattedDate)";
+        }
+        
+        return $formattedDate; // Más de 7 días, mostramos solo la fecha
+    } catch (Exception $e) {
+        return $utcDatetime; 
+    }
 }
 ?>

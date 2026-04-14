@@ -481,12 +481,39 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function formatFriendlyLabel(dateStr) {
-        if (!dateStr) return '';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('es-ES', { 
-            day: '2-digit', month: 'short', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-        });
+                    if (!dateStr) return '';
+                    let dtStr = dateStr;
+                    if (!dtStr.includes('Z')) {
+                        dtStr = dtStr.replace(' ', 'T') + 'Z';
+                    }
+                    const d = new Date(dtStr);
+                    const now = new Date();
+                    const diffMs = now - d;
+                    const diffSec = Math.floor(diffMs / 1000);
+                    
+                    const tz = 'America/Managua';
+                    let mesStr = d.toLocaleDateString('es-ES', { timeZone: tz, month: 'short' }).replace('.', '');
+                    let dDia = d.toLocaleDateString('es-ES', { timeZone: tz, day: 'numeric' });
+                    let dYear = d.toLocaleDateString('es-ES', { timeZone: tz, year: 'numeric' });
+                    let nowYear = now.toLocaleDateString('es-ES', { timeZone: tz, year: 'numeric' });
+                    
+                    let yearAppend = dYear !== nowYear ? ' ' + dYear : '';
+                    const dateFormatted = `${dDia} de ${mesStr}${yearAppend}, ` + d.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+
+        if (diffSec < 0) return dateFormatted;
+        if (diffSec < 60) return `hace unos segundos (${dateFormatted})`;
+        
+        const diffMin = Math.floor(diffSec / 60);
+        if (diffMin < 60) return `hace ${diffMin} minuto${diffMin === 1 ? '' : 's'} (${dateFormatted})`;
+        
+        const diffHour = Math.floor(diffMin / 60);
+        if (diffHour < 24) return `hace ${diffHour} hora${diffHour === 1 ? '' : 's'} (${dateFormatted})`;
+        
+        const diffDay = Math.floor(diffHour / 24);
+        if (diffDay === 1) return `ayer (${dateFormatted})`;
+        if (diffDay < 7) return `hace ${diffDay} días (${dateFormatted})`;
+        
+        return dateFormatted;
     }
 
     function getStatusInfo(status) {
