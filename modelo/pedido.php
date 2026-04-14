@@ -1522,9 +1522,14 @@ class PedidosModel
                  if (empty($pedido['precio_usd']) && !empty($pedido['precio_total_usd'])) {
                      $pedido['precio_usd'] = $pedido['precio_total_usd'];
                  }
-                 if (empty($pedido['precio_local']) && !empty($pedido['precio_total_local'])) {
+                  if (empty($pedido['precio_local']) && !empty($pedido['precio_total_local'])) {
                      $pedido['precio_local'] = $pedido['precio_total_local'];
                  }
+            }
+
+            // Normalizar fecha de entrega para evitar 00:00:00 al crear
+            if (!empty($pedido['fecha_entrega']) && strlen(trim($pedido['fecha_entrega'])) === 10) {
+                $pedido['fecha_entrega'] = trim($pedido['fecha_entrega']) . ' ' . date('H:i:s');
             }
 
             // 2. Insertar el pedido
