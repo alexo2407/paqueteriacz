@@ -648,9 +648,11 @@ class AuditoriaModel
                         a.is_proxy,
                         a.device_os,
                         a.device_browser,
-                        a.created_at
+                        a.created_at,
+                        p.numero_orden
                     FROM auditoria_cambios a
                     LEFT JOIN usuarios u ON u.id = a.id_usuario
+                    LEFT JOIN pedidos p ON (a.tabla = 'pedidos' AND a.id_registro = p.id)
                     {$whereClause}
                     ORDER BY a.created_at DESC
                     LIMIT :limite";

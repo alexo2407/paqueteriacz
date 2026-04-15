@@ -442,6 +442,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                 'badgeClass' => $badgeClass,
                                 'tabla'      => $reg['tabla'],
                                 'id_registro'=> $reg['id_registro'],
+                                'numero_orden'=>$reg['numero_orden'] ?? null,
                                 'usuario'    => $reg['usuario_nombre'] ?? 'Sistema',
                                 'fecha'      => humanizeDate($reg['created_at']),
                                 'ip'         => $reg['ip_address'] ?? 'N/A',
@@ -471,7 +472,12 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                             <?php if ($esAdmin): ?>
                             <td><span class="badge bg-secondary"><?php echo htmlspecialchars($reg['tabla']); ?></span></td>
                             <?php endif; ?>
-                            <td><code>#<?php echo $reg['id_registro']; ?></code></td>
+                            <td>
+                                <code>#<?php echo $reg['id_registro']; ?></code>
+                                <?php if ($reg['tabla'] === 'pedidos' && !empty($reg['numero_orden'])): ?>
+                                    <div class="mt-1"><span class="badge bg-info text-dark" title="Número de Orden"><i class="bi bi-box-seam"></i> #<?php echo htmlspecialchars($reg['numero_orden']); ?></span></div>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <span class="badge <?php echo $badgeClass; ?>">
                                     <i class="bi <?php echo $iconClass; ?>"></i>
@@ -643,7 +649,11 @@ $(document).ready(function () {
         $('#amUsuario').text(d.usuario);
         $('#amFecha').text(d.fecha);
         $('#amTabla').text(d.tabla);
-        $('#amIdReg').text('#' + d.id_registro);
+        var idTexto = '#' + d.id_registro;
+        if (d.tabla === 'pedidos' && d.numero_orden) {
+            idTexto += ' (Orden #' + d.numero_orden + ')';
+        }
+        $('#amIdReg').text(idTexto);
 
         /* Diffs — etiqueta según tipo de acción */
         var labelAntes, labelDespues, iconAntes, iconDespues;
