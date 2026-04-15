@@ -100,7 +100,66 @@ if ($filtroPropietario !== null) {
 }
 
 // Obtener registros de auditoría
-$registros = AuditoriaModel::listar($filtros, 500);
+$registrosBrutos = AuditoriaModel::listar($filtros, 500);
+
+// Unificar api_requests con pedidos para evitar duplicidad visual
+$registros = [];
+$skipIds = [];
+$agrupar = ($tablaFiltro === '' || $tablaFiltro === 'pedidos');
+
+if ($agrupar) {
+    foreach ($registrosBrutos as $idx => $reg) {
+        if (isset($skipIds[$idx])) continue;
+
+        if ($reg['tabla'] === 'pedidos' && $reg['accion'] === 'crear') {
+            $apiReqIdx = -1;
+            // Buscar hacia adelante un api_requests (crear) con el mismo id_registro
+            for ($j = $idx + 1; $j < min(count($registrosBrutos), $idx + 15); $j++) {
+                if (isset($skipIds[$j])) continue;
+                if ($registrosBrutos[$j]['tabla'] === 'api_requests' && 
+                    $registrosBrutos[$j]['id_registro'] == $reg['id_registro'] &&
+                    $registrosBrutos[$j]['accion'] === 'crear') {
+                    $apiReqIdx = $j;
+                    break;
+                }
+            }
+            if ($apiReqIdx !== -1) {
+                // Unificar: el de 'pedidos' absorberá el payload del api_requests
+                $skipIds[$apiReqIdx] = true;
+                if (empty($reg['datos_anteriores'])) {
+                    $reg['datos_anteriores'] = $registrosBrutos[$apiReqIdx]['datos_anteriores'];
+                }
+            }
+            $registros[] = $reg;
+        } elseif ($reg['tabla'] === 'api_requests' && $reg['accion'] === 'crear') {
+            // A veces el api_requests tiene un timestamp ligeramente mayor y llega antes
+            $pedidosIdx = -1;
+            for ($j = $idx + 1; $j < min(count($registrosBrutos), $idx + 15); $j++) {
+                if (isset($skipIds[$j])) continue;
+                if ($registrosBrutos[$j]['tabla'] === 'pedidos' && 
+                    $registrosBrutos[$j]['id_registro'] == $reg['id_registro'] &&
+                    $registrosBrutos[$j]['accion'] === 'crear') {
+                    $pedidosIdx = $j;
+                    break;
+                }
+            }
+            if ($pedidosIdx !== -1) {
+                $pedidoAUnificar = $registrosBrutos[$pedidosIdx];
+                $skipIds[$pedidosIdx] = true;
+                if (empty($pedidoAUnificar['datos_anteriores'])) {
+                    $pedidoAUnificar['datos_anteriores'] = $reg['datos_anteriores'];
+                }
+                $registros[] = $pedidoAUnificar;
+            } else {
+                $registros[] = $reg; // No se encontró el pedido
+            }
+        } else {
+            $registros[] = $reg;
+        }
+    }
+} else {
+    $registros = $registrosBrutos;
+}
 
 // Obtener tablas y usuarios únicos para filtros
 $tablasUnicas = AuditoriaModel::obtenerTablasUnicas();
@@ -659,7 +718,7 @@ $(document).ready(function () {
         var labelAntes, labelDespues, iconAntes, iconDespues;
         switch (d.accion) {
             case 'crear':
-                labelAntes   = d.tabla === 'api_requests' ? 'Request Payload' : null;
+                labelAntes   = d.antes ? 'Request API Payload' : null;
                 iconAntes    = 'bi-arrow-right-circle-fill';
                 iconDespues  = 'bi-plus-circle-fill';
                 labelDespues = d.tabla === 'api_requests' ? 'Response Status' : 'Datos del registro creado';
