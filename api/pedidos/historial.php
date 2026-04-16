@@ -164,6 +164,20 @@ try {
     // ── Consulta ───────────────────────────────────────────────────────────
     $resultado = PedidosModel::obtenerHistorialEstadosFiltrado($filtros, $page, $limit);
 
+    // Ajustar zona horaria de UTC a America/Managua conservando el formato original Y-m-d H:i:s
+    foreach ($resultado['data'] as &$item) {
+        if (!empty($item['fecha_cambio'])) {
+            try {
+                $dt = new DateTime($item['fecha_cambio'], new DateTimeZone('UTC'));
+                $dt->setTimezone(new DateTimeZone('America/Managua'));
+                $item['fecha_cambio'] = $dt->format('Y-m-d H:i:s');
+            } catch (Exception $e) {
+                // Si la fecha es inválida, se deja como está
+            }
+        }
+    }
+    unset($item);
+
     $total = $resultado['pagination']['total'];
     $msg   = $total === 0
         ? 'No se encontraron registros con los filtros indicados.'

@@ -125,6 +125,23 @@ try {
     // ── Consulta ───────────────────────────────────────────────────────────
     $resultado = PedidosModel::obtenerEstadoActualPedidos($filtros, $page, $limit);
 
+    // Formatear fechas a America/Managua (UTC-6)
+    foreach ($resultado['data'] as &$item) {
+        $fechasAFormatear = ['fecha_observacion_estado', 'fecha_ingreso', 'fecha_actualizacion'];
+        foreach ($fechasAFormatear as $campo) {
+            if (!empty($item[$campo])) {
+                try {
+                    $dt = new DateTime($item[$campo], new DateTimeZone('UTC'));
+                    $dt->setTimezone(new DateTimeZone('America/Managua'));
+                    $item[$campo] = $dt->format('Y-m-d H:i:s');
+                } catch (Exception $e) {
+                    // Ignorar errores de fecha
+                }
+            }
+        }
+    }
+    unset($item);
+
     $total = $resultado['pagination']['total'];
     $msg   = $total === 0
         ? 'No se encontraron pedidos con los filtros indicados.'

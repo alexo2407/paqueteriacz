@@ -138,11 +138,20 @@ try {
             $trabajos = LogisticsQueueService::obtenerPorPedido($idPedido);
             
             $itemStatus['jobs'] = array_map(function($job) {
+                $updatedAtLocal = $job['updated_at'];
+                if (!empty($updatedAtLocal)) {
+                    try {
+                        $dt = new DateTime($updatedAtLocal, new DateTimeZone('UTC'));
+                        $dt->setTimezone(new DateTimeZone('America/Managua'));
+                        $updatedAtLocal = $dt->format('Y-m-d H:i:s');
+                    } catch (Exception $e) {}
+                }
+
                 return [
                     'job_type' => $job['job_type'],
                     'status' => $job['status'],
                     'attempts' => (int)$job['attempts'],
-                    'updated_at' => $job['updated_at'],
+                    'updated_at' => $updatedAtLocal,
                     'error' => $job['status'] === 'failed' ? $job['last_error'] : null
                 ];
             }, $trabajos);
@@ -150,8 +159,17 @@ try {
             // Última observación registrada del cambio de estado
             $historial = PedidosModel::obtenerHistorialEstados($idPedido);
             if (!empty($historial)) {
+                $fechaObservacion = $historial[0]['created_at'] ?? null;
+                if (!empty($fechaObservacion)) {
+                     try {
+                        $dt = new DateTime($fechaObservacion, new DateTimeZone('UTC'));
+                        $dt->setTimezone(new DateTimeZone('America/Managua'));
+                        $fechaObservacion = $dt->format('Y-m-d H:i:s');
+                    } catch (Exception $e) {}
+                }
+
                 $itemStatus['observacion_estado'] = $historial[0]['observaciones'] ?? null;
-                $itemStatus['fecha_observacion_estado'] = $historial[0]['created_at'] ?? null;
+                $itemStatus['fecha_observacion_estado'] = $fechaObservacion;
                 $itemStatus['observacion_por'] = $historial[0]['usuario_nombre'] ?? null;
             }
         }
