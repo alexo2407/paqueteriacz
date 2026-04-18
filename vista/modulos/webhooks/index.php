@@ -426,7 +426,7 @@ $(document).ready(function() {
             order: [[0, 'desc']],
             pageLength: 25,
             language: {
-                url: 'https://cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+                url: 'https://cdn.jsdelivr.net/npm/datatables.net-plugins@1.13.7/i18n/es-ES.json'
             },
             responsive: true
         });

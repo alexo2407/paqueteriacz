@@ -142,7 +142,7 @@ $totalInactivos = $clientesInactivos ? count($clientesInactivos) : 0;
         $('#tblInactivos').DataTable({
             responsive: true,
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+                url: '//cdn.jsdelivr.net/npm/datatables.net-plugins@1.13.7/i18n/es-ES.json'
             }
         });
     });

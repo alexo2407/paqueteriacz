@@ -332,7 +332,7 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
         // Inicializar DataTables
         $('#tablaStock').DataTable({
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json'
+                url: '//cdn.jsdelivr.net/npm/datatables.net-plugins@1.13.7/i18n/es-ES.json'
             },
             order: [[0, 'desc']], // Ordenar por fecha descendente
             pageLength: 25,

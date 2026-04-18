@@ -194,7 +194,7 @@ if ($export) {
 $(document).ready(function() {
     if ($.fn.DataTable) {
         $('#tablaSaldoProducto').DataTable({
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json' },
+            language: { url: '//cdn.jsdelivr.net/npm/datatables.net-plugins@1.13.7/i18n/es-ES.json' },
             order: [[4, 'asc']],
             pageLength: 50,
             responsive: true,

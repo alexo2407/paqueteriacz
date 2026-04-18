@@ -112,7 +112,7 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
         $('.tablas').DataTable({
             responsive: true,
             language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.5/i18n/es-ES.json'
+                url: '//cdn.jsdelivr.net/npm/datatables.net-plugins@1.13.7/i18n/es-ES.json'
             },
             dom: '<"d-flex justify-content-between align-items-center mb-3"f>t<"d-flex justify-content-between align-items-center mt-3"ip>',
         });

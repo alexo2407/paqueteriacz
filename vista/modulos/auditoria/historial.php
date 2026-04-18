@@ -69,10 +69,19 @@ if ($pedidoFiltro !== '') {
     }
 }
 
-// Por defecto: últimos 7 días
+// Por defecto: últimos 7 días anclados al último registro de auditoría
+// (evita tabla vacía cuando el sistema lleva días sin actividad)
 $fechaHoy = date('Y-m-d');
-$fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-d', strtotime('-7 days'));
-$fechaFin = $_GET['fecha_fin'] ?? $fechaHoy;
+try {
+    require_once __DIR__ . '/../../../modelo/conexion.php';
+    $dbAnchor = (new Conexion())->conectar();
+    $ultimoReg = $dbAnchor->query('SELECT DATE(MAX(created_at)) AS ultima FROM auditoria_cambios')->fetchColumn();
+    $anchorDate = ($ultimoReg && $ultimoReg <= $fechaHoy) ? $ultimoReg : $fechaHoy;
+} catch (Exception $e) {
+    $anchorDate = $fechaHoy;
+}
+$fechaInicio = $_GET['fecha_inicio'] ?? date('Y-m-d', strtotime($anchorDate . ' -7 days'));
+$fechaFin    = $_GET['fecha_fin']    ?? $anchorDate;
 
 // Construir filtros
 $filtros = [];
@@ -662,7 +671,7 @@ $(document).ready(function () {
 
     /* DataTables */
     $('#tablaAuditoria').DataTable({
-        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json' },
+        language: { url: '//cdn.jsdelivr.net/npm/datatables.net-plugins@1.13.7/i18n/es-ES.json' },
         order: [[0, 'desc']],
         pageLength: 25,
         responsive: true

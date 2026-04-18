@@ -678,7 +678,7 @@ include("vista/includes/header.php");
     const tablaEl = document.getElementById('tablaPendientes');
     if (tablaEl && typeof $ !== 'undefined' && $.fn.DataTable) {
         const dtPend = $('#tablaPendientes').DataTable({
-            language: { url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json' },
+            language: { url: '//cdn.jsdelivr.net/npm/datatables.net-plugins@1.13.7/i18n/es-ES.json' },
             dom: 'rtip',
             pageLength: 20,
             order: [[3, 'desc']],

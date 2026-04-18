@@ -31,10 +31,9 @@ $stmtToken->execute([':id' => $currUserId]);
 $tokenEnlacePublico = $stmtToken->fetchColumn();
 
 // ── Leer filtros de la URL ────────────────────────────────────────────────────
-$fechaDesde  = $_GET['fecha_desde']  ?? date('Y-m-01');
-// Default "hasta": fecha del último movimiento en stock (no el fin de mes actual)
-$ultimoMovRow = $db->query('SELECT DATE(MAX(created_at)) AS ultima FROM stock')->fetch(PDO::FETCH_ASSOC);
-$fechaHasta   = $_GET['fecha_hasta']  ?? ($ultimoMovRow['ultima'] ?? date('Y-m-d'));
+// Default: primer día del mes actual → hoy
+$fechaDesde = $_GET['fecha_desde'] ?? date('Y-m-01');
+$fechaHasta = $_GET['fecha_hasta'] ?? date('Y-m-d');
 $idCliente   = ($isRealCliente)   ? $currUserId : (int)($_GET['id_cliente']  ?? 0);
 $idProveedor = ($isRealProveedor) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
 $idEstado    = (int)($_GET['id_estado']   ?? 0);
@@ -170,6 +169,28 @@ if (!empty($productoIds)) {
     $stmtS->execute($bindVals);
     foreach ($stmtS->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $saldosIniciales[(int)$r['id_producto']] = (int)$r['saldo'];
+    }
+}
+
+// ── Reservas activas (pedidos En Bodega — nuevo flujo PedidoService) ───────────
+// Unidades comprometidas a pedidos en estado 1 (En Bodega) con reserva no liberada.
+// Estas NO tienen salida física en stock todavía, pero tampoco son stock libre.
+$reservasActivas = [];
+if (!empty($productoIds)) {
+    $placeholdersR = implode(',', array_fill(0, count($productoIds), '?'));
+    $sqlRes = "
+        SELECT prs.id_producto, SUM(prs.cantidad) AS total_reservado
+        FROM pedido_reservas_stock prs
+        JOIN pedidos ped ON ped.id = prs.id_pedido
+        WHERE prs.id_producto IN ({$placeholdersR})
+          AND prs.liberada = 0
+          AND ped.id_estado = 1
+        GROUP BY prs.id_producto
+    ";
+    $stmtR = $db->prepare($sqlRes);
+    $stmtR->execute(array_values($productoIds));
+    foreach ($stmtR->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $reservasActivas[(int)$r['id_producto']] = (int)$r['total_reservado'];
     }
 }
 
@@ -350,7 +371,7 @@ if ($export && !empty($colsList)) {
     $ultimoGrupo = end($filas);
     if ($ultimoGrupo) {
         $sheet->mergeCells("A{$excelRow}:B{$excelRow}");
-        $sheet->setCellValue("A{$excelRow}", 'TOTAL PRODUCTO');
+        $sheet->setCellValue("A{$excelRow}", 'SALDO FINAL');
         $c = 3;
         foreach ($colsList as $pid => $pn) {
             $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow, $ultimoGrupo['total']['data'][$pid] ?? 0);
@@ -361,6 +382,46 @@ if ($export && !empty($colsList)) {
             'font' => ['bold' => true, 'size' => 11],
         ]);
         $sheet->getRowDimension($excelRow)->setRowHeight(18);
+        $excelRow++;
+
+        // ── Fila En Bodega (Reservado) ─────────────────────────────────────────
+        $hayReservasExcel = !empty(array_filter($reservasActivas, fn($v) => $v > 0));
+        if ($hayReservasExcel) {
+            $sheet->mergeCells("A{$excelRow}:B{$excelRow}");
+            $sheet->setCellValue("A{$excelRow}", 'EN BODEGA (RESERVADO)');
+            $c = 3;
+            foreach ($colsList as $pid => $pn) {
+                $res = $reservasActivas[$pid] ?? 0;
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow;
+                $sheet->setCellValue($colLetter, $res > 0 ? -$res : 0);
+                $sheet->getStyle($colLetter)->getNumberFormat()->setFormatCode('+#,##0;-#,##0;0');
+                $c++;
+            }
+            $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'C5CAE9']],
+                'font' => ['color' => ['rgb' => '283593'], 'bold' => true, 'italic' => true],
+                'alignment' => ['horizontal' => 'center'],
+            ]);
+            $excelRow++;
+
+            // ── Fila Stock libre real ──────────────────────────────────────────
+            $sheet->mergeCells("A{$excelRow}:B{$excelRow}");
+            $sheet->setCellValue("A{$excelRow}", 'STOCK LIBRE REAL');
+            $c = 3;
+            foreach ($colsList as $pid => $pn) {
+                $saldoF = $ultimoGrupo['total']['data'][$pid] ?? 0;
+                $resF   = $reservasActivas[$pid] ?? 0;
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $excelRow;
+                $sheet->setCellValue($colLetter, $saldoF - $resF);
+                $c++;
+            }
+            $sheet->getStyle("A{$excelRow}:{$lastColLetter}{$excelRow}")->applyFromArray([
+                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '1B5E20']],
+                'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true, 'size' => 11],
+                'alignment' => ['horizontal' => 'center'],
+            ]);
+            $sheet->getRowDimension($excelRow)->setRowHeight(18);
+        }
     }
 
     // ── Auto-size columnas ────────────────────────────────────────────────────
@@ -435,6 +496,12 @@ if ($export && !empty($colsList)) {
         .fila-sin-mov td { opacity: .45; }
 
         .tabla-wrapper { overflow-x: auto; max-height: 70vh; overflow-y: auto; border-radius: 10px; border: 1px solid #dee2e6; }
+        /* Fila reservas — azul oscuro */
+        .fila-reserva td { background: #e8eaf6; color: #283593; font-style: italic; }
+        .fila-reserva td:first-child { background: #c5cae9; font-weight: 600; }
+        /* Fila stock libre — verde oscuro sólido */
+        .fila-libre td { background: #1b5e20; color: #fff; font-weight: 700; }
+        .fila-libre td:first-child { background: #145214; }
     </style>
 </head>
 <body class="bg-light">
@@ -604,7 +671,7 @@ if ($export && !empty($colsList)) {
     <?php else: ?>
 
     <!-- Leyenda -->
-    <div class="d-flex gap-4 mb-2 small flex-wrap px-1">
+    <div class="d-flex gap-4 mb-2 small flex-wrap px-1 align-items-center">
         <span class="d-flex align-items-center gap-1">
             <span class="badge" style="background:#2e7d32"><i class="bi bi-arrow-up-short"></i> Entradas</span>
             Unidades ingresadas ese día
@@ -617,8 +684,16 @@ if ($export && !empty($colsList)) {
             <span class="badge" style="background:#ffd600;color:#000">T</span>
             Saldo acumulado al cierre del día
         </span>
-        <span class="text-muted">Filas atenuadas = sin movimiento ese día · <span style="color:#aaa">—</span> = sin actividad</span>
+        <span class="ms-auto">
+            <button id="btnToggleSinMov" class="btn btn-sm btn-outline-secondary" onclick="toggleSinMovimiento()">
+                <i class="bi bi-eye-slash me-1"></i>Solo días con actividad
+            </button>
+        </span>
     </div>
+    <?php
+    // Activar "solo días con actividad" por defecto si hay algún filtro aplicado
+    $hayFiltros = ($idCliente > 0 || $idProveedor > 0 || $idEstado > 0 || $idProducto > 0);
+    ?>
 
     <!-- Tabla matricial -->
     <div class="tabla-wrapper">
@@ -697,9 +772,10 @@ if ($export && !empty($colsList)) {
             <?php foreach ($filas as $grupo):
                 $sinMov = !$grupo['tiene_mov'];
                 $sMov   = $sinMov ? ' fila-sin-mov' : '';
+                $dataSin = $sinMov ? ' data-sin-mov="1"' : '';
             ?>
                 <!-- Fila Entradas -->
-                <tr class="fila-entrada<?= $sMov ?>">
+                <tr class="fila-entrada<?= $sMov ?>"<?= $dataSin ?>>
                     <td class="col-fecha text-nowrap">
                         <i class="bi bi-arrow-up-circle-fill me-1" style="color:#2e7d32"></i>
                         <?= date('d/m/Y', strtotime($grupo['entry']['fecha'])) ?>
@@ -727,7 +803,7 @@ if ($export && !empty($colsList)) {
                 </tr>
 
                 <!-- Fila Salidas -->
-                <tr class="fila-salida<?= $sMov ?>">
+                <tr class="fila-salida<?= $sMov ?>"<?= $dataSin ?>>
                     <td class="col-fecha text-nowrap text-muted" style="font-size:.7rem">
                         <i class="bi bi-arrow-down-circle-fill me-1" style="color:#bf360c"></i>
                         <?= date('d/m/Y', strtotime($grupo['salida']['fecha'])) ?>
@@ -771,6 +847,55 @@ if ($export && !empty($colsList)) {
                     <?php endforeach; ?>
                 </tr>
 
+                <!-- Fila En Bodega (Reservado) — unidades comprometidas a pedidos En Bodega -->
+                <?php
+                $hayReservas = !empty(array_filter($reservasActivas, fn($v) => $v > 0));
+                if ($hayReservas):
+                ?>
+                <tr class="fila-reserva">
+                    <td class="col-fecha text-nowrap">
+                        <i class="bi bi-lock-fill me-1"></i>En Bodega
+                        <br><small class="fw-normal" style="font-size:.68rem;opacity:.75">reservado / no despachado</small>
+                    </td>
+                    <?php foreach ($colsList as $pid => $pn):
+                        $res = $reservasActivas[$pid] ?? 0;
+                    ?>
+                    <td>
+                        <?php if ($res > 0): ?>
+                        <span class="badge d-inline-flex align-items-center gap-1"
+                              style="background:#283593;color:#fff;font-size:.72rem"
+                              title="<?= $res ?> unidades reservadas para pedidos en bodega">
+                            <i class="bi bi-lock-fill"></i>
+                            <span>−<?= number_format($res) ?></span>
+                        </span>
+                        <?php else: ?>
+                        <span class="text-muted" style="opacity:.35">—</span>
+                        <?php endif; ?>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+
+                <!-- Fila Stock libre real = Saldo final - Reservas activas -->
+                <tr class="fila-libre">
+                    <td class="col-fecha text-nowrap">
+                        <i class="bi bi-check2-circle me-1"></i>Stock libre
+                        <br><small class="fw-normal" style="font-size:.68rem;opacity:.8">disponible para nuevos pedidos</small>
+                    </td>
+                    <?php foreach ($colsList as $pid => $pn):
+                        $saldoFinal = $ultimoGrupo['total']['data'][$pid] ?? 0;
+                        $reservado  = $reservasActivas[$pid] ?? 0;
+                        $libre      = $saldoFinal - $reservado;
+                        if ($libre <= 0)      { $liberoBg = '#b71c1c'; $liberoIcon = 'bi-exclamation-triangle-fill'; }
+                        elseif ($libre <= 10) { $liberoBg = '#e65100'; $liberoIcon = 'bi-dash-circle-fill'; }
+                        else                  { $liberoBg = '#1b5e20'; $liberoIcon = 'bi-check-circle-fill'; }
+                    ?>
+                    <td style="background:<?= $liberoBg ?>;font-weight:700">
+                        <i class="bi <?= $liberoIcon ?> me-1"></i><?= number_format($libre) ?>
+                    </td>
+                    <?php endforeach; ?>
+                </tr>
+                <?php endif; ?>
+
                 <!-- Fila resumen del período -->
                 <tr style="background:#f0f4ff;font-size:.75rem;color:#37474f">
                     <td class="col-fecha fw-semibold"><i class="bi bi-calendar-range me-1"></i>Resumen período</td>
@@ -809,6 +934,28 @@ if ($export && !empty($colsList)) {
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
+// ── Toggle: ocultar/mostrar días sin movimiento ────────────────────────────
+let _ocultandoSinMov = false;
+
+function toggleSinMovimiento() {
+    _ocultandoSinMov = !_ocultandoSinMov;
+    const filas = document.querySelectorAll('tr[data-sin-mov="1"]');
+    filas.forEach(tr => tr.style.display = _ocultandoSinMov ? 'none' : '');
+    const btn = document.getElementById('btnToggleSinMov');
+    if (_ocultandoSinMov) {
+        btn.classList.replace('btn-outline-secondary', 'btn-secondary');
+        btn.innerHTML = '<i class="bi bi-eye me-1"></i>Mostrar todos los días';
+    } else {
+        btn.classList.replace('btn-secondary', 'btn-outline-secondary');
+        btn.innerHTML = '<i class="bi bi-eye-slash me-1"></i>Solo días con actividad';
+    }
+}
+
+// Auto-activar si hay filtros aplicados (cliente/proveedor/estado/producto)
+<?php if ($hayFiltros): ?>
+document.addEventListener('DOMContentLoaded', () => { toggleSinMovimiento(); });
+<?php endif; ?>
+
 function toggleEnlacePublico(action) {
     const actionText = action === 'habilitar' 
         ? 'Esto generará un enlace público que podrás compartir con clientes externos.' 
