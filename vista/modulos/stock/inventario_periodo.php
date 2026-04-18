@@ -889,7 +889,7 @@ if ($export && !empty($colsList)) {
                         elseif ($libre <= 10) { $liberoBg = '#e65100'; $liberoIcon = 'bi-dash-circle-fill'; }
                         else                  { $liberoBg = '#1b5e20'; $liberoIcon = 'bi-check-circle-fill'; }
                     ?>
-                    <td style="background:<?= $liberoBg ?>;font-weight:700">
+                    <td style="background:<?= $liberoBg ?>;font-weight:700;color:#fff">
                         <i class="bi <?= $liberoIcon ?> me-1"></i><?= number_format($libre) ?>
                     </td>
                     <?php endforeach; ?>
