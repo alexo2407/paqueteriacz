@@ -763,6 +763,7 @@ class PedidoApiController
             'tasa_conversion_usd' => $tasaConversionUsd,
             'es_combo' => $esCombo,
             'fecha_entrega' => $data['fecha_entrega'] ?? null,
+            'fecha_ingreso' => $data['fecha_registro'] ?? $data['created_at'] ?? $data['fecha_ingreso'] ?? null,
             'id_codigo_postal' => $data['id_codigo_postal'] ?? null,
             // Campos especiales de dirección (tolerante a variaciones de nombre)
             'municipalitiesName' => $data['municipalitiesName'] ?? $data['municipalityName'] ?? null,
@@ -865,6 +866,7 @@ class PedidoApiController
             'tasa_conversion_usd' => $pedido['tasa_conversion_usd'] ?? null,
             'es_combo' => $esCombo,
             'fecha_entrega' => $pedido['fecha_entrega'] ?? null,
+            'fecha_ingreso' => $pedido['fecha_registro'] ?? $pedido['created_at'] ?? $pedido['fecha_ingreso'] ?? null,
             'id_codigo_postal' => $pedido['id_codigo_postal'] ?? null,
             // Campos especiales de dirección (tolerante a variaciones de nombre)
             'municipalitiesName' => $pedido['municipalitiesName'] ?? $pedido['municipalityName'] ?? null,

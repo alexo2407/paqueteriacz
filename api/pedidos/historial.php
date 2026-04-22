@@ -168,7 +168,8 @@ try {
     foreach ($resultado['data'] as &$item) {
         if (!empty($item['fecha_cambio'])) {
             try {
-                $dt = new DateTime($item['fecha_cambio'], new DateTimeZone('UTC'));
+                $systemTz = date_default_timezone_get();
+                $dt = new DateTime($item['fecha_cambio'], new DateTimeZone($systemTz));
                 $dt->setTimezone(new DateTimeZone('America/Managua'));
                 $item['fecha_cambio'] = $dt->format('Y-m-d H:i:s');
             } catch (Exception $e) {

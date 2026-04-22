@@ -399,7 +399,7 @@ class LogisticaModel {
     /**
      * Actualizar estado de un pedido con auditoría y movimientos de stock.
      */
-    public static function actualizarEstado($pedidoId, $nuevoEstado, $observaciones, $usuarioId, $fechaEntrega = null, $fechaLiquidacion = null) {
+    public static function actualizarEstado($pedidoId, $nuevoEstado, $observaciones, $usuarioId, $fechaEntrega = null, $fechaLiquidacion = null, $fecha_registro = null) {
         require_once __DIR__ . '/../services/PedidoService.php';
         try {
             $db = (new Conexion())->conectar();
@@ -449,8 +449,8 @@ class LogisticaModel {
             
             $sql .= " WHERE id = :id";
             // Comunicar usuario y observaciones al trigger after_pedido_update_estado
-            $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs")
-               ->execute([':uid' => (int)$usuarioId, ':obs' => $observaciones ?: null]);
+            $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs, @current_created_at = :cat")
+               ->execute([':uid' => (int)$usuarioId, ':obs' => $observaciones ?: null, ':cat' => $fecha_registro ?: null]);
 
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
@@ -839,8 +839,12 @@ class LogisticaModel {
                 $stmt = $db->prepare($sql);
                 // Comunicar usuario y observaciones al trigger after_pedido_update_estado
                 if ($nuevoIdEstado !== null) {
-                    $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs")
-                       ->execute([':uid' => (int)$userId, ':obs' => $row['motivo'] ?? null]);
+                    $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs, @current_created_at = :cat")
+                       ->execute([
+                           ':uid' => (int)$userId, 
+                           ':obs' => $row['motivo'] ?? null,
+                           ':cat' => $row['fecha_registro'] ?? $row['created_at'] ?? null
+                       ]);
                 }
                 $ok   = $stmt->execute($params);
 

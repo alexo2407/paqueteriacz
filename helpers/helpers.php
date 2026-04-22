@@ -168,7 +168,9 @@ function localDate(?string $utcDatetime, string $format = 'd/m/Y H:i', string $f
     }
 
     try {
-        $dt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
+        // La fecha ahora se captura y guarda en la timezone del sistema (America/Managua)
+        $systemTz = date_default_timezone_get();
+        $dt = new DateTime($utcDatetime, new DateTimeZone($systemTz));
         $dt->setTimezone(new DateTimeZone($userTz));
         return $dt->format($format);
     } catch (Exception $e) {
@@ -209,11 +211,12 @@ function humanizeDate(?string $utcDatetime): string
     }
 
     try {
-        $dt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
-        $now = new DateTime('now', new DateTimeZone('UTC'));
+        $systemTz = date_default_timezone_get();
+        $dt = new DateTime($utcDatetime, new DateTimeZone($systemTz));
+        $now = new DateTime('now', new DateTimeZone($systemTz));
         $seconds = $now->getTimestamp() - $dt->getTimestamp();
         
-        $localDt = new DateTime($utcDatetime, new DateTimeZone('UTC'));
+        $localDt = new DateTime($utcDatetime, new DateTimeZone($systemTz));
         $localDt->setTimezone(new DateTimeZone($userTz));
 
         $meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];

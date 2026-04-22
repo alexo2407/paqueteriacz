@@ -131,7 +131,8 @@ try {
         foreach ($fechasAFormatear as $campo) {
             if (!empty($item[$campo])) {
                 try {
-                    $dt = new DateTime($item[$campo], new DateTimeZone('UTC'));
+                    $systemTz = date_default_timezone_get();
+                    $dt = new DateTime($item[$campo], new DateTimeZone($systemTz));
                     $dt->setTimezone(new DateTimeZone('America/Managua'));
                     $item[$campo] = $dt->format('Y-m-d H:i:s');
                 } catch (Exception $e) {

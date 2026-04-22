@@ -997,6 +997,18 @@ class PedidosModel
                 $fields[] = 'direccion = :direccion';
                 $params[':direccion'] = $data['direccion'];
             }
+            // COMUNICAR FECHA DE CREACIÓN SI SE PROPORCIONA (Para historial de estados)
+            // Esto permite que el cliente asigne el tiempo exacto del evento,
+            // sobreescribiendo el NOW() por defecto en el trigger y en el insert manual.
+            $fechaRegistro = $data['fecha_registro'] ?? $data['created_at'] ?? null;
+            if ($fechaRegistro) {
+                try {
+                    $db->prepare("SET @current_created_at = :cat")->execute([':cat' => $fechaRegistro]);
+                } catch (Exception $e) {
+                    error_log('Error seteando @current_created_at: ' . $e->getMessage());
+                }
+            }
+
             if (isset($data['comentario'])) {
                 $fields[] = 'comentario = :comentario';
                 $params[':comentario'] = $data['comentario'] !== '' ? $data['comentario'] : null;
@@ -1040,19 +1052,34 @@ class PedidosModel
             }
 
             // Foreign keys - only update if value is provided and not empty
-            if (isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0') {
+            if (isset($data['id_estado']) && $data['id_estado'] !== '' && $data['id_estado'] !== '0') {
+                $fields[] = 'id_estado = :id_estado';
+                $params[':id_estado'] = (int)$data['id_estado'];
+            } elseif (isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0') {
                 $fields[] = 'id_estado = :id_estado';
                 $params[':id_estado'] = (int)$data['estado'];
             }
-            if (isset($data['moneda']) && $data['moneda'] !== '' && $data['moneda'] !== '0') {
+
+            if (isset($data['id_moneda']) && $data['id_moneda'] !== '' && $data['id_moneda'] !== '0') {
+                $fields[] = 'id_moneda = :id_moneda';
+                $params[':id_moneda'] = (int)$data['id_moneda'];
+            } elseif (isset($data['moneda']) && $data['moneda'] !== '' && $data['moneda'] !== '0') {
                 $fields[] = 'id_moneda = :id_moneda';
                 $params[':id_moneda'] = (int)$data['moneda'];
             }
-            if (isset($data['vendedor']) && $data['vendedor'] !== '' && $data['vendedor'] !== '0') {
+
+            if (isset($data['id_vendedor']) && $data['id_vendedor'] !== '' && $data['id_vendedor'] !== '0') {
+                $fields[] = 'id_vendedor = :id_vendedor';
+                $params[':id_vendedor'] = (int)$data['id_vendedor'];
+            } elseif (isset($data['vendedor']) && $data['vendedor'] !== '' && $data['vendedor'] !== '0') {
                 $fields[] = 'id_vendedor = :id_vendedor';
                 $params[':id_vendedor'] = (int)$data['vendedor'];
             }
-            if (isset($data['proveedor']) && $data['proveedor'] !== '' && $data['proveedor'] !== '0') {
+
+            if (isset($data['id_proveedor']) && $data['id_proveedor'] !== '' && $data['id_proveedor'] !== '0') {
+                $fields[] = 'id_proveedor = :id_proveedor';
+                $params[':id_proveedor'] = (int)$data['id_proveedor'];
+            } elseif (isset($data['proveedor']) && $data['proveedor'] !== '' && $data['proveedor'] !== '0') {
                 $fields[] = 'id_proveedor = :id_proveedor';
                 $params[':id_proveedor'] = (int)$data['proveedor'];
             }
@@ -1178,8 +1205,8 @@ class PedidosModel
                 }
 
                 // [Historial Estados/Proveedor - Legacy logic kept for specific UI logs]
-                $nuevoEstado = isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0' ? (int)$data['estado'] : ($estadoAnterior ?? 1); 
-                $nuevoProveedor = isset($data['proveedor']) && $data['proveedor'] !== '' ? (int)$data['proveedor'] : $proveedorAnterior;
+                $nuevoEstado = isset($data['id_estado']) && $data['id_estado'] !== '' && $data['id_estado'] !== '0' ? (int)$data['id_estado'] : (isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0' ? (int)$data['estado'] : ($estadoAnterior ?? 1)); 
+                $nuevoProveedor = isset($data['id_proveedor']) && $data['id_proveedor'] !== '' ? (int)$data['id_proveedor'] : (isset($data['proveedor']) && $data['proveedor'] !== '' ? (int)$data['proveedor'] : $proveedorAnterior);
                 
                 $huboCambioEstado = ($estadoAnterior && $nuevoEstado != $estadoAnterior);
                 $huboCambioProveedor = ($proveedorAnterior !== null && $nuevoProveedor != $proveedorAnterior);
@@ -1206,14 +1233,15 @@ class PedidosModel
                         // Reutilizamos el estado actual si no cambió, para cumplir FK
                         $histQuery = "INSERT INTO pedidos_historial_estados 
                                     (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at) 
-                                    VALUES (:id_pedido, :ant, :nuevo, :user, :obs, NOW())";
+                                    VALUES (:id_pedido, :ant, :nuevo, :user, :obs, COALESCE(:created_at, NOW()))";
                         $histStmt = $db->prepare($histQuery);
                         $histStmt->execute([
                             ':id_pedido' => (int)$data['id_pedido'],
                             ':ant' => $estadoAnterior, 
                             ':nuevo' => $nuevoEstado, 
                             ':user' => $userId,
-                            ':obs' => $observaciones
+                            ':obs' => $observaciones,
+                            ':created_at' => $fechaRegistro
                         ]);
 
                         // Nota: La auditoría ya se registró arriba en el bloque general de cambios
@@ -1546,7 +1574,11 @@ class PedidosModel
             $placeholders = [];
             foreach ($columns as $col) {
                 if ($col === 'fecha_ingreso') {
-                    $placeholders[] = 'NOW()';
+                    if (!empty($pedido['fecha_ingreso'])) {
+                        $placeholders[] = ':fecha_ingreso';
+                    } else {
+                        $placeholders[] = 'NOW()';
+                    }
                     continue;
                 }
                 if ($col === 'coordenadas') {
@@ -1562,6 +1594,9 @@ class PedidosModel
             if (in_array('numero_orden', $columns)) $stmt->bindValue(':numero_orden', $pedido['numero_orden']);
             if (in_array('destinatario', $columns)) $stmt->bindValue(':destinatario', $pedido['destinatario']);
             if (in_array('telefono', $columns)) $stmt->bindValue(':telefono', $pedido['telefono']);
+            if (in_array('fecha_ingreso', $columns) && !empty($pedido['fecha_ingreso'])) {
+                $stmt->bindValue(':fecha_ingreso', $pedido['fecha_ingreso']);
+            }
             
             if (in_array('coordenadas', $columns)) {
                 $stmt->bindValue(':coordenadas', $coordenadas);
@@ -1904,7 +1939,7 @@ class PedidosModel
      *                         Usar cuando el caller (ej: actualizarPedido) ya generó
      *                         un registro unificado para la misma acción.
      */
-    public static function actualizarEstado($id_pedido, $estado, $observaciones = null, bool $skipAudit = false) {
+    public static function actualizarEstado($id_pedido, $estado, $observaciones = null, bool $skipAudit = false, $fecha_registro = null) {
         try {
             $db = (new Conexion())->conectar();
             
@@ -1931,17 +1966,22 @@ class PedidosModel
                 if ($resultado) {
                     $userId = self::resolveCurrentUserId();
                     
+                    if ($fecha_registro) {
+                        $db->prepare("SET @current_created_at = :cat")->execute([':cat' => $fecha_registro]);
+                    }
+
                     // 1. Insertar en historial específico de estados (Visible para clientes)
                     $histQuery = "INSERT INTO pedidos_historial_estados 
                                  (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at) 
-                                 VALUES (:id_pedido, :ant, :nuevo, :user, :obs, NOW())";
+                                 VALUES (:id_pedido, :ant, :nuevo, :user, :obs, COALESCE(:created_at, NOW()))";
                     $histStmt = $db->prepare($histQuery);
                     $histStmt->execute([
                         ':id_pedido' => $id_pedido,
                         ':ant' => $estadoAnterior ?: null, 
                         ':nuevo' => $estado, 
                         ':user' => $userId,
-                        ':obs' => $observaciones
+                        ':obs' => $observaciones,
+                        ':created_at' => $fecha_registro
                     ]);
 
                     // 2. Registrar auditoría (se omite si el caller ya lo hizo)
@@ -2058,17 +2098,24 @@ class PedidosModel
             $upd = $db->prepare("UPDATE pedidos SET id_estado = :nuevo, updated_at = NOW() WHERE id = :id");
             $upd->execute([':nuevo' => $nuevo_estado, ':id' => $realPedidoId]);
 
+            // Comunicar fecha personalizada si viene en el input
+            $fechaRegistro = $data['fecha_registro'] ?? $data['created_at'] ?? null;
+            if ($fechaRegistro) {
+                $db->prepare("SET @current_created_at = :cat")->execute([':cat' => $fechaRegistro]);
+            }
+
             // 7. Registrar en historial de estados
             $histQuery = "INSERT INTO pedidos_historial_estados 
                          (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at) 
-                         VALUES (:id_pedido, :ant, :nuevo, :user, :obs, NOW())";
+                         VALUES (:id_pedido, :ant, :nuevo, :user, :obs, COALESCE(:created_at, NOW()))";
             $histStmt = $db->prepare($histQuery);
             $histStmt->execute([
                 ':id_pedido' => $realPedidoId,
                 ':ant'       => $estadoAnterior,
                 ':nuevo'     => $nuevo_estado,
                 ':user'      => $id_cliente_auth,
-                ':obs'       => $motivo
+                ':obs'       => $motivo,
+                ':created_at' => $fechaRegistro
             ]);
 
             // 8. Registrar auditoría

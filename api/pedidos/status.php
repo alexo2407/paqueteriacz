@@ -141,7 +141,8 @@ try {
                 $updatedAtLocal = $job['updated_at'];
                 if (!empty($updatedAtLocal)) {
                     try {
-                        $dt = new DateTime($updatedAtLocal, new DateTimeZone('UTC'));
+                        $systemTz = date_default_timezone_get();
+                        $dt = new DateTime($updatedAtLocal, new DateTimeZone($systemTz));
                         $dt->setTimezone(new DateTimeZone('America/Managua'));
                         $updatedAtLocal = $dt->format('Y-m-d H:i:s');
                     } catch (Exception $e) {}
@@ -162,9 +163,10 @@ try {
                 $fechaObservacion = $historial[0]['created_at'] ?? null;
                 if (!empty($fechaObservacion)) {
                      try {
-                        $dt = new DateTime($fechaObservacion, new DateTimeZone('UTC'));
-                        $dt->setTimezone(new DateTimeZone('America/Managua'));
-                        $fechaObservacion = $dt->format('Y-m-d H:i:s');
+                         $systemTz = date_default_timezone_get();
+                         $dt = new DateTime($fechaObservacion, new DateTimeZone($systemTz));
+                         $dt->setTimezone(new DateTimeZone('America/Managua'));
+                         $fechaObservacion = $dt->format('Y-m-d H:i:s');
                     } catch (Exception $e) {}
                 }
 
