@@ -113,6 +113,7 @@ class EnlacesController
                 // Clientes tienen su propio tracking de estados
                 'dashboard'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'webhooks'        => [ROL_NOMBRE_ADMIN],
+                'forwarding'      => [ROL_NOMBRE_ADMIN],
             ];
 
             $userRoleNames = $_SESSION['roles_nombres'] ?? [];

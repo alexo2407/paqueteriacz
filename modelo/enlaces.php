@@ -56,6 +56,7 @@ class EnlacesModel
             "logistica",
             "codigos_postales",
             "webhooks",
+            "forwarding",
             "salir"
         ];
 
@@ -71,7 +72,7 @@ class EnlacesModel
                 $archivo .= "/" . $accion . ".php";
             } else {
                 // Casos especiales: módulos sin acción que necesitan redirección
-                if ($modulo === 'seguimiento' || $modulo === 'codigos_postales' || $modulo === 'webhooks') {
+                if ($modulo === 'seguimiento' || $modulo === 'codigos_postales' || $modulo === 'webhooks' || $modulo === 'forwarding') {
                     // Redirigir módulos sin acción a su archivo index/listar
                     if ($modulo === 'seguimiento') {
                         $archivo .= "/listar.php";

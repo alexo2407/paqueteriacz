@@ -98,6 +98,18 @@ class PedidoApiController
             LogisticaNotifHelper::notificarPedido($nuevoId, LogisticaNotifHelper::ACCION_CREADO);
         }
 
+        // Forwarding a proveedores externos (best-effort, no bloquea creación)
+        $forwardingResult = null;
+        if ($nuevoId && defined('FORWARDING_ENABLED') && FORWARDING_ENABLED) {
+            try {
+                require_once __DIR__ . '/../../services/ForwardingService.php';
+                $fwdClienteId = (int)($pedidoPayload['id_cliente'] ?? 0);
+                $forwardingResult = ForwardingService::evaluarYReenviar($nuevoId, $fwdClienteId);
+            } catch (Exception $fwdEx) {
+                error_log("Forwarding error pedido $nuevoId: " . $fwdEx->getMessage());
+            }
+        }
+
         // Encolar si se solicita
         if ($autoEnqueue && $nuevoId) {
             try {
@@ -113,6 +125,11 @@ class PedidoApiController
             "message" => "Pedido creado correctamente.",
             "data" => $pedidoPayload['numero_orden']
         ];
+
+        // Incluir resultado de forwarding si aplica
+        if ($forwardingResult !== null) {
+            $response['forwarding'] = $forwardingResult;
+        }
 
         // Auditoría: registrar request original del cliente con el status del response
         $this->registrarAuditoriaAPI($requestOriginal, $response, $nuevoId);
@@ -219,6 +236,20 @@ class PedidoApiController
                     // Capturar cliente/proveedor del primer pedido exitoso
                     if ($idClienteLote === 0)   $idClienteLote   = (int)($modelPayload['id_cliente']  ?? 0);
                     if ($idProveedorLote === 0) $idProveedorLote = (int)($modelPayload['id_proveedor'] ?? 0);
+                }
+
+                // Forwarding a proveedores externos (best-effort)
+                if ($nuevoId && defined('FORWARDING_ENABLED') && FORWARDING_ENABLED) {
+                    try {
+                        require_once __DIR__ . '/../../services/ForwardingService.php';
+                        $fwdClienteId = (int)($modelPayload['id_cliente'] ?? 0);
+                        $fwdResult = ForwardingService::evaluarYReenviar($nuevoId, $fwdClienteId);
+                        if ($fwdResult) {
+                            $itemResult['forwarding'] = $fwdResult;
+                        }
+                    } catch (Exception $fwdEx) {
+                        error_log("Forwarding error pedido multiple $nuevoId: " . $fwdEx->getMessage());
+                    }
                 }
 
                 // Encolar si se solicita
