@@ -456,7 +456,7 @@
             <?php endif; ?>
             <?php 
             // Tracking de Estados
-            if ($isAdmin || $isNutraTradeClient || $isCliente || $sessionRol == 4 || in_array('Cliente', $rolesNamesArr) || in_array('cliente', $rolesNamesArr)): 
+            if ($isAdmin || $isNutraTradeClient || $isCliente || $sessionRol == 4 || in_array('Cliente', $rolesNombres) || in_array('cliente', $rolesNombres)): 
             ?>
             <a href="<?= RUTA_URL ?>seguimiento/admin_tracking" class="nav-link">
                 <i class="bi bi-geo-fill"></i>
