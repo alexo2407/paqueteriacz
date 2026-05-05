@@ -184,7 +184,7 @@ class LogisProProvider extends BaseProvider
             if ($cantidad <= 0) continue;
 
             $orderDetail[] = [
-                'productName' => $p['producto_nombre'] ?? $p['sku'] ?? 'Producto',
+                'productName' => $p['sku'] ?? $p['producto_nombre'] ?? 'Producto',
                 'quantity'    => $cantidad,
                 'price'       => 0,
             ];
