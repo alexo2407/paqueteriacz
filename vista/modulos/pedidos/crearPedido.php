@@ -772,30 +772,24 @@ try {
         let productosFiltrados;
         
         if (esAdmin || isVendedor) {
-            // Admin/Vendedor: muestra TODOS los productos cuando hay cliente seleccionado.
-            // Sin cliente seleccionado → lista vacía para evitar confusión.
-            productosFiltrados = clienteId ? productos : [];
+            // Admin/Vendedor: siempre ve TODOS los productos,
+            // independientemente de si hay cliente seleccionado.
+            productosFiltrados = productos;
         } else {
             // Soy Cliente o Proveedor logueado.
             // PHP ya filtró mis productos (o los que puedo ver).
-            // Simplemente muestro lo que hay.
             productosFiltrados = productos;
         }
-        
+
         productosFiltrados.forEach(p => {
             const sel = (selectedId && parseInt(selectedId) === parseInt(p.id)) ? ' selected' : '';
             const marcaText = p.marca ? ` (${escapeHtml(p.marca)})` : '';
-            // Mostrar stock si existe
             const stockInfo = (p.stock !== null && p.stock !== undefined) ? ` — Stock: ${p.stock}` : '';
             opts += `<option value="${p.id}" data-stock="${p.stock}"${sel}>${escapeHtml(p.nombre)}${marcaText}${stockInfo}</option>`;
         });
-        
+
         if (productosFiltrados.length === 0) {
-            if (esAdmin && !clienteId) {
-                 opts += '<option value="" disabled>Selecciona primero un cliente para ver sus productos</option>';
-            } else {
-                 opts += '<option value="" disabled>No hay productos disponibles</option>';
-            }
+            opts += '<option value="" disabled>No hay productos disponibles</option>';
         }
         
         return opts;
