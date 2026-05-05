@@ -553,6 +553,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
             'stock_maximo' => isset($_POST['stock_maximo']) ? (int)$_POST['stock_maximo'] : 100,
             'activo' => isset($_POST['activo']) ? (int)$_POST['activo'] : 1,
             'imagen_url' => $imagenUrl,
+            'id_usuario_creador' => $_POST['id_usuario_creador'] ?? null,
         ];
         $response = $ctrl->crear($payload);
         set_flash($response['success'] ? 'success' : 'error', $response['message']);
@@ -641,6 +642,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
             'stock_minimo' => isset($_POST['stock_minimo']) ? (int)$_POST['stock_minimo'] : 10,
             'stock_maximo' => isset($_POST['stock_maximo']) ? (int)$_POST['stock_maximo'] : 100,
             'activo' => isset($_POST['activo']) ? (int)$_POST['activo'] : 1,
+            'id_usuario_creador' => $_POST['id_usuario_creador'] ?? null,
         ];
         
         // Solo incluir imagen si cambió

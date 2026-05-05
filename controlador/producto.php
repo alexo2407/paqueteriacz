@@ -52,6 +52,12 @@ class ProductosController
         // Obtener el usuario actual de la sesión para asignar como creador
         $idUsuarioCreador = (int)($_SESSION['idUsuario'] ?? 0) ?: null;
 
+        // Si es admin, permitir asignar un creador específico si viene en la data
+        require_once __DIR__ . '/../utils/permissions.php';
+        if (isSuperAdmin() && !empty($data['id_usuario_creador'])) {
+            $idUsuarioCreador = (int)$data['id_usuario_creador'];
+        }
+
         $id = ProductoModel::crear($nombre, $sku, $descripcion, $precio, $idUsuarioCreador);
         if ($id === null) {
             return ['success' => false, 'message' => 'No fue posible crear el producto.', 'id' => null];

@@ -369,7 +369,8 @@ class ProductoModel
                 'stock_minimo' => PDO::PARAM_INT,
                 'stock_maximo' => PDO::PARAM_INT,
                 'activo' => PDO::PARAM_INT,
-                'imagen_url' => PDO::PARAM_STR
+                'imagen_url' => PDO::PARAM_STR,
+                'id_usuario_creador' => PDO::PARAM_INT
             ];
             
             foreach ($camposPermitidos as $campo => $tipo) {

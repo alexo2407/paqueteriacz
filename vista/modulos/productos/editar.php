@@ -32,6 +32,13 @@ if (!canEditProduct($producto)) {
 
 // Obtener categorías
 $categorias = CategoriaModel::listarJerarquico();
+
+// Obtener clientes si es admin
+$clientes = [];
+if (isSuperAdmin()) {
+    require_once __DIR__ . '/../../../modelo/usuario.php';
+    $clientes = UsuarioModel::listarClientes();
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -228,6 +235,24 @@ $categorias = CategoriaModel::listarJerarquico();
                                 <label for="descripcion" class="form-label fw-bold">Descripción</label>
                                 <textarea class="form-control" id="descripcion" name="descripcion" rows="3"><?php echo htmlspecialchars($producto['descripcion'] ?? ''); ?></textarea>
                             </div>
+
+                            <?php if (isSuperAdmin()): ?>
+                            <div class="row">
+                                <div class="col-md-12 mb-3">
+                                    <label for="id_usuario_creador" class="form-label fw-bold">Cliente / Dueño del Producto</label>
+                                    <select class="form-select select2-searchable" id="id_usuario_creador" name="id_usuario_creador" data-placeholder="Seleccionar cliente...">
+                                        <option value="">Seleccionar cliente...</option>
+                                        <?php foreach ($clientes as $cliente): ?>
+                                            <option value="<?php echo $cliente['id']; ?>" 
+                                                    <?php echo ($producto['id_usuario_creador'] == $cliente['id']) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($cliente['nombre']); ?> (<?php echo htmlspecialchars($cliente['email']); ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <small class="text-muted">Si se deja vacío, el producto pertenecerá al administrador.</small>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Precios e Inventario -->
