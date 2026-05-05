@@ -2274,6 +2274,130 @@ class PedidosModel
     }
 
     /**
+     * Obtener pedidos en estado Reprogramado con la nueva fecha de entrega.
+     *
+     * Diseñado para el endpoint estándar /api/pedidos/reprogramaciones.
+     * Incluye: numero_orden, destinatario, dirección, fecha_entrega,
+     * motivo del cambio y quién lo reprogramó.
+     *
+     * @param array $filtros {
+     *   numero_orden?:           string  Filtrar por número de orden exacto
+     *   id_usuario_pertenencia?: int     Solo pedidos del cliente o proveedor con este ID
+     *   fecha_desde?:            string  Fecha del cambio a Reprogramado desde (Y-m-d)
+     *   fecha_hasta?:            string  Fecha del cambio a Reprogramado hasta (Y-m-d)
+     * }
+     * @param int $page  Página actual (1-indexed)
+     * @param int $limit Registros por página (máx 100)
+     * @return array { data: array, pagination: array }
+     */
+    public static function obtenerReprogramaciones(array $filtros = [], int $page = 1, int $limit = 20): array
+    {
+        $db = (new Conexion())->conectar();
+
+        $where  = ['p.id_estado = 4'];   // 4 = Reprogramado (fijo)
+        $params = [];
+
+        // Restricción de pertenencia (cliente autenticado no-admin)
+        if (!empty($filtros['id_usuario_pertenencia'])) {
+            $where[] = '(p.id_cliente = :pertenencia_1 OR p.id_proveedor = :pertenencia_2)';
+            $params[':pertenencia_1'] = (int)$filtros['id_usuario_pertenencia'];
+            $params[':pertenencia_2'] = (int)$filtros['id_usuario_pertenencia'];
+        }
+
+        if (!empty($filtros['numero_orden'])) {
+            $where[] = 'p.numero_orden = :numero_orden';
+            $params[':numero_orden'] = trim($filtros['numero_orden']);
+        }
+
+        // Filtro por fecha en que ocurrió el cambio a Reprogramado (historial)
+        if (!empty($filtros['fecha_desde'])) {
+            $where[] = 'h_rep.created_at >= :fecha_desde';
+            $params[':fecha_desde'] = $filtros['fecha_desde'] . ' 00:00:00';
+        }
+
+        if (!empty($filtros['fecha_hasta'])) {
+            $where[] = 'h_rep.created_at <= :fecha_hasta';
+            $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
+        }
+
+        $whereClause = 'WHERE ' . implode(' AND ', $where);
+
+        // ── Subconsulta: último registro de historial donde el estado nuevo = 4 (Reprogramado)
+        $subHistorial = "
+            SELECT h1.id_pedido,
+                   h1.observaciones  AS motivo,
+                   h1.created_at     AS fecha_reprogramacion,
+                   h1.id_usuario     AS id_usuario_reprogramacion
+            FROM pedidos_historial_estados h1
+            INNER JOIN (
+                SELECT id_pedido, MAX(id) AS max_id
+                FROM pedidos_historial_estados
+                WHERE id_estado_nuevo = 4
+                GROUP BY id_pedido
+            ) hm ON hm.id_pedido = h1.id_pedido AND hm.max_id = h1.id
+        ";
+
+        // ── Conteo total
+        $countSql = "
+            SELECT COUNT(*)
+            FROM pedidos p
+            LEFT JOIN ($subHistorial) h_rep ON h_rep.id_pedido = p.id
+            $whereClause
+        ";
+        $countStmt = $db->prepare($countSql);
+        foreach ($params as $key => $val) {
+            $countStmt->bindValue($key, $val);
+        }
+        $countStmt->execute();
+        $total = (int)$countStmt->fetchColumn();
+
+        $limit      = max(1, min(100, $limit));
+        $page       = max(1, $page);
+        $totalPages = $total > 0 ? (int)ceil($total / $limit) : 1;
+        $offset     = ($page - 1) * $limit;
+
+        // ── Consulta de datos
+        $sql = "
+            SELECT
+                p.numero_orden,
+                p.destinatario,
+                p.direccion,
+                ep.nombre_estado           AS estado_actual,
+                p.fecha_entrega,
+                h_rep.motivo,
+                u_rep.nombre               AS reprogramado_por,
+                h_rep.fecha_reprogramacion
+            FROM pedidos p
+            LEFT JOIN estados_pedidos ep       ON ep.id = p.id_estado
+            LEFT JOIN ($subHistorial) h_rep    ON h_rep.id_pedido = p.id
+            LEFT JOIN usuarios u_rep           ON u_rep.id = h_rep.id_usuario_reprogramacion
+            $whereClause
+            ORDER BY h_rep.fecha_reprogramacion DESC
+            LIMIT :limit OFFSET :offset
+        ";
+
+        $stmt = $db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->bindValue(':limit',  $limit,  PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'data' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'pagination' => [
+                'total'        => $total,
+                'per_page'     => $limit,
+                'current_page' => $page,
+                'total_pages'  => $totalPages,
+                'has_next'     => $page < $totalPages,
+                'has_prev'     => $page > 1,
+            ],
+        ];
+    }
+
+    /**
      * Obtener historial de cambios de estado con filtros avanzados y paginación.
      *
      * @param array $filtros {
