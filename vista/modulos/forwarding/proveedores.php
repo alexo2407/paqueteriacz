@@ -85,6 +85,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
                                             data-authep="<?= htmlspecialchars($p['auth_endpoint']) ?>"
                                             data-orderep="<?= htmlspecialchars($p['order_endpoint']) ?>"
                                             data-authmethod="<?= htmlspecialchars($p['auth_method']) ?>"
+                                            data-username="<?= htmlspecialchars(json_decode($p['credentials'], true)['userName'] ?? '') ?>"
                                             data-webhooksecret="<?= htmlspecialchars(json_decode($p['credentials'], true)['webhook_secret'] ?? '') ?>"
                                             style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
                                         <i class="bi bi-pencil"></i>
@@ -306,7 +307,7 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
         document.getElementById('provAuthEp').value = this.dataset.authep;
         document.getElementById('provOrderEp').value = this.dataset.orderep;
         document.getElementById('provAuthMethod').value = this.dataset.authmethod;
-        document.getElementById('provUserName').value = '';
+        document.getElementById('provUserName').value = this.dataset.username || '';
         document.getElementById('provPassword').value = '';
         document.getElementById('provWebhookSecret').value = this.dataset.webhooksecret;
         document.getElementById('provExistingWebhookSecret').value = this.dataset.webhooksecret;

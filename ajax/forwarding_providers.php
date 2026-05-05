@@ -101,13 +101,20 @@ if ($method === 'POST') {
             foreach ($fields as $f) {
                 if (isset($input[$f])) $data[$f] = $input[$f];
             }
-            // Actualizar credenciales si se proporcionan
-            if (!empty($input['userName']) && !empty($input['password'])) {
-                $data['credentials'] = json_encode([
-                    'userName' => $input['userName'],
-                    'password' => $input['password'],
-                    'webhook_secret' => !empty($input['webhook_secret']) ? $input['webhook_secret'] : ($input['existing_webhook_secret'] ?? bin2hex(random_bytes(16))),
-                ]);
+            // Actualizar credenciales si se proporcionan o cambian
+            $existingProv = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
+            $creds = json_decode($existingProv['credentials'] ?? '{}', true);
+            $updateCreds = false;
+
+            if (!empty($input['userName'])) { $creds['userName'] = $input['userName']; $updateCreds = true; }
+            if (!empty($input['password'])) { $creds['password'] = $input['password']; $updateCreds = true; }
+            if (!empty($input['webhook_secret']) && $input['webhook_secret'] !== ($input['existing_webhook_secret'] ?? '')) {
+                $creds['webhook_secret'] = $input['webhook_secret'];
+                $updateCreds = true;
+            }
+
+            if ($updateCreds) {
+                $data['credentials'] = json_encode($creds);
             }
             if (isset($input['default_config'])) {
                 $data['default_config'] = $input['default_config'];
