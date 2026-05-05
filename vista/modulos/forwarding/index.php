@@ -6,6 +6,36 @@ $stats = ForwardingModel::obtenerEstadisticas();
 $proveedores = ForwardingModel::obtenerProveedores(true);
 $reglasRecientes = ForwardingModel::obtenerTodasLasReglas();
 $logsRecientes = ForwardingModel::obtenerLogs([], 5, 0);
+
+// Webhooks recibidos de LogisPro (historial con nota de LogisPro)
+try {
+    $dbIdx = (new Conexion())->conectar();
+    $stmtWh = $dbIdx->query("
+        SELECT h.id, h.id_pedido, h.id_estado_anterior, h.id_estado_nuevo,
+               h.observaciones, h.created_at,
+               p.numero_orden,
+               ea.nombre AS estado_anterior_nombre,
+               en.nombre AS estado_nuevo_nombre
+        FROM pedidos_historial_estados h
+        LEFT JOIN pedidos p ON p.id = h.id_pedido
+        LEFT JOIN estados_pedidos ea ON ea.id = h.id_estado_anterior
+        LEFT JOIN estados_pedidos en ON en.id = h.id_estado_nuevo
+        WHERE h.observaciones LIKE 'LogisPro [%]%'
+        ORDER BY h.created_at DESC
+        LIMIT 6
+    ");
+    $webhooksRecibidos = $stmtWh->fetchAll(PDO::FETCH_ASSOC);
+    
+    $stmtWhHoy = $dbIdx->query("
+        SELECT COUNT(*) FROM pedidos_historial_estados
+        WHERE observaciones LIKE 'LogisPro [%]%'
+          AND DATE(created_at) = CURDATE()
+    ");
+    $webhooksHoy = (int)$stmtWhHoy->fetchColumn();
+} catch (Exception $e) {
+    $webhooksRecibidos = [];
+    $webhooksHoy = 0;
+}
 ?>
 
 <style>
@@ -108,6 +138,19 @@ $logsRecientes = ForwardingModel::obtenerLogs([], 5, 0);
                 </div>
             </div>
         </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-card">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="kpi-icon" style="background: #fff3e0; color: #e65100;">
+                        <i class="bi bi-arrow-down-circle"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-value"><?= $webhooksHoy ?></div>
+                        <div class="kpi-label">Webhooks Recibidos Hoy</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="row g-4">
@@ -138,14 +181,21 @@ $logsRecientes = ForwardingModel::obtenerLogs([], 5, 0);
                                 <small class="text-muted">Ver logs de forwarding</small>
                             </div>
                         </a>
+                        <a href="<?= RUTA_URL ?>forwarding/webhooks" class="quick-link">
+                            <i class="bi bi-arrow-down-circle" style="color:#e65100;"></i>
+                            <div>
+                                <div class="fw-semibold">Webhooks Recibidos</div>
+                                <small class="text-muted">Actualizaciones de LogisPro</small>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Recent Logs -->
+        <!-- Recent Outbound Logs -->
         <div class="col-md-8">
-            <div class="card fwd-card h-100">
+            <div class="card fwd-card mb-4">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i>Últimos Envíos</h5>
@@ -174,6 +224,55 @@ $logsRecientes = ForwardingModel::obtenerLogs([], 5, 0);
                                     <td><span class="badge bg-light text-dark border">#<?= htmlspecialchars($log['numero_orden'] ?? '-') ?></span></td>
                                     <td><?= htmlspecialchars($log['provider_nombre'] ?? '-') ?></td>
                                     <td><span class="log-status <?= $log['status'] ?>"><?= ucfirst($log['status']) ?></span></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Webhooks Recibidos de LogisPro -->
+            <div class="card fwd-card">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">
+                            <i class="bi bi-arrow-down-circle me-2" style="color:#e65100;"></i>Actualizaciones de LogisPro
+                        </h5>
+                        <a href="<?= RUTA_URL ?>forwarding/webhooks" class="btn btn-sm btn-outline-warning">Ver todas</a>
+                    </div>
+                    <?php if (empty($webhooksRecibidos)): ?>
+                        <div class="text-center py-3 text-muted">
+                            <i class="bi bi-inbox display-4 opacity-25 d-block mb-2"></i>
+                            <p class="mb-0">Sin actualizaciones recibidas aún</p>
+                        </div>
+                    <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" style="font-size:0.88rem;">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Nº Orden</th>
+                                    <th>Estado anterior</th>
+                                    <th>Estado nuevo</th>
+                                    <th>Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            <?php foreach ($webhooksRecibidos as $wh): ?>
+                                <tr>
+                                    <td><small><?= date('d/m H:i', strtotime($wh['created_at'])) ?></small></td>
+                                    <td><span class="badge bg-light text-dark border">#<?= htmlspecialchars($wh['numero_orden'] ?? '-') ?></span></td>
+                                    <td><small class="text-muted"><?= htmlspecialchars($wh['estado_anterior_nombre'] ?? '-') ?></small></td>
+                                    <td>
+                                        <span class="badge" style="background:#fff3e0;color:#e65100;font-weight:600;">
+                                            <?= htmlspecialchars($wh['estado_nuevo_nombre'] ?? '-') ?>
+                                        </span>
+                                    </td>
+                                    <td><small class="text-muted" title="<?= htmlspecialchars($wh['observaciones'] ?? '') ?>">
+                                        <?= htmlspecialchars(mb_substr($wh['observaciones'] ?? '', 0, 50)) ?><?= strlen($wh['observaciones'] ?? '') > 50 ? '...' : '' ?>
+                                    </small></td>
                                 </tr>
                             <?php endforeach; ?>
                             </tbody>
