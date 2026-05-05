@@ -653,7 +653,14 @@
         {"id": 7, "nombre_estado": "Devuelto"},
         {"id": 8, "nombre_estado": "Domicilio no encontrado"},
         {"id": 9, "nombre_estado": "Rechazado"},
-        {"id": 10, "nombre_estado": "No puede pagar recaudo"}
+        {"id": 10, "nombre_estado": "No puede pagar recaudo"},
+        {"id": 11, "nombre_estado": "Pendiente recolección"},
+        {"id": 12, "nombre_estado": "Recolectado por mensajería"},
+        {"id": 13, "nombre_estado": "Traslado a punto de distribución"},
+        {"id": 14, "nombre_estado": "Entregado-liquidado"},
+        {"id": 15, "nombre_estado": "Devuelto a bodega"},
+        {"id": 16, "nombre_estado": "Incidencia"},
+        {"id": 17, "nombre_estado": "Cancelado"}
     ]
 }</code></pre>
 
@@ -700,6 +707,13 @@
                             <tr><td><code>8</code></td><td>Domicilio no encontrado</td><td><span data-lang="en">Address could not be located.</span><span data-lang="es">No se encontró la dirección.</span></td></tr>
                             <tr><td><code>9</code></td><td>Rechazado</td><td><span data-lang="en">Customer rejected the order.</span><span data-lang="es">Cliente rechazó el pedido.</span></td></tr>
                             <tr><td><code>10</code></td><td>No puede pagar recaudo</td><td><span data-lang="en">Customer unable to pay on delivery.</span><span data-lang="es">Cliente no pudo pagar al recibir.</span></td></tr>
+                            <tr><td><code>11</code></td><td>Pendiente recolección</td><td><span data-lang="en">Waiting for messenger pick up.</span><span data-lang="es">Esperando recolección por mensajería.</span></td></tr>
+                            <tr><td><code>12</code></td><td>Recolectado</td><td><span data-lang="en">Picked up by the messenger service.</span><span data-lang="es">Recolectado por el servicio de mensajería.</span></td></tr>
+                            <tr><td><code>13</code></td><td>Traslado</td><td><span data-lang="en">Being moved to distribution point.</span><span data-lang="es">En traslado hacia punto de distribución.</span></td></tr>
+                            <tr><td><code>14</code></td><td>Entregado-liquidado</td><td><span data-lang="en">Order delivered and payment settled.</span><span data-lang="es">Pedido entregado y pago liquidado.</span></td></tr>
+                            <tr><td><code>15</code></td><td>Devuelto a bodega</td><td><span data-lang="en">Delivered back to main warehouse.</span><span data-lang="es">Entregado de vuelta en bodega.</span></td></tr>
+                            <tr><td><code>16</code></td><td>Incidencia</td><td><span data-lang="en">General delivery issue.</span><span data-lang="es">Incidencia general en la entrega.</span></td></tr>
+                            <tr><td><code>17</code></td><td>Cancelado</td><td><span data-lang="en">Order cancelled.</span><span data-lang="es">Pedido cancelado.</span></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2416,9 +2430,45 @@ foreach ($response['data'] as $cambio) {
                                 </tr>
                                 <tr>
                                     <td><code>11</code></td>
+                                    <td>Pendiente recolección</td>
+                                    <td><span class="badge" style="background:#3b82f6"><span data-lang="en">In Transit</span><span data-lang="es">En tránsito</span></span></td>
+                                    <td><span data-lang="en">Waiting for messenger pick up</span><span data-lang="es">Esperando recolección por mensajería</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>12</code></td>
+                                    <td>Recolectado por mensajería</td>
+                                    <td><span class="badge" style="background:#3b82f6"><span data-lang="en">In Transit</span><span data-lang="es">En tránsito</span></span></td>
+                                    <td><span data-lang="en">Picked up by the messenger service</span><span data-lang="es">Recolectado por el servicio de mensajería</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>13</code></td>
+                                    <td>Traslado a punto</td>
+                                    <td><span class="badge" style="background:#3b82f6"><span data-lang="en">In Transit</span><span data-lang="es">En tránsito</span></span></td>
+                                    <td><span data-lang="en">Being moved to distribution point</span><span data-lang="es">En traslado hacia punto de distribución</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>14</code></td>
                                     <td>Entregado-liquidado</td>
                                     <td><span class="badge" style="background:#059669"><span data-lang="en">Settled</span><span data-lang="es">Liquidado</span></span></td>
                                     <td><span data-lang="en">Order delivered and payment settled</span><span data-lang="es">Pedido entregado y pago liquidado</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>15</code></td>
+                                    <td>Devuelto a bodega</td>
+                                    <td><span class="badge" style="background:#dc2626"><span data-lang="en">Returned</span><span data-lang="es">Devuelto</span></span></td>
+                                    <td><span data-lang="en">Final return: delivered back to main warehouse</span><span data-lang="es">Devolución final: entregado de vuelta en bodega</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>16</code></td>
+                                    <td>Incidencia</td>
+                                    <td><span class="badge" style="background:#ef4444"><span data-lang="en">Issue</span><span data-lang="es">Incidencia</span></span></td>
+                                    <td><span data-lang="en">General delivery issue</span><span data-lang="es">Incidencia general en la entrega</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>17</code></td>
+                                    <td>Cancelado</td>
+                                    <td><span class="badge" style="background:#1f2937"><span data-lang="en">Cancelled</span><span data-lang="es">Cancelado</span></span></td>
+                                    <td><span data-lang="en">Order cancelled</span><span data-lang="es">Pedido cancelado</span></td>
                                 </tr>
                             </tbody>
                         </table>
