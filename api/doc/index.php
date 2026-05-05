@@ -519,6 +519,11 @@
                     <span data-lang="en">📋 Status History</span><span data-lang="es">📋 Historial de Estados</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="webhooks-tab" data-bs-toggle="tab" data-bs-target="#webhooks" type="button" role="tab">
+                    <span data-lang="en">🔗 Webhooks</span><span data-lang="es">🔗 Webhooks</span>
+                </button>
+            </li>
         </ul>
 
         <!-- Tab panes -->
@@ -2675,6 +2680,85 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
 
             </div>
             <!-- /Tab: Historial de Estados -->
+
+            <!-- Tab: Webhooks -->
+            <div class="tab-pane fade" id="webhooks" role="tabpanel">
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">🔗 LogisPro Status Webhook</h2>
+                    <h2 class="section-title" data-lang="es">🔗 Webhook de Estados LogisPro</h2>
+
+                    <p data-lang="en">Endpoint designed to receive real-time order status updates from LogisPro.</p>
+                    <p data-lang="es">Endpoint diseñado para recibir actualizaciones de estado de pedidos en tiempo real desde LogisPro.</p>
+
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-post">POST</span> /api/logispro/webhook_estados.php
+                        <span class="badge bg-warning text-dark float-end">🔒 <span data-lang="en">Bearer Token Required</span><span data-lang="es">Requiere Bearer Token</span></span>
+                    </div>
+
+                    <h4 class="mt-4" data-lang="en">Headers</h4>
+                    <h4 class="mt-4" data-lang="es">Headers</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">Authorization: Bearer &lt;webhook_secret&gt;
+Content-Type: application/json</code></pre>
+
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">💡 Authentication:</strong>
+                        <strong data-lang="es">💡 Autenticación:</strong>
+                        <span data-lang="en"> The <code>webhook_secret</code> must match the token configured in the <strong>LogisPro Provider</strong> settings within the Forwarding module.</span>
+                        <span data-lang="es"> El <code>webhook_secret</code> debe coincidir con el token configurado en los ajustes del <strong>Proveedor LogisPro</strong> dentro del módulo de Forwarding.</span>
+                    </div>
+
+                    <h4 class="mt-4" data-lang="en">Expected JSON Payload</h4>
+                    <h4 class="mt-4" data-lang="es">JSON Esperado</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+  "customersId": 54,
+  "auditUser": "rutaexmex.api",
+  "state": "Reprogramado",
+  "substate": "Nuevo Intento",
+  "dateToReceive": "2026-05-04",
+  "notes": "Entrega programada para mañana.",
+  "ordersNumbers": [
+    { "orderNumber": "123987123456" },
+    { "orderNumber": "414141" }
+  ]
+}</code></pre>
+
+                    <h4 class="mt-4" data-lang="en">Field Mapping</h4>
+                    <h4 class="mt-4" data-lang="es">Mapeo de Campos</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm" data-lang="en">
+                            <thead><tr><th>LogisPro Field</th><th>Description</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>state</code> &amp; <code>substate</code></td><td>Mapped to internal states (e.g. Reprogramado, Cancelado).</td></tr>
+                                <tr><td><code>dateToReceive</code></td><td>Updates order delivery date (Required if state is Reprogramado). Format: YYYY-MM-DD.</td></tr>
+                                <tr><td><code>notes</code> &amp; <code>auditUser</code></td><td>Appended to the order's status history log.</td></tr>
+                                <tr><td><code>ordersNumbers</code></td><td>List of order numbers to apply the status update to.</td></tr>
+                            </tbody>
+                        </table>
+                        <table class="table table-bordered table-sm" data-lang="es">
+                            <thead><tr><th>Campo LogisPro</th><th>Descripción</th></tr></thead>
+                            <tbody>
+                                <tr><td><code>state</code> y <code>substate</code></td><td>Mapeado a estados internos (Ej. Reprogramado, Cancelado).</td></tr>
+                                <tr><td><code>dateToReceive</code></td><td>Actualiza la fecha de entrega (Obligatorio si el estado es Reprogramado). Formato: YYYY-MM-DD.</td></tr>
+                                <tr><td><code>notes</code> y <code>auditUser</code></td><td>Se añade al historial de estados del pedido.</td></tr>
+                                <tr><td><code>ordersNumbers</code></td><td>Lista de números de orden a los que aplicar la actualización.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 class="mt-4" data-lang="en">Response <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 class="mt-4" data-lang="es">Respuesta <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+  "success": true,
+  "processed": 1,
+  "failed": 1,
+  "results": [
+    { "orderNumber": "123987123456", "updated": true },
+    { "orderNumber": "414141", "updated": false, "error": "Orden no encontrada en el sistema." }
+  ]
+}</code></pre>
+                </div>
+            </div>
+            <!-- /Tab: Webhooks -->
 
         </div>
     </div>
