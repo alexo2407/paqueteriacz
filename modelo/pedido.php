@@ -2139,6 +2139,132 @@ class PedidosModel
         }
     }
 
+    // =========================================================================
+    // REPROGRAMAR PEDIDO — POST /api/pedidos/reprogramar
+    // =========================================================================
+
+    /**
+     * Reprograma un pedido: cambia su estado al indicado (por defecto ID 4 = Reprogramado),
+     * actualiza la fecha de entrega y registra el historial.
+     *
+     * @param string   $numeroOrden   Número de orden externo
+     * @param int      $actorUserId   ID del usuario autenticado
+     * @param int      $actorUserRole Rol del usuario autenticado
+     * @param string   $fechaEntrega  Nueva fecha de entrega (YYYY-MM-DD)
+     * @param int      $idEstado      Estado destino (default: 4 = Reprogramado)
+     * @param string|null $motivo     Razón de la reprogramación (opcional)
+     * @return array   ['success' => bool, 'message' => string, 'code' => int]
+     */
+    public static function reprogramarPedido(
+        string  $numeroOrden,
+        int     $actorUserId,
+        int     $actorUserRole,
+        string  $fechaEntrega,
+        int     $idEstado = 4,
+        ?string $motivo = null
+    ): array {
+        $ID_ENTREGADO = 3;
+
+        $isAdmin = ($actorUserRole === (defined('ROL_ADMIN') ? ROL_ADMIN : 1));
+
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
+            // 1. Bloquear y cargar el pedido
+            if ($isAdmin) {
+                $stmt = $db->prepare(
+                    'SELECT id, id_estado, id_cliente, id_proveedor
+                     FROM pedidos
+                     WHERE numero_orden = :num
+                     LIMIT 1
+                     FOR UPDATE'
+                );
+                $stmt->execute([':num' => $numeroOrden]);
+            } else {
+                // Usuarios no-admin solo acceden a pedidos donde son cliente o proveedor
+                $stmt = $db->prepare(
+                    'SELECT id, id_estado, id_cliente, id_proveedor
+                     FROM pedidos
+                     WHERE numero_orden = :num
+                       AND (id_cliente = :uid OR id_proveedor = :uid2)
+                     LIMIT 1
+                     FOR UPDATE'
+                );
+                $stmt->execute([':num' => $numeroOrden, ':uid' => $actorUserId, ':uid2' => $actorUserId]);
+            }
+
+            $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$pedido) {
+                $db->rollBack();
+                return ['success' => false, 'message' => 'Pedido no encontrado o no pertenece a su cuenta.', 'code' => 404];
+            }
+
+            $pedidoId      = (int)$pedido['id'];
+            $estadoActual  = (int)$pedido['id_estado'];
+
+            // 2. Validar estado actual
+            if ($estadoActual === $ID_ENTREGADO) {
+                $db->rollBack();
+                return ['success' => false, 'message' => 'No se puede reprogramar un pedido que ya fue entregado.', 'code' => 409];
+            }
+
+            // 3. Actualizar estado + fecha_entrega en una sola query
+            $upd = $db->prepare(
+                'UPDATE pedidos
+                 SET id_estado     = :nuevo_estado,
+                     fecha_entrega = :fecha_entrega,
+                     updated_at    = NOW()
+                 WHERE id = :id'
+            );
+            $upd->execute([
+                ':nuevo_estado'  => $idEstado,
+                ':fecha_entrega' => $fechaEntrega,
+                ':id'            => $pedidoId,
+            ]);
+
+            // 4. Registrar en historial de estados
+            $hist = $db->prepare(
+                'INSERT INTO pedidos_historial_estados
+                     (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at)
+                 VALUES
+                     (:id_pedido, :ant, :nuevo, :user, :obs, NOW())'
+            );
+            $hist->execute([
+                ':id_pedido' => $pedidoId,
+                ':ant'       => $estadoActual,
+                ':nuevo'     => $idEstado,
+                ':user'      => $actorUserId,
+                ':obs'       => $motivo,
+            ]);
+
+            // 5. Auditoría
+            try {
+                AuditoriaModel::registrar(
+                    'pedidos',
+                    $pedidoId,
+                    'reprogramar',
+                    $actorUserId,
+                    ['id_estado' => $estadoActual, 'fecha_entrega' => null],
+                    ['id_estado' => $idEstado, 'fecha_entrega' => $fechaEntrega, 'motivo' => $motivo]
+                );
+            } catch (Exception $eAudit) {
+                error_log('[reprogramarPedido] Error auditoría: ' . $eAudit->getMessage());
+            }
+
+            $db->commit();
+            return ['success' => true, 'message' => 'Pedido reprogramado correctamente.', 'code' => 200];
+
+        } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('[reprogramarPedido] ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Error interno al reprogramar el pedido.', 'code' => 500];
+        }
+    }
+
     /**
      * Obtener el historial de cambios de estado de un pedido
      * @param int $id_pedido

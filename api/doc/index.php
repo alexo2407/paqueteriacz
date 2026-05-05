@@ -2820,6 +2820,128 @@ Content-Type: application/json</code></pre>
             <!-- ═══════════════════════════════════════════════════════════ -->
             <div class="tab-pane fade" id="reprogramaciones" role="tabpanel">
 
+                <!-- ══════════════════════════════════════════════════════
+                     POST /api/pedidos/reprogramar  (PRIMERO)
+                     ══════════════════════════════════════════════════════ -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">📅 Reschedule an Order</h2>
+                    <h2 class="section-title" data-lang="es">📅 Reprogramar un Pedido</h2>
+
+                    <p data-lang="en">Changes the order status to <strong>Rescheduled</strong> (ID 4 by default), updates the delivery date and records the reason in the status history. The operation is atomic — all changes happen inside a single transaction.</p>
+                    <p data-lang="es">Cambia el estado del pedido a <strong>Reprogramado</strong> (ID 4 por defecto), actualiza la fecha de entrega y registra el motivo en el historial de estados. La operación es atómica — todos los cambios ocurren dentro de una sola transacción.</p>
+
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-post">POST</span> /api/pedidos/reprogramar
+                        <span class="badge bg-warning text-dark float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                    </div>
+
+                    <!-- Request Body Table EN -->
+                    <h4 data-lang="en">Request Body <small class="text-muted fw-normal">(application/json)</small></h4>
+                    <h4 data-lang="es">Cuerpo de la Petición <small class="text-muted fw-normal">(application/json)</small></h4>
+
+                    <table class="table table-bordered" data-lang="en">
+                        <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th><th>Example</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>numero_orden</code></td><td>string</td><td>✅ Yes</td><td>Order number to reschedule</td><td><code>"81154737"</code></td></tr>
+                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>✅ Yes</td><td>New delivery date (ISO 8601 — YYYY-MM-DD). Cannot be in the past.</td><td><code>"2026-05-20"</code></td></tr>
+                            <tr><td><code>id_estado</code></td><td>integer</td><td>⬜ No</td><td>Target state ID. Defaults to <code>4</code> (Rescheduled).</td><td><code>4</code></td></tr>
+                            <tr><td><code>motivo</code></td><td>string</td><td>⬜ No</td><td>Reason for rescheduling</td><td><code>"Cliente ausente"</code></td></tr>
+                        </tbody>
+                    </table>
+
+                    <table class="table table-bordered" data-lang="es">
+                        <thead><tr><th>Campo</th><th>Tipo</th><th>Req.</th><th>Descripción</th><th>Ejemplo</th></tr></thead>
+                        <tbody>
+                            <tr><td><code>numero_orden</code></td><td>string</td><td>✅ Sí</td><td>Número de orden a reprogramar</td><td><code>"81154737"</code></td></tr>
+                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>✅ Sí</td><td>Nueva fecha de entrega (ISO 8601 — YYYY-MM-DD). No puede ser en el pasado.</td><td><code>"2026-05-20"</code></td></tr>
+                            <tr><td><code>id_estado</code></td><td>entero</td><td>⬜ No</td><td>ID del estado destino. Por defecto <code>4</code> (Reprogramado).</td><td><code>4</code></td></tr>
+                            <tr><td><code>motivo</code></td><td>string</td><td>⬜ No</td><td>Razón de la reprogramación</td><td><code>"Cliente ausente"</code></td></tr>
+                        </tbody>
+                    </table>
+
+                    <!-- curl example -->
+                    <h4 data-lang="en">Example Request (curl)</h4>
+                    <h4 data-lang="es">Ejemplo de Petición (curl)</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">curl -X POST "http://localhost/paqueteriacz/api/pedidos/reprogramar" \
+  -H "Authorization: Bearer &lt;YOUR_TOKEN&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "numero_orden": "81154737",
+    "fecha_entrega": "2026-05-20",
+    "id_estado": 4,
+    "motivo": "Cliente ausente en primer intento"
+  }'</code></pre>
+
+                    <!-- JS example -->
+                    <h4 data-lang="en">Example Request (JavaScript)</h4>
+                    <h4 data-lang="es">Ejemplo de Petición (JavaScript)</h4>
+                    <pre class="code-block line-numbers"><code class="language-javascript">const res = await fetch('/api/pedidos/reprogramar', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer &lt;YOUR_TOKEN&gt;',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    numero_orden: '81154737',
+    fecha_entrega: '2026-05-20',
+    id_estado: 4,
+    motivo: 'Cliente ausente en primer intento'
+  })
+});
+const json = await res.json();
+console.log(json.data); // { numero_orden, id_estado, fecha_entrega, motivo, reprogramado_en }</code></pre>
+
+                    <!-- Success response -->
+                    <h4 data-lang="en">Response <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 data-lang="es">Respuesta <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+  "success": true,
+  "message": "Pedido 81154737 reprogramado para el 2026-05-20.",
+  "data": {
+    "numero_orden":    "81154737",
+    "id_estado":       4,
+    "fecha_entrega":   "2026-05-20",
+    "motivo":          "Cliente ausente en primer intento",
+    "reprogramado_en": "2026-05-05 14:30:00"
+  }
+}</code></pre>
+
+                    <!-- Error responses -->
+                    <h4 data-lang="en">Error Responses</h4>
+                    <h4 data-lang="es">Respuestas de Error</h4>
+                    <table class="table table-bordered table-sm">
+                        <thead><tr><th>HTTP</th><th><span data-lang="en">Cause</span><span data-lang="es">Causa</span></th></tr></thead>
+                        <tbody>
+                            <tr><td><span class="status-badge status-400">400</span></td><td><span data-lang="en">Missing required fields, invalid date format, or past date.</span><span data-lang="es">Campos requeridos faltantes, formato de fecha inválido o fecha en el pasado.</span></td></tr>
+                            <tr><td><span class="status-badge status-401">401</span></td><td><span data-lang="en">Missing or invalid JWT token.</span><span data-lang="es">Token JWT ausente o inválido.</span></td></tr>
+                            <tr><td><span class="status-badge status-403">403</span></td><td><span data-lang="en">Authenticated user does not own the order.</span><span data-lang="es">El usuario autenticado no es dueño del pedido.</span></td></tr>
+                            <tr><td><span class="status-badge status-404">404</span></td><td><span data-lang="en">Order not found.</span><span data-lang="es">Pedido no encontrado.</span></td></tr>
+                            <tr><td><code>409</code></td><td><span data-lang="en">Order already delivered — cannot be rescheduled.</span><span data-lang="es">El pedido ya fue entregado — no se puede reprogramar.</span></td></tr>
+                        </tbody>
+                    </table>
+
+                    <div class="alert alert-info mt-3">
+                        <strong data-lang="en">💡 Key Behaviors</strong>
+                        <strong data-lang="es">💡 Comportamientos Clave</strong>
+                        <ul class="mb-0 mt-2" data-lang="en">
+                            <li><strong>Atomic transaction:</strong> State change + date update + history entry happen in one DB transaction.</li>
+                            <li><strong>Access control:</strong> Non-admin users can only reschedule orders linked to their account (<code>id_cliente</code> or <code>id_proveedor</code>).</li>
+                            <li><strong>Date format:</strong> <code>YYYY-MM-DD</code> (ISO 8601 — date only). Past dates are rejected.</li>
+                            <li><strong>Default state:</strong> If <code>id_estado</code> is omitted, defaults to <code>4</code> (Reprogramado).</li>
+                        </ul>
+                        <ul class="mb-0 mt-2" data-lang="es">
+                            <li><strong>Transacción atómica:</strong> Cambio de estado + actualización de fecha + entrada en historial ocurren en una sola transacción DB.</li>
+                            <li><strong>Control de acceso:</strong> Usuarios no-admin solo pueden reprogramar pedidos vinculados a su cuenta (<code>id_cliente</code> o <code>id_proveedor</code>).</li>
+                            <li><strong>Formato de fecha:</strong> <code>YYYY-MM-DD</code> (ISO 8601 — solo fecha). Fechas pasadas son rechazadas.</li>
+                            <li><strong>Estado por defecto:</strong> Si se omite <code>id_estado</code>, usa <code>4</code> (Reprogramado).</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- ══════════════════════════════════════════════════════
+                     GET /api/pedidos/reprogramaciones  (SEGUNDO)
+                     ══════════════════════════════════════════════════════ -->
+
                 <!-- Descripción general -->
                 <div class="section-container">
                     <h2 class="section-title" data-lang="en">📅 Rescheduled Orders</h2>

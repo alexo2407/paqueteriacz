@@ -102,6 +102,16 @@ if (preg_match('/\/api\/pedidos\/historial$/', $path) && $method === 'GET') {
     exit;
 }
 
+if (preg_match('/\/api\/pedidos\/reprogramar$/', $path) && $method === 'POST') {
+    require_once __DIR__ . '/pedidos/reprogramar.php';
+    exit;
+}
+
+if (preg_match('/\/api\/pedidos\/reprogramaciones$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/pedidos/reprogramaciones.php';
+    exit;
+}
+
 // Rutas de Geoinfo
 if (preg_match('/\/api\/geoinfo\/paises$/', $path)) {
     include __DIR__ . '/geoinfo/paises.php';
