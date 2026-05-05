@@ -991,16 +991,16 @@ try {
     // Recargar productos cuando cambie el proveedor
     // Recargar productos cuando cambie el Cliente (para Admins/Vendedores)
     if (clienteSelect) {
-        clienteSelect.addEventListener('change', function() {
+        function onClienteChange() {
             // Actualizar todas las filas de productos existentes
             const allRows = productosContainer.querySelectorAll('.producto-row');
             allRows.forEach(row => {
                 const select = row.querySelector('.producto-select');
                 if (select) {
                     const currentValue = select.value;
-                    // Regenerar opciones
+                    // Regenerar opciones con el nuevo clienteId
                     select.innerHTML = makeProductOptions(currentValue);
-                    
+
                     // Reinicializar Select2 si está disponible
                     if (typeof $ !== 'undefined' && $.fn.select2 && $(select).hasClass('select2-hidden-accessible')) {
                         $(select).select2('destroy');
@@ -1013,7 +1013,15 @@ try {
                     }
                 }
             });
-        });
+        }
+
+        // Evento nativo del select
+        clienteSelect.addEventListener('change', onClienteChange);
+
+        // Select2 no dispara el evento 'change' nativo en todos los casos
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(clienteSelect).on('select2:select select2:clear', onClienteChange);
+        }
     }
     
     // Recalcular cuando cambie la moneda
