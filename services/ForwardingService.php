@@ -115,27 +115,34 @@ class ForwardingService
         } catch (Exception $e) {
             error_log("ForwardingService error [{$slug}] pedido {$pedido['id']}: " . $e->getMessage());
 
+            // Capturar HTTP status desde el código de la excepción (si fue lanzada con él)
+            $httpStatus = $e->getCode() ?: 0;
+
             // Actualizar log con error
             $logData['status']        = 'failed';
             $logData['error_message'] = substr($e->getMessage(), 0, 1000);
+            $logData['http_status']   = $httpStatus;
 
             if (isset($logId) && $logId) {
                 ForwardingModel::actualizarLog($logId, [
                     'status'        => 'failed',
                     'error_message' => substr($e->getMessage(), 0, 1000),
-                    'http_status'   => 0,
+                    'http_status'   => $httpStatus,
                 ]);
             } else {
-                ForwardingModel::registrarLog($logData);
+                $logId = ForwardingModel::registrarLog($logData);
             }
 
             // Fallback a cola si está habilitado
-            self::encolarReintento($pedido['id'], $regla, $e->getMessage());
+            $retryQueued = self::encolarReintento($pedido['id'], $regla, $e->getMessage());
 
             return [
-                'provider' => $slug,
-                'success'  => false,
-                'message'  => 'Error al reenviar: ' . $e->getMessage(),
+                'provider'     => $slug,
+                'success'      => false,
+                'message'      => 'Error al reenviar: ' . $e->getMessage(),
+                'http_status'  => $httpStatus ?: null,
+                'retry_queued' => $retryQueued,
+                'log_id'       => $logId ?: null,
             ];
         }
     }
@@ -179,8 +186,9 @@ class ForwardingService
      * @param int $idPedido
      * @param array $regla
      * @param string $error
+     * @return bool True si se encoó correctamente, false si no
      */
-    private static function encolarReintento($idPedido, array $regla, $error)
+    private static function encolarReintento($idPedido, array $regla, $error): bool
     {
         try {
             $queueFile = __DIR__ . '/LogisticsQueueService.php';
@@ -192,9 +200,12 @@ class ForwardingService
                     'slug'          => $regla['slug'],
                     'error_message' => substr($error, 0, 500),
                 ]);
+                return true;
             }
+            return false;
         } catch (Exception $e) {
             error_log("ForwardingService: error al encolar reintento: " . $e->getMessage());
+            return false;
         }
     }
 

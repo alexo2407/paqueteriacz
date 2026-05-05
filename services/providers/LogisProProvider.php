@@ -119,7 +119,8 @@ class LogisProProvider extends BaseProvider
         if (!$result['success']) {
             $errorMsg = $data['Messages'] ?? 'Error desconocido';
             if (is_array($errorMsg)) $errorMsg = implode('; ', $errorMsg);
-            throw new Exception("LogisPro createOrder falló: " . $errorMsg);
+            // Pasar el HTTP status como código de excepción para que ForwardingService lo capture
+            throw new Exception("LogisPro createOrder falló: " . $errorMsg, (int)$response['http_status']);
         }
 
         return $result;
