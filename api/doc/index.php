@@ -2684,11 +2684,11 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
             <!-- Tab: Webhooks -->
             <div class="tab-pane fade" id="webhooks" role="tabpanel">
                 <div class="section-container">
-                    <h2 class="section-title" data-lang="en">🔗 LogisPro Status Webhook</h2>
-                    <h2 class="section-title" data-lang="es">🔗 Webhook de Estados LogisPro</h2>
+                    <h2 class="section-title" data-lang="en">🔗 Forwarding Provider Status Webhook</h2>
+                    <h2 class="section-title" data-lang="es">🔗 Webhook de Estados (Forwarding)</h2>
 
-                    <p data-lang="en">Endpoint designed to receive real-time order status updates from LogisPro.</p>
-                    <p data-lang="es">Endpoint diseñado para recibir actualizaciones de estado de pedidos en tiempo real desde LogisPro.</p>
+                    <p data-lang="en">Endpoint designed to receive real-time order status updates from Forwarding Providers.</p>
+                    <p data-lang="es">Endpoint diseñado para recibir actualizaciones de estado de pedidos en tiempo real desde Proveedores de Forwarding.</p>
 
                     <div class="code-block">
                         <span class="badge-endpoint badge-post">POST</span> /api/forwarding/webhook_estados.php
@@ -2703,8 +2703,8 @@ Content-Type: application/json</code></pre>
                     <div class="alert alert-info mt-3">
                         <strong data-lang="en">💡 Authentication:</strong>
                         <strong data-lang="es">💡 Autenticación:</strong>
-                        <span data-lang="en"> The <code>webhook_secret</code> must match the token configured in the <strong>LogisPro Provider</strong> settings within the Forwarding module.</span>
-                        <span data-lang="es"> El <code>webhook_secret</code> debe coincidir con el token configurado en los ajustes del <strong>Proveedor LogisPro</strong> dentro del módulo de Forwarding.</span>
+                        <span data-lang="en"> The <code>webhook_secret</code> must match the token configured in the corresponding <strong>Provider</strong> settings within the Forwarding module.</span>
+                        <span data-lang="es"> El <code>webhook_secret</code> debe coincidir con el token configurado en los ajustes del <strong>Proveedor</strong> correspondiente dentro del módulo de Forwarding.</span>
                     </div>
 
                     <h4 class="mt-4" data-lang="en">Expected JSON Payload</h4>
@@ -2726,7 +2726,7 @@ Content-Type: application/json</code></pre>
                     <h4 class="mt-4" data-lang="es">Mapeo de Campos</h4>
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm" data-lang="en">
-                            <thead><tr><th>LogisPro Field</th><th>Description</th></tr></thead>
+                            <thead><tr><th>Provider Field</th><th>Description</th></tr></thead>
                             <tbody>
                                 <tr><td><code>state</code> &amp; <code>substate</code></td><td>Mapped to internal states (e.g. Reprogramado, Cancelado).</td></tr>
                                 <tr><td><code>dateToReceive</code></td><td>Updates order delivery date (Required if state is Reprogramado). Format: YYYY-MM-DD.</td></tr>
@@ -2735,7 +2735,7 @@ Content-Type: application/json</code></pre>
                             </tbody>
                         </table>
                         <table class="table table-bordered table-sm" data-lang="es">
-                            <thead><tr><th>Campo LogisPro</th><th>Descripción</th></tr></thead>
+                            <thead><tr><th>Campo del Proveedor</th><th>Descripción</th></tr></thead>
                             <tbody>
                                 <tr><td><code>state</code> y <code>substate</code></td><td>Mapeado a estados internos (Ej. Reprogramado, Cancelado).</td></tr>
                                 <tr><td><code>dateToReceive</code></td><td>Actualiza la fecha de entrega (Obligatorio si el estado es Reprogramado). Formato: YYYY-MM-DD.</td></tr>
