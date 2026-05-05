@@ -855,6 +855,25 @@ class PedidosController {
         try {
             $nuevoId = PedidosModel::crearPedidoConProductos($payload, $items);
             error_log("guardarPedidoFormulario EXITO. Nuevo ID: " . $nuevoId);
+
+            // Notificación logística
+            if ($nuevoId) {
+                LogisticaNotifHelper::notificarPedido($nuevoId, LogisticaNotifHelper::ACCION_CREADO);
+            }
+
+            // Forwarding a proveedores externos (best-effort, no bloquea la respuesta).
+            // Se dispara si FORWARDING_ENABLED = true y el cliente tiene una regla activa.
+            if ($nuevoId && defined('FORWARDING_ENABLED') && FORWARDING_ENABLED) {
+                try {
+                    require_once __DIR__ . '/../services/ForwardingService.php';
+                    $fwdClienteId = (int)($payload['id_cliente'] ?? 0);
+                    ForwardingService::evaluarYReenviar($nuevoId, $fwdClienteId);
+                } catch (Exception $fwdEx) {
+                    // Solo loguear — el pedido ya fue creado correctamente
+                    error_log("Forwarding error (formulario) pedido $nuevoId: " . $fwdEx->getMessage());
+                }
+            }
+
             return [
                 'success' => true,
                 'message' => 'Pedido guardado correctamente.',
