@@ -771,25 +771,10 @@ try {
         
         let productosFiltrados;
         
-        if (esAdmin || isVendedor) { // Si tengo rol de ver todo (porque PHP me mandó todo)
-             if (!clienteId) {
-                 // Si no hay cliente seleccionado, no mostrar productos para evitar confusión.
-                 // "Solo debe mostrar los productos segun cliente... asignados"
-                 productosFiltrados = [];
-             } else {
-                 // Filtrar ESTRICTAMENTE por el cliente seleccionado
-                 productosFiltrados = productos.filter(p => {
-                      // Productos del cliente
-                      if (p.id_usuario_creador && parseInt(p.id_usuario_creador) === clienteId) return true;
-                      
-                      // OJO: El usuario pidió "sus productos asignados". 
-                      // Si hay productos globales (sin creador), técnicamente no están asignados a él.
-                      // Los ocultamos para cumplir estrictamente.
-                      // if (!p.id_usuario_creador) return true; 
-                      
-                      return false;
-                 });
-             }
+        if (esAdmin || isVendedor) {
+            // Admin/Vendedor: muestra TODOS los productos cuando hay cliente seleccionado.
+            // Sin cliente seleccionado → lista vacía para evitar confusión.
+            productosFiltrados = clienteId ? productos : [];
         } else {
             // Soy Cliente o Proveedor logueado.
             // PHP ya filtró mis productos (o los que puedo ver).
