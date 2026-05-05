@@ -1,6 +1,6 @@
 <?php
 /**
- * POST /api/logispro/webhook_estados.php
+ * POST /api/forwarding/webhook_estados.php
  *
  * Webhook para recibir actualizaciones de estado de órdenes desde LogisPro.
  * LogisPro hace POST con el JSON de actualización; nosotros validamos, mapeamos

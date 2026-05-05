@@ -2691,7 +2691,7 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
                     <p data-lang="es">Endpoint diseñado para recibir actualizaciones de estado de pedidos en tiempo real desde LogisPro.</p>
 
                     <div class="code-block">
-                        <span class="badge-endpoint badge-post">POST</span> /api/logispro/webhook_estados.php
+                        <span class="badge-endpoint badge-post">POST</span> /api/forwarding/webhook_estados.php
                         <span class="badge bg-warning text-dark float-end">🔒 <span data-lang="en">Bearer Token Required</span><span data-lang="es">Requiere Bearer Token</span></span>
                     </div>
 
