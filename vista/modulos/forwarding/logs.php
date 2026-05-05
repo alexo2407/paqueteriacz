@@ -14,6 +14,8 @@ $proveedores = ForwardingModel::obtenerProveedores();
 .log-status.success { background: #d1fae5; color: #065f46; }
 .log-status.failed { background: #fee2e2; color: #991b1b; }
 .log-status.pending { background: #fef3c7; color: #92400e; }
+.btn-retry { border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; }
+.btn-retry:disabled { opacity: .5; cursor: not-allowed; }
 .payload-box { background: #1e1e2e; color: #a6e3a1; border-radius: 10px; padding: 1rem; font-family: 'Fira Code', monospace; font-size: 0.78rem; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
 .filter-card { background: #f8f9ff; border-radius: 12px; padding: 1rem 1.25rem; border: 1px solid #e5e7eb; }
 </style>
@@ -93,7 +95,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
                             <th>HTTP</th>
                             <th>ID Externo</th>
                             <th>Intentos</th>
-                            <th class="text-end">Detalle</th>
+                            <th class="text-end">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="logsBody">
@@ -145,6 +147,12 @@ $proveedores = ForwardingModel::obtenerProveedores();
                     <h6 class="fw-bold"><i class="bi bi-arrow-down-left me-1"></i>Response</h6>
                     <div class="payload-box" id="detailResponse">-</div>
                 </div>
+            </div>
+            <div class="modal-footer" id="detailFooter" style="border-top:1px solid #e5e7eb;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-warning btn-sm" id="btnModalRetry" onclick="retryFromModal()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Reintentar este envío
+                </button>
             </div>
         </div>
     </div>
@@ -203,10 +211,16 @@ function renderLogs(logs, total) {
             <td><small>${escHtml(l.external_order_id || '-')}</small></td>
             <td class="text-center">${l.attempts}</td>
             <td class="text-end">
-                <button class="btn btn-sm btn-outline-primary" onclick="showDetail(${i})"
-                        style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
-                    <i class="bi bi-eye"></i>
-                </button>
+                <div class="d-flex justify-content-end gap-1">
+                    <button class="btn btn-sm btn-outline-primary btn-retry" onclick="showDetail(${i})" title="Ver detalle">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    ${(l.status === 'failed' || l.status === 'pending') ? `
+                    <button class="btn btn-sm btn-outline-warning btn-retry" id="btn-retry-${l.id}"
+                            onclick="retryLog(${l.id}, this)" title="Reintentar">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>` : ''}
+                </div>
             </td>
         </tr>
     `).join('');
@@ -240,6 +254,77 @@ function formatDate(d) { if (!d) return '-'; const dt = new Date(d); return dt.t
 function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 function prettyJson(s) { if (!s) return '-'; try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; } }
+
+// ── Reintento manual ─────────────────────────────────────────────────────
+let currentModalLogId = null;
+
+function showDetail(idx) {
+    const l = allLogs[idx];
+    currentModalLogId = l.id;
+    document.getElementById('detailOrder').textContent    = '#' + (l.numero_orden || l.id_pedido);
+    document.getElementById('detailProvider').textContent = l.provider_nombre || '-';
+    document.getElementById('detailStatus').innerHTML     = `<span class="log-status ${l.status}">${capitalize(l.status)}</span>`;
+
+    const errDiv = document.getElementById('detailError');
+    if (l.error_message) { errDiv.style.display = 'block'; document.getElementById('detailErrorMsg').textContent = l.error_message; }
+    else { errDiv.style.display = 'none'; }
+
+    document.getElementById('detailRequest').textContent  = prettyJson(l.request_payload);
+    document.getElementById('detailResponse').textContent = prettyJson(l.response_payload);
+
+    // Mostrar/ocultar botón de reintento según estado
+    const btnRetry = document.getElementById('btnModalRetry');
+    btnRetry.style.display = (l.status === 'failed' || l.status === 'pending') ? 'inline-flex' : 'none';
+
+    new bootstrap.Modal(document.getElementById('modalDetail')).show();
+}
+
+function retryFromModal() {
+    if (!currentModalLogId) return;
+    retryLog(currentModalLogId, document.getElementById('btnModalRetry'), true);
+}
+
+function retryLog(logId, btn, fromModal = false) {
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch(BASE + 'ajax/forwarding_logs.php', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'retry', id: logId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Reenvío exitoso!',
+                text: data.message,
+                timer: 2500,
+                showConfirmButton: false
+            }).then(() => {
+                if (fromModal) bootstrap.Modal.getInstance(document.getElementById('modalDetail'))?.hide();
+                loadLogs(); // recargar tabla
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Reenvío fallido',
+                html: `<p>${data.message}</p><small class="text-muted">Se registró un nuevo intento en el log.</small>`
+            }).then(() => loadLogs());
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+        Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+    });
+}
 
 // Auto-load on page ready
 document.addEventListener('DOMContentLoaded', loadLogs);
