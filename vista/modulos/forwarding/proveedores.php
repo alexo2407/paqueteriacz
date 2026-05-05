@@ -230,6 +230,7 @@ function testConnection() {
         credentials: 'same-origin',
         body: JSON.stringify({
             action: 'test',
+            id: document.getElementById('providerId').value || undefined,
             slug: document.getElementById('provSlug').value || 'logispro',
             base_url: document.getElementById('provBaseUrl').value,
             auth_endpoint: document.getElementById('provAuthEp').value,

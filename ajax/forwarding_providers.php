@@ -133,7 +133,19 @@ if ($method === 'POST') {
             break;
 
         case 'test':
-            if (empty($input['base_url']) || empty($input['userName']) || empty($input['password'])) {
+            $testPass = $input['password'] ?? '';
+            $testUser = $input['userName'] ?? '';
+            
+            if ((empty($testPass) || empty($testUser)) && !empty($input['id'])) {
+                $existingProv = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
+                if ($existingProv) {
+                    $creds = json_decode($existingProv['credentials'] ?? '{}', true);
+                    if (empty($testPass)) $testPass = $creds['password'] ?? '';
+                    if (empty($testUser)) $testUser = $creds['userName'] ?? '';
+                }
+            }
+
+            if (empty($input['base_url']) || empty($testUser) || empty($testPass)) {
                 echo json_encode(['success' => false, 'message' => 'base_url, userName y password requeridos']);
                 exit;
             }
@@ -144,8 +156,8 @@ if ($method === 'POST') {
                 'auth_endpoint'  => $input['auth_endpoint'] ?? '/api/AccountApi',
                 'order_endpoint' => $input['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
                 'credentials'    => [
-                    'userName' => $input['userName'],
-                    'password' => $input['password'],
+                    'userName' => $testUser,
+                    'password' => $testPass,
                 ],
             ]);
             echo json_encode($result);
