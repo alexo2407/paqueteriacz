@@ -85,6 +85,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
                                             data-authep="<?= htmlspecialchars($p['auth_endpoint']) ?>"
                                             data-orderep="<?= htmlspecialchars($p['order_endpoint']) ?>"
                                             data-authmethod="<?= htmlspecialchars($p['auth_method']) ?>"
+                                            data-webhooksecret="<?= htmlspecialchars(json_decode($p['credentials'], true)['webhook_secret'] ?? '') ?>"
                                             style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
                                         <i class="bi bi-pencil"></i>
                                     </button>
@@ -165,6 +166,11 @@ $proveedores = ForwardingModel::obtenerProveedores();
                                 <i class="bi bi-eye" id="eyeIcon"></i>
                             </button>
                         </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold text-warning"><i class="bi bi-key-fill me-1"></i>Webhook Secret</label>
+                        <input type="text" class="form-control" id="provWebhookSecret" placeholder="(Se genera auto si está vacío)">
+                        <input type="hidden" id="provExistingWebhookSecret" value="">
                     </div>
                 </div>
 
@@ -256,6 +262,8 @@ function saveProvider() {
         auth_method: document.getElementById('provAuthMethod').value,
         userName: document.getElementById('provUserName').value,
         password: document.getElementById('provPassword').value,
+        webhook_secret: document.getElementById('provWebhookSecret').value,
+        existing_webhook_secret: document.getElementById('provExistingWebhookSecret').value,
     };
 
     fetch(BASE + 'ajax/forwarding_providers.php', {
@@ -288,6 +296,8 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
         document.getElementById('provAuthMethod').value = this.dataset.authmethod;
         document.getElementById('provUserName').value = '';
         document.getElementById('provPassword').value = '';
+        document.getElementById('provWebhookSecret').value = this.dataset.webhooksecret;
+        document.getElementById('provExistingWebhookSecret').value = this.dataset.webhooksecret;
         document.getElementById('modalProviderTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Proveedor';
         document.getElementById('testResultModal').style.display = 'none';
         new bootstrap.Modal(document.getElementById('modalProvider')).show();
@@ -389,6 +399,8 @@ document.getElementById('modalProvider').addEventListener('show.bs.modal', funct
         document.getElementById('provAuthMethod').value = 'bearer_jwt';
         document.getElementById('provUserName').value = '';
         document.getElementById('provPassword').value = '';
+        document.getElementById('provWebhookSecret').value = '';
+        document.getElementById('provExistingWebhookSecret').value = '';
         document.getElementById('modalProviderTitle').innerHTML = '<i class="bi bi-building me-2"></i>Nuevo Proveedor';
         document.getElementById('testResultModal').style.display = 'none';
     }

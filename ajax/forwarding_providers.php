@@ -80,6 +80,7 @@ if ($method === 'POST') {
                 'credentials'    => json_encode([
                     'userName' => $input['userName'],
                     'password' => $input['password'],
+                    'webhook_secret' => !empty($input['webhook_secret']) ? $input['webhook_secret'] : bin2hex(random_bytes(16)),
                 ]),
                 'default_config' => !empty($input['default_config']) ? $input['default_config'] : null,
             ]);
@@ -105,6 +106,7 @@ if ($method === 'POST') {
                 $data['credentials'] = json_encode([
                     'userName' => $input['userName'],
                     'password' => $input['password'],
+                    'webhook_secret' => !empty($input['webhook_secret']) ? $input['webhook_secret'] : ($input['existing_webhook_secret'] ?? bin2hex(random_bytes(16))),
                 ]);
             }
             if (isset($input['default_config'])) {
