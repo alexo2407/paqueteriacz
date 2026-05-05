@@ -169,7 +169,12 @@ $proveedores = ForwardingModel::obtenerProveedores();
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold text-warning"><i class="bi bi-key-fill me-1"></i>Webhook Secret</label>
-                        <input type="text" class="form-control" id="provWebhookSecret" placeholder="(Se genera auto si está vacío)">
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="provWebhookSecret" placeholder="(Se genera auto)">
+                            <button class="btn btn-outline-secondary" type="button" onclick="generateWebhookSecret()" title="Generar Nuevo Token">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        </div>
                         <input type="hidden" id="provExistingWebhookSecret" value="">
                     </div>
                 </div>
@@ -202,6 +207,13 @@ function togglePass() {
     const ico = document.getElementById('eyeIcon');
     if (inp.type === 'password') { inp.type = 'text'; ico.className = 'bi bi-eye-slash'; }
     else { inp.type = 'password'; ico.className = 'bi bi-eye'; }
+}
+
+function generateWebhookSecret() {
+    const array = new Uint8Array(16);
+    crypto.getRandomValues(array);
+    const hex = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+    document.getElementById('provWebhookSecret').value = hex;
 }
 
 function testConnection() {
