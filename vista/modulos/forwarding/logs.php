@@ -176,7 +176,7 @@ function loadLogs() {
     fetch(BASE + 'ajax/forwarding_logs.php?' + params.toString(), { credentials: 'same-origin' })
     .then(r => r.json())
     .then(data => {
-        if (!data.success) { alert('Error: ' + (data.message || '')); return; }
+        if (!data.success) { Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo cargar los logs.' }); return; }
         allLogs = data.data;
         renderLogs(data.data, data.total);
     })

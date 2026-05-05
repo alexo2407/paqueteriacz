@@ -267,12 +267,13 @@ function saveProvider() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            location.reload();
+            Swal.fire({ icon: 'success', title: action === 'crear' ? '¡Proveedor creado!' : '¡Proveedor actualizado!', timer: 1400, showConfirmButton: false })
+                .then(() => location.reload());
         } else {
-            alert('Error: ' + data.message);
+            Swal.fire({ icon: 'error', title: 'Error al guardar', text: data.message || 'No se pudo guardar el proveedor.' });
         }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => Swal.fire({ icon: 'error', title: 'Error de conexión', text: err.message }));
 }
 
 // Edit button handler
@@ -296,57 +297,82 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
 // Toggle button handler
 document.querySelectorAll('.btn-toggle-provider').forEach(btn => {
     btn.addEventListener('click', function() {
-        const action = this.dataset.activo == 1 ? 'activar' : 'desactivar';
-        if (!confirm(`¿${action.charAt(0).toUpperCase()+action.slice(1)} este proveedor?`)) return;
-        fetch(BASE + 'ajax/forwarding_providers.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'same-origin',
-            body: JSON.stringify({ action: 'toggle', id: this.dataset.id, activo: this.dataset.activo })
-        })
-        .then(r => r.json())
-        .then(data => { if (data.success) location.reload(); else alert('Error: ' + data.message); })
-        .catch(err => alert('Error: ' + err.message));
+        const nuevoActivo = this.dataset.activo;
+        const accion = nuevoActivo == 1 ? 'activar' : 'desactivar';
+        const id = this.dataset.id;
+        Swal.fire({
+            title: `¿${accion.charAt(0).toUpperCase()+accion.slice(1)} proveedor?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí',
+            cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            fetch(BASE + 'ajax/forwarding_providers.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({ action: 'toggle', id, activo: nuevoActivo })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) location.reload();
+                else Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo cambiar el estado.' });
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Error de conexión', text: err.message }));
+        });
     });
 });
 
-// Test from table
+// Test from table — usa Swal con inputs en lugar de prompt() nativo
 document.querySelectorAll('.btn-test-provider').forEach(btn => {
     btn.addEventListener('click', function() {
-        const provId = this.dataset.id;
-        // Need credentials - prompt
-        const userName = prompt('Usuario API para test:');
-        if (!userName) return;
-        const password = prompt('Contraseña API:');
-        if (!password) return;
-        
-        this.innerHTML = '<i class="bi bi-arrow-repeat spin-icon"></i>';
-        this.disabled = true;
+        const self = this;
+        const slug    = this.dataset.slug;
+        const baseUrl = this.dataset.baseurl;
+        const authEp  = this.dataset.authep;
 
-        fetch(BASE + 'ajax/forwarding_providers.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                action: 'test',
-                slug: this.dataset.slug,
-                base_url: this.dataset.baseurl,
-                auth_endpoint: this.dataset.authep,
-                userName, password
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                alert(`✅ Conexión exitosa\nCustomersId: ${data.customersId}`);
-            } else {
-                alert(`❌ Error: ${data.message}`);
+        Swal.fire({
+            title: 'Credenciales para test',
+            html:
+                '<input id="swal-user" class="swal2-input" placeholder="Usuario API">' +
+                '<input id="swal-pass" type="password" class="swal2-input" placeholder="Contraseña API">',
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'Probar',
+            cancelButtonText: 'Cancelar',
+            preConfirm: () => {
+                const u = document.getElementById('swal-user').value;
+                const p = document.getElementById('swal-pass').value;
+                if (!u || !p) { Swal.showValidationMessage('Completa ambos campos'); return false; }
+                return { userName: u, password: p };
             }
-        })
-        .catch(err => alert('Error: ' + err.message))
-        .finally(() => {
-            this.innerHTML = '<i class="bi bi-plug"></i>';
-            this.disabled = false;
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            self.innerHTML = '<i class="bi bi-arrow-repeat spin-icon"></i>';
+            self.disabled = true;
+
+            fetch(BASE + 'ajax/forwarding_providers.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({ action: 'test', slug, base_url: baseUrl, auth_endpoint: authEp, ...result.value })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Conexión exitosa',
+                        html: `<p><strong>CustomersId:</strong> <span class="badge bg-primary fs-6">${data.customersId}</span></p>
+                               <p><strong>Token:</strong> <code>${data.token_preview || ''}</code></p>`
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Fallo de conexión', text: data.message });
+                }
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Error de red', text: err.message }))
+            .finally(() => { self.innerHTML = '<i class="bi bi-plug"></i>'; self.disabled = false; });
         });
     });
 });

@@ -166,8 +166,10 @@ const BASE = '<?= RUTA_URL ?>';
 function saveRule() {
     const idCliente = document.getElementById('ruleCliente').value;
     const idProvider = document.getElementById('ruleProvider').value;
-    if (!idCliente || !idProvider) { alert('Selecciona un cliente y un proveedor'); return; }
-
+    if (!idCliente || !idProvider) {
+        Swal.fire({ icon: 'warning', title: 'Campos requeridos', text: 'Selecciona un cliente y un proveedor.' });
+        return;
+    }
     fetch(BASE + 'ajax/forwarding_rules.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -176,15 +178,20 @@ function saveRule() {
     })
     .then(r => r.json())
     .then(data => {
-        if (data.success) location.reload();
-        else alert('Error: ' + data.message);
+        if (data.success) {
+            Swal.fire({ icon: 'success', title: '¡Regla creada!', text: 'La regla de forwarding fue creada correctamente.', timer: 1500, showConfirmButton: false })
+                .then(() => location.reload());
+        } else {
+            Swal.fire({ icon: 'error', title: 'Error al crear regla', text: data.message || 'No se pudo crear la regla.' });
+        }
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => Swal.fire({ icon: 'error', title: 'Error de conexión', text: err.message }));
 }
 
 // Toggle switch handler
 document.querySelectorAll('.toggle-rule').forEach(sw => {
     sw.addEventListener('change', function() {
+        const self = this;
         fetch(BASE + 'ajax/forwarding_rules.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -192,24 +199,48 @@ document.querySelectorAll('.toggle-rule').forEach(sw => {
             body: JSON.stringify({ action: 'toggle', id: this.dataset.id, activo: this.checked ? 1 : 0 })
         })
         .then(r => r.json())
-        .then(data => { if (!data.success) { this.checked = !this.checked; alert('Error'); } })
-        .catch(() => { this.checked = !this.checked; });
+        .then(data => {
+            if (!data.success) {
+                self.checked = !self.checked;
+                Swal.fire({ icon: 'error', title: 'Error', text: 'No se pudo cambiar el estado de la regla.' });
+            }
+        })
+        .catch(() => { self.checked = !self.checked; });
     });
 });
 
 // Delete handler
 document.querySelectorAll('.btn-delete-rule').forEach(btn => {
     btn.addEventListener('click', function() {
-        if (!confirm('¿Eliminar esta regla de forwarding?')) return;
-        fetch(BASE + 'ajax/forwarding_rules.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'same-origin',
-            body: JSON.stringify({ action: 'eliminar', id: this.dataset.id })
-        })
-        .then(r => r.json())
-        .then(data => { if (data.success) location.reload(); else alert('Error: ' + data.message); })
-        .catch(err => alert('Error: ' + err.message));
+        const id = this.dataset.id;
+        Swal.fire({
+            title: '¿Eliminar esta regla?',
+            text: 'Los pedidos futuros de este cliente ya no serán reenviados. Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            fetch(BASE + 'ajax/forwarding_rules.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'same-origin',
+                body: JSON.stringify({ action: 'eliminar', id })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Eliminada', text: 'La regla fue eliminada.', timer: 1200, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo eliminar.' });
+                }
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Error de conexión', text: err.message }));
+        });
     });
 });
 
