@@ -536,7 +536,8 @@ class ForwardingModel
             $stmt = $db->prepare("
                 SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
                        p.comentario, p.postalCode, p.codigo_postal, p.precio_total_local,
-                       p.fecha_entrega, p.id_cliente
+                       p.fecha_entrega, p.id_cliente,
+                       p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets
                 FROM pedidos p
                 WHERE p.id = :id
             ");

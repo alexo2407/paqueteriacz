@@ -128,11 +128,13 @@ class LogisProProvider extends BaseProvider
     /**
      * Mapear campos del pedido interno al formato LogisPro.
      *
-     * Campos enviados: customersId, orderNumber, clientName, postalCode,
-     * address, phone, notes, totalPrice, dateToReceive + orderDetail[].
+     * Campos enviados en 'order' (13 campos):
+     *   customersId, orderNumber, clientName, municipalitiesName,
+     *   postalCode, departmentName, address, Location, betweenStreets,
+     *   phone, notes, totalPrice, dateToReceive.
      *
-     * Campos NO enviados (LogisPro auto-rellena desde postalCode):
-     * municipalitiesName, departmentName, Location, betweenStreets.
+     * Campos enviados en 'orderDetail[]':
+     *   productName, quantity, price (siempre 0 según indicación del proveedor).
      *
      * @param array $pedido
      * @param array $productos
@@ -158,42 +160,33 @@ class LogisProProvider extends BaseProvider
             $dateToReceive = $dt->format('Y-m-d\TH:i:s.000\Z');
         }
 
-        // Construir order
+        // Construir order con todos los campos requeridos por LogisPro
         $order = [
-            'customersId'   => $authData['customersId'],
-            'orderNumber'   => (string)$pedido['numero_orden'],
-            'clientName'    => $pedido['destinatario'] ?? '',
-            'postalCode'    => $postalCode,
-            'address'       => $pedido['direccion'] ?? '',
-            'phone'         => $pedido['telefono'] ?? '',
-            'notes'         => $pedido['comentario'] ?? '',
-            'totalPrice'    => (float)($pedido['precio_total_local'] ?? 0),
-            'dateToReceive' => $dateToReceive,
+            'customersId'        => $authData['customersId'],
+            'orderNumber'        => (string)$pedido['numero_orden'],
+            'clientName'         => $pedido['destinatario'] ?? '',
+            'municipalitiesName' => $pedido['municipalitiesName'] ?? '',
+            'postalCode'         => $postalCode,
+            'departmentName'     => $pedido['departmentName'] ?? '',
+            'address'            => $pedido['direccion'] ?? '',
+            'Location'           => $pedido['Location'] ?? '',
+            'betweenStreets'     => $pedido['betweenStreets'] ?? '',
+            'phone'              => $pedido['telefono'] ?? '',
+            'notes'              => $pedido['comentario'] ?? '',
+            'totalPrice'         => (float)($pedido['precio_total_local'] ?? 0),
+            'dateToReceive'      => $dateToReceive,
         ];
 
-        // Construir orderDetail
-        $orderDetail   = [];
-        $totalUnidades = 0;
-        foreach ($productos as $p) {
-            $cantidad = max(0, (int)($p['cantidad'] ?? 0) - (int)($p['cantidad_devuelta'] ?? 0));
-            $totalUnidades += $cantidad;
-        }
-
-        $precioTotal = (float)($pedido['precio_total_local'] ?? 0);
-
+        // Construir orderDetail — price siempre en 0 según indicación del proveedor
+        $orderDetail = [];
         foreach ($productos as $p) {
             $cantidad = max(0, (int)($p['cantidad'] ?? 0) - (int)($p['cantidad_devuelta'] ?? 0));
             if ($cantidad <= 0) continue;
 
-            // Calcular precio proporcional
-            $precio = $totalUnidades > 0
-                ? round(($precioTotal / $totalUnidades) * $cantidad, 2)
-                : 0;
-
             $orderDetail[] = [
                 'productName' => $p['producto_nombre'] ?? $p['sku'] ?? 'Producto',
                 'quantity'    => $cantidad,
-                'price'       => $precio,
+                'price'       => 0,
             ];
         }
 
