@@ -524,6 +524,11 @@
                     <span data-lang="en">🔗 Webhooks</span><span data-lang="es">🔗 Webhooks</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="reprogramaciones-tab" data-bs-toggle="tab" data-bs-target="#reprogramaciones" type="button" role="tab">
+                    <span data-lang="en">📅 Rescheduled Orders</span><span data-lang="es">📅 Reprogramaciones</span>
+                </button>
+            </li>
         </ul>
 
         <!-- Tab panes -->
@@ -2759,6 +2764,257 @@ Content-Type: application/json</code></pre>
                 </div>
             </div>
             <!-- /Tab: Webhooks -->
+
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <!-- Tab: Reprogramaciones                                       -->
+            <!-- ═══════════════════════════════════════════════════════════ -->
+            <div class="tab-pane fade" id="reprogramaciones" role="tabpanel">
+
+                <!-- Descripción general -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">📅 Rescheduled Orders</h2>
+                    <h2 class="section-title" data-lang="es">📅 Consulta de Órdenes Reprogramadas</h2>
+
+                    <p data-lang="en">Standard endpoint to query all orders currently in <strong>Rescheduled</strong> status (state ID 4). Returns the new delivery date, the reason for rescheduling, who performed it, and when. The response is automatically scoped to the authenticated client — admins see all orders.</p>
+                    <p data-lang="es">Endpoint estándar para consultar todas las órdenes actualmente en estado <strong>Reprogramado</strong> (ID 4). Devuelve la nueva fecha de entrega, el motivo del cambio, quién lo realizó y cuándo. La respuesta se limita automáticamente al cliente autenticado — los administradores ven todos los pedidos.</p>
+
+                    <div class="code-block">
+                        <span class="badge-endpoint badge-get">GET</span> /api/pedidos/reprogramaciones
+                        <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
+                    </div>
+
+                    <div class="alert alert-success mt-3">
+                        <strong data-lang="en">✅ Key difference vs /estado_pedidos?id_estado=4:</strong>
+                        <strong data-lang="es">✅ Diferencia clave vs /estado_pedidos?id_estado=4:</strong>
+                        <ul class="mb-0 mt-2" data-lang="en">
+                            <li>Returns <code>fecha_entrega</code> (the new scheduled delivery date).</li>
+                            <li>Returns <code>motivo</code> (reason recorded at the time of rescheduling).</li>
+                            <li>Returns <code>reprogramado_por</code> (who changed the state — user or external API).</li>
+                            <li>Returns <code>fecha_reprogramacion</code> (exact timestamp the reschedule was logged).</li>
+                            <li>Date filters apply to <strong>when the reschedule occurred</strong>, not order entry date.</li>
+                        </ul>
+                        <ul class="mb-0 mt-2" data-lang="es">
+                            <li>Devuelve <code>fecha_entrega</code> (la nueva fecha de entrega programada).</li>
+                            <li>Devuelve <code>motivo</code> (razón registrada al momento de reprogramar).</li>
+                            <li>Devuelve <code>reprogramado_por</code> (quién cambió el estado — usuario o API externa).</li>
+                            <li>Devuelve <code>fecha_reprogramacion</code> (timestamp exacto en que se registró la reprogramación).</li>
+                            <li>Los filtros de fecha aplican sobre <strong>cuándo ocurrió la reprogramación</strong>, no la fecha de ingreso del pedido.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Parámetros -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Query Parameters</h2>
+                    <h2 class="section-title" data-lang="es">Parámetros de Consulta</h2>
+
+                    <div class="alert alert-info">
+                        <span data-lang="en">All parameters are optional and combinable. Without filters, all rescheduled orders visible to the authenticated user are returned.</span>
+                        <span data-lang="es">Todos los parámetros son opcionales y combinables. Sin filtros, se devuelven todas las órdenes reprogramadas visibles para el usuario autenticado.</span>
+                    </div>
+
+                    <!-- EN table -->
+                    <div class="table-responsive" data-lang="en">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th><th>Example</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>—</td><td>Filter by exact order number</td><td><code>81154737</code></td></tr>
+                                <tr><td><code>fecha_desde</code></td><td>date</td><td>—</td><td>Rescheduling date start (Y-m-d)</td><td><code>2026-05-01</code></td></tr>
+                                <tr><td><code>fecha_hasta</code></td><td>date</td><td>—</td><td>Rescheduling date end (Y-m-d)</td><td><code>2026-05-31</code></td></tr>
+                                <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td><td><code>2</code></td></tr>
+                                <tr><td><code>limit</code></td><td>integer</td><td>20</td><td>Records per page (max 100)</td><td><code>50</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ES table -->
+                    <div class="table-responsive" data-lang="es">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr><th>Parámetro</th><th>Tipo</th><th>Defecto</th><th>Descripción</th><th>Ejemplo</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>—</td><td>Filtrar por número de orden exacto</td><td><code>81154737</code></td></tr>
+                                <tr><td><code>fecha_desde</code></td><td>fecha</td><td>—</td><td>Fecha de reprogramación desde (Y-m-d)</td><td><code>2026-05-01</code></td></tr>
+                                <tr><td><code>fecha_hasta</code></td><td>fecha</td><td>—</td><td>Fecha de reprogramación hasta (Y-m-d)</td><td><code>2026-05-31</code></td></tr>
+                                <tr><td><code>page</code></td><td>entero</td><td>1</td><td>Número de página</td><td><code>2</code></td></tr>
+                                <tr><td><code>limit</code></td><td>entero</td><td>20</td><td>Registros por página (máx 100)</td><td><code>50</code></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Ejemplos de uso -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Usage Examples</h2>
+                    <h2 class="section-title" data-lang="es">Ejemplos de Uso</h2>
+
+                    <h4 data-lang="en">1. All rescheduled orders (paginated)</h4>
+                    <h4 data-lang="es">1. Todas las órdenes reprogramadas (paginado)</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/reprogramaciones
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h4 data-lang="en">2. Specific rescheduled order</h4>
+                    <h4 data-lang="es">2. Reprogramación de un pedido específico</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/reprogramaciones?numero_orden=81154737
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h4 data-lang="en">3. Rescheduled during May 2026</h4>
+                    <h4 data-lang="es">3. Reprogramadas durante mayo 2026</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/reprogramaciones?fecha_desde=2026-05-01&amp;fecha_hasta=2026-05-31
+Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
+
+                    <h4 data-lang="en">4. Full cURL example</h4>
+                    <h4 data-lang="es">4. Ejemplo completo con cURL</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">curl -X GET "http://localhost/paqueteriacz/api/pedidos/reprogramaciones?fecha_desde=2026-05-01&amp;page=1&amp;limit=50" \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLC..." \
+  -H "Content-Type: application/json"</code></pre>
+
+                    <h4 data-lang="en">5. JavaScript (fetch)</h4>
+                    <h4 data-lang="es">5. JavaScript (fetch)</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">const params = new URLSearchParams({
+  fecha_desde: '2026-05-01',
+  fecha_hasta: '2026-05-31',
+  page: 1,
+  limit: 50
+});
+
+const res = await fetch(`/api/pedidos/reprogramaciones?${params}`, {
+  headers: { 'Authorization': 'Bearer ' + token }
+});
+const json = await res.json();
+console.log(json.data);       // array de reprogramaciones
+console.log(json.pagination); // metadatos de paginación</code></pre>
+
+                    <h4 data-lang="en">6. PHP (cURL)</h4>
+                    <h4 data-lang="es">6. PHP (cURL)</h4>
+                    <pre class="code-block line-numbers"><code class="language-bash">$ch = curl_init();
+curl_setopt_array($ch, [
+  CURLOPT_URL            => 'http://localhost/paqueteriacz/api/pedidos/reprogramaciones?fecha_desde=2026-05-01',
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token]
+]);
+$response = json_decode(curl_exec($ch), true);
+curl_close($ch);
+
+foreach ($response['data'] as $orden) {
+    echo $orden['numero_orden'] . ' → nueva entrega: ' . $orden['fecha_entrega']
+       . ' (reprogramado por: ' . $orden['reprogramado_por'] . ')' . PHP_EOL;
+}</code></pre>
+                </div>
+
+                <!-- Estructura de Respuesta -->
+                <div class="section-container">
+                    <h2 class="section-title" data-lang="en">Response Structure</h2>
+                    <h2 class="section-title" data-lang="es">Estructura de Respuesta</h2>
+
+                    <h4 data-lang="en">Success <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 data-lang="es">Éxito <span class="status-badge status-200">200 OK</span></h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Se encontraron 3 órdenes reprogramadas.",
+    "data": [
+        {
+            "numero_orden":          "81154737",
+            "destinatario":          "Juan Pérez",
+            "direccion":             "Av. Central 123, Col. Centro",
+            "estado_actual":         "Reprogramado",
+            "fecha_entrega":         "2026-05-20",
+            "motivo":                "Cliente ausente en primer intento",
+            "reprogramado_por":      "rutaexmex.api",
+            "fecha_reprogramacion":  "2026-05-05 14:30:00"
+        },
+        {
+            "numero_orden":          "81154738",
+            "destinatario":          "María López",
+            "direccion":             "Calle 5 Norte #22",
+            "estado_actual":         "Reprogramado",
+            "fecha_entrega":         "2026-05-22",
+            "motivo":                "Domicilio cerrado",
+            "reprogramado_por":      "Carlos Mendoza",
+            "fecha_reprogramacion":  "2026-05-05 09:15:00"
+        }
+    ],
+    "pagination": {
+        "total":        3,
+        "per_page":     20,
+        "current_page": 1,
+        "total_pages":  1,
+        "has_next":     false,
+        "has_prev":     false
+    }
+}</code></pre>
+
+                    <h4 class="mt-4" data-lang="en">Response Fields</h4>
+                    <h4 class="mt-4" data-lang="es">Campos de la Respuesta</h4>
+
+                    <!-- EN fields table -->
+                    <div class="table-responsive" data-lang="en">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr><th>Field</th><th>Type</th><th>Description</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>Order number (client reference)</td></tr>
+                                <tr><td><code>destinatario</code></td><td>string</td><td>Recipient full name</td></tr>
+                                <tr><td><code>direccion</code></td><td>string</td><td>Delivery address</td></tr>
+                                <tr><td><code>estado_actual</code></td><td>string</td><td>Always <code>"Reprogramado"</code></td></tr>
+                                <tr><td><code>fecha_entrega</code></td><td>date / null</td><td>New scheduled delivery date (<code>YYYY-MM-DD</code>). Null if the field was not updated.</td></tr>
+                                <tr><td><code>motivo</code></td><td>string / null</td><td>Reason recorded when the order was rescheduled</td></tr>
+                                <tr><td><code>reprogramado_por</code></td><td>string / null</td><td>Name of the user or external API that changed the status</td></tr>
+                                <tr><td><code>fecha_reprogramacion</code></td><td>datetime / null</td><td>Timestamp of the last rescheduling event (America/Managua)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- ES fields table -->
+                    <div class="table-responsive" data-lang="es">
+                        <table class="table table-bordered table-sm">
+                            <thead>
+                                <tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><code>numero_orden</code></td><td>string</td><td>Número de orden (referencia del cliente)</td></tr>
+                                <tr><td><code>destinatario</code></td><td>string</td><td>Nombre completo del destinatario</td></tr>
+                                <tr><td><code>direccion</code></td><td>string</td><td>Dirección de entrega</td></tr>
+                                <tr><td><code>estado_actual</code></td><td>string</td><td>Siempre <code>"Reprogramado"</code></td></tr>
+                                <tr><td><code>fecha_entrega</code></td><td>fecha / null</td><td>Nueva fecha de entrega programada (<code>YYYY-MM-DD</code>). Null si el campo no fue actualizado.</td></tr>
+                                <tr><td><code>motivo</code></td><td>string / null</td><td>Razón registrada cuando se reprogramó el pedido</td></tr>
+                                <tr><td><code>reprogramado_por</code></td><td>string / null</td><td>Nombre del usuario o API externa que cambió el estado</td></tr>
+                                <tr><td><code>fecha_reprogramacion</code></td><td>datetime / null</td><td>Timestamp del último evento de reprogramación (America/Managua)</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Error responses -->
+                    <h4 class="mt-4" data-lang="en">Error Responses</h4>
+                    <h4 class="mt-4" data-lang="es">Respuestas de Error</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">// 401 - Sin token
+{
+    "success": false,
+    "message": "Token de autorización requerido.",
+    "data": null
+}
+
+// 400 - Formato de fecha incorrecto
+{
+    "success": false,
+    "message": "Formato de fecha_desde inválido. Use YYYY-MM-DD.",
+    "data": null
+}
+
+// 200 - Sin resultados
+{
+    "success": true,
+    "message": "No se encontraron órdenes reprogramadas con los filtros indicados.",
+    "data": []
+}</code></pre>
+                </div>
+
+            </div>
+            <!-- /Tab: Reprogramaciones -->
 
         </div>
     </div>
