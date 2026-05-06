@@ -100,7 +100,8 @@ class LogisProProvider extends BaseProvider
         }
 
         $data = $response['decoded'] ?? [];
-        $hasError = $data['HasError'] ?? true;
+        // Si no viene HasError, asumimos error si el status no es 200
+        $hasError = $data['HasError'] ?? ($response['http_status'] !== 200);
 
         $result = [
             'success'           => !$hasError && $response['http_status'] === 200,
@@ -117,7 +118,7 @@ class LogisProProvider extends BaseProvider
         }
 
         if (!$result['success']) {
-            $errorMsg = $data['Messages'] ?? 'Error desconocido';
+            $errorMsg = $data['Messages'] ?? $data['Message'] ?? 'Error desconocido';
             if (is_array($errorMsg)) $errorMsg = implode('; ', $errorMsg);
             // Pasar el HTTP status como código de excepción para que ForwardingService lo capture
             throw new Exception("LogisPro createOrder falló: " . $errorMsg, (int)$response['http_status']);

@@ -118,18 +118,39 @@ class ForwardingService
             // Capturar HTTP status desde el código de la excepción (si fue lanzada con él)
             $httpStatus = $e->getCode() ?: 0;
 
+            // Intentar recuperar el body raw de la respuesta del proveedor para guardarlo en el log
+            $rawResponse = null;
+            if (isset($provider) && method_exists($provider, 'getLastResponse')) {
+                $lastResp = $provider->getLastResponse();
+                if ($lastResp) {
+                    // Preferimos el body legible; si tiene decoded lo formateamos, si no, el body crudo
+                    $rawResponse = $lastResp['body'] ?: null;
+                    // Si el http_status no fue capturado vía código de excepción, usarlo del response
+                    if (!$httpStatus && !empty($lastResp['http_status'])) {
+                        $httpStatus = (int)$lastResp['http_status'];
+                    }
+                }
+            }
+
             // Actualizar log con error
             $logData['status']        = 'failed';
             $logData['error_message'] = substr($e->getMessage(), 0, 1000);
             $logData['http_status']   = $httpStatus;
 
             if (isset($logId) && $logId) {
-                ForwardingModel::actualizarLog($logId, [
-                    'status'        => 'failed',
-                    'error_message' => substr($e->getMessage(), 0, 1000),
-                    'http_status'   => $httpStatus,
-                ]);
+                $updateData = [
+                    'status'           => 'failed',
+                    'error_message'    => substr($e->getMessage(), 0, 1000),
+                    'http_status'      => $httpStatus,
+                ];
+                if ($rawResponse !== null) {
+                    $updateData['response_payload'] = $rawResponse;
+                }
+                ForwardingModel::actualizarLog($logId, $updateData);
             } else {
+                if ($rawResponse !== null) {
+                    $logData['response_payload'] = $rawResponse;
+                }
                 $logId = ForwardingModel::registrarLog($logData);
             }
 

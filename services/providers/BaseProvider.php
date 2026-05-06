@@ -18,6 +18,9 @@ abstract class BaseProvider
     /** @var array Configuración adicional del proveedor */
     protected $config;
 
+    /** @var array|null Última respuesta HTTP recibida (body + status), siempre disponible incluso tras excepción */
+    protected $lastResponse = null;
+
     /**
      * Constructor.
      * @param string $baseUrl URL base
@@ -101,11 +104,27 @@ abstract class BaseProvider
             $decoded = json_decode($response, true);
         }
 
-        return [
+        $result = [
             'http_status' => (int) $httpStatus,
             'body'        => $response ?: '',
             'decoded'     => $decoded,
             'error'       => $curlError ?: null,
         ];
+
+        // Guardar siempre el último response para poder recuperarlo tras una excepción
+        $this->lastResponse = $result;
+
+        return $result;
+    }
+
+    /**
+     * Retorna la última respuesta HTTP recibida por este provider.
+     * Útil para loguear el body de error incluso cuando createOrder lanzó una excepción.
+     *
+     * @return array|null
+     */
+    public function getLastResponse(): ?array
+    {
+        return $this->lastResponse;
     }
 }
