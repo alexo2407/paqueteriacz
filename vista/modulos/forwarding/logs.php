@@ -150,6 +150,9 @@ $proveedores = ForwardingModel::obtenerProveedores();
             </div>
             <div class="modal-footer" id="detailFooter" style="border-top:1px solid #e5e7eb;">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                <a href="#" id="btnModalGoPedido" class="btn btn-outline-primary btn-sm" target="_blank">
+                    <i class="bi bi-box-arrow-up-right me-1"></i>Ir al pedido
+                </a>
                 <button type="button" class="btn btn-warning btn-sm" id="btnModalRetry" onclick="retryFromModal()">
                     <i class="bi bi-arrow-clockwise me-1"></i>Reintentar este envío
                 </button>
@@ -220,6 +223,9 @@ function renderLogs(logs, total) {
                             onclick="retryLog(${l.id}, this)" title="Reintentar">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>` : ''}
+                    <a class="btn btn-sm btn-outline-secondary btn-retry" href="${BASE}pedidos/editar/${l.id_pedido}" title="Ir al pedido" target="_blank">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
                 </div>
             </td>
         </tr>
@@ -230,20 +236,7 @@ function renderLogs(logs, total) {
     document.getElementById('btnNext').disabled = currentOffset + logs.length >= total;
 }
 
-function showDetail(idx) {
-    const l = allLogs[idx];
-    document.getElementById('detailOrder').textContent = '#' + (l.numero_orden || l.id_pedido);
-    document.getElementById('detailProvider').textContent = l.provider_nombre || '-';
-    document.getElementById('detailStatus').innerHTML = `<span class="log-status ${l.status}">${capitalize(l.status)}</span>`;
-    
-    const errDiv = document.getElementById('detailError');
-    if (l.error_message) { errDiv.style.display = 'block'; document.getElementById('detailErrorMsg').textContent = l.error_message; }
-    else { errDiv.style.display = 'none'; }
 
-    document.getElementById('detailRequest').textContent = prettyJson(l.request_payload);
-    document.getElementById('detailResponse').textContent = prettyJson(l.response_payload);
-    new bootstrap.Modal(document.getElementById('modalDetail')).show();
-}
 
 function changePage(dir) {
     currentOffset = Math.max(0, currentOffset + (dir * PAGE_SIZE));
@@ -271,6 +264,10 @@ function showDetail(idx) {
 
     document.getElementById('detailRequest').textContent  = prettyJson(l.request_payload);
     document.getElementById('detailResponse').textContent = prettyJson(l.response_payload);
+
+    // Botón Ir al pedido
+    const btnGo = document.getElementById('btnModalGoPedido');
+    btnGo.href = BASE + 'pedidos/editar/' + l.id_pedido;
 
     // Mostrar/ocultar botón de reintento según estado
     const btnRetry = document.getElementById('btnModalRetry');
