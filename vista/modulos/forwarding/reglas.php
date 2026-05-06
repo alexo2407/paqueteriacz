@@ -102,10 +102,19 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
                                 </div>
                             </td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-outline-danger btn-delete-rule" data-id="<?= $r['id'] ?>"
-                                        title="Eliminar" style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                                <div class="d-flex justify-content-end gap-1">
+                                    <button class="btn btn-sm btn-outline-primary btn-edit-rule"
+                                            data-id="<?= $r['id'] ?>"
+                                            data-cliente="<?= $r['id_cliente'] ?>"
+                                            data-provider="<?= $r['id_provider'] ?>"
+                                            title="Editar" style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger btn-delete-rule" data-id="<?= $r['id'] ?>"
+                                            title="Eliminar" style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -158,6 +167,49 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
     </div>
 </div>
 
+<!-- Modal Editar Regla -->
+<div class="modal fade" id="modalEditRule" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border:none;border-radius:16px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:16px 16px 0 0;">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Regla de Forwarding</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="editRuleId">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Cliente</label>
+                    <select class="form-select" id="editRuleCliente">
+                        <option value="">— Seleccionar cliente —</option>
+                        <?php foreach ($clientes as $c): ?>
+                        <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['nombre']) ?> (ID: <?= $c['id'] ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Proveedor Externo</label>
+                    <select class="form-select" id="editRuleProvider">
+                        <option value="">— Seleccionar proveedor —</option>
+                        <?php foreach ($proveedores as $p): ?>
+                        <option value="<?= $p['id'] ?>"><?= htmlspecialchars($p['nombre']) ?> (<?= $p['slug'] ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Cambiar el proveedor afectará todos los pedidos futuros de este cliente.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditRule()">
+                    <i class="bi bi-check-lg me-1"></i>Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include("vista/includes/footer.php") ?>
 
 <script>
@@ -183,6 +235,42 @@ function saveRule() {
                 .then(() => location.reload());
         } else {
             Swal.fire({ icon: 'error', title: 'Error al crear regla', text: data.message || 'No se pudo crear la regla.' });
+        }
+    })
+    .catch(err => Swal.fire({ icon: 'error', title: 'Error de conexión', text: err.message }));
+}
+
+// Edit handler
+document.querySelectorAll('.btn-edit-rule').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('editRuleId').value       = this.dataset.id;
+        document.getElementById('editRuleCliente').value  = this.dataset.cliente;
+        document.getElementById('editRuleProvider').value = this.dataset.provider;
+        new bootstrap.Modal(document.getElementById('modalEditRule')).show();
+    });
+});
+
+function saveEditRule() {
+    const id         = document.getElementById('editRuleId').value;
+    const idCliente  = document.getElementById('editRuleCliente').value;
+    const idProvider = document.getElementById('editRuleProvider').value;
+    if (!idCliente || !idProvider) {
+        Swal.fire({ icon: 'warning', title: 'Campos requeridos', text: 'Selecciona un cliente y un proveedor.' });
+        return;
+    }
+    fetch(BASE + 'ajax/forwarding_rules.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'actualizar', id, id_cliente: idCliente, id_provider: idProvider })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({ icon: 'success', title: '¡Regla actualizada!', timer: 1400, showConfirmButton: false })
+                .then(() => location.reload());
+        } else {
+            Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo actualizar la regla.' });
         }
     })
     .catch(err => Swal.fire({ icon: 'error', title: 'Error de conexión', text: err.message }));

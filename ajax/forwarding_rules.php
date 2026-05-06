@@ -58,6 +58,19 @@ if ($method === 'POST') {
             ]);
             break;
 
+        case 'actualizar':
+            if (empty($input['id']) || (empty($input['id_cliente']) && empty($input['id_provider']))) {
+                echo json_encode(['success' => false, 'message' => 'ID y al menos un campo a actualizar son requeridos']);
+                exit;
+            }
+            $data = [];
+            if (!empty($input['id_cliente']))  $data['id_cliente']  = (int)$input['id_cliente'];
+            if (!empty($input['id_provider'])) $data['id_provider'] = (int)$input['id_provider'];
+            if (array_key_exists('config_override', $input)) $data['config_override'] = $input['config_override'] ?: null;
+            $ok = ForwardingModel::actualizarRegla((int)$input['id'], $data);
+            echo json_encode(['success' => $ok, 'message' => $ok ? 'Regla actualizada' : 'Error al actualizar']);
+            break;
+
         case 'toggle':
             if (empty($input['id']) || !isset($input['activo'])) {
                 echo json_encode(['success' => false, 'message' => 'ID y activo requeridos']);

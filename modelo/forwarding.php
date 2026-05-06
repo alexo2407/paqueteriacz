@@ -287,6 +287,44 @@ class ForwardingModel
         }
     }
 
+    /**
+     * Actualizar una regla (cliente y/o proveedor).
+     * @param int $id
+     * @param array $data  Claves permitidas: id_cliente, id_provider, config_override
+     * @return bool
+     */
+    public static function actualizarRegla($id, array $data)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $sets   = [];
+            $params = [':id' => $id];
+
+            if (isset($data['id_cliente'])) {
+                $sets[]             = 'id_cliente = :id_cliente';
+                $params[':id_cliente'] = (int)$data['id_cliente'];
+            }
+            if (isset($data['id_provider'])) {
+                $sets[]               = 'id_provider = :id_provider';
+                $params[':id_provider'] = (int)$data['id_provider'];
+            }
+            if (array_key_exists('config_override', $data)) {
+                $sets[]                  = 'config_override = :config_override';
+                $params[':config_override'] = $data['config_override'];
+            }
+
+            if (empty($sets)) return false;
+
+            $sql = "UPDATE forwarding_rules SET " . implode(', ', $sets) . " WHERE id = :id";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            return true;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::actualizarRegla error: " . $e->getMessage());
+            return false;
+        }
+    }
+
     // =========================================================================
     // LOGS
     // =========================================================================
