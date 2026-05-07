@@ -2,35 +2,54 @@
 /**
  * POST /api/forwarding/webhook_estados.php
  *
- * Webhook para recibir actualizaciones de estado de órdenes desde LogisPro.
- * LogisPro hace POST con el JSON de actualización; nosotros validamos, mapeamos
- * el estado y actualizamos la tabla `pedidos`.
+ * Webhook para recibir actualizaciones de estado de órdenes desde RutaEx.
+ * RutaEx hace POST con el JSON de actualización; nosotros validamos, mapeamos
+ * el estado a nuestro catálogo interno y actualizamos la tabla `pedidos`.
  *
  * Autenticación: Bearer token en header Authorization.
  * El token debe coincidir con el `webhook_secret` configurado en el proveedor
  * LogisPro (forwarding_providers.credentials->webhook_secret).
  *
- * JSON esperado:
+ * JSON esperado (enviado por RutaEx):
  * {
- *   "customersId": 54,
- *   "auditUser": "rutaexmex.api",
- *   "state": "Reprogramado",              // o "Orden Cerrada"
- *   "substate": "Nuevo Intento",          // o "Solicitud del cliente"
- *   "dateToReceive": "2026-05-10",        // obligatorio si state = Reprogramado
- *   "notes": "...",
+ *   "customersId":   54,
+ *   "auditUser":     "rutaexmex.api",
+ *   "state":         "Reprogramado",
+ *   "substate":      "Nuevo Intento",
+ *   "dateToReceive": "2026-05-04",       // obligatorio si state = "Reprogramado"
+ *   "notes":         "Texto libre...",   // opcional
  *   "ordersNumbers": [
- *     { "orderNumber": "123456" }
+ *     { "orderNumber": "123987123456" },
+ *     { "orderNumber": "414141" }
  *   ]
  * }
  *
+ * Mapeo de estados RutaEx → estados_pedidos.id:
+ *   "En ruta o proceso"        → 2   (En ruta o proceso)
+ *   "Pendiente recolección"    → 11  (Pendiente recolección por mensajería)
+ *   "Recolectado por mensajería" → 12 (Recolectado por mensajería)
+ *   "Traslado a punto"         → 13  (Traslado a punto de distribución)
+ *   "Entregado"                → 3   (Entregado)
+ *   "Entregado-liquidado"      → 14  (Entregado – liquidado)
+ *   "Reprogramado"             → 4   (Reprogramado)
+ *   "Domicilio cerrado"        → 5   (Domicilio cerrado)
+ *   "No hay quien reciba"      → 6   (No hay quien reciba en domicilio)
+ *   "Devuelto"                 → 7   (Devuelto)
+ *   "Domicilio no encontrado"  → 8   (Domicilio no encontrado)
+ *   "Rechazado"                → 9   (Rechazado)
+ *   "No puede pagar recaudo"   → 10  (No puede pagar recaudo)
+ *
+ * Nota: El campo "substate" no tiene tabla propia en el sistema; su valor
+ * se almacena como parte de las observaciones en pedidos_historial_estados.
+ *
  * Response:
  * {
- *   "success": true,
- *   "processed": 3,
- *   "failed": 1,
+ *   "success":   true,
+ *   "processed": 2,
+ *   "failed":    0,
  *   "results": [
- *     { "orderNumber": "123456", "updated": true },
- *     { "orderNumber": "999999", "updated": false, "error": "Orden no encontrada" }
+ *     { "orderNumber": "123987123456", "updated": true },
+ *     { "orderNumber": "414141",       "updated": false, "error": "Orden no encontrada" }
  *   ]
  * }
  */
@@ -52,14 +71,26 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// ─── Mapeo de estados LogisPro → estados_pedidos.id ───────────────────────────
-const LOGISPRO_STATE_MAP = [
-    'Reprogramado' => [
-        'Nuevo Intento' => 4,  // estados_pedidos.id = 4 → "Reprogramado"
-    ],
-    'Orden Cerrada' => [
-        'Solicitud del cliente' => 17, // estados_pedidos.id = 17 → "Cancelado"
-    ],
+// ─── Mapeo RutaEx state → estados_pedidos.id ──────────────────────────────────
+//
+// Fuente: diccionario homologado por RutaEx (estadosRutaExMap).
+// El substate NO se mapea a un ID propio; se registra en las observaciones
+// del historial para trazabilidad completa.
+//
+const RUTAEX_STATE_MAP = [
+    'En ruta o proceso'          => 2,   // En ruta o proceso
+    'Pendiente recolección'      => 11,  // Pendiente recolección por mensajería
+    'Recolectado por mensajería' => 12,  // Recolectado por mensajería
+    'Traslado a punto'           => 13,  // Traslado a punto de distribución
+    'Entregado'                  => 3,   // Entregado
+    'Entregado-liquidado'        => 14,  // Entregado – liquidado
+    'Reprogramado'               => 4,   // Reprogramado
+    'Domicilio cerrado'          => 5,   // Domicilio cerrado
+    'No hay quien reciba'        => 6,   // No hay quien reciba en domicilio
+    'Devuelto'                   => 7,   // Devuelto
+    'Domicilio no encontrado'    => 8,   // Domicilio no encontrado
+    'Rechazado'                  => 9,   // Rechazado
+    'No puede pagar recaudo'     => 10,  // No puede pagar recaudo
 ];
 
 try {
@@ -124,24 +155,31 @@ try {
         exit;
     }
 
-    $state    = $body['state'];
-    $substate = $body['substate'];
-    $notes    = trim($body['notes'] ?? '');
-    $auditUser = trim($body['auditUser'] ?? 'logispro');
+    $state     = trim($body['state']);
+    $substate  = trim($body['substate']);
+    $notes     = trim($body['notes'] ?? '');
+    $auditUser = trim($body['auditUser'] ?? 'rutaex');
 
-    // ─── 4. Mapear estado ──────────────────────────────────────────────────
-    if (!isset(LOGISPRO_STATE_MAP[$state][$substate])) {
+    // ─── 4. Mapear estado RutaEx → ID interno ─────────────────────────────
+    if (!array_key_exists($state, RUTAEX_STATE_MAP)) {
         http_response_code(400);
         echo json_encode([
-            'success' => false,
-            'message' => "Combinación de state/substate no reconocida: '$state' / '$substate'.",
-            'valid_states' => array_keys(LOGISPRO_STATE_MAP),
+            'success'      => false,
+            'message'      => "Estado no reconocido: '$state'.",
+            'valid_states' => array_keys(RUTAEX_STATE_MAP),
         ]);
         exit;
     }
-    $idEstadoNuevo = LOGISPRO_STATE_MAP[$state][$substate];
+    $idEstadoNuevo = RUTAEX_STATE_MAP[$state];
 
-    // Fecha de entrega (solo obligatoria en Reprogramado)
+    // Construir texto de observaciones:
+    // Formato: "RutaEx [auditUser] → state / substate[: notes]"
+    $observaciones = "RutaEx [{$auditUser}] → {$state} / {$substate}";
+    if ($notes !== '') {
+        $observaciones .= ": {$notes}";
+    }
+
+    // ─── 5. Fecha de entrega (obligatoria solo en Reprogramado) ───────────
     $fechaEntrega = null;
     if ($state === 'Reprogramado') {
         if (empty($body['dateToReceive'])) {
@@ -157,8 +195,8 @@ try {
         $fechaEntrega = $body['dateToReceive'];
     }
 
-    // ─── 5. Procesar cada orden ────────────────────────────────────────────
-    $db = (new Conexion())->conectar();
+    // ─── 6. Procesar cada orden ────────────────────────────────────────────
+    $db        = (new Conexion())->conectar();
     $results   = [];
     $processed = 0;
     $failed    = 0;
@@ -198,7 +236,7 @@ try {
         $upd = $db->prepare($sql);
         $upd->execute($params);
 
-        // Registrar en historial de estados
+        // Registrar en historial — substate y notes van en observaciones
         $hist = $db->prepare("
             INSERT INTO pedidos_historial_estados
                 (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at)
@@ -209,16 +247,16 @@ try {
             ':id_pedido'       => $idPedido,
             ':estado_anterior' => $estadoAnterior,
             ':estado_nuevo'    => $idEstadoNuevo,
-            ':observaciones'   => "LogisPro [{$auditUser}] → {$state} / {$substate}" . ($notes ? ": {$notes}" : ''),
+            ':observaciones'   => $observaciones,
         ]);
 
         $results[] = ['orderNumber' => $orderNumber, 'updated' => true];
         $processed++;
 
-        error_log("Webhook LogisPro: orden {$orderNumber} → estado {$idEstadoNuevo} ({$state}/{$substate})");
+        error_log("Webhook RutaEx: orden {$orderNumber} → estado {$idEstadoNuevo} ({$state} / {$substate})");
     }
 
-    // ─── 6. Respuesta ──────────────────────────────────────────────────────
+    // ─── 7. Respuesta ──────────────────────────────────────────────────────
     http_response_code(200);
     echo json_encode([
         'success'   => true,

@@ -12,7 +12,8 @@ $filtroDesde  = trim($_GET['desde']  ?? '');
 $filtroHasta  = trim($_GET['hasta']  ?? '');
 
 // Construir WHERE
-$where  = ["h.observaciones LIKE 'LogisPro [%]%'"];
+// Capturar webhooks de cualquier proveedor externo (LogisPro, RutaEx, etc.)
+    $where  = ["(h.observaciones LIKE 'LogisPro [%]%' OR h.observaciones LIKE 'RutaEx [%]%')"];
 $params = [];
 
 if ($filtroOrden) {
@@ -57,9 +58,10 @@ try {
     $estados = $db->query("SELECT id, nombre FROM estados_pedidos ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 
     // KPIs rápidos
-    $totalHoy  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE observaciones LIKE 'LogisPro [%]%' AND DATE(created_at) = CURDATE()")->fetchColumn();
-    $totalSem  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE observaciones LIKE 'LogisPro [%]%' AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
-    $totalAll  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE observaciones LIKE 'LogisPro [%]%'")->fetchColumn();
+    $whereKpi  = "(observaciones LIKE 'LogisPro [%]%' OR observaciones LIKE 'RutaEx [%]%')";
+    $totalHoy  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE $whereKpi AND DATE(created_at) = CURDATE()")->fetchColumn();
+    $totalSem  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE $whereKpi AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
+    $totalAll  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE $whereKpi")->fetchColumn();
 } catch (Exception $e) {
     $registros = [];
     $estados   = [];
@@ -90,7 +92,7 @@ try {
                         </div>
                         <div>
                             <h3>Webhooks Recibidos</h3>
-                            <p class="mb-0 opacity-75">Actualizaciones de estado enviadas por LogisPro</p>
+                            <p class="mb-0 opacity-75">Actualizaciones de estado recibidas vía webhook (LogisPro · RutaEx)</p>
                         </div>
                     </div>
                 </div>
@@ -188,7 +190,7 @@ try {
                 <div class="text-center py-5 text-muted">
                     <i class="bi bi-inbox display-3 opacity-25 d-block mb-3"></i>
                     <h5>Sin webhooks recibidos</h5>
-                    <p>Cuando LogisPro envíe actualizaciones de estado, aparecerán aquí.</p>
+                    <p>Cuando LogisPro o RutaEx envíen actualizaciones de estado vía webhook, aparecerán aquí.</p>
                 </div>
             <?php else: ?>
             <div class="table-responsive">
@@ -199,15 +201,18 @@ try {
                             <th>Nº Orden</th>
                             <th>Estado anterior</th>
                             <th>Estado nuevo</th>
-                            <th>Usuario LogisPro</th>
+                            <th>Proveedor / Usuario</th>
                             <th>Observaciones</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php foreach ($registros as $r):
-                        // Extraer auditUser de la observación
-                        preg_match('/LogisPro \[([^\]]+)\]/', $r['observaciones'] ?? '', $mAudit);
-                        $auditUser = $mAudit[1] ?? '-';
+                        // Extraer proveedor y auditUser de la observación
+                        // Soporta: "LogisPro [user] → ..." y "RutaEx [user] → ..."
+                        preg_match('/^(LogisPro|RutaEx) \[([^\]]+)\]/', $r['observaciones'] ?? '', $mAudit);
+                        $proveedor = $mAudit[1] ?? 'Desconocido';
+                        $auditUser = $mAudit[2] ?? '-';
+                        $badgeColor = ($proveedor === 'RutaEx') ? '#0ea5e9' : '#e65100';
                     ?>
                         <tr>
                             <td>
@@ -224,7 +229,8 @@ try {
                                 <span class="badge-estado"><?= htmlspecialchars($r['estado_nuevo_nombre'] ?? '-') ?></span>
                             </td>
                             <td>
-                                <code class="text-dark" style="font-size:0.8rem;"><?= htmlspecialchars($auditUser) ?></code>
+                                <span class="badge rounded-pill fw-semibold" style="background:<?= $badgeColor ?>;color:#fff;font-size:0.75rem;"><?= htmlspecialchars($proveedor) ?></span><br>
+                                <code class="text-muted" style="font-size:0.78rem;"><?= htmlspecialchars($auditUser) ?></code>
                             </td>
                             <td>
                                 <small class="text-muted"><?= htmlspecialchars($r['observaciones'] ?? '') ?></small>
