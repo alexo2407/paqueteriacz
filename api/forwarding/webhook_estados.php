@@ -1,4 +1,5 @@
 <?php
+
 /**
  * POST /api/forwarding/webhook_estados.php
  *
@@ -119,8 +120,8 @@ try {
 
     // ─── 1. Autenticación Bearer ───────────────────────────────────────────
     $authHeader = $_SERVER['HTTP_AUTHORIZATION']
-               ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
-               ?? (function_exists('apache_request_headers') ? (apache_request_headers()['Authorization'] ?? '') : '');
+        ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+        ?? (function_exists('apache_request_headers') ? (apache_request_headers()['Authorization'] ?? '') : '');
 
     if (!$authHeader || !preg_match('/^Bearer\s+(.+)$/i', trim($authHeader), $m)) {
         http_response_code(401);
@@ -299,7 +300,6 @@ try {
         'failed'    => $failed,
         'results'   => $results,
     ], JSON_UNESCAPED_UNICODE);
-
 } catch (Throwable $e) {
     error_log('[webhook_estados] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
