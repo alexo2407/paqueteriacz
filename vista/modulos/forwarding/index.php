@@ -7,31 +7,31 @@ $proveedores = ForwardingModel::obtenerProveedores(true);
 $reglasRecientes = ForwardingModel::obtenerTodasLasReglas();
 $logsRecientes = ForwardingModel::obtenerLogs([], 5, 0);
 
-// Webhooks recibidos de LogisPro (historial con nota de LogisPro)
+// Webhooks recibidos de LogisPro y RutaEx (historial con nota de proveedor externo)
 try {
-    $dbIdx = (new Conexion())->conectar();
-    $stmtWh = $dbIdx->query("
+    $dbIdx  = (new Conexion())->conectar();
+    $whereWh = "(h.observaciones LIKE 'LogisPro [%]%' OR h.observaciones LIKE 'RutaEx [%]%')";
+    $stmtWh  = $dbIdx->query("
         SELECT h.id, h.id_pedido, h.id_estado_anterior, h.id_estado_nuevo,
                h.observaciones, h.created_at,
                p.numero_orden,
-               ea.nombre AS estado_anterior_nombre,
-               en.nombre AS estado_nuevo_nombre
+               ea.nombre_estado AS estado_anterior_nombre,
+               en.nombre_estado AS estado_nuevo_nombre
         FROM pedidos_historial_estados h
-        LEFT JOIN pedidos p ON p.id = h.id_pedido
-        LEFT JOIN estados_pedidos ea ON ea.id = h.id_estado_anterior
-        LEFT JOIN estados_pedidos en ON en.id = h.id_estado_nuevo
-        WHERE h.observaciones LIKE 'LogisPro [%]%'
+        LEFT JOIN pedidos p           ON p.id  = h.id_pedido
+        LEFT JOIN estados_pedidos ea  ON ea.id = h.id_estado_anterior
+        LEFT JOIN estados_pedidos en  ON en.id = h.id_estado_nuevo
+        WHERE $whereWh
         ORDER BY h.created_at DESC
         LIMIT 6
     ");
     $webhooksRecibidos = $stmtWh->fetchAll(PDO::FETCH_ASSOC);
-    
-    $stmtWhHoy = $dbIdx->query("
+
+    $webhooksHoy = (int)$dbIdx->query("
         SELECT COUNT(*) FROM pedidos_historial_estados
-        WHERE observaciones LIKE 'LogisPro [%]%'
+        WHERE (observaciones LIKE 'LogisPro [%]%' OR observaciones LIKE 'RutaEx [%]%')
           AND DATE(created_at) = CURDATE()
-    ");
-    $webhooksHoy = (int)$stmtWhHoy->fetchColumn();
+    ")->fetchColumn();
 } catch (Exception $e) {
     $webhooksRecibidos = [];
     $webhooksHoy = 0;
@@ -185,7 +185,7 @@ try {
                             <i class="bi bi-arrow-down-circle" style="color:#e65100;"></i>
                             <div>
                                 <div class="fw-semibold">Webhooks Recibidos</div>
-                                <small class="text-muted">Actualizaciones de LogisPro</small>
+                                <small class="text-muted">Actualizaciones de LogisPro · RutaEx</small>
                             </div>
                         </a>
                     </div>
@@ -238,7 +238,7 @@ try {
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="fw-bold mb-0">
-                            <i class="bi bi-arrow-down-circle me-2" style="color:#e65100;"></i>Actualizaciones de LogisPro
+                            <i class="bi bi-arrow-down-circle me-2" style="color:#e65100;"></i>Actualizaciones de Estado (Webhooks)
                         </h5>
                         <a href="<?= RUTA_URL ?>forwarding/webhooks" class="btn btn-sm btn-outline-warning">Ver todas</a>
                     </div>
