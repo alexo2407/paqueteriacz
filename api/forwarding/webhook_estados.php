@@ -241,7 +241,7 @@ try {
             INSERT INTO pedidos_historial_estados
                 (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at)
             VALUES
-                (:id_pedido, :estado_anterior, :estado_nuevo, 0, :observaciones, NOW())
+                (:id_pedido, :estado_anterior, :estado_nuevo, NULL, :observaciones, NOW())
         ");
         $hist->execute([
             ':id_pedido'       => $idPedido,
