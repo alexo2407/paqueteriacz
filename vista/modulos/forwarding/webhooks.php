@@ -41,12 +41,12 @@ try {
         SELECT h.id, h.id_pedido, h.id_estado_anterior, h.id_estado_nuevo,
                h.observaciones, h.created_at,
                p.numero_orden,
-               ea.nombre AS estado_anterior_nombre,
-               en.nombre AS estado_nuevo_nombre
+               ea.nombre_estado AS estado_anterior_nombre,
+               en.nombre_estado AS estado_nuevo_nombre
         FROM pedidos_historial_estados h
-        LEFT JOIN pedidos p        ON p.id  = h.id_pedido
-        LEFT JOIN estados_pedidos ea ON ea.id = h.id_estado_anterior
-        LEFT JOIN estados_pedidos en ON en.id = h.id_estado_nuevo
+        LEFT JOIN pedidos p           ON p.id  = h.id_pedido
+        LEFT JOIN estados_pedidos ea  ON ea.id = h.id_estado_anterior
+        LEFT JOIN estados_pedidos en  ON en.id = h.id_estado_nuevo
         WHERE $whereSQL
         ORDER BY h.created_at DESC
     ";
@@ -55,7 +55,7 @@ try {
     $registros = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Para el filtro de estado
-    $estados = $db->query("SELECT id, nombre FROM estados_pedidos ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+    $estados = $db->query("SELECT id, nombre_estado AS nombre FROM estados_pedidos ORDER BY nombre_estado")->fetchAll(PDO::FETCH_ASSOC);
 
     // KPIs rápidos
     $whereKpi  = "(observaciones LIKE 'LogisPro [%]%' OR observaciones LIKE 'RutaEx [%]%')";
