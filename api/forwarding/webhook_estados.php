@@ -274,23 +274,16 @@ try {
             $params[':fecha_entrega'] = $fechaEntrega;
         }
 
+        // Inyectar contexto para el trigger after_pedido_update_estado:
+        // El trigger usa @current_user_id y @current_observaciones.
+        // NULL = Sistema (webhook automático), sin usuario humano.
+        $db->exec("SET @current_user_id = NULL, @current_observaciones = " .
+            $db->quote($observaciones));
+
         $sql = "UPDATE pedidos SET " . implode(', ', $sets) . " WHERE id = :id";
         $upd = $db->prepare($sql);
         $upd->execute($params);
-
-        // Registrar en historial — substate y notes van en observaciones
-        $hist = $db->prepare("
-            INSERT INTO pedidos_historial_estados
-                (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at)
-            VALUES
-                (:id_pedido, :estado_anterior, :estado_nuevo, NULL, :observaciones, NOW())
-        ");
-        $hist->execute([
-            ':id_pedido'       => $idPedido,
-            ':estado_anterior' => $estadoAnterior,
-            ':estado_nuevo'    => $idEstadoNuevo,
-            ':observaciones'   => $observaciones,
-        ]);
+        // El trigger se encarga de insertar en pedidos_historial_estados.
 
         $results[] = ['orderNumber' => $orderNumber, 'updated' => true];
         $processed++;
