@@ -71,26 +71,45 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// ─── Mapeo RutaEx state → estados_pedidos.id ──────────────────────────────────
+// ─── Mapeo RutaEx state+substate → estados_pedidos.id ───────────────────────────
 //
-// Fuente: diccionario homologado por RutaEx (estadosRutaExMap).
-// El substate NO se mapea a un ID propio; se registra en las observaciones
-// del historial para trazabilidad completa.
+// RutaEx envía en el campo "state" el VALOR de su diccionario homologado,
+// NO el nombre interno. Los 4 valores posibles son:
+//   "Confirmado"   → estados en tránsito (substate siempre "Confirmado")
+//   "Entregado"    → entrega exitosa     (substate "Efectiva")
+//   "Reprogramado" → nuevo intento       (substate "Nuevo intento")
+//   "No entregado" → fallo de entrega    (substate diferencia el motivo)
+//
+// Estructura: RUTAEX_STATE_MAP[state][substate_normalizado] = id_estado
 //
 const RUTAEX_STATE_MAP = [
-    'En ruta o proceso'          => 2,   // En ruta o proceso
-    'Pendiente recolección'      => 11,  // Pendiente recolección por mensajería
-    'Recolectado por mensajería' => 12,  // Recolectado por mensajería
-    'Traslado a punto'           => 13,  // Traslado a punto de distribución
-    'Entregado'                  => 3,   // Entregado
-    'Entregado-liquidado'        => 14,  // Entregado – liquidado
-    'Reprogramado'               => 4,   // Reprogramado
-    'Domicilio cerrado'          => 5,   // Domicilio cerrado
-    'No hay quien reciba'        => 6,   // No hay quien reciba en domicilio
-    'Devuelto'                   => 7,   // Devuelto
-    'Domicilio no encontrado'    => 8,   // Domicilio no encontrado
-    'Rechazado'                  => 9,   // Rechazado
-    'No puede pagar recaudo'     => 10,  // No puede pagar recaudo
+    // ── Confirmado ────────────────────────────────────────────────────────────
+    // Agrupa: En ruta, Pendiente recolección, Recolectado, Traslado a punto.
+    // El substate siempre es "Confirmado" → mapeamos a "En ruta o proceso" (2)
+    // como estado genérico de tránsito.
+    'Confirmado' => [
+        'confirmado' => 2,  // En ruta o proceso (genérico)
+    ],
+
+    // ── Entregado ─────────────────────────────────────────────────────────────
+    'Entregado' => [
+        'efectiva'  => 3,   // Entregado
+    ],
+
+    // ── Reprogramado ──────────────────────────────────────────────────────────
+    'Reprogramado' => [
+        'nuevo intento' => 4,  // Reprogramado
+    ],
+
+    // ── No entregado ──────────────────────────────────────────────────────────
+    // El substate diferencia el motivo exacto del fallo.
+    'No entregado' => [
+        'en lugar, sin contacto' => 5,   // Domicilio cerrado
+        'fuera de la ciudad'     => 6,   // No hay quien reciba en domicilio
+        'no desea producto'      => 7,   // Devuelto / Rechazado → usar Devuelto
+        'direccion errada'       => 8,   // Domicilio no encontrado
+        'sin dinero'             => 10,  // No puede pagar recaudo
+    ],
 ];
 
 try {
@@ -161,7 +180,11 @@ try {
     $auditUser = trim($body['auditUser'] ?? 'rutaex');
 
     // ─── 4. Mapear estado RutaEx → ID interno ─────────────────────────────
-    if (!array_key_exists($state, RUTAEX_STATE_MAP)) {
+    // Normalizar (trim + lowercase) para comparación robusta
+    $stateKey    = $state;
+    $substateKey = mb_strtolower(trim($substate), 'UTF-8');
+
+    if (!array_key_exists($stateKey, RUTAEX_STATE_MAP)) {
         http_response_code(400);
         echo json_encode([
             'success'      => false,
@@ -170,7 +193,26 @@ try {
         ]);
         exit;
     }
-    $idEstadoNuevo = RUTAEX_STATE_MAP[$state];
+
+    $substateMap = RUTAEX_STATE_MAP[$stateKey];
+
+    if (!array_key_exists($substateKey, $substateMap)) {
+        // Fallback: si solo hay un valor en el mapa (ej. Confirmado/Entregado)
+        // usarlo directamente sin importar el substate recibido
+        if (count($substateMap) === 1) {
+            $idEstadoNuevo = reset($substateMap);
+        } else {
+            http_response_code(400);
+            echo json_encode([
+                'success'         => false,
+                'message'         => "Substate '$substate' no reconocido para state '$state'.",
+                'valid_substates' => array_keys($substateMap),
+            ]);
+            exit;
+        }
+    } else {
+        $idEstadoNuevo = $substateMap[$substateKey];
+    }
 
     // Construir texto de observaciones:
     // Formato: "RutaEx [auditUser] → state / substate[: notes]"
