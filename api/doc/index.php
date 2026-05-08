@@ -2827,8 +2827,8 @@ Content-Type: application/json</code></pre>
                     <h2 class="section-title" data-lang="en">📅 Reschedule an Order</h2>
                     <h2 class="section-title" data-lang="es">📅 Reprogramar un Pedido</h2>
 
-                    <p data-lang="en">Changes the order status to <strong>Rescheduled</strong> (ID 4 by default), updates the delivery date and records the reason in the status history. The operation is atomic — all changes happen inside a single transaction.</p>
-                    <p data-lang="es">Cambia el estado del pedido a <strong>Reprogramado</strong> (ID 4 por defecto), actualiza la fecha de entrega y registra el motivo en el historial de estados. La operación es atómica — todos los cambios ocurren dentro de una sola transacción.</p>
+                    <p data-lang="en">Changes the order status to the indicated state (ID 4 = <strong>Rescheduled</strong> by default), updates the delivery date, optionally reassigns the client, and records the reason in the status history. The operation is atomic — all changes happen inside a single transaction.</p>
+                    <p data-lang="es">Cambia el estado del pedido al estado indicado (ID 4 = <strong>Reprogramado</strong> por defecto), actualiza la fecha de entrega, opcionalmente reasigna el cliente y registra el motivo en el historial de estados. La operación es atómica — todos los cambios ocurren dentro de una sola transacción.</p>
 
                     <div class="code-block">
                         <span class="badge-endpoint badge-post">POST</span> /api/pedidos/reprogramar
@@ -2844,7 +2844,8 @@ Content-Type: application/json</code></pre>
                         <tbody>
                             <tr><td><code>numero_orden</code></td><td>string</td><td>✅ Yes</td><td>Order number to reschedule</td><td><code>"81154737"</code></td></tr>
                             <tr><td><code>fecha_entrega</code></td><td>string</td><td>✅ Yes</td><td>New delivery date (ISO 8601 — YYYY-MM-DD). Cannot be in the past.</td><td><code>"2026-05-20"</code></td></tr>
-                            <tr><td><code>id_estado</code></td><td>integer</td><td>⬜ No</td><td>Target state ID. Defaults to <code>4</code> (Rescheduled).</td><td><code>4</code></td></tr>
+                            <tr><td><code>id_estado</code></td><td>integer</td><td>⬜ No</td><td>Target state ID. Must exist in <code>estados_pedidos</code>. Defaults to <code>4</code> (Rescheduled).</td><td><code>4</code></td></tr>
+                            <tr><td><code>id_cliente</code></td><td>integer</td><td>⬜ No</td><td>Client ID to assign to the order. If provided, updates <code>id_cliente</code> in the same atomic transaction.</td><td><code>42</code></td></tr>
                             <tr><td><code>motivo</code></td><td>string</td><td>⬜ No</td><td>Reason for rescheduling</td><td><code>"Cliente ausente"</code></td></tr>
                         </tbody>
                     </table>
@@ -2854,7 +2855,8 @@ Content-Type: application/json</code></pre>
                         <tbody>
                             <tr><td><code>numero_orden</code></td><td>string</td><td>✅ Sí</td><td>Número de orden a reprogramar</td><td><code>"81154737"</code></td></tr>
                             <tr><td><code>fecha_entrega</code></td><td>string</td><td>✅ Sí</td><td>Nueva fecha de entrega (ISO 8601 — YYYY-MM-DD). No puede ser en el pasado.</td><td><code>"2026-05-20"</code></td></tr>
-                            <tr><td><code>id_estado</code></td><td>entero</td><td>⬜ No</td><td>ID del estado destino. Por defecto <code>4</code> (Reprogramado).</td><td><code>4</code></td></tr>
+                            <tr><td><code>id_estado</code></td><td>entero</td><td>⬜ No</td><td>ID del estado destino. Debe existir en <code>estados_pedidos</code>. Por defecto <code>4</code> (Reprogramado).</td><td><code>4</code></td></tr>
+                            <tr><td><code>id_cliente</code></td><td>entero</td><td>⬜ No</td><td>ID del cliente a asignar al pedido. Si se provee, actualiza <code>id_cliente</code> en la misma transacción atómica.</td><td><code>42</code></td></tr>
                             <tr><td><code>motivo</code></td><td>string</td><td>⬜ No</td><td>Razón de la reprogramación</td><td><code>"Cliente ausente"</code></td></tr>
                         </tbody>
                     </table>
@@ -2869,6 +2871,7 @@ Content-Type: application/json</code></pre>
     "numero_orden": "81154737",
     "fecha_entrega": "2026-05-20",
     "id_estado": 4,
+    "id_cliente": 42,
     "motivo": "Cliente ausente en primer intento"
   }'</code></pre>
 
@@ -2885,11 +2888,12 @@ Content-Type: application/json</code></pre>
     numero_orden: '81154737',
     fecha_entrega: '2026-05-20',
     id_estado: 4,
+    id_cliente: 42,
     motivo: 'Cliente ausente en primer intento'
   })
 });
 const json = await res.json();
-console.log(json.data); // { numero_orden, id_estado, fecha_entrega, motivo, reprogramado_en }</code></pre>
+console.log(json.data); // { numero_orden, id_estado, id_cliente, fecha_entrega, motivo, reprogramado_en }</code></pre>
 
                     <!-- Success response -->
                     <h4 data-lang="en">Response <span class="status-badge status-200">200 OK</span></h4>
@@ -2900,6 +2904,7 @@ console.log(json.data); // { numero_orden, id_estado, fecha_entrega, motivo, rep
   "data": {
     "numero_orden":    "81154737",
     "id_estado":       4,
+    "id_cliente":      42,
     "fecha_entrega":   "2026-05-20",
     "motivo":          "Cliente ausente en primer intento",
     "reprogramado_en": "2026-05-05 14:30:00"
@@ -2912,11 +2917,11 @@ console.log(json.data); // { numero_orden, id_estado, fecha_entrega, motivo, rep
                     <table class="table table-bordered table-sm">
                         <thead><tr><th>HTTP</th><th><span data-lang="en">Cause</span><span data-lang="es">Causa</span></th></tr></thead>
                         <tbody>
-                            <tr><td><span class="status-badge status-400">400</span></td><td><span data-lang="en">Missing required fields, invalid date format, or past date.</span><span data-lang="es">Campos requeridos faltantes, formato de fecha inválido o fecha en el pasado.</span></td></tr>
+                            <tr><td><span class="status-badge status-400">400</span></td><td><span data-lang="en">Missing required fields, invalid date format, past date, or non-existent <code>id_estado</code>.</span><span data-lang="es">Campos requeridos faltantes, formato de fecha inválido, fecha en el pasado o <code>id_estado</code> inexistente.</span></td></tr>
                             <tr><td><span class="status-badge status-401">401</span></td><td><span data-lang="en">Missing or invalid JWT token.</span><span data-lang="es">Token JWT ausente o inválido.</span></td></tr>
                             <tr><td><span class="status-badge status-403">403</span></td><td><span data-lang="en">Authenticated user does not own the order.</span><span data-lang="es">El usuario autenticado no es dueño del pedido.</span></td></tr>
                             <tr><td><span class="status-badge status-404">404</span></td><td><span data-lang="en">Order not found.</span><span data-lang="es">Pedido no encontrado.</span></td></tr>
-                            <tr><td><code>409</code></td><td><span data-lang="en">Order already delivered — cannot be rescheduled.</span><span data-lang="es">El pedido ya fue entregado — no se puede reprogramar.</span></td></tr>
+                            <tr><td><span class="status-badge status-409">409</span></td><td><span data-lang="en">Order already delivered — cannot be rescheduled.</span><span data-lang="es">El pedido ya fue entregado — no se puede reprogramar.</span></td></tr>
                         </tbody>
                     </table>
 
@@ -2924,13 +2929,17 @@ console.log(json.data); // { numero_orden, id_estado, fecha_entrega, motivo, rep
                         <strong data-lang="en">💡 Key Behaviors</strong>
                         <strong data-lang="es">💡 Comportamientos Clave</strong>
                         <ul class="mb-0 mt-2" data-lang="en">
-                            <li><strong>Atomic transaction:</strong> State change + date update + history entry happen in one DB transaction.</li>
+                            <li><strong>Atomic transaction:</strong> State change + date update + optional client reassignment + history entry happen in one DB transaction.</li>
+                            <li><strong>State validation:</strong> <code>id_estado</code> is validated against the <code>estados_pedidos</code> table — any valid state ID (1–17+) is accepted. Returns <code>400</code> if the ID does not exist.</li>
+                            <li><strong>Client reassignment:</strong> If <code>id_cliente</code> is provided, the order's client is updated in the same transaction. The field is returned in the response (null if not sent).</li>
                             <li><strong>Access control:</strong> Non-admin users can only reschedule orders linked to their account (<code>id_cliente</code> or <code>id_proveedor</code>).</li>
                             <li><strong>Date format:</strong> <code>YYYY-MM-DD</code> (ISO 8601 — date only). Past dates are rejected.</li>
                             <li><strong>Default state:</strong> If <code>id_estado</code> is omitted, defaults to <code>4</code> (Reprogramado).</li>
                         </ul>
                         <ul class="mb-0 mt-2" data-lang="es">
-                            <li><strong>Transacción atómica:</strong> Cambio de estado + actualización de fecha + entrada en historial ocurren en una sola transacción DB.</li>
+                            <li><strong>Transacción atómica:</strong> Cambio de estado + actualización de fecha + reasignación opcional de cliente + entrada en historial ocurren en una sola transacción DB.</li>
+                            <li><strong>Validación de estado:</strong> <code>id_estado</code> se valida contra la tabla <code>estados_pedidos</code> — se acepta cualquier ID de estado válido (1–17+). Retorna <code>400</code> si el ID no existe.</li>
+                            <li><strong>Reasignación de cliente:</strong> Si se provee <code>id_cliente</code>, el cliente del pedido se actualiza en la misma transacción. El campo se devuelve en la respuesta (null si no se envió).</li>
                             <li><strong>Control de acceso:</strong> Usuarios no-admin solo pueden reprogramar pedidos vinculados a su cuenta (<code>id_cliente</code> o <code>id_proveedor</code>).</li>
                             <li><strong>Formato de fecha:</strong> <code>YYYY-MM-DD</code> (ISO 8601 — solo fecha). Fechas pasadas son rechazadas.</li>
                             <li><strong>Estado por defecto:</strong> Si se omite <code>id_estado</code>, usa <code>4</code> (Reprogramado).</li>
