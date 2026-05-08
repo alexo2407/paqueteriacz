@@ -2153,6 +2153,7 @@ class PedidosModel
      * @param string   $fechaEntrega  Nueva fecha de entrega (YYYY-MM-DD)
      * @param int      $idEstado      Estado destino (default: 4 = Reprogramado)
      * @param string|null $motivo     Razón de la reprogramación (opcional)
+     * @param int|null $idCliente     ID del cliente a asignar al pedido (opcional)
      * @return array   ['success' => bool, 'message' => string, 'code' => int]
      */
     public static function reprogramarPedido(
@@ -2161,7 +2162,8 @@ class PedidosModel
         int     $actorUserRole,
         string  $fechaEntrega,
         int     $idEstado = 4,
-        ?string $motivo = null
+        ?string $motivo = null,
+        ?int    $idCliente = null
     ): array {
         $ID_ENTREGADO = 3;
 
@@ -2170,6 +2172,14 @@ class PedidosModel
         try {
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
+
+            // 0. Validar que el id_estado exista en la tabla estados_pedidos
+            $stmtEstado = $db->prepare('SELECT COUNT(*) FROM estados_pedidos WHERE id = :id');
+            $stmtEstado->execute([':id' => $idEstado]);
+            if ((int)$stmtEstado->fetchColumn() === 0) {
+                $db->rollBack();
+                return ['success' => false, 'message' => "El estado con ID {$idEstado} no existe.", 'code' => 400];
+            }
 
             // 1. Bloquear y cargar el pedido
             if ($isAdmin) {
@@ -2210,19 +2220,22 @@ class PedidosModel
                 return ['success' => false, 'message' => 'No se puede reprogramar un pedido que ya fue entregado.', 'code' => 409];
             }
 
-            // 3. Actualizar estado + fecha_entrega en una sola query
-            $upd = $db->prepare(
-                'UPDATE pedidos
-                 SET id_estado     = :nuevo_estado,
-                     fecha_entrega = :fecha_entrega,
-                     updated_at    = NOW()
-                 WHERE id = :id'
-            );
-            $upd->execute([
+            // 3. Actualizar estado + fecha_entrega (y opcionalmente id_cliente) en una sola query
+            $setClause = $idCliente !== null
+                ? 'id_estado = :nuevo_estado, fecha_entrega = :fecha_entrega, id_cliente = :id_cliente, updated_at = NOW()'
+                : 'id_estado = :nuevo_estado, fecha_entrega = :fecha_entrega, updated_at = NOW()';
+
+            $upd = $db->prepare("UPDATE pedidos SET {$setClause} WHERE id = :id");
+
+            $updParams = [
                 ':nuevo_estado'  => $idEstado,
                 ':fecha_entrega' => $fechaEntrega,
                 ':id'            => $pedidoId,
-            ]);
+            ];
+            if ($idCliente !== null) {
+                $updParams[':id_cliente'] = $idCliente;
+            }
+            $upd->execute($updParams);
 
             // 4. Registrar en historial de estados
             $hist = $db->prepare(
@@ -2241,13 +2254,17 @@ class PedidosModel
 
             // 5. Auditoría
             try {
+                $nuevosDatos = ['id_estado' => $idEstado, 'fecha_entrega' => $fechaEntrega, 'motivo' => $motivo];
+                if ($idCliente !== null) {
+                    $nuevosDatos['id_cliente'] = $idCliente;
+                }
                 AuditoriaModel::registrar(
                     'pedidos',
                     $pedidoId,
                     'reprogramar',
                     $actorUserId,
                     ['id_estado' => $estadoActual, 'fecha_entrega' => null],
-                    ['id_estado' => $idEstado, 'fecha_entrega' => $fechaEntrega, 'motivo' => $motivo]
+                    $nuevosDatos
                 );
             } catch (Exception $eAudit) {
                 error_log('[reprogramarPedido] Error auditoría: ' . $eAudit->getMessage());

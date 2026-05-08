@@ -11,6 +11,7 @@
  *  numero_orden   string   (requerido)  Número de orden del pedido
  *  fecha_entrega  string   (requerido)  Nueva fecha de entrega (YYYY-MM-DD)
  *  id_estado      int      (opcional)   Estado destino (default: 4 = Reprogramado)
+ *  id_cliente     int      (opcional)   ID del cliente a asignar al pedido
  *  motivo         string   (opcional)   Razón de la reprogramación
  * ───────────────────────────────────────────────────────────────────────────
  *
@@ -89,10 +90,14 @@ try {
     $motivo       = trim($body['motivo']        ?? '');
 
     // id_estado: por defecto 4 (Reprogramado); puede enviarse otro valor explícito
-    // Solo se admiten estados asociados a reprogramación (no destructivos)
     $idEstado = isset($body['id_estado']) && is_numeric($body['id_estado'])
         ? (int)$body['id_estado']
         : 4;
+
+    // id_cliente: opcional — reasigna el cliente del pedido
+    $idCliente = isset($body['id_cliente']) && is_numeric($body['id_cliente'])
+        ? (int)$body['id_cliente']
+        : null;
 
     // ── 3. Validaciones de campos ──────────────────────────────────────────
     if ($numeroOrden === '') {
@@ -124,7 +129,8 @@ try {
         $authUserRole,
         $fechaEntrega,
         $idEstado,
-        $motivo !== '' ? $motivo : null
+        $motivo !== '' ? $motivo : null,
+        $idCliente
     );
 
     // Mapear code de error a HTTP status
@@ -141,6 +147,7 @@ try {
     responder(true, "Pedido {$numeroOrden} reprogramado para el {$fechaEntrega}.", [
         'numero_orden'    => $numeroOrden,
         'id_estado'       => $idEstado,
+        'id_cliente'      => $idCliente,
         'fecha_entrega'   => $fechaEntrega,
         'motivo'          => $motivo !== '' ? $motivo : null,
         'reprogramado_en' => $ahoraLocal,
