@@ -81,7 +81,7 @@ class PedidosModel
         }
         return null;
     }
-    
+
     /**
      * Obtener todos los números de orden existentes (para validación de duplicados)
      * @return array Lista de números de orden
@@ -97,7 +97,7 @@ class PedidosModel
             return [];
         }
     }
-    
+
     /**
      * Inserta múltiples pedidos reutilizando una sola conexión y statement preparado.
      *
@@ -125,7 +125,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','municipalitiesName','postalCode','departmentName','Location','betweenStreets','codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor','id_cliente','fecha_entrega'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -180,7 +180,7 @@ class PedidosModel
                             $lng = $parts[1];
                         }
                     }
-                    
+
                     // Si no se proporcionan, usar 0.0 (por defecto ahora son opcionales)
                     if ($lat === null || $lat === '' || !is_numeric($lat)) $lat = 0.0;
                     if ($lng === null || $lng === '' || !is_numeric($lng)) $lng = 0.0;
@@ -316,7 +316,7 @@ class PedidosModel
                     // Resolver producto a id
                     $productoId = null;
                     $productoNombre = $row['producto_nombre'] ?? $row['producto'] ?? null;
-                    
+
                     if (isset($row['id_producto']) && is_numeric($row['id_producto']) && (int)$row['id_producto'] > 0) {
                         $productoId = (int)$row['id_producto'];
                     } elseif (isset($row['producto_id']) && is_numeric($row['producto_id']) && (int)$row['producto_id'] > 0) {
@@ -406,7 +406,8 @@ class PedidosModel
      * @param int|null $idCliente ID del cliente.
      * @return bool True si existe, false en caso contrario.
      */
-    public static function existeNumeroOrden($numeroOrden, $idCliente = null) {
+    public static function existeNumeroOrden($numeroOrden, $idCliente = null)
+    {
         try {
             $db = (new Conexion())->conectar();
             $query = "SELECT COUNT(*) FROM pedidos WHERE numero_orden = :numero_orden";
@@ -420,12 +421,11 @@ class PedidosModel
             }
             $stmt->execute();
             return $stmt->fetchColumn() > 0;
-    
         } catch (Exception $e) {
             throw new Exception("Error al verificar el número de orden: " . $e->getMessage());
         }
     }
-    
+
 
     /**
      * Crear un pedido simple (API legacy).
@@ -466,7 +466,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','municipalitiesName','postalCode','departmentName','Location','betweenStreets','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_proveedor','id_cliente','id_vendedor', 'fecha_entrega'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_proveedor', 'id_cliente', 'id_vendedor', 'fecha_entrega'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -776,7 +776,7 @@ class PedidosModel
             throw new Exception("Error al obtener los pedidos: " . $e->getMessage());
         }
     }
-    
+
     /**
      * Listar pedidos para exportación CSV con todos los campos
      * 
@@ -788,33 +788,33 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             $where = [];
             $params = [];
-            
+
             // Construir WHERE clause según filtros
             if (!empty($filtros['id_estado'])) {
                 $where[] = 'p.id_estado = :id_estado';
                 $params[':id_estado'] = (int)$filtros['id_estado'];
             }
-            
+
             if (!empty($filtros['id_proveedor'])) {
                 $where[] = 'p.id_proveedor = :id_proveedor';
                 $params[':id_proveedor'] = (int)$filtros['id_proveedor'];
             }
-            
+
             if (!empty($filtros['fecha_desde'])) {
                 $where[] = 'p.fecha_ingreso >= :fecha_desde';
                 $params[':fecha_desde'] = $filtros['fecha_desde'];
             }
-            
+
             if (!empty($filtros['fecha_hasta'])) {
                 $where[] = 'p.fecha_ingreso <= :fecha_hasta';
                 $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $query = "
                 SELECT 
                     p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
@@ -840,16 +840,16 @@ class PedidosModel
                 ORDER BY p.fecha_ingreso DESC
                 LIMIT :limite
             ";
-            
+
             $stmt = $db->prepare($query);
             foreach ($params as $key => $value) {
                 $stmt->bindValue($key, $value);
             }
             $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
             $stmt->execute();
-            
+
             $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Para cada pedido, obtener sus productos
             $stmtProductos = $db->prepare('
                 SELECT 
@@ -861,14 +861,13 @@ class PedidosModel
                 INNER JOIN productos pr ON pr.id = pp.id_producto
                 WHERE pp.id_pedido = :id_pedido
             ');
-            
+
             foreach ($pedidos as &$pedido) {
                 $stmtProductos->execute([':id_pedido' => $pedido['id']]);
                 $pedido['productos'] = $stmtProductos->fetchAll(PDO::FETCH_ASSOC);
             }
-            
+
             return $pedidos;
-            
         } catch (Exception $e) {
             throw new Exception("Error al listar pedidos para exportar: " . $e->getMessage());
         }
@@ -967,7 +966,7 @@ class PedidosModel
             $stmtAnt = $db->prepare("SELECT * FROM pedidos WHERE id = :id");
             $stmtAnt->execute([':id' => (int)$data['id_pedido']]);
             $datosAnteriores = $stmtAnt->fetch(PDO::FETCH_ASSOC);
-            
+
             if (!$datosAnteriores) {
                 $db->rollBack();
                 return false; // El pedido no existe
@@ -1017,7 +1016,8 @@ class PedidosModel
             // Coordinates
             if (isset($data['latitud']) && isset($data['longitud'])) {
                 $fields[] = 'coordenadas = ST_GeomFromText(:coordenadas)';
-                $params[':coordenadas'] = sprintf('POINT(%s %s)', 
+                $params[':coordenadas'] = sprintf(
+                    'POINT(%s %s)',
                     number_format((float)$data['longitud'], 8, '.', ''),
                     number_format((float)$data['latitud'], 8, '.', '')
                 );
@@ -1032,7 +1032,7 @@ class PedidosModel
                 $fields[] = 'precio_usd = :precio_usd';
                 $params[':precio_usd'] = $data['precio_usd'] !== '' ? (float)$data['precio_usd'] : null;
             }
-            
+
             // New combo pricing fields
             if (isset($data['precio_total_local'])) {
                 $fields[] = 'precio_total_local = :precio_total_local';
@@ -1159,7 +1159,7 @@ class PedidosModel
                 // Construimos el array de datos nuevos basándonos en los fields que se actualizaron
                 // Nota: $fields contiene strings como "campo = :campo". 
                 // $params contiene los valores nuevos.
-                
+
                 $cambiosDetectados = [];
                 // Columnas que se excluyen del diff de auditoría:
                 // - coordenadas: columna geometry; el SELECT * la devuelve en formato binario
@@ -1168,46 +1168,46 @@ class PedidosModel
                 $columnsExcluidasAudit = ['coordenadas'];
 
                 foreach ($params as $key => $val) {
-                     if ($key === ':id') continue;
-                     $colName = substr($key, 1); // :precio_local -> precio_local
-                     if (in_array($colName, $columnsExcluidasAudit, true)) continue;
+                    if ($key === ':id') continue;
+                    $colName = substr($key, 1); // :precio_local -> precio_local
+                    if (in_array($colName, $columnsExcluidasAudit, true)) continue;
 
-                     $valAnterior = $datosAnteriores[$colName] ?? null;
+                    $valAnterior = $datosAnteriores[$colName] ?? null;
 
-                     // Normalizar para comparación numérica vs string
-                     if (is_numeric($val) && is_numeric($valAnterior)) {
-                         if ((float)$val != (float)$valAnterior) {
-                             $cambiosDetectados[$colName] = $val;
-                         }
-                     } elseif ($val !== $valAnterior) {
-                         $cambiosDetectados[$colName] = $val;
-                     }
+                    // Normalizar para comparación numérica vs string
+                    if (is_numeric($val) && is_numeric($valAnterior)) {
+                        if ((float)$val != (float)$valAnterior) {
+                            $cambiosDetectados[$colName] = $val;
+                        }
+                    } elseif ($val !== $valAnterior) {
+                        $cambiosDetectados[$colName] = $val;
+                    }
                 }
 
                 // UN SOLO registro de auditoría por acción, con TODOS los campos cambiados
                 if (!empty($cambiosDetectados)) {
-                     $datosAntesLog = [];
-                     foreach ($cambiosDetectados as $col => $nuevoVal) {
-                         $datosAntesLog[$col] = $datosAnteriores[$col] ?? null;
-                     }
-                     try {
-                         AuditoriaModel::registrar(
+                    $datosAntesLog = [];
+                    foreach ($cambiosDetectados as $col => $nuevoVal) {
+                        $datosAntesLog[$col] = $datosAnteriores[$col] ?? null;
+                    }
+                    try {
+                        AuditoriaModel::registrar(
                             'pedidos',
                             (int)$data['id_pedido'],
                             'actualizar',
                             self::resolveCurrentUserId(),
                             $datosAntesLog,
                             $cambiosDetectados
-                         );
-                     } catch (Exception $e) {
-                         error_log('Error auditoria actualizarPedido: ' . $e->getMessage());
-                     }
+                        );
+                    } catch (Exception $e) {
+                        error_log('Error auditoria actualizarPedido: ' . $e->getMessage());
+                    }
                 }
 
                 // [Historial Estados/Proveedor - Legacy logic kept for specific UI logs]
-                $nuevoEstado = isset($data['id_estado']) && $data['id_estado'] !== '' && $data['id_estado'] !== '0' ? (int)$data['id_estado'] : (isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0' ? (int)$data['estado'] : ($estadoAnterior ?? 1)); 
+                $nuevoEstado = isset($data['id_estado']) && $data['id_estado'] !== '' && $data['id_estado'] !== '0' ? (int)$data['id_estado'] : (isset($data['estado']) && $data['estado'] !== '' && $data['estado'] !== '0' ? (int)$data['estado'] : ($estadoAnterior ?? 1));
                 $nuevoProveedor = isset($data['id_proveedor']) && $data['id_proveedor'] !== '' ? (int)$data['id_proveedor'] : (isset($data['proveedor']) && $data['proveedor'] !== '' ? (int)$data['proveedor'] : $proveedorAnterior);
-                
+
                 $huboCambioEstado = ($estadoAnterior && $nuevoEstado != $estadoAnterior);
                 $huboCambioProveedor = ($proveedorAnterior !== null && $nuevoProveedor != $proveedorAnterior);
 
@@ -1215,17 +1215,17 @@ class PedidosModel
                     try {
                         $userId = self::resolveCurrentUserId();
                         $observaciones = null;
-                        
+
                         // Si cambia proveedor, agregar nota
                         if ($huboCambioProveedor) {
                             $stmtNombres = $db->prepare("SELECT nombre FROM usuarios WHERE id = :id");
-                            
+
                             $stmtNombres->execute([':id' => $proveedorAnterior]);
                             $nomAnt = $stmtNombres->fetchColumn() ?: 'Sin asignar';
-                            
+
                             $stmtNombres->execute([':id' => $nuevoProveedor]);
                             $nomNuevo = $stmtNombres->fetchColumn() ?: 'Sin asignar';
-                            
+
                             $obs = "Asignación cambiada: $nomAnt ➝ $nomNuevo";
                             $observaciones = $observaciones ? $observaciones . ". " . $obs : $obs;
                         }
@@ -1237,8 +1237,8 @@ class PedidosModel
                         $histStmt = $db->prepare($histQuery);
                         $histStmt->execute([
                             ':id_pedido' => (int)$data['id_pedido'],
-                            ':ant' => $estadoAnterior, 
-                            ':nuevo' => $nuevoEstado, 
+                            ':ant' => $estadoAnterior,
+                            ':nuevo' => $nuevoEstado,
                             ':user' => $userId,
                             ':obs' => $observaciones,
                             ':created_at' => $fechaRegistro
@@ -1303,7 +1303,6 @@ class PedidosModel
 
             $db->commit();
             return true;
-
         } catch (Exception $e) {
             if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
@@ -1370,7 +1369,6 @@ class PedidosModel
 
             $db->commit();
             return true;
-
         } catch (Exception $e) {
             if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
@@ -1401,14 +1399,15 @@ class PedidosModel
             error_log("[DEBUG] Items count: " . count($items));
             error_log("[DEBUG] Items data: " . json_encode($items, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE));
         }
-        
+
         // NOTA: La gestión de inventario (tabla `stock`) se realiza mediante
         // triggers en la base de datos. No se deben insertar/actualizar filas
         // en `stock` desde PHP en este flujo para evitar discrepancias entre
         // entornos con esquemas distintos. Ver migrations/README_STOCK_TRIGGER.md
         // para detalles y para desplegar los triggers en staging/producción.
 
-        if (empty($items)) {
+        // Permitir items vacíos solo si el payload indicó explícitamente requiere_productos = 0
+        if (empty($items) && (int)($pedido['requiere_productos'] ?? 1) !== 0) {
             error_log("[DEBUG] ERROR: No items provided");
             throw new Exception('El pedido debe incluir al menos un producto.');
         }
@@ -1468,7 +1467,7 @@ class PedidosModel
             if ($resolvedFallbackUser === null) {
                 throw new Exception('No se pudo determinar un id de usuario válido para operaciones de stock. Define FALLBACK_USER_FOR_STOCK en la configuración o asegúrate de que la tabla usuarios contenga al menos un usuario activo.');
             }
-            
+
             // Apply resolved fallback where missing so DB triggers get a valid id
             if (empty($pedido['vendedor']) || $pedido['vendedor'] === null) {
                 $pedido['vendedor'] = $resolvedFallbackUser;
@@ -1518,7 +1517,7 @@ class PedidosModel
                 if ($stockActual < $cantidadSolicitada) {
                     throw new Exception(
                         "Stock insuficiente para el producto '{$productoData['nombre']}'. " .
-                        "Disponible: $stockActual, Solicitado: $cantidadSolicitada."
+                            "Disponible: $stockActual, Solicitado: $cantidadSolicitada."
                     );
                 }
 
@@ -1526,17 +1525,17 @@ class PedidosModel
                 $precioUnitarioUSD = (float)($productoData['precio_usd'] ?? 0);
                 $calculatedTotalUSD += ($precioUnitarioUSD * $cantidadSolicitada);
             }
-            
+
             // Lógica de precios:
             // Si es COMBO, usar los precios totales proporcionados en el payload
             // Si NO es combo (o es null), usar el cálculo automático basado en productos
             $esCombo = !empty($pedido['es_combo']);
-            
+
             if (!$esCombo) {
                 // Si NO es combo, forzamos el precio calculado
                 $pedido['precio_usd'] = $calculatedTotalUSD; // legacy
                 $pedido['precio_total_usd'] = $calculatedTotalUSD; // new field
-                
+
                 // Si tenemos tasa y no tenemos precio local total, calcularlo
                 if (empty($pedido['precio_total_local']) && !empty($pedido['tasa_conversion_usd'])) {
                     $pedido['precio_total_local'] = $calculatedTotalUSD * (float)$pedido['tasa_conversion_usd'];
@@ -1546,13 +1545,13 @@ class PedidosModel
                     $pedido['precio_local'] = $calculatedTotalUSD * (float)$pedido['tasa_conversion_usd'];
                 }
             } else {
-                 // Si ES COMBO, respetamos lo que viene en el payload, pero aseguramos legacy fields
-                 if (empty($pedido['precio_usd']) && !empty($pedido['precio_total_usd'])) {
-                     $pedido['precio_usd'] = $pedido['precio_total_usd'];
-                 }
-                  if (empty($pedido['precio_local']) && !empty($pedido['precio_total_local'])) {
-                     $pedido['precio_local'] = $pedido['precio_total_local'];
-                 }
+                // Si ES COMBO, respetamos lo que viene en el payload, pero aseguramos legacy fields
+                if (empty($pedido['precio_usd']) && !empty($pedido['precio_total_usd'])) {
+                    $pedido['precio_usd'] = $pedido['precio_total_usd'];
+                }
+                if (empty($pedido['precio_local']) && !empty($pedido['precio_total_local'])) {
+                    $pedido['precio_local'] = $pedido['precio_total_local'];
+                }
             }
 
             // Normalizar fecha de entrega para evitar 00:00:00 al crear
@@ -1563,8 +1562,8 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','es_combo','id_pais','id_departamento','id_municipio','id_barrio','municipio','barrio','direccion','municipalitiesName','postalCode','departmentName','Location','betweenStreets','codigo_postal','id_codigo_postal','zona','comentario','coordenadas','id_estado','id_moneda','id_vendedor','id_proveedor', 'id_cliente', 'fecha_entrega'];
-            
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega'];
+
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -1597,7 +1596,7 @@ class PedidosModel
             if (in_array('fecha_ingreso', $columns) && !empty($pedido['fecha_ingreso'])) {
                 $stmt->bindValue(':fecha_ingreso', $pedido['fecha_ingreso']);
             }
-            
+
             if (in_array('coordenadas', $columns)) {
                 $stmt->bindValue(':coordenadas', $coordenadas);
             }
@@ -1653,10 +1652,10 @@ class PedidosModel
                 error_log("[DEBUG] Executing INSERT pedido statement");
                 error_log("[DEBUG] SQL: " . $sql);
             }
-            
+
             $stmt->execute();
             $pedidoId = (int)$db->lastInsertId();
-            
+
             if (defined('DEBUG') && DEBUG) {
                 error_log("[DEBUG] Pedido INSERT SUCCESS - ID: " . $pedidoId);
             }
@@ -1686,9 +1685,9 @@ class PedidosModel
             if (defined('DEBUG') && DEBUG) {
                 error_log("[DEBUG] Committing transaction for pedido ID: " . $pedidoId);
             }
-            
+
             $db->commit();
-            
+
             if (defined('DEBUG') && DEBUG) {
                 error_log("[DEBUG] Transaction COMMITTED successfully for pedido ID: " . $pedidoId);
             }
@@ -1706,17 +1705,16 @@ class PedidosModel
                     $datosAuditoria
                 );
             } catch (Exception $e) {
-                 error_log("Error auditoria crearPedidoConProductos: " . $e->getMessage());
+                error_log("Error auditoria crearPedidoConProductos: " . $e->getMessage());
             }
 
             return $pedidoId;
-
         } catch (Exception $e) {
             if (defined('DEBUG') && DEBUG) {
                 error_log("[DEBUG] EXCEPTION in crearPedidoConProductos: " . $e->getMessage());
                 error_log("[DEBUG] Exception trace: " . $e->getTraceAsString());
             }
-            
+
             if (isset($db) && $db->inTransaction()) {
                 if (defined('DEBUG') && DEBUG) {
                     error_log("[DEBUG] Rolling back transaction");
@@ -1772,7 +1770,7 @@ class PedidosModel
             // Obtener filtro de usuario según permisos
             require_once __DIR__ . '/../utils/permissions.php';
             $filtroUsuario = getIdUsuarioCreadorFilter();
-            
+
             // Admin (filtro = null) ve todos los productos
             // Proveedor (filtro = su ID) ve solo sus productos
             return ProductoModel::listarConInventario($filtroUsuario, false); // false = incluir inactivos también
@@ -1785,7 +1783,7 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Obtener usuarios con rol de Proveedor (Mensajería)
             // Lógica ESTRICTA por nombres de roles autorizados
             $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
@@ -1795,7 +1793,7 @@ class PedidosModel
                     WHERE r.nombre_rol IN ('Proveedor', 'Proveedor CRM', 'Proveedor Mensajeria', 'Proveedor Mensajería')
                     AND u.activo = 1
                     ORDER BY u.nombre";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1827,7 +1825,7 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Obtener usuarios con rol de Cliente (Comercios)
             // Lógica ESTRICTA por nombres de roles autorizados
             $sql = "SELECT DISTINCT u.id, u.nombre, u.email, u.telefono
@@ -1837,7 +1835,7 @@ class PedidosModel
                     WHERE r.nombre_rol IN ('Cliente', 'Cliente CRM')
                     AND u.activo = 1
                     ORDER BY u.nombre";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1888,7 +1886,8 @@ class PedidosModel
         } catch (Exception $e) {
             return false;
         }
-    }public static function obtenerMonedas()
+    }
+    public static function obtenerMonedas()
     {
         return MonedaModel::listar();
     }
@@ -1939,10 +1938,11 @@ class PedidosModel
      *                         Usar cuando el caller (ej: actualizarPedido) ya generó
      *                         un registro unificado para la misma acción.
      */
-    public static function actualizarEstado($id_pedido, $estado, $observaciones = null, bool $skipAudit = false, $fecha_registro = null) {
+    public static function actualizarEstado($id_pedido, $estado, $observaciones = null, bool $skipAudit = false, $fecha_registro = null)
+    {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Obtener estado anterior
             $stmtAnterior = $db->prepare("SELECT id_estado FROM pedidos WHERE id = :id");
             $stmtAnterior->execute([':id' => $id_pedido]);
@@ -1958,14 +1958,14 @@ class PedidosModel
 
             $stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
             $stmt->bindParam(":id_pedido", $id_pedido, PDO::PARAM_INT);
-            
+
             try {
                 $stmt->execute();
                 $resultado = $stmt->rowCount() > 0;
-                
+
                 if ($resultado) {
                     $userId = self::resolveCurrentUserId();
-                    
+
                     if ($fecha_registro) {
                         $db->prepare("SET @current_created_at = :cat")->execute([':cat' => $fecha_registro]);
                     }
@@ -1977,8 +1977,8 @@ class PedidosModel
                     $histStmt = $db->prepare($histQuery);
                     $histStmt->execute([
                         ':id_pedido' => $id_pedido,
-                        ':ant' => $estadoAnterior ?: null, 
-                        ':nuevo' => $estado, 
+                        ':ant' => $estadoAnterior ?: null,
+                        ':nuevo' => $estado,
                         ':user' => $userId,
                         ':obs' => $observaciones,
                         ':created_at' => $fecha_registro
@@ -1996,13 +1996,11 @@ class PedidosModel
                         );
                     }
                 }
-                
+
                 return $resultado;
             } catch (PDOException $e) {
                 return ["success" => false, "message" => "Error SQL: " . $e->getMessage()];
             }
-            
-            
         } catch (PDOException $e) {
             return ["success" => false, "message" => "Error SQL: " . $e->getMessage()];
         }
@@ -2018,7 +2016,8 @@ class PedidosModel
      * @param string|null $numero_orden Número de orden externo (opcional si se provee id_pedido)
      * @return array
      */
-    public static function actualizarEstadoCliente($id_pedido, $id_cliente_auth, $nuevo_estado, $motivo = null, $numero_orden = null) {
+    public static function actualizarEstadoCliente($id_pedido, $id_cliente_auth, $nuevo_estado, $motivo = null, $numero_orden = null)
+    {
         $ID_REPROGRAMADO = 4;
         $ID_DEVUELTO = 7;
         $ID_ENTREGADO = 3;
@@ -2057,7 +2056,7 @@ class PedidosModel
                 $stmt = $db->prepare("SELECT id, id_estado, id_cliente, id_proveedor FROM pedidos WHERE numero_orden = :num AND (id_cliente = :cli OR id_proveedor = :cli2) FOR UPDATE");
                 $stmt->execute([':num' => $numero_orden, ':cli' => $id_cliente_auth, ':cli2' => $id_cliente_auth]);
             }
-            
+
             $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$pedido) {
@@ -2130,7 +2129,6 @@ class PedidosModel
 
             $db->commit();
             return ["success" => true, "message" => "Estado actualizado a " . ($nuevo_estado == $ID_REPROGRAMADO ? "Reprogramado" : "Devuelto") . " correctamente."];
-
         } catch (Exception $e) {
             if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
@@ -2272,7 +2270,6 @@ class PedidosModel
 
             $db->commit();
             return ['success' => true, 'message' => 'Pedido reprogramado correctamente.', 'code' => 200];
-
         } catch (Exception $e) {
             if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
@@ -2287,7 +2284,8 @@ class PedidosModel
      * @param int $id_pedido
      * @return array
      */
-    public static function obtenerHistorialEstados($id_pedido) {
+    public static function obtenerHistorialEstados($id_pedido)
+    {
         $db = (new Conexion())->conectar();
         $query = "SELECT h.*, 
                          u.nombre as usuario_nombre, 
@@ -2299,7 +2297,7 @@ class PedidosModel
                   LEFT JOIN estados_pedidos e_ant ON h.id_estado_anterior = e_ant.id
                   WHERE h.id_pedido = :id_pedido
                   ORDER BY h.created_at DESC";
-        
+
         $stmt = $db->prepare($query);
         $stmt->execute([':id_pedido' => $id_pedido]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -2320,7 +2318,8 @@ class PedidosModel
      * @param int $limit Registros por página (máx 100)
      * @return array { data: array, pagination: array }
      */
-    public static function obtenerEstadoActualPedidos(array $filtros = [], int $page = 1, int $limit = 20): array {
+    public static function obtenerEstadoActualPedidos(array $filtros = [], int $page = 1, int $limit = 20): array
+    {
         $db = (new Conexion())->conectar();
 
         $where  = [];
@@ -2557,7 +2556,8 @@ class PedidosModel
      * @param int $limit Registros por página (máx 100)
      * @return array { data: array, pagination: array }
      */
-    public static function obtenerHistorialEstadosFiltrado(array $filtros = [], int $page = 1, int $limit = 20): array {
+    public static function obtenerHistorialEstadosFiltrado(array $filtros = [], int $page = 1, int $limit = 20): array
+    {
         $db = (new Conexion())->conectar();
 
         $where  = [];
@@ -2567,7 +2567,7 @@ class PedidosModel
         // --- Filtro por Pedido (Número, ID, Cliente o Proveedor) requiere JOIN con tabla pedidos ---
         if (!empty($filtros['numero_orden']) || !empty($filtros['id_cliente']) || !empty($filtros['id_proveedor']) || !empty($filtros['id_pedido'])) {
             $joins .= " INNER JOIN pedidos p ON p.id = h.id_pedido ";
-            
+
             if (!empty($filtros['numero_orden'])) {
                 $where[] = "p.numero_orden = :numero_orden";
                 $params[':numero_orden'] = trim($filtros['numero_orden']);
@@ -2648,7 +2648,7 @@ class PedidosModel
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // ── Fallback: si no hay historial pero sí hay filtro de pedido concreto,
@@ -2658,7 +2658,7 @@ class PedidosModel
                 // Re-usar filtros de seguridad en el fallback
                 $fallbackWhere = [];
                 $fallbackParams = [];
-                
+
                 if (!empty($filtros['numero_orden'])) {
                     $fallbackWhere[] = "p.numero_orden = :f_numero_orden";
                     $fallbackParams[':f_numero_orden'] = $filtros['numero_orden'];
@@ -2731,11 +2731,12 @@ class PedidosModel
     /**
      * Helper para resolver el ID de usuario actual desde sesión o API global
      */
-    public static function resolveCurrentUserId() {
+    public static function resolveCurrentUserId()
+    {
         if (isset($GLOBALS['API_USER_ID']) && is_numeric($GLOBALS['API_USER_ID'])) {
             return (int)$GLOBALS['API_USER_ID'];
         }
-        
+
         if (session_status() === PHP_SESSION_NONE) {
             // Intentar iniciar sesión si no está iniciada, pero con cuidado de no romper headers
             // @ es para silenciar warning si ya se enviaron headers
@@ -2744,10 +2745,10 @@ class PedidosModel
 
         if (isset($_SESSION['user_id'])) return (int)$_SESSION['user_id'];
         if (isset($_SESSION['ID_Usuario'])) return (int)$_SESSION['ID_Usuario'];
-        
+
         // Fallback: si no hay usuario, retornar 1 (Admin) o 0 (Sistema)
         // Retornar 1 es arriesgado si no es Admin. Mejor intentar obtener de global
-        return 1; 
+        return 1;
     }
 
     /**
@@ -2763,7 +2764,7 @@ class PedidosModel
             if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) {
                 return [];
             }
-            
+
             $query = "
                 SELECT 
                     DATE(fecha_ingreso) as fecha, 
@@ -2787,7 +2788,8 @@ class PedidosModel
      * @param string $nombre
      * @return int|null
      */
-    public static function obtenerIdEstadoPorNombre($nombre) {
+    public static function obtenerIdEstadoPorNombre($nombre)
+    {
         try {
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare("SELECT id FROM estados_pedidos WHERE nombre_estado = :nombre");
@@ -2807,7 +2809,8 @@ class PedidosModel
      * @param string|null $fechaDesde Fecha inicio (YYYY-MM-DD). Si es null, usa primer día del mes actual
      * @param string|null $fechaHasta Fecha fin (YYYY-MM-DD). Si es null, usa último día del mes actual
      */
-    public static function obtenerVentasComparativa($proveedorId = null, $fechaDesde = null, $fechaHasta = null) {
+    public static function obtenerVentasComparativa($proveedorId = null, $fechaDesde = null, $fechaHasta = null)
+    {
         try {
             $db = (new Conexion())->conectar();
             if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return [];
@@ -2824,7 +2827,7 @@ class PedidosModel
             $desde = new DateTime($fechaDesde);
             $hasta = new DateTime($fechaHasta);
             $dias = $desde->diff($hasta)->days + 1; // +1 para incluir ambos días
-            
+
             $fechaDesdeAnterior = (clone $desde)->modify("-{$dias} days")->format('Y-m-d');
             $fechaHastaAnterior = (clone $desde)->modify('-1 day')->format('Y-m-d');
 
@@ -2849,7 +2852,7 @@ class PedidosModel
                   $condicionEstado
                   $condicionProveedor
                 GROUP BY DATE(fecha_ingreso) ORDER BY fecha ASC";
-            
+
             // Período Anterior
             $queryAnterior = "
                 SELECT DATE(fecha_ingreso) as fecha, SUM(precio_local) as total 
@@ -2864,7 +2867,7 @@ class PedidosModel
             $stmtActual->bindParam(':fecha_desde', $fechaDesde);
             $stmtActual->bindParam(':fecha_hasta', $fechaHasta);
             $stmtActual->execute();
-            
+
             $stmtAnterior = $db->prepare($queryAnterior);
             $stmtAnterior->bindParam(':fecha_desde_anterior', $fechaDesdeAnterior);
             $stmtAnterior->bindParam(':fecha_hasta_anterior', $fechaHastaAnterior);
@@ -2885,7 +2888,8 @@ class PedidosModel
      * @param string|null $fechaDesde Fecha inicio (YYYY-MM-DD). Si es null, usa primer día del mes actual
      * @param string|null $fechaHasta Fecha fin (YYYY-MM-DD). Si es null, usa último día del mes actual
      */
-    public static function obtenerKPIsMesActual($proveedorId = null, $fechaDesde = null, $fechaHasta = null) {
+    public static function obtenerKPIsMesActual($proveedorId = null, $fechaDesde = null, $fechaHasta = null)
+    {
         try {
             $db = (new Conexion())->conectar();
             if (!self::tableHasColumn($db, 'pedidos', 'precio_local')) return null;
@@ -2937,11 +2941,12 @@ class PedidosModel
      * @param string|null $fechaDesde Fecha inicio (YYYY-MM-DD)
      * @param string|null $fechaHasta Fecha fin (YYYY-MM-DD)
      */
-    public static function obtenerVentasAcumuladasMesActual($proveedorId = null, $fechaDesde = null, $fechaHasta = null) {
+    public static function obtenerVentasAcumuladasMesActual($proveedorId = null, $fechaDesde = null, $fechaHasta = null)
+    {
         // Reutilizamos la lógica de comparativa para obtener los datos diarios y los acumulamos en PHP
         $datos = self::obtenerVentasComparativa($proveedorId, $fechaDesde, $fechaHasta);
         $diario = $datos['actual'];
-        
+
         $acumulado = [];
         $suma = 0;
         foreach ($diario as $dia) {
@@ -2964,7 +2969,7 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Establecer fechas por defecto si no se proporcionan
             if ($fechaDesde === null) {
                 $fechaDesde = date('Y-m-01');
@@ -2972,7 +2977,7 @@ class PedidosModel
             if ($fechaHasta === null) {
                 $fechaHasta = date('Y-m-t');
             }
-            
+
             $idEntregado = self::obtenerIdEstadoPorNombre('Entregado');
             $condicionEstado = "";
             if ($idEntregado) {
@@ -3022,22 +3027,22 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             $where = [];
             $params = [];
-            
+
             if (!empty($filtros['id_estado'])) {
                 $where[] = 'p.id_estado = :id_estado';
                 $params[':id_estado'] = $filtros['id_estado'];
             }
-            
+
             if (!empty($filtros['id_proveedor'])) {
                 $where[] = 'p.id_proveedor = :id_proveedor';
                 $params[':id_proveedor'] = $filtros['id_proveedor'];
             }
-            
+
             if (!empty($filtros['id_vendedor'])) {
                 $where[] = 'p.id_vendedor = :id_vendedor';
                 $params[':id_vendedor'] = $filtros['id_vendedor'];
             }
-            
+
             if (!empty($filtros['prioridad'])) {
                 // p.prioridad was dropped in migration 004
                 // $where[] = 'p.prioridad = :prioridad';
@@ -3054,24 +3059,24 @@ class PedidosModel
                 $params[':id_prop_prov'] = $filtros['id_usuario_propietario'];
                 $params[':id_prop_cli'] = $filtros['id_usuario_propietario'];
             }
-            
+
             if (!empty($filtros['fecha_desde'])) {
                 $where[] = 'p.fecha_ingreso >= :fecha_desde';
                 $params[':fecha_desde'] = $filtros['fecha_desde'];
             }
-            
+
             if (!empty($filtros['fecha_hasta'])) {
                 $where[] = 'p.fecha_ingreso <= :fecha_hasta';
                 $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
             }
-            
+
             if (!empty($filtros['numero_orden'])) {
                 $where[] = 'p.numero_orden LIKE :numero_orden';
                 $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $limitClause = '';
             if (isset($filtros['limit']) && isset($filtros['offset'])) {
                 $limitClause = ' LIMIT :offset, :limit';
@@ -3109,14 +3114,14 @@ class PedidosModel
                     {$whereClause}
                     ORDER BY p.fecha_ingreso DESC
                     {$limitClause}";
-            
+
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $value) {
                 // Bind int for limit/offset strictly
                 if ($key === ':limit' || $key === ':offset') {
-                     $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
                 } else {
-                     $stmt->bindValue($key, $value);
+                    $stmt->bindValue($key, $value);
                 }
             }
             $stmt->execute();
@@ -3139,7 +3144,7 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             $where = [];
             $params = [];
-            
+
             if (!empty($filtros['id_estado'])) {
                 $where[] = 'p.id_estado = :id_estado';
                 $params[':id_estado'] = $filtros['id_estado'];
@@ -3174,11 +3179,11 @@ class PedidosModel
                 $where[] = 'p.numero_orden LIKE :numero_orden';
                 $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $sql = "SELECT COUNT(*) FROM pedidos p {$whereClause}";
-            
+
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $value) {
                 $stmt->bindValue($key, $value);
@@ -3200,7 +3205,7 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Obtener subtotal de productos
             $stmt = $db->prepare('
                 SELECT COALESCE(SUM(subtotal_usd), 0) as subtotal
@@ -3209,12 +3214,12 @@ class PedidosModel
             ');
             $stmt->execute([':id_pedido' => $idPedido]);
             $subtotal = (float)$stmt->fetchColumn();
-            
+
             // Descuento e impuestos fueron eliminados en limpieza de columnas (migración 004)
             $descuento = 0;
             $impuestos = 0;
             $total = $subtotal - $descuento + $impuestos;
-            
+
             return [
                 'subtotal_usd' => $subtotal,
                 'descuento_usd' => $descuento,
@@ -3371,37 +3376,37 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Definir estados considerados como "entregados" y "devueltos"
             // Ajustar según los estados reales en la base de datos
             $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
             $estadosDevueltos = ['Devuelto', 'No entregado', 'Rechazado'];
-            
+
             // Construir placeholders para IN clauses
             $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
             $devueltosPlaceholders = implode(',', array_fill(0, count($estadosDevueltos), '?'));
-            
+
             // Construir WHERE clause
             $where = [];
             $params = [];
-            
+
             if ($clienteId !== null) {
                 $where[] = 'p.id_cliente = ?';
                 $params[] = $clienteId;
             }
-            
+
             if ($fechaDesde !== null) {
                 $where[] = 'p.fecha_ingreso >= ?';
                 $params[] = $fechaDesde . ' 00:00:00';
             }
-            
+
             if ($fechaHasta !== null) {
                 $where[] = 'p.fecha_ingreso <= ?';
                 $params[] = $fechaHasta . ' 23:59:59';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $query = "
                 SELECT 
                     pa.id AS pais_id,
@@ -3425,15 +3430,14 @@ class PedidosModel
                 HAVING total_pedidos > 0
                 ORDER BY total_pedidos DESC
             ";
-            
+
             $stmt = $db->prepare($query);
-            
+
             // Bind parameters: estados + filtros
             $bindParams = array_merge($estadosEntregados, $estadosDevueltos, $estadosEntregados, $estadosDevueltos, $params);
             $stmt->execute($bindParams);
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
         } catch (Exception $e) {
             error_log('Error al obtener efectividad por país: ' . $e->getMessage());
             return [];
@@ -3453,37 +3457,37 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Definir estados considerados como "entregados"
             $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
             $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
-            
+
             // Construir WHERE clause
             $where = [];
             $params = [];
-            
+
             if ($clienteId !== null) {
                 $where[] = 'p.id_cliente = ?';
                 $params[] = $clienteId;
             }
-            
+
             if ($paisId !== null) {
                 $where[] = 'p.id_pais = ?';
                 $params[] = $paisId;
             }
-            
+
             if ($fechaDesde !== null) {
                 $where[] = 'p.fecha_ingreso >= ?';
                 $params[] = $fechaDesde . ' 00:00:00';
             }
-            
+
             if ($fechaHasta !== null) {
                 $where[] = 'p.fecha_ingreso <= ?';
                 $params[] = $fechaHasta . ' 23:59:59';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $query = "
                 SELECT 
                     DATE(p.fecha_ingreso) AS fecha,
@@ -3499,22 +3503,21 @@ class PedidosModel
                 GROUP BY DATE(p.fecha_ingreso)
                 ORDER BY fecha ASC
             ";
-            
+
             $stmt = $db->prepare($query);
-            
+
             // Bind parameters: estados + filtros
             $bindParams = array_merge($estadosEntregados, $estadosEntregados, $params);
             $stmt->execute($bindParams);
-            
+
             $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Formatear fechas para mejor visualización
             foreach ($resultados as &$row) {
                 $row['fecha'] = date('d/m', strtotime($row['fecha']));
             }
-            
+
             return $resultados;
-            
         } catch (Exception $e) {
             error_log('Error al obtener efectividad temporal: ' . $e->getMessage());
             return [];
@@ -3533,33 +3536,33 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
             $estadosDevueltos = ['Devuelto', 'No entregado', 'Rechazado'];
-            
+
             $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
             $devueltosPlaceholders = implode(',', array_fill(0, count($estadosDevueltos), '?'));
-            
+
             $where = [];
             $params = [];
-            
+
             if ($clienteId !== null) {
                 $where[] = 'p.id_cliente = ?';
                 $params[] = $clienteId;
             }
-            
+
             if ($fechaDesde !== null) {
                 $where[] = 'p.fecha_ingreso >= ?';
                 $params[] = $fechaDesde . ' 00:00:00';
             }
-            
+
             if ($fechaHasta !== null) {
                 $where[] = 'p.fecha_ingreso <= ?';
                 $params[] = $fechaHasta . ' 23:59:59';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $query = "
                 SELECT 
                     COUNT(*) AS total_pedidos,
@@ -3573,18 +3576,18 @@ class PedidosModel
                 LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
                 $whereClause
             ";
-            
+
             $stmt = $db->prepare($query);
             $bindParams = array_merge($estadosEntregados, $estadosDevueltos, $estadosEntregados, $estadosDevueltos, $params);
             $stmt->execute($bindParams);
-            
+
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             $total = (int)$result['total_pedidos'];
             $entregados = (int)$result['total_entregados'];
             $devueltos = (int)$result['total_devueltos'];
             $enProceso = (int)$result['en_proceso'];
-            
+
             return [
                 'efectividad_global' => $total > 0 ? round(($entregados / $total) * 100, 2) : 0,
                 'total_entregados' => $entregados,
@@ -3592,7 +3595,6 @@ class PedidosModel
                 'tasa_devolucion' => $total > 0 ? round(($devueltos / $total) * 100, 2) : 0,
                 'total_pedidos' => $total
             ];
-            
         } catch (Exception $e) {
             error_log('Error al obtener KPIs de efectividad: ' . $e->getMessage());
             return [
@@ -3617,35 +3619,35 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             // Calcular período anterior
             $inicio = new DateTime($fechaDesde);
             $fin = new DateTime($fechaHasta);
             $dias = $inicio->diff($fin)->days + 1;
-            
+
             $fechaDesdeAnterior = (clone $inicio)->modify("-$dias days")->format('Y-m-d');
             $fechaHastaAnterior = (clone $inicio)->modify('-1 day')->format('Y-m-d');
-            
+
             $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
             $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
-            
+
             $where = [];
             $params = [];
-            
+
             if ($clienteId !== null) {
                 $where[] = 'p.id_cliente = ?';
                 $params[] = $clienteId;
             }
-            
+
             $whereClause = !empty($where) ? 'AND ' . implode(' AND ', $where) : '';
-            
+
             // Generar labels de días
             $labels = [];
             $period = new DatePeriod($inicio, new DateInterval('P1D'), (clone $fin)->modify('+1 day'));
             foreach ($period as $date) {
                 $labels[] = $date->format('d');
             }
-            
+
             // Datos período actual
             $query = "
                 SELECT 
@@ -3658,23 +3660,23 @@ class PedidosModel
                 GROUP BY DAY(p.fecha_ingreso)
                 ORDER BY dia
             ";
-            
+
             $stmt = $db->prepare($query);
             $bindParams = array_merge($estadosEntregados, [$fechaDesde . ' 00:00:00', $fechaHasta . ' 23:59:59'], $params);
             $stmt->execute($bindParams);
             $resultadosActual = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Datos período anterior
             $stmt->execute(array_merge($estadosEntregados, [$fechaDesdeAnterior . ' 00:00:00', $fechaHastaAnterior . ' 23:59:59'], $params));
             $resultadosAnterior = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Procesar datos
             $dataActual = [];
             $dataAnterior = [];
-            
+
             foreach ($labels as $dia) {
                 $diaNum = (int)$dia;
-                
+
                 // Período actual
                 $encontrado = false;
                 foreach ($resultadosActual as $row) {
@@ -3686,7 +3688,7 @@ class PedidosModel
                     }
                 }
                 if (!$encontrado) $dataActual[] = 0;
-                
+
                 // Período anterior
                 $encontrado = false;
                 foreach ($resultadosAnterior as $row) {
@@ -3699,13 +3701,12 @@ class PedidosModel
                 }
                 if (!$encontrado) $dataAnterior[] = 0;
             }
-            
+
             return [
                 'labels' => $labels,
                 'efectividad_actual' => $dataActual,
                 'efectividad_anterior' => $dataAnterior
             ];
-            
         } catch (Exception $e) {
             error_log('Error al obtener comparativa de efectividad: ' . $e->getMessage());
             return [
@@ -3728,30 +3729,30 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
             $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
-            
+
             $where = [];
             $params = [];
-            
+
             if ($clienteId !== null) {
                 $where[] = 'p.id_cliente = ?';
                 $params[] = $clienteId;
             }
-            
+
             if ($fechaDesde !== null) {
                 $where[] = 'p.fecha_ingreso >= ?';
                 $params[] = $fechaDesde . ' 00:00:00';
             }
-            
+
             if ($fechaHasta !== null) {
                 $where[] = 'p.fecha_ingreso <= ?';
                 $params[] = $fechaHasta . ' 23:59:59';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $query = "
                 SELECT 
                     DATE(p.fecha_ingreso) AS fecha,
@@ -3762,28 +3763,27 @@ class PedidosModel
                 GROUP BY DATE(p.fecha_ingreso)
                 ORDER BY fecha ASC
             ";
-            
+
             $stmt = $db->prepare($query);
             $bindParams = array_merge($estadosEntregados, $params);
             $stmt->execute($bindParams);
-            
+
             $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             $labels = [];
             $data = [];
             $acumulado = 0;
-            
+
             foreach ($resultados as $row) {
                 $labels[] = date('d/m', strtotime($row['fecha']));
                 $acumulado += (int)$row['entregas'];
                 $data[] = $acumulado;
             }
-            
+
             return [
                 'labels' => $labels,
                 'data' => $data
             ];
-            
         } catch (Exception $e) {
             error_log('Error al obtener entregas acumuladas: ' . $e->getMessage());
             return [
@@ -3806,30 +3806,30 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
             $entregadosPlaceholders = implode(',', array_fill(0, count($estadosEntregados), '?'));
-            
+
             $where = [];
             $params = [];
-            
+
             if ($clienteId !== null) {
                 $where[] = 'p.id_cliente = ?';
                 $params[] = $clienteId;
             }
-            
+
             if ($fechaDesde !== null) {
                 $where[] = 'p.fecha_ingreso >= ?';
                 $params[] = $fechaDesde . ' 00:00:00';
             }
-            
+
             if ($fechaHasta !== null) {
                 $where[] = 'p.fecha_ingreso <= ?';
                 $params[] = $fechaHasta . ' 23:59:59';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $query = "
                 SELECT 
                     p.producto AS nombre,
@@ -3846,13 +3846,12 @@ class PedidosModel
                 ORDER BY total_pedidos DESC
                 LIMIT ?
             ";
-            
+
             $stmt = $db->prepare($query);
             $bindParams = array_merge($estadosEntregados, $params, [$limit]);
             $stmt->execute($bindParams);
-            
+
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
         } catch (Exception $e) {
             error_log('Error al obtener top productos con efectividad: ' . $e->getMessage());
             return [];
@@ -3871,27 +3870,27 @@ class PedidosModel
     {
         try {
             $db = (new Conexion())->conectar();
-            
+
             $where = [];
             $params = [];
-            
+
             if ($clienteId !== null) {
                 $where[] = 'p.id_cliente = ?';
                 $params[] = $clienteId;
             }
-            
+
             if ($fechaDesde !== null) {
                 $where[] = 'p.fecha_ingreso >= ?';
                 $params[] = $fechaDesde . ' 00:00:00';
             }
-            
+
             if ($fechaHasta !== null) {
                 $where[] = 'p.fecha_ingreso <= ?';
                 $params[] = $fechaHasta . ' 23:59:59';
             }
-            
+
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            
+
             $query = "
                 SELECT 
                     COALESCE(ep.nombre_estado, 'Sin estado') AS estado,
@@ -3902,22 +3901,21 @@ class PedidosModel
                 GROUP BY ep.nombre_estado
                 ORDER BY cantidad DESC
             ";
-            
+
             $stmt = $db->prepare($query);
             $stmt->execute($params);
-            
+
             $resultados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Calcular total para porcentajes
             $total = array_sum(array_column($resultados, 'cantidad'));
-            
+
             // Agregar porcentajes
             foreach ($resultados as &$row) {
                 $row['porcentaje'] = $total > 0 ? round(((int)$row['cantidad'] / $total) * 100, 2) : 0;
             }
-            
+
             return $resultados;
-            
         } catch (Exception $e) {
             error_log('Error al obtener distribución de estados: ' . $e->getMessage());
             return [];
@@ -3941,9 +3939,15 @@ class PedidosModel
             $db = (new Conexion())->conectar();
 
             $estadosEntregados = ['Entregado', 'Completado', 'Finalizado'];
-            $estadosDevueltos  = ['Devuelto', 'No entregado', 'Domicilio cerrado',
-                                  'No hay quien reciba en domicilio', 'Domicilio no encontrado',
-                                  'Rechazado', 'No puede pagar recaudo'];
+            $estadosDevueltos  = [
+                'Devuelto',
+                'No entregado',
+                'Domicilio cerrado',
+                'No hay quien reciba en domicilio',
+                'Domicilio no encontrado',
+                'Rechazado',
+                'No puede pagar recaudo'
+            ];
 
             $plEnt = implode(',', array_fill(0, count($estadosEntregados), '?'));
             $plDev = implode(',', array_fill(0, count($estadosDevueltos),  '?'));
@@ -3993,14 +3997,15 @@ class PedidosModel
 
             $stmt = $db->prepare($query);
             $bindAll = array_merge(
-                $estadosEntregados, $estadosDevueltos,    // 1st SUM
-                $estadosEntregados, $estadosDevueltos,    // NOT IN
+                $estadosEntregados,
+                $estadosDevueltos,    // 1st SUM
+                $estadosEntregados,
+                $estadosDevueltos,    // NOT IN
                 $estadosEntregados,                       // ROUND
                 $params
             );
             $stmt->execute($bindAll);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (Exception $e) {
             error_log('Error obtenerProveedoresMensajeriaBI: ' . $e->getMessage());
             return [];
@@ -4073,7 +4078,6 @@ class PedidosModel
             );
             $stmt->execute($bindAll);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
-
         } catch (Exception $e) {
             error_log('Error obtenerTopProductosDetalle: ' . $e->getMessage());
             return [];

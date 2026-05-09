@@ -887,7 +887,7 @@
                         <tbody>
                             <tr><td><code>numero_orden</code></td><td>integer/string</td><td>STRICT</td><td>External order ID</td></tr>
                             <tr><td><code>destinatario</code></td><td>string</td><td>STRICT</td><td>Recipient's full name</td></tr>
-                            <tr><td><code>producto_id</code></td><td>array</td><td>STRICT, not empty</td><td>Array of product objects/IDs</td></tr>
+                            <tr><td><code>producto_id</code></td><td>array</td><td>STRICT if <code>requiere_productos</code> is 1 or omitted</td><td>Array of product objects/IDs. Optional when <code>"requiere_productos": 0</code> is sent in the body.</td></tr>
                             <tr><td><code>id_cliente</code></td><td>integer</td><td>STRICT, exists</td><td>Client ID owner</td></tr>
                             <tr><td><code>id_proveedor</code></td><td>integer</td><td>STRICT, exists</td><td>Messenger/Provider ID assigned</td></tr>
                             <tr><td><code>telefono</code></td><td>string</td><td>STRICT</td><td>Contact phone</td></tr>
@@ -904,7 +904,7 @@
                         <tbody>
                             <tr><td><code>numero_orden</code></td><td>integer/string</td><td>ESTRICTO</td><td>ID externo del pedido</td></tr>
                             <tr><td><code>destinatario</code></td><td>string</td><td>ESTRICTO</td><td>Nombre del destinatario</td></tr>
-                            <tr><td><code>producto_id</code></td><td>array</td><td>ESTRICTO, no vacío</td><td>Array de productos (objetos o IDs)</td></tr>
+                            <tr><td><code>producto_id</code></td><td>array</td><td>ESTRICTO si <code>requiere_productos</code> es 1 u omitido</td><td>Array de productos (objetos o IDs). Opcional cuando se envía <code>"requiere_productos": 0</code> en el body.</td></tr>
                             <tr><td><code>id_cliente</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del cliente dueño</td></tr>
                             <tr><td><code>id_proveedor</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del proveedor de mensajería asignado</td></tr>
                             <tr><td><code>telefono</code></td><td>string</td><td>ESTRICTO</td><td>Teléfono de contacto</td></tr>
@@ -916,9 +916,30 @@
                         </tbody>
                     </table>
                     
-                    <!-- ... (middle content skipped for brevity but would be preserved in a real manual edit, here handled by context) ... -->
+                    <!-- Flag: requiere_productos -->
+                    <div class="alert alert-warning mt-3" data-lang="en">
+                        <strong>🚩 Body Flag: <code>requiere_productos</code></strong>
+                        <p class="mb-1 mt-2">Works exactly like <code>es_combo</code> — it’s a field you send in the JSON body:</p>
+                        <ul class="mb-0">
+                            <li><strong>Omitted or <code>1</code></strong> → Products are <strong>required</strong>. Omitting <code>productos</code>/<code>producto_id</code> returns HTTP 422.</li>
+                            <li><strong><code>0</code></strong> → Products are <strong>optional</strong>. The order is created without product items.</li>
+                            <li>Any other value returns a validation error.</li>
+                        </ul>
+                        <pre class="mt-2 mb-0"><code class="language-json">{ "requiere_productos": 0 }</code></pre>
+                    </div>
+                    <div class="alert alert-warning mt-3" data-lang="es">
+                        <strong>🚩 Bandera en el Body: <code>requiere_productos</code></strong>
+                        <p class="mb-1 mt-2">Funciona igual que <code>es_combo</code> — es un campo que envías en el body JSON:</p>
+                        <ul class="mb-0">
+                            <li><strong>Omitido o <code>1</code></strong> → Productos <strong>obligatorios</strong>. Omitir <code>productos</code>/<code>producto_id</code> retorna HTTP 422.</li>
+                            <li><strong><code>0</code></strong> → Productos <strong>opcionales</strong>. El pedido se crea sin items de productos.</li>
+                            <li>Cualquier otro valor retorna error de validación.</li>
+                        </ul>
+                        <pre class="mt-2 mb-0"><code class="language-json">{ "requiere_productos": 0 }</code></pre>
+                    </div>
 
                  <!-- Bulk Orders -->
+
                  <div class="section-container">
                     <h2 class="section-title" data-lang="en">Bulk Import (Async)</h2>
                     <h2 class="section-title" data-lang="es">Importación Masiva (Async)</h2>
@@ -1031,6 +1052,7 @@
                             <tr><td><code>id_proveedor</code></td><td>integer</td><td>✅ Yes</td><td>Messenger/Provider ID assigned to the order</td></tr>
                             <tr><td><code>id_cliente</code></td><td>integer</td><td>null</td><td>Client ID</td></tr>
                             <tr><td><code>id_moneda</code></td><td>integer</td><td>null</td><td>Currency ID (auto-detected from provider's country if not provided)</td></tr>
+                            <tr class="table-warning"><td><code>requiere_productos</code></td><td>integer</td><td>1</td><td>Product requirement flag: <code>1</code> = required (default), <code>0</code> = optional (order created without product items).</td></tr>
                         </tbody>
                     </table>
                     
@@ -1042,6 +1064,7 @@
                             <tr><td><code>id_proveedor</code></td><td>entero</td><td>✅ Sí</td><td>ID del usuario de mensajería (Proveedor) asignado</td></tr>
                             <tr><td><code>id_cliente</code></td><td>entero</td><td>null</td><td>ID del cliente</td></tr>
                             <tr><td><code>id_moneda</code></td><td>entero</td><td>null</td><td>ID de la moneda (auto-detectada del país del proveedor si no se envía)</td></tr>
+                            <tr class="table-warning"><td><code>requiere_productos</code></td><td>entero</td><td>1</td><td>Bandera de productos: <code>1</code> = requeridos (defecto), <code>0</code> = opcionales (pedido se crea sin ítems de producto).</td></tr>
                         </tbody>
                     </table>
 
@@ -1196,6 +1219,27 @@
         { "producto_id": 50, "cantidad": 2 }
     ]
 }</code></pre>
+
+                    <h4 data-lang="en">📦 Example: Order Without Products (<code>requiere_productos: 0</code>)</h4>
+                    <h4 data-lang="es">📦 Ejemplo: Pedido Sin Productos (<code>requiere_productos: 0</code>)</h4>
+                    <div class="alert alert-warning" data-lang="en"><strong>⚠️ Note:</strong> When sending <code>"requiere_productos": 0</code>, omit the <code>productos</code> array entirely. The order is registered without product items.</div>
+                    <div class="alert alert-warning" data-lang="es"><strong>⚠️ Nota:</strong> Al enviar <code>"requiere_productos": 0</code>, omite completamente el array <code>productos</code>. El pedido se registra sin ítems de producto.</div>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 697900,
+    "destinatario": "Maria López",
+    "id_cliente": 9,
+    "telefono": "50588887777",
+    "direccion": "De la Catedral 2 cuadras al lago, Managua",
+    "comentario": "Entregar en recepción.",
+    "id_proveedor": 12,
+    "codigo_postal": "11001",
+    "fecha_entrega": "2026-03-20",
+    "precio_total_local": 450.00,
+    "es_combo": 0,
+    "requiere_productos": 0
+    // No se incluye el campo "productos" — el pedido se crea sin ítems
+}</code></pre>
+
                  </div>
 
 

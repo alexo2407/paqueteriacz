@@ -437,6 +437,12 @@ class PedidoApiController
                     'in'       => 'El campo es_combo solo acepta 0 (producto simple) o 1 (combo). Valor recibido: "%s".',
                 ],
             ],
+            'requiere_productos' => [
+                'required' => false, 'in' => [0, 1],
+                'messages' => [
+                    'in' => 'El campo requiere_productos solo acepta 0 (sin productos) o 1 (con productos). Valor recibido: "%s".',
+                ],
+            ],
         ];
 
         foreach ($rules as $field => $config) {
@@ -486,11 +492,20 @@ class PedidoApiController
         }
 
         // 2. Validar productos
-        $hasProductsArray  = isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0;
+        // El flag requiere_productos viene en el body (como es_combo):
+        //   - Omitido o 1 → productos obligatorios
+        //   - 0           → productos opcionales, el pedido se crea sin items
+        $hasProductsArray   = isset($data['productos']) && is_array($data['productos']) && count($data['productos']) > 0;
         $hasSingleProductId = isset($data['producto_id']) && is_numeric($data['producto_id']);
 
-        if (!$hasSingleProductId && !$hasProductsArray) {
-            $errores['productos'] = 'Debes enviar al menos un producto. Usa el array "productos": [{"producto_id": 72, "cantidad": 1}], o el campo "producto_id" con un ID numérico.';
+        // Leer del body; si no viene, default 1 (requerido)
+        $requiereProductos = true;
+        if (isset($data['requiere_productos']) && is_numeric($data['requiere_productos'])) {
+            $requiereProductos = (int)$data['requiere_productos'] !== 0;
+        }
+
+        if ($requiereProductos && !$hasSingleProductId && !$hasProductsArray) {
+            $errores['productos'] = 'Debes enviar al menos un producto ("productos" o "producto_id"). Si no deseas enviar productos, añade "requiere_productos": 0 en el body.';
         }
 
         if ($hasProductsArray) {
@@ -550,7 +565,7 @@ class PedidoApiController
     private function procesarProductos(array $data): array
     {
         $items = [];
-        
+
         if (!empty($data['productos']) && is_array($data['productos'])) {
             foreach ($data['productos'] as $pi) {
                 if (empty($pi['producto_id']) || !is_numeric($pi['producto_id'])) {
@@ -561,24 +576,22 @@ class PedidoApiController
                 if ($cantidadItem <= 0) {
                     throw new Exception("Cada item en 'productos' debe incluir 'cantidad' mayor a cero.");
                 }
-
                 $items[] = [
-                    'id_producto' => $prodId,
-                    'cantidad' => $cantidadItem,
+                    'id_producto'      => $prodId,
+                    'cantidad'         => $cantidadItem,
                     'cantidad_devuelta' => isset($pi['cantidad_devuelta']) ? (int)$pi['cantidad_devuelta'] : 0,
                 ];
             }
-        } else {
-            if (empty($data['producto_id']) || !is_numeric($data['producto_id'])) {
-                throw new Exception("El campo 'producto_id' es obligatorio y debe ser numérico.");
-            }
-            $productoId = (int)$data['producto_id'];
-            $items = [[
-                'id_producto' => $productoId,
-                'cantidad' => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
+        } elseif (!empty($data['producto_id']) && is_numeric($data['producto_id'])) {
+            // Campo simple producto_id
+            $items[] = [
+                'id_producto'      => (int)$data['producto_id'],
+                'cantidad'         => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
                 'cantidad_devuelta' => isset($data['cantidad_devuelta']) ? (int)$data['cantidad_devuelta'] : 0,
-            ]];
+            ];
         }
+        // Si no viene ninguno y la validación lo permitió (requiere_productos = 0),
+        // retornamos [] y el pedido se crea sin productos.
 
         return $items;
     }
@@ -802,6 +815,8 @@ class PedidoApiController
             'departmentName'     => $data['departmentName']     ?? null,
             'Location'           => $data['Location']           ?? $data['location'] ?? null,
             'betweenStreets'     => $data['betweenStreets']     ?? null,
+            // Flag de control de productos — se pasa al modelo para que respete la regla
+            'requiere_productos' => isset($data['requiere_productos']) ? (int)$data['requiere_productos'] : 1,
         ];
 
         // Normalizar valores 0 a null
