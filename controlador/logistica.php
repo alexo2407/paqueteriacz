@@ -27,7 +27,7 @@ class LogisticaController {
 
         // Filtros — todos los parámetros GET sanitizados
         // Tab "En Proceso": SIN default de fecha → muestra TODOS los pedidos activos
-        // (sin importar mes de ingreso; el filtro de estados 1 y 2 ya los acota)
+        // (sin importar mes de ingreso; el filtro de estados 1, 2 y 4 ya los acota)
         $fechaDesde = isset($_GET['fecha_desde']) && $_GET['fecha_desde'] !== ''
             ? $_GET['fecha_desde']
             : '';
@@ -147,14 +147,14 @@ class LogisticaController {
 
         // Sanitizar filtros
         $tab = $_GET['tab'] ?? 'all';
-        $soloActivos = ($tab === 'pedidos'); // Tab "En Proceso" → solo estados 1 y 2
+        $soloActivos = ($tab === 'pedidos'); // Tab "En Proceso" → estados 1, 2 y 4 (En bodega, En ruta, Reprogramado)
 
         $filtros = [
             'fecha_desde' => $_GET['fecha_desde'] ?? '',
             'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
             'search'      => $_GET['search'] ?? '',
             'id_cliente'  => isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0,
-            // Tab "En Proceso": respetar id_estado del GET (solo afecta a estados 1 y 2 por el IN(1,2) del modelo)
+            // Tab "En Proceso": respetar id_estado del GET (afecta estados 1, 2 y 4 según el IN del modelo)
             'id_estado'   => isset($_GET['id_estado']) && is_numeric($_GET['id_estado']) ? (int)$_GET['id_estado'] : 0,
         ];
 
