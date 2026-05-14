@@ -15,9 +15,15 @@
  * {
  *   "customersId":   54,
  *   "auditUser":     "rutaexmex.api",
+ *
+ *   // Opción A — ID directo (shortcut; omite el mapeo state/substate):
+ *   "id_estado":     4,
+ *
+ *   // Opción B — Nombres RutaEx (requeridos si NO se envía id_estado):
  *   "state":         "Reprogramado",
  *   "substate":      "Nuevo Intento",
- *   "dateToReceive": "2026-05-04",       // obligatorio si state = "Reprogramado"
+ *
+ *   "dateToReceive": "2026-05-04",       // obligatorio si estado resultante = 4 (Reprogramado)
  *   "notes":         "Texto libre...",   // opcional
  *   "ordersNumbers": [
  *     { "orderNumber": "123987123456" },
@@ -160,7 +166,7 @@ try {
     }
 
     // ─── 3. Validar campos obligatorios ────────────────────────────────────
-    $required = ['customersId', 'auditUser', 'state', 'substate', 'ordersNumbers'];
+    $required = ['customersId', 'auditUser', 'ordersNumbers'];
     foreach ($required as $field) {
         if (!isset($body[$field]) || $body[$field] === '') {
             http_response_code(400);
@@ -175,59 +181,94 @@ try {
         exit;
     }
 
-    $state     = trim($body['state']);
-    $substate  = trim($body['substate']);
     $notes     = trim($body['notes'] ?? '');
     $auditUser = trim($body['auditUser'] ?? 'rutaex');
 
-    // ─── 4. Mapear estado RutaEx → ID interno ─────────────────────────────
-    // Normalizar (trim + lowercase) para comparación robusta
-    $stateKey    = $state;
-    $substateKey = mb_strtolower(trim($substate), 'UTF-8');
+    // ─── 4. Resolver ID de estado ──────────────────────────────────────────
+    // Opción A: id_estado enviado directamente → shortcut, omite el mapeo.
+    // Opción B: se resuelve a partir de state + substate (comportamiento original).
+    // Al menos uno de los dos caminos debe estar presente.
+    $idEstadoNuevo = null;
+    $observaciones = '';
 
-    if (!array_key_exists($stateKey, RUTAEX_STATE_MAP)) {
-        http_response_code(400);
-        echo json_encode([
-            'success'      => false,
-            'message'      => "Estado no reconocido: '$state'.",
-            'valid_states' => array_keys(RUTAEX_STATE_MAP),
-        ]);
-        exit;
-    }
+    if (isset($body['id_estado']) && $body['id_estado'] !== '') {
+        // ── Opción A: ID directo ───────────────────────────────────────────
+        $idEstadoNuevo = (int)$body['id_estado'];
+        if ($idEstadoNuevo <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => "'id_estado' debe ser un entero positivo."]);
+            exit;
+        }
+        $state    = $body['state']    ?? null;
+        $substate = $body['substate'] ?? null;
 
-    $substateMap = RUTAEX_STATE_MAP[$stateKey];
-
-    if (!array_key_exists($substateKey, $substateMap)) {
-        // Fallback: si solo hay un valor en el mapa (ej. Confirmado/Entregado)
-        // usarlo directamente sin importar el substate recibido
-        if (count($substateMap) === 1) {
-            $idEstadoNuevo = reset($substateMap);
-        } else {
+        // Construir observaciones con la info disponible
+        $observaciones = "RutaEx [{$auditUser}] → id_estado:{$idEstadoNuevo}";
+        if ($state)    { $observaciones .= " ({$state}"; }
+        if ($substate) { $observaciones .= " / {$substate}"; }
+        if ($state)    { $observaciones .= ")"; }
+        if ($notes !== '') { $observaciones .= ": {$notes}"; }
+    } else {
+        // ── Opción B: Mapeo por state + substate ──────────────────────────
+        if (empty($body['state']) || empty($body['substate'])) {
             http_response_code(400);
             echo json_encode([
-                'success'         => false,
-                'message'         => "Substate '$substate' no reconocido para state '$state'.",
-                'valid_substates' => array_keys($substateMap),
+                'success' => false,
+                'message' => "Debe enviar 'id_estado' directamente, o bien 'state' y 'substate' para el mapeo automático.",
             ]);
             exit;
         }
-    } else {
-        $idEstadoNuevo = $substateMap[$substateKey];
+
+        $state    = trim($body['state']);
+        $substate = trim($body['substate']);
+
+        // Normalizar substate a lowercase para comparación robusta
+        $stateKey    = $state;
+        $substateKey = mb_strtolower($substate, 'UTF-8');
+
+        if (!array_key_exists($stateKey, RUTAEX_STATE_MAP)) {
+            http_response_code(400);
+            echo json_encode([
+                'success'      => false,
+                'message'      => "Estado no reconocido: '$state'.",
+                'valid_states' => array_keys(RUTAEX_STATE_MAP),
+            ]);
+            exit;
+        }
+
+        $substateMap = RUTAEX_STATE_MAP[$stateKey];
+
+        if (!array_key_exists($substateKey, $substateMap)) {
+            // Fallback: si solo hay un valor en el mapa (ej. Confirmado/Entregado)
+            // usarlo directamente sin importar el substate recibido
+            if (count($substateMap) === 1) {
+                $idEstadoNuevo = reset($substateMap);
+            } else {
+                http_response_code(400);
+                echo json_encode([
+                    'success'         => false,
+                    'message'         => "Substate '$substate' no reconocido para state '$state'.",
+                    'valid_substates' => array_keys($substateMap),
+                ]);
+                exit;
+            }
+        } else {
+            $idEstadoNuevo = $substateMap[$substateKey];
+        }
+
+        // Construir texto de observaciones
+        $observaciones = "RutaEx [{$auditUser}] → {$state} / {$substate}";
+        if ($notes !== '') {
+            $observaciones .= ": {$notes}";
+        }
     }
 
-    // Construir texto de observaciones:
-    // Formato: "RutaEx [auditUser] → state / substate[: notes]"
-    $observaciones = "RutaEx [{$auditUser}] → {$state} / {$substate}";
-    if ($notes !== '') {
-        $observaciones .= ": {$notes}";
-    }
-
-    // ─── 5. Fecha de entrega (obligatoria solo en Reprogramado) ───────────
+    // ─── 5. Fecha de entrega (obligatoria solo en estado Reprogramado = 4) ─
     $fechaEntrega = null;
-    if ($state === 'Reprogramado') {
+    if ($idEstadoNuevo === 4) {
         if (empty($body['dateToReceive'])) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => "'dateToReceive' es obligatorio cuando state es 'Reprogramado'."]);
+            echo json_encode(['success' => false, 'message' => "'dateToReceive' es obligatorio cuando el estado resultante es 'Reprogramado' (id=4)."]);
             exit;
         }
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $body['dateToReceive'])) {
