@@ -2218,7 +2218,16 @@ class PedidosModel
                 return ['success' => false, 'message' => 'No se puede reprogramar un pedido que ya fue entregado.', 'code' => 409];
             }
 
-            // 3. Actualizar estado + fecha_entrega (y opcionalmente id_cliente) en una sola query
+            // 3. Inyectar contexto para el trigger after_pedido_update_estado.
+            // El trigger usa @current_user_id y @current_observaciones para generar
+            // el registro en pedidos_historial_estados. Al setearlo aquí evitamos
+            // un INSERT manual duplicado (el trigger es la única fuente de verdad).
+            $obsTexto = $motivo ?? 'Reprogramado vía API';
+            $db->exec("SET @current_user_id = {$actorUserId}, @current_observaciones = " .
+                $db->quote($obsTexto));
+
+            // 4. Actualizar estado + fecha_entrega (y opcionalmente id_cliente) en una sola query.
+            // El trigger se dispara aquí y escribe el historial automáticamente.
             $setClause = $idCliente !== null
                 ? 'id_estado = :nuevo_estado, fecha_entrega = :fecha_entrega, id_cliente = :id_cliente, updated_at = NOW()'
                 : 'id_estado = :nuevo_estado, fecha_entrega = :fecha_entrega, updated_at = NOW()';
@@ -2234,21 +2243,7 @@ class PedidosModel
                 $updParams[':id_cliente'] = $idCliente;
             }
             $upd->execute($updParams);
-
-            // 4. Registrar en historial de estados
-            $hist = $db->prepare(
-                'INSERT INTO pedidos_historial_estados
-                     (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at)
-                 VALUES
-                     (:id_pedido, :ant, :nuevo, :user, :obs, NOW())'
-            );
-            $hist->execute([
-                ':id_pedido' => $pedidoId,
-                ':ant'       => $estadoActual,
-                ':nuevo'     => $idEstado,
-                ':user'      => $actorUserId,
-                ':obs'       => $motivo,
-            ]);
+            // (sin INSERT manual — el trigger ya insertó en pedidos_historial_estados)
 
             // 5. Auditoría
             try {
