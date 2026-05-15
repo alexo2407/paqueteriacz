@@ -148,12 +148,22 @@ try {
     }
 
     // ── 5. Respuesta exitosa ───────────────────────────────────────────────
-    $tz         = new DateTimeZone('America/Managua');
-    $ahoraLocal = (new DateTime('now', $tz))->format('Y-m-d H:i:s');
+    $tz           = new DateTimeZone('America/Managua');
+    $ahoraLocal   = (new DateTime('now', $tz))->format('Y-m-d H:i:s');
+    $nombreEstado = $resultado['nombre_estado'] ?? 'actualizado';
 
-    responder(true, "Pedido {$numeroOrden} reprogramado para el {$fechaEntrega}.", [
+    // Mensaje dinámico: si es Reprogramado (ID 4) incluye la nueva fecha;
+    // para cualquier otro estado usa el nombre real de la BD
+    if ($idEstado === 4) {
+        $msg = "Pedido {$numeroOrden} reprogramado para el {$fechaEntrega}.";
+    } else {
+        $msg = "Pedido {$numeroOrden} actualizado al estado '{$nombreEstado}'.";
+    }
+
+    responder(true, $msg, [
         'numero_orden'    => $numeroOrden,
         'id_estado'       => $idEstado,
+        'estado'          => $nombreEstado,
         'id_cliente'      => $idCliente,
         'fecha_entrega'   => $fechaEntrega,
         'motivo'          => $motivo !== '' ? $motivo : null,

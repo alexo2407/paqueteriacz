@@ -2171,13 +2171,15 @@ class PedidosModel
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
-            // 0. Validar que el id_estado exista en la tabla estados_pedidos
-            $stmtEstado = $db->prepare('SELECT COUNT(*) FROM estados_pedidos WHERE id = :id');
+            // 0. Validar que el id_estado exista en la tabla estados_pedidos y obtener su nombre
+            $stmtEstado = $db->prepare('SELECT nombre_estado FROM estados_pedidos WHERE id = :id LIMIT 1');
             $stmtEstado->execute([':id' => $idEstado]);
-            if ((int)$stmtEstado->fetchColumn() === 0) {
+            $rowEstado = $stmtEstado->fetch(PDO::FETCH_ASSOC);
+            if (!$rowEstado) {
                 $db->rollBack();
                 return ['success' => false, 'message' => "El estado con ID {$idEstado} no existe.", 'code' => 400];
             }
+            $nombreEstado = $rowEstado['nombre_estado'];
 
             // 1. Bloquear y cargar el pedido
             if ($isAdmin) {
@@ -2264,7 +2266,7 @@ class PedidosModel
             }
 
             $db->commit();
-            return ['success' => true, 'message' => 'Pedido reprogramado correctamente.', 'code' => 200];
+            return ['success' => true, 'message' => 'OK', 'nombre_estado' => $nombreEstado, 'code' => 200];
         } catch (Exception $e) {
             if (isset($db) && $db->inTransaction()) {
                 $db->rollBack();
