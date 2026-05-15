@@ -2304,8 +2304,9 @@ class PedidosModel
      * @param array $filtros {
      *   numero_orden?: string,   Número de orden exacto
      *   id_estado?: int,         Filtrar por estado actual
-     *   id_cliente?: int,        Filtrar por cliente
-     *   id_proveedor?: int,      Filtrar por proveedor
+     *   id_usuario_pertenencia?: int, Restringe a pedidos donde el usuario es cliente O proveedor
+     *   id_cliente?: int,        (Admin) Filtrar por cliente exacto
+     *   id_proveedor?: int,      (Admin) Filtrar por proveedor exacto
      *   fecha_desde?: string,    Fecha ingreso desde (Y-m-d)
      *   fecha_hasta?: string,    Fecha ingreso hasta (Y-m-d)
      * }
@@ -2328,6 +2329,13 @@ class PedidosModel
         if (!empty($filtros['id_estado']) && is_numeric($filtros['id_estado'])) {
             $where[]  = 'p.id_estado = :id_estado';
             $params[':id_estado'] = (int)$filtros['id_estado'];
+        }
+
+        // Restricción de pertenencia: el usuario es cliente O proveedor del pedido
+        if (!empty($filtros['id_usuario_pertenencia'])) {
+            $where[]  = '(p.id_cliente = :pertenencia_1 OR p.id_proveedor = :pertenencia_2)';
+            $params[':pertenencia_1'] = (int)$filtros['id_usuario_pertenencia'];
+            $params[':pertenencia_2'] = (int)$filtros['id_usuario_pertenencia'];
         }
 
         if (!empty($filtros['id_cliente']) && is_numeric($filtros['id_cliente'])) {

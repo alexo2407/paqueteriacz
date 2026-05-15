@@ -8,14 +8,18 @@
  *
  * Requiere autenticación Bearer JWT.
  *
+ * Scoping automático por rol:
+ * - Admin     → ve todos los pedidos; puede filtrar por id_cliente / id_proveedor.
+ * - No-admin  → solo ve pedidos donde es cliente o proveedor (id_usuario_pertenencia).
+ *
  * Query Params (todos opcionales):
  * ------------------------------------------------------------------
  * | Parámetro    | Tipo   | Descripción                            |
  * |--------------|--------|----------------------------------------|
  * | numero_orden | string | Número de orden exacto                 |
  * | id_estado    | int    | Filtrar por estado actual              |
- * | id_cliente   | int    | Filtrar por cliente                    |
- * | id_proveedor | int    | Filtrar por proveedor/mensajero        |
+ * | id_cliente   | int    | Solo admins: filtrar por cliente       |
+ * | id_proveedor | int    | Solo admins: filtrar por proveedor     |
  * | fecha_desde  | string | Fecha ingreso desde (Y-m-d)            |
  * | fecha_hasta  | string | Fecha ingreso hasta (Y-m-d)            |
  * | page         | int    | Página (default: 1)                    |
@@ -77,8 +81,17 @@ try {
         responder(false, $validacion['message'], null, 401);
     }
 
+    $authUserId   = (int)($validacion['data']['id']  ?? 0);
+    $authUserRole = (int)($validacion['data']['rol'] ?? 0);
+    $isAdmin      = ($authUserRole === (defined('ROL_ADMIN') ? ROL_ADMIN : 1));
+
     // ── Filtros ────────────────────────────────────────────────────────────
     $filtros = [];
+
+    // Los no-admin solo ven pedidos donde son cliente o proveedor
+    if (!$isAdmin) {
+        $filtros['id_usuario_pertenencia'] = $authUserId;
+    }
 
     if (!empty($_GET['numero_orden'])) {
         $filtros['numero_orden'] = trim($_GET['numero_orden']);
@@ -88,12 +101,14 @@ try {
         $filtros['id_estado'] = (int)$_GET['id_estado'];
     }
 
-    if (!empty($_GET['id_cliente']) && is_numeric($_GET['id_cliente'])) {
-        $filtros['id_cliente'] = (int)$_GET['id_cliente'];
-    }
-
-    if (!empty($_GET['id_proveedor']) && is_numeric($_GET['id_proveedor'])) {
-        $filtros['id_proveedor'] = (int)$_GET['id_proveedor'];
+    // id_cliente / id_proveedor solo aplican para admins
+    if ($isAdmin) {
+        if (!empty($_GET['id_cliente']) && is_numeric($_GET['id_cliente'])) {
+            $filtros['id_cliente'] = (int)$_GET['id_cliente'];
+        }
+        if (!empty($_GET['id_proveedor']) && is_numeric($_GET['id_proveedor'])) {
+            $filtros['id_proveedor'] = (int)$_GET['id_proveedor'];
+        }
     }
 
     if (!empty($_GET['fecha_desde'])) {
