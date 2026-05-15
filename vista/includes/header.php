@@ -463,6 +463,9 @@
                 <span>Tracking de Estados</span>
             </a>
             <?php endif; ?>
+            <a href="<?= RUTA_URL ?>pedidos/reportes" class="nav-link">
+                <i class="bi bi-file-earmark-bar-graph"></i> Reporte de Pedidos
+            </a>
             <?php endif; ?>
 
             <?php if ($isRepartidor || $isAdmin): ?>

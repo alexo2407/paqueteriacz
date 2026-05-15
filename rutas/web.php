@@ -1423,6 +1423,15 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] ==
 
 
 // -----------------------
+// -----------------------
+// Reporte de Pedidos por Proveedor
+// GET ?enlace=pedidos/reportes
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'pedidos' && ($ruta[1] ?? '') === 'reportes') {
+    require_once __DIR__ . '/../controlador/pedidos/reporte_proveedor.php';
+    exit;
+}
+
 // Stock: Movimientos y Saldo por Producto
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'stock') {
