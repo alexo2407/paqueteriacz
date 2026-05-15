@@ -2567,8 +2567,8 @@ class PedidosModel
         $params = [];
         $joins  = "";
 
-        // --- Filtro por Pedido (Número, ID, Cliente o Proveedor) requiere JOIN con tabla pedidos ---
-        if (!empty($filtros['numero_orden']) || !empty($filtros['id_cliente']) || !empty($filtros['id_proveedor']) || !empty($filtros['id_pedido'])) {
+        // --- Filtro por Pedido (Número, ID, Cliente, Proveedor o Pertenencia) requiere JOIN con tabla pedidos ---
+        if (!empty($filtros['numero_orden']) || !empty($filtros['id_cliente']) || !empty($filtros['id_proveedor']) || !empty($filtros['id_pedido']) || !empty($filtros['id_usuario_pertenencia'])) {
             $joins .= " INNER JOIN pedidos p ON p.id = h.id_pedido ";
 
             if (!empty($filtros['numero_orden'])) {
