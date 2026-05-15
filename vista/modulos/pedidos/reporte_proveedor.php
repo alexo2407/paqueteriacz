@@ -45,19 +45,26 @@ if ($isPublicLink) {
     }
 
     // Token válido: simular contexto de usuario
-    $isAdmin     = false;
-    $isProveedor = true;
-    $currUserId  = $pubU;
-    $db          = $dbPub;
+    // Determinar tipo por rol en BD
+    $stmtRol = $dbPub->prepare("SELECT id_rol FROM usuarios_roles WHERE id_usuario = :id LIMIT 1");
+    $stmtRol->execute([':id' => $pubU]);
+    $pubRol  = (int)$stmtRol->fetchColumn();
+
+    $isAdmin        = false;
+    $isProveedorExt = ($pubRol == ROL_CLIENTE);   // rol 5 en BD → aparece en id_proveedor
+    $isClienteExt   = ($pubRol == ROL_PROVEEDOR); // rol 4 en BD → aparece en id_cliente
+    $currUserId     = $pubU;
+    $db             = $dbPub;
 
 } else {
     // Acceso normal con sesión
     require_login();
-    $isAdmin     = isSuperAdmin();
-    $currRol     = $_SESSION['rol'] ?? 0;
-    $isProveedor = ($currRol == 4);
-    $currUserId  = getCurrentUserId();
-    $db          = (new Conexion())->conectar();
+    $isAdmin        = isSuperAdmin();
+    $currRol        = $_SESSION['rol'] ?? 0;
+    $isProveedorExt = ($currRol == ROL_CLIENTE);   // rol 5 en BD ("Proveedor") → id_proveedor en pedidos
+    $isClienteExt   = ($currRol == ROL_PROVEEDOR); // rol 4 en BD ("Cliente")   → id_cliente en pedidos
+    $currUserId     = getCurrentUserId();
+    $db             = (new Conexion())->conectar();
 }
 
 // ── Token enlace público del usuario ─────────────────────────────────────────
@@ -68,10 +75,13 @@ $tokenEnlacePublico = $tokenRow['token_enlace_publico'] ?? '';
 $currUserNombre     = $tokenRow['nombre'] ?? ($_SESSION['nombre'] ?? '');
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
-$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-01');
+// Default: 3 meses atrás para que los usuarios vean datos históricos recientes
+$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-d', strtotime('-3 months'));
 $fechaHasta  = $_GET['fecha_hasta'] ?? date('Y-m-d');
-$idEstado    = (int)($_GET['id_estado']    ?? 0);
-$idProveedor = $isProveedor ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
+$idEstado    = (int)($_GET['id_estado'] ?? 0);
+// Scoping: forzar filtro al usuario actual si no es admin
+$idProveedor = (!$isAdmin && $isProveedorExt) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
+$idCliente   = (!$isAdmin && $isClienteExt)   ? $currUserId : 0;
 $export      = isset($_GET['export']) && $_GET['export'] === '1';
 
 // ── Catálogo de estados para el filtro dropdown ───────────────────────────────
@@ -97,11 +107,22 @@ $params = [
     ':hasta' => $fechaHasta,
 ];
 
-if ($idProveedor > 0) {
-    $where[]              = 'p.id_cliente = :id_proveedor';
-    $params[':id_proveedor'] = $idProveedor;
-} elseif (!$isAdmin) {
-    // No-admin sin proveedor definido: no mostrar nada
+if ($isAdmin) {
+    // Admin puede filtrar por cualquier proveedor (id_proveedor)
+    if ($idProveedor > 0) {
+        $where[]                 = 'p.id_proveedor = :id_proveedor';
+        $params[':id_proveedor'] = $idProveedor;
+    }
+} elseif ($isProveedorExt) {
+    // Usuario "Proveedor" (rol 5) → sus pedidos en id_proveedor
+    $where[]                 = 'p.id_proveedor = :id_proveedor';
+    $params[':id_proveedor'] = $currUserId;
+} elseif ($isClienteExt) {
+    // Usuario "Cliente" (rol 4) → sus pedidos en id_cliente
+    $where[]             = 'p.id_cliente = :id_cliente';
+    $params[':id_cliente'] = $currUserId;
+} else {
+    // Sin rol reconocido: no mostrar nada
     $where[] = '1 = 0';
 }
 
@@ -488,7 +509,7 @@ if ($export && !empty($pedidos)) {
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <?php elseif ($isProveedor): ?>
+                <?php elseif ($isProveedorExt || $isClienteExt): ?>
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
                         <i class="bi bi-person-badge"></i> Proveedor
