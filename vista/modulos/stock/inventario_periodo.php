@@ -90,19 +90,10 @@ $params = [
     ':desde' => $fechaDesde . ' 00:00:00',
     ':hasta' => $fechaHasta . ' 23:59:59',
 ];
+// Condiciones que van en el ON del LEFT JOIN (sobre la tabla pedidos)
+// para que movimientos sin pedido (ajustes manuales) no sean excluidos.
+$joinOnExtras = [];
 
-if ($idCliente > 0) {
-    $where[]              = 'ped.id_cliente = :id_cliente';
-    $params[':id_cliente'] = $idCliente;
-}
-if ($idProveedor > 0) {
-    $where[]                = 'ped.id_proveedor = :id_proveedor';
-    $params[':id_proveedor'] = $idProveedor;
-}
-if ($idEstado > 0) {
-    $where[]             = 'ped.id_estado = :id_estado';
-    $params[':id_estado'] = $idEstado;
-}
 if ($idProducto > 0) {
     $where[]               = 's.id_producto = :id_producto';
     $params[':id_producto'] = $idProducto;
@@ -119,15 +110,42 @@ if (!$isAdmin && ($isRealCliente || $isRealProveedor)) {
     }
 }
 
-$whereStr = 'WHERE ' . implode(' AND ', $where);
+// ── Determinar tipo de JOIN y dónde poner los filtros de pedido ──────────────
+// Si es admin Y hay filtros de pedido → INNER JOIN (excluye ajustes manuales, solo pedidos)
+// En cualquier otro caso → LEFT JOIN con los filtros en el ON (incluye ajustes manuales)
+$hayFiltrosPedido = ($idCliente > 0 || $idProveedor > 0 || $idEstado > 0);
+$joinType = ($hayFiltrosPedido && $isAdmin) ? 'INNER JOIN' : 'LEFT JOIN';
 
-// Si hay filtros de pedido (cliente/proveedor/estado), forzamos JOIN INNER en pedidos
-// para que los ajustes manuales sin referencia no contaminen el reporte.
-// EXCEPCIÓN: Si el filtro es automático por ser Cliente/Proveedor, usamos LEFT JOIN
-// para que vean sus productos aunque no tengan pedidos asociados aún.
-$joinType = ($idCliente > 0 || $idProveedor > 0 || $idEstado > 0)
-    ? (($isAdmin) ? 'INNER JOIN' : 'LEFT JOIN')
-    : 'LEFT JOIN';
+if ($idCliente > 0) {
+    if ($joinType === 'INNER JOIN') {
+        $where[]              = 'ped.id_cliente = :id_cliente';
+    } else {
+        $joinOnExtras[]       = 'ped.id_cliente = :id_cliente';
+    }
+    $params[':id_cliente'] = $idCliente;
+}
+if ($idProveedor > 0) {
+    if ($joinType === 'INNER JOIN') {
+        $where[]                = 'ped.id_proveedor = :id_proveedor';
+    } else {
+        $joinOnExtras[]         = 'ped.id_proveedor = :id_proveedor';
+    }
+    $params[':id_proveedor'] = $idProveedor;
+}
+if ($idEstado > 0) {
+    if ($joinType === 'INNER JOIN') {
+        $where[]             = 'ped.id_estado = :id_estado';
+    } else {
+        $joinOnExtras[]      = 'ped.id_estado = :id_estado';
+    }
+    $params[':id_estado'] = $idEstado;
+}
+
+$whereStr  = 'WHERE ' . implode(' AND ', $where);
+$joinOnStr = 'ped.id = s.referencia_id AND s.referencia_tipo = \'pedido\'';
+if (!empty($joinOnExtras)) {
+    $joinOnStr .= ' AND ' . implode(' AND ', $joinOnExtras);
+}
 
 $sqlMovs = "
     SELECT
@@ -140,7 +158,7 @@ $sqlMovs = "
     FROM stock s
     JOIN productos pr ON pr.id = s.id_producto
     {$joinType} pedidos ped
-        ON ped.id = s.referencia_id AND s.referencia_tipo = 'pedido'
+        ON {$joinOnStr}
     {$whereStr}
     GROUP BY DATE(s.created_at), pr.id, pr.nombre, s.tipo_movimiento
     ORDER BY fecha ASC, pr.nombre ASC

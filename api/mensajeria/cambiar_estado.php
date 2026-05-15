@@ -41,8 +41,14 @@ try {
     $clientId = (int)($userData['id'] ?? 0);
     $userRole = (int)($userData['rol'] ?? 0);
 
+    // Exponer rol e ID globalmente para que el modelo los lea en sus guards de permisos
+    $GLOBALS['API_USER_ROLE'] = $userRole;
+    $GLOBALS['API_USER_ID']   = $clientId;
+
     // 2. Verificar Rol (Permitir Admin, Proveedor de Logística y Mensajería)
     // Nota: Los IDs 4 y 5 están intercambiados semánticamente en este proyecto.
+    // ROL_CLIENTE=4 → dueño del ecommerce (restricciones de estado)
+    // ROL_PROVEEDOR=5 → mensajería (puede usar Entregado y Devuelto)
     if ($userRole !== ROL_CLIENTE && $userRole !== ROL_PROVEEDOR && $userRole !== ROL_ADMIN) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'ERROR_PERMISOS', 'detail' => 'Tu rol no tiene permiso para acceder a la API de Mensajería']);

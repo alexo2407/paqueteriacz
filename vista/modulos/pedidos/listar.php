@@ -550,20 +550,22 @@ require_once __DIR__ . '/../../../utils/permissions.php';
                     $pedidos = $listarPedidos->listarPedidosExtendidos();
 
                     // Determinar si el usuario tiene permiso para cambiar el estado.
-                    // Los Proveedores solo lectura, pero Repartidores y Clientes (Logística) pueden cambiarlo.
+                    // Proveedor (mensajero) SÍ puede cambiar a cualquier estado, incluyendo Entregado/Devuelto.
+                    // Cliente (externo) tiene estados restringidos: solo puede usar Reprogramado.
                     $rolesNombres = $_SESSION['roles_nombres'] ?? [];
-                    $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
-                    $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
-                    // FIX: Check for 'Cliente' string explicitly as config constant might be swapped/confusing
+                    $isAdmin      = in_array(ROL_NOMBRE_ADMIN,      $rolesNombres, true);
+                    $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR,  $rolesNombres, true);
+                    $isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR,   $rolesNombres, true);
+                    // FIX: Check for 'Cliente' string explicitly
                     $isCliente = in_array('Cliente', $rolesNombres, true) || in_array('cliente', $rolesNombres, true);
-                    
-                    // Solo deshabilitar si es Proveedor y NO es nada más (ni Admin ni Cliente ni Repartidor)
-                    $isProveedorOnly = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) && !$isAdmin && !$isRepartidor && !$isCliente;
-                    $disabledAttr = $isProveedorOnly ? 'disabled' : '';
+                    // Proveedores pueden cambiar estados: select siempre habilitado para ellos
+                    $disabledAttr = ''; // No se deshabilita por rol de Proveedor
 
-                    // IDs de estados a los que un Cliente puede cambiar (Reprogramado=4, Devuelto=7)
-                    $ESTADOS_PERMITIDOS_CLIENTE = [4, 7];
-                    // ¿Es cliente sin privilegios de admin? Aplica restricción de opciones
+                    // IDs de estados terminales: si el pedido ya está en uno, el cliente no puede tocarlo
+                    $ESTADOS_TERMINALES_CLIENTE = [3, 7]; // 3=Entregado, 7=Devuelto
+                    // IDs de estados BLOQUEADOS como destino para el cliente (no puede seleccionarlos)
+                    $ESTADOS_BLOQUEADOS_CLIENTE = [3, 7]; // El cliente NO puede poner Entregado ni Devuelto
+                    // ¿Es cliente sin privilegios de admin? Aplica restricción
                     $isClienteRestricto = $isCliente && !$isAdmin;
 
                     foreach ($pedidos as $pedido): ?>
@@ -583,28 +585,35 @@ require_once __DIR__ . '/../../../utils/permissions.php';
                                             break;
                                         }
                                     }
+                                    // Si el pedido ya está en estado terminal, el cliente no puede cambiarlo
+                                    $esPedidoTerminal = $isClienteRestricto && in_array((int)$idEstadoActualPedido, $ESTADOS_TERMINALES_CLIENTE, true);
+                                    $disabledSelect = $disabledAttr ?: ($esPedidoTerminal ? 'disabled' : '');
                                  ?>
                                  <select class="form-select actualizarEstado"
                                          data-id="<?= $pedido['ID_Pedido']; ?>"
                                          data-estado="<?= htmlspecialchars($idEstadoActualPedido); ?>"
-                                         <?= $disabledAttr ?>>
+                                         <?= $disabledSelect ?>>
                                     <?php foreach ($estados as $estado):
                                         $esEstadoActual = ($pedido['Estado'] == $estado['nombre_estado']);
-                                        $esPermitidoCliente = in_array((int)$estado['id'], $ESTADOS_PERMITIDOS_CLIENTE, true);
-                                        // Para cliente: deshabilitar opciones que NO son el estado actual NI los permitidos
-                                        $disabledOpt = ($isClienteRestricto && !$esEstadoActual && !$esPermitidoCliente) ? 'disabled' : '';
+                                        $esBloqueado = in_array((int)$estado['id'], $ESTADOS_BLOQUEADOS_CLIENTE, true);
+                                        // Para cliente: ocultar Entregado y Devuelto si no es el estado actual
+                                        if ($isClienteRestricto && $esBloqueado && !$esEstadoActual) continue;
                                     ?>
                                         <option value="<?= $estado['id']; ?>"
-                                                <?= $esEstadoActual ? 'selected' : ''; ?>
-                                                <?= $disabledOpt; ?>>
+                                                <?= $esEstadoActual ? 'selected' : ''; ?>>
                                             <?= htmlspecialchars($estado['nombre_estado']); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
                                 <?php if ($isClienteRestricto): ?>
                                     <small class="text-muted d-block mt-1" style="font-size:0.75rem;">
-                                        <i class="bi bi-info-circle"></i>
-                                        Solo puedes cambiar a <strong>Reprogramado</strong> o <strong>Devuelto</strong>.
+                                        <?php if ($esPedidoTerminal): ?>
+                                            <i class="bi bi-lock-fill text-danger"></i>
+                                            Este pedido no puede ser modificado.
+                                        <?php else: ?>
+                                            <i class="bi bi-info-circle"></i>
+                                            No puedes cambiar a <strong>Entregado</strong> ni <strong>Devuelto</strong>.
+                                        <?php endif; ?>
                                     </small>
                                 <?php endif; ?>
                             </td>
@@ -679,8 +688,10 @@ require_once __DIR__ . '/../../../utils/permissions.php';
 </script>
 
 <script>
-    // Estados a los que el rol Cliente puede cambiar (IDs de BD: 4=Reprogramado, 7=Devuelto)
-    const ESTADOS_PERMITIDOS_CLIENTE = <?= json_encode($ESTADOS_PERMITIDOS_CLIENTE ?? []) ?>;
+    // Estados BLOQUEADOS para el cliente como destino (no puede seleccionarlos)
+    // El cliente puede usar cualquier otro estado.
+    const ESTADOS_BLOQUEADOS_CLIENTE = <?= json_encode($ESTADOS_BLOQUEADOS_CLIENTE ?? []) ?>;
+    const ESTADOS_TERMINALES_CLIENTE = <?= json_encode($ESTADOS_TERMINALES_CLIENTE ?? []) ?>;
     const IS_CLIENTE_RESTRICTO = <?= ($isClienteRestricto ?? false) ? 'true' : 'false' ?>;
 
     $(document).ready(function() {
@@ -688,17 +699,27 @@ require_once __DIR__ . '/../../../utils/permissions.php';
             let select = $(this);
             let idPedido = select.data("id");
             let nuevoEstado = parseInt(select.val(), 10);
-            let estadoAnterior = select.data("estado") || select.find("option[selected]").val();
+            let estadoAnterior = parseInt(select.data("estado"), 10) || parseInt(select.find("option[selected]").val(), 10);
             let nombreEstado = select.find("option:selected").text().trim();
 
-            // Guard: si es cliente y el estado destino no está en la lista permitida, revertir
-            if (IS_CLIENTE_RESTRICTO && !ESTADOS_PERMITIDOS_CLIENTE.includes(nuevoEstado)) {
-                // Revertir al estado anterior (o al option que tenía el atributo selected en el HTML)
-                let valorOriginal = estadoAnterior || select.find('option[selected]').val();
-                select.val(valorOriginal);
+            // Guard: si el pedido ya está en estado terminal, el cliente no puede cambiarlo
+            if (IS_CLIENTE_RESTRICTO && ESTADOS_TERMINALES_CLIENTE.includes(estadoAnterior)) {
+                select.val(estadoAnterior);
                 Swal.fire({
                     title: 'Acción no permitida',
-                    text: 'Solo puedes cambiar el estado a Reprogramado o Devuelto.',
+                    text: 'Este pedido no puede ser modificado.',
+                    icon: 'warning',
+                    confirmButtonText: 'Entendido'
+                });
+                return;
+            }
+
+            // Guard: el cliente no puede seleccionar Entregado ni Devuelto
+            if (IS_CLIENTE_RESTRICTO && ESTADOS_BLOQUEADOS_CLIENTE.includes(nuevoEstado)) {
+                select.val(estadoAnterior);
+                Swal.fire({
+                    title: 'Acción no permitida',
+                    text: 'No puedes cambiar el pedido a ese estado.',
                     icon: 'warning',
                     confirmButtonText: 'Entendido'
                 });

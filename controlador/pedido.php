@@ -1129,7 +1129,14 @@ class PedidosController {
         require_once __DIR__ . '/../utils/permissions.php';
         $isAdmin       = isSuperAdmin();
         $isRepartidor  = isRepartidor(); // ya excluye Admin internamente
-        $isClienteRole = isCliente() && !$isAdmin;
+        // Identificar cliente externo por nombre de rol en BD ("Cliente" = ID 4).
+        // NO usar isCliente() aquí: retorna true también para mensajería (ROL_CLIENTE=5 en config)
+        // lo que bloquearía incorrectamente a mensajería en la interfaz web.
+        $rolesNombres  = $_SESSION['roles_nombres'] ?? [];
+        $isClienteRole = (
+            in_array('Cliente', $rolesNombres, true) ||
+            in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true)
+        ) && !$isAdmin;
         if ($isRepartidor) {
             try {
                 $pedido = PedidosModel::obtenerPedidoPorId($id_pedido);
@@ -1178,21 +1185,34 @@ class PedidosController {
             $idCliente = isset($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : null;
 
             if ($idCliente === null || $idCliente === 0 || $userId === null || (int)$userId !== (int)$idCliente) {
-                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar el estado de este pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+                http_response_code(403);
+                echo json_encode(["success" => false, "message" => "No tienes permiso para cambiar este pedido."], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+                exit();
+            }
+
+            // [SEGURIDAD] Bloquear cambios sobre pedidos ya finalizados (Entregado=3, Devuelto=7).
+            // Un cliente no puede reabrir ni modificar pedidos en estado terminal.
+            $ESTADOS_TERMINALES = [3, 7]; // 3=Entregado, 7=Devuelto
+            $estadoActual = (int)($pedido['id_estado'] ?? 0);
+            if (in_array($estadoActual, $ESTADOS_TERMINALES, true)) {
+                http_response_code(403);
+                echo json_encode([
+                    "success" => false,
+                    "message" => "No tienes permiso para cambiar este pedido."
+                ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }
         }
 
-        // [CLIENTE] Validar que el estado destino sea uno de los permitidos para clientes
-        // Independientemente de que el ownership sea correcto, el cliente solo puede
-        // mover pedidos a: Reprogramado (4) o Devuelto (7).
+        // [CLIENTE] El cliente NO puede usar Entregado (3) ni Devuelto (7) como destino.
+        // Puede cambiar a cualquier otro estado disponible.
         if ($isClienteRole) {
-            $estadosPermitidosCliente = [4, 7]; // 4=Reprogramado, 7=Devuelto
-            if (!in_array($nuevo_estado, $estadosPermitidosCliente, true)) {
+            $estadosBloqueadosCliente = [3, 7]; // 3=Entregado, 7=Devuelto
+            if (in_array($nuevo_estado, $estadosBloqueadosCliente, true)) {
                 http_response_code(403);
                 echo json_encode([
                     "success" => false,
-                    "message" => "Solo puedes cambiar a Reprogramado o Devuelto."
+                    "message" => "No puedes usar este estado."
                 ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }

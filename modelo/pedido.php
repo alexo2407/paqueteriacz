@@ -2081,16 +2081,24 @@ class PedidosModel
                 return ["success" => false, "message" => "ERROR_PERMISOS", "detail" => "No tienes permiso sobre este pedido.", "code" => 403];
             }
 
-            // 5. Validar estado actual
+            // 5. Validar estado actual y destino.
+            // NOTA: En config.php los nombres están intercambiados:
+            //   ROL_PROVEEDOR=4 → cliente externo (dueño del ecommerce) → RESTRINGIDO
+            //   ROL_CLIENTE=5   → mensajería/logística                   → sin restricción
+            $isExternalCliente = ($userRole === ROL_PROVEEDOR); // JWT rol=4
             $estadoAnterior = (int)$pedido['id_estado'];
-            if ($estadoAnterior === $ID_ENTREGADO) {
-                $db->rollBack();
-                return ["success" => false, "message" => "No se puede cambiar el estado de un pedido que ya ha sido entregado.", "code" => 409];
-            }
 
-            if ($estadoAnterior === $nuevo_estado) {
-                $db->rollBack();
-                return ["success" => true, "message" => "El pedido ya se encuentra en el estado indicado."];
+            if (!$isAdmin && $isExternalCliente) {
+                // Bloquear cambios sobre pedidos ya en estado terminal
+                if ($estadoAnterior === $ID_ENTREGADO || $estadoAnterior === $ID_DEVUELTO) {
+                    $db->rollBack();
+                    return ["success" => false, "message" => "No tienes permiso para cambiar este pedido.", "code" => 403];
+                }
+                // Bloquear si el destino es Entregado o Devuelto
+                if (in_array($nuevo_estado, [$ID_ENTREGADO, $ID_DEVUELTO], true)) {
+                    $db->rollBack();
+                    return ["success" => false, "message" => "No puedes usar este estado.", "code" => 403];
+                }
             }
 
             // 6. Ejecutar actualización
@@ -2214,10 +2222,31 @@ class PedidosModel
             $pedidoId      = (int)$pedido['id'];
             $estadoActual  = (int)$pedido['id_estado'];
 
-            // 2. Validar estado actual
-            if ($estadoActual === $ID_ENTREGADO) {
+            // 2. Validar estado actual y destino según rol
+            // NOTA: En config.php los nombres están intercambiados:
+            //   ROL_PROVEEDOR=4 → cliente externo (dueño del ecommerce) → RESTRINGIDO
+            //   ROL_CLIENTE=5   → mensajería/logística                   → sin restricción
+            $ID_DEVUELTO  = 7;
+            $isExternalCliente = ($actorUserRole === ROL_PROVEEDOR); // JWT rol=4 = cliente externo
+            $isMensajeria      = ($actorUserRole === ROL_CLIENTE);   // JWT rol=5 = mensajería
+
+            // Bloquear si el pedido ya está en estado terminal y el actor es cliente externo
+            if ($isExternalCliente && ($estadoActual === $ID_ENTREGADO || $estadoActual === $ID_DEVUELTO)) {
                 $db->rollBack();
-                return ['success' => false, 'message' => 'No se puede reprogramar un pedido que ya fue entregado.', 'code' => 409];
+                return ['success' => false, 'message' => 'No tienes permiso para cambiar este pedido.', 'code' => 403];
+            }
+
+            // Bloquear también para otros roles no-admin y no-mensajería (Repartidor, Vendedor, etc.)
+            // que intenten modificar un pedido ya en estado terminal.
+            if (!$isAdmin && !$isMensajeria && ($estadoActual === $ID_ENTREGADO || $estadoActual === $ID_DEVUELTO)) {
+                $db->rollBack();
+                return ['success' => false, 'message' => 'No tienes permiso para cambiar este pedido.', 'code' => 403];
+            }
+
+            // Cliente externo NO puede usar Entregado (3) ni Devuelto (7) como estado destino.
+            if ($isExternalCliente && in_array($idEstado, [$ID_ENTREGADO, $ID_DEVUELTO], true)) {
+                $db->rollBack();
+                return ['success' => false, 'message' => 'No puedes usar este estado.', 'code' => 403];
             }
 
             // 3. Inyectar contexto para el trigger after_pedido_update_estado.
