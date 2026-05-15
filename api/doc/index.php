@@ -2054,13 +2054,23 @@ municipalitySelect.addEventListener('change', (e) => {
                         <div class="mb-4">
                             <h4 data-lang="en">Change Order Status</h4>
                             <h4 data-lang="es">Cambiar Estado de Pedido</h4>
-                            <p data-lang="en">Allows providers to update delivery progress states.</p>
-                            <p data-lang="es">Permite a los proveedores actualizar los estados de progreso de entrega.</p>
-    
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i>
-                                <span data-lang="en"><strong>Rules:</strong> Status changes are audited and some transitions might be restricted based on current state.</span>
-                                <span data-lang="es"><strong>Reglas:</strong> Los cambios de estado son auditados y algunas transiciones pueden estar restringidas según el estado actual.</span>
+                            <p data-lang="en">Allows providers and clients to update delivery progress states. Permission rules apply based on role.</p>
+                            <p data-lang="es">Permite a proveedores y clientes actualizar los estados de progreso de entrega. Se aplican reglas de permiso según el rol.</p>
+
+                            <div class="alert alert-warning mt-2">
+                                <i class="fas fa-lock"></i>
+                                <strong data-lang="en">🔒 Role-based restrictions:</strong>
+                                <strong data-lang="es">🔒 Restricciones por rol:</strong>
+                                <ul class="mb-0 mt-1" data-lang="en">
+                                    <li><strong>Client (rol=4):</strong> Cannot set status to <code>Entregado (3)</code> or <code>Devuelto (7)</code>. Also blocked if order is already in those states.</li>
+                                    <li><strong>Messenger/Provider (rol=5):</strong> Full access — can use any state including <code>3</code> and <code>7</code>.</li>
+                                    <li><strong>Admin:</strong> No restrictions.</li>
+                                </ul>
+                                <ul class="mb-0 mt-1" data-lang="es">
+                                    <li><strong>Cliente (rol=4):</strong> No puede usar <code>Entregado (3)</code> ni <code>Devuelto (7)</code> como destino. Tampoco puede modificar un pedido que ya esté en esos estados.</li>
+                                    <li><strong>Mensajería/Proveedor (rol=5):</strong> Acceso completo — puede usar cualquier estado incluyendo <code>3</code> y <code>7</code>.</li>
+                                    <li><strong>Admin:</strong> Sin restricciones.</li>
+                                </ul>
                             </div>
     
                             <div class="code-block">
@@ -2887,7 +2897,7 @@ Content-Type: application/json</code></pre>
                         <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th><th>Example</th></tr></thead>
                         <tbody>
                             <tr><td><code>numero_orden</code></td><td>string</td><td>✅ Yes</td><td>Order number to reschedule</td><td><code>"81154737"</code></td></tr>
-                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>✅ Yes</td><td>New delivery date (ISO 8601 — YYYY-MM-DD). Cannot be in the past.</td><td><code>"2026-05-20"</code></td></tr>
+                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>⚠️ Cond.</td><td>New delivery date (ISO 8601 — YYYY-MM-DD). <strong>Required only when <code>id_estado = 4</code></strong> (Rescheduled). Optional for other states.</td><td><code>"2026-05-20"</code></td></tr>
                             <tr><td><code>id_estado</code></td><td>integer</td><td>⬜ No</td><td>Target state ID. Must exist in <code>estados_pedidos</code>. Defaults to <code>4</code> (Rescheduled).</td><td><code>4</code></td></tr>
                             <tr><td><code>id_cliente</code></td><td>integer</td><td>⬜ No</td><td>Client ID to assign to the order. If provided, updates <code>id_cliente</code> in the same atomic transaction.</td><td><code>42</code></td></tr>
                             <tr><td><code>motivo</code></td><td>string</td><td>⬜ No</td><td>Reason for rescheduling</td><td><code>"Cliente ausente"</code></td></tr>
@@ -2898,7 +2908,7 @@ Content-Type: application/json</code></pre>
                         <thead><tr><th>Campo</th><th>Tipo</th><th>Req.</th><th>Descripción</th><th>Ejemplo</th></tr></thead>
                         <tbody>
                             <tr><td><code>numero_orden</code></td><td>string</td><td>✅ Sí</td><td>Número de orden a reprogramar</td><td><code>"81154737"</code></td></tr>
-                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>✅ Sí</td><td>Nueva fecha de entrega (ISO 8601 — YYYY-MM-DD). No puede ser en el pasado.</td><td><code>"2026-05-20"</code></td></tr>
+                            <tr><td><code>fecha_entrega</code></td><td>string</td><td>⚠️ Cond.</td><td>Nueva fecha de entrega (ISO 8601 — YYYY-MM-DD). <strong>Solo requerida cuando <code>id_estado = 4</code></strong> (Reprogramado). Opcional para otros estados.</td><td><code>"2026-05-20"</code></td></tr>
                             <tr><td><code>id_estado</code></td><td>entero</td><td>⬜ No</td><td>ID del estado destino. Debe existir en <code>estados_pedidos</code>. Por defecto <code>4</code> (Reprogramado).</td><td><code>4</code></td></tr>
                             <tr><td><code>id_cliente</code></td><td>entero</td><td>⬜ No</td><td>ID del cliente a asignar al pedido. Si se provee, actualiza <code>id_cliente</code> en la misma transacción atómica.</td><td><code>42</code></td></tr>
                             <tr><td><code>motivo</code></td><td>string</td><td>⬜ No</td><td>Razón de la reprogramación</td><td><code>"Cliente ausente"</code></td></tr>
@@ -2963,9 +2973,8 @@ console.log(json.data); // { numero_orden, id_estado, id_cliente, fecha_entrega,
                         <tbody>
                             <tr><td><span class="status-badge status-400">400</span></td><td><span data-lang="en">Missing required fields, invalid date format, past date, or non-existent <code>id_estado</code>.</span><span data-lang="es">Campos requeridos faltantes, formato de fecha inválido, fecha en el pasado o <code>id_estado</code> inexistente.</span></td></tr>
                             <tr><td><span class="status-badge status-401">401</span></td><td><span data-lang="en">Missing or invalid JWT token.</span><span data-lang="es">Token JWT ausente o inválido.</span></td></tr>
-                            <tr><td><span class="status-badge status-403">403</span></td><td><span data-lang="en">Authenticated user does not own the order.</span><span data-lang="es">El usuario autenticado no es dueño del pedido.</span></td></tr>
+                            <tr><td><span class="status-badge status-403">403</span></td><td><span data-lang="en">No permission over the order, or role not allowed to use the target state.</span><span data-lang="es">Sin permiso sobre el pedido, o el rol no puede usar el estado destino.</span></td></tr>
                             <tr><td><span class="status-badge status-404">404</span></td><td><span data-lang="en">Order not found.</span><span data-lang="es">Pedido no encontrado.</span></td></tr>
-                            <tr><td><span class="status-badge status-409">409</span></td><td><span data-lang="en">Order already delivered — cannot be rescheduled.</span><span data-lang="es">El pedido ya fue entregado — no se puede reprogramar.</span></td></tr>
                         </tbody>
                     </table>
 
@@ -2974,18 +2983,18 @@ console.log(json.data); // { numero_orden, id_estado, id_cliente, fecha_entrega,
                         <strong data-lang="es">💡 Comportamientos Clave</strong>
                         <ul class="mb-0 mt-2" data-lang="en">
                             <li><strong>Atomic transaction:</strong> State change + date update + optional client reassignment + history entry happen in one DB transaction.</li>
-                            <li><strong>State validation:</strong> <code>id_estado</code> is validated against the <code>estados_pedidos</code> table — any valid state ID (1–17+) is accepted. Returns <code>400</code> if the ID does not exist.</li>
-                            <li><strong>Client reassignment:</strong> If <code>id_cliente</code> is provided, the order's client is updated in the same transaction. The field is returned in the response (null if not sent).</li>
-                            <li><strong>Access control:</strong> Non-admin users can only reschedule orders linked to their account (<code>id_cliente</code> or <code>id_proveedor</code>).</li>
-                            <li><strong>Date format:</strong> <code>YYYY-MM-DD</code> (ISO 8601 — date only). Past dates are rejected.</li>
+                            <li><strong>State validation:</strong> <code>id_estado</code> must be in range 1–13 or 15–17. Returns <code>400</code> if outside this range or non-existent.</li>
+                            <li><strong>fecha_entrega:</strong> Only required when <code>id_estado = 4</code> (Reprogramado). Optional for all other states.</li>
+                            <li><strong>Client reassignment:</strong> If <code>id_cliente</code> is provided, the order's client is updated in the same transaction.</li>
+                            <li><strong>Role restrictions:</strong> Clients (rol=4) cannot use <code>Entregado (3)</code> or <code>Devuelto (7)</code>. Blocked if order is already in a terminal state. Messengers (rol=5) and admins have full access.</li>
                             <li><strong>Default state:</strong> If <code>id_estado</code> is omitted, defaults to <code>4</code> (Reprogramado).</li>
                         </ul>
                         <ul class="mb-0 mt-2" data-lang="es">
                             <li><strong>Transacción atómica:</strong> Cambio de estado + actualización de fecha + reasignación opcional de cliente + entrada en historial ocurren en una sola transacción DB.</li>
-                            <li><strong>Validación de estado:</strong> <code>id_estado</code> se valida contra la tabla <code>estados_pedidos</code> — se acepta cualquier ID de estado válido (1–17+). Retorna <code>400</code> si el ID no existe.</li>
-                            <li><strong>Reasignación de cliente:</strong> Si se provee <code>id_cliente</code>, el cliente del pedido se actualiza en la misma transacción. El campo se devuelve en la respuesta (null si no se envió).</li>
-                            <li><strong>Control de acceso:</strong> Usuarios no-admin solo pueden reprogramar pedidos vinculados a su cuenta (<code>id_cliente</code> o <code>id_proveedor</code>).</li>
-                            <li><strong>Formato de fecha:</strong> <code>YYYY-MM-DD</code> (ISO 8601 — solo fecha). Fechas pasadas son rechazadas.</li>
+                            <li><strong>Validación de estado:</strong> <code>id_estado</code> debe estar en el rango 1–13 o 15–17. Retorna <code>400</code> si está fuera del rango o no existe.</li>
+                            <li><strong>fecha_entrega:</strong> Solo requerida cuando <code>id_estado = 4</code> (Reprogramado). Opcional para cualquier otro estado.</li>
+                            <li><strong>Reasignación de cliente:</strong> Si se provee <code>id_cliente</code>, el cliente del pedido se actualiza en la misma transacción.</li>
+                            <li><strong>Restricciones por rol:</strong> Clientes (rol=4) no pueden usar <code>Entregado (3)</code> ni <code>Devuelto (7)</code>. Bloqueados si el pedido ya está en estado terminal. Mensajería (rol=5) y admins tienen acceso completo.</li>
                             <li><strong>Estado por defecto:</strong> Si se omite <code>id_estado</code>, usa <code>4</code> (Reprogramado).</li>
                         </ul>
                     </div>
