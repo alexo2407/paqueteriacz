@@ -1,4 +1,5 @@
 <?php
+
 /**
  * POST /api/pedidos/reprogramar
  *
@@ -116,6 +117,12 @@ try {
         responder(false, 'El campo id_estado debe ser un entero positivo.', null, 400);
     }
 
+    // Solo se permiten los estados del 1 al 13 y del 15 al 17
+    $estadosPermitidos = array_merge(range(1, 13), range(15, 17));
+    if (!in_array($idEstado, $estadosPermitidos, true)) {
+        responder(false, "El id_estado {$idEstado} no está permitido. Use un valor entre 1-13 o 15-17.", null, 400);
+    }
+
     // Verificar que la fecha no sea en el pasado
     $hoy = (new DateTime('today', new DateTimeZone('America/Managua')))->format('Y-m-d');
     if ($fechaEntrega < $hoy) {
@@ -152,7 +159,6 @@ try {
         'motivo'          => $motivo !== '' ? $motivo : null,
         'reprogramado_en' => $ahoraLocal,
     ], 200);
-
 } catch (Throwable $e) {
     error_log('[api/pedidos/reprogramar] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
     responder(false, 'Error interno del servidor.', null, 500);
