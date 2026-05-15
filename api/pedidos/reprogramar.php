@@ -105,14 +105,6 @@ try {
         responder(false, 'El campo numero_orden es requerido.', null, 400);
     }
 
-    if ($fechaEntrega === '') {
-        responder(false, 'El campo fecha_entrega es requerido (YYYY-MM-DD).', null, 400);
-    }
-
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEntrega)) {
-        responder(false, 'Formato de fecha_entrega inválido. Use YYYY-MM-DD.', null, 400);
-    }
-
     if ($idEstado <= 0) {
         responder(false, 'El campo id_estado debe ser un entero positivo.', null, 400);
     }
@@ -123,11 +115,28 @@ try {
         responder(false, "El id_estado {$idEstado} no está permitido. Use un valor entre 1-13 o 15-17.", null, 400);
     }
 
-    // Verificar que la fecha no sea en el pasado
-    $hoy = (new DateTime('today', new DateTimeZone('America/Managua')))->format('Y-m-d');
-    if ($fechaEntrega < $hoy) {
-        responder(false, 'La fecha_entrega no puede ser en el pasado.', null, 400);
+    // fecha_entrega: obligatoria solo cuando el estado es Reprogramado (ID 4)
+    if ($idEstado === 4) {
+        if ($fechaEntrega === '') {
+            responder(false, 'El campo fecha_entrega es requerido cuando id_estado es 4 (Reprogramado). Use YYYY-MM-DD.', null, 400);
+        }
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEntrega)) {
+            responder(false, 'Formato de fecha_entrega inválido. Use YYYY-MM-DD.', null, 400);
+        }
+        // Verificar que la fecha no sea en el pasado
+        $hoy = (new DateTime('today', new DateTimeZone('America/Managua')))->format('Y-m-d');
+        if ($fechaEntrega < $hoy) {
+            responder(false, 'La fecha_entrega no puede ser en el pasado.', null, 400);
+        }
+    } elseif ($fechaEntrega !== '') {
+        // Si se envía fecha aunque no sea Reprogramado, validar formato igualmente
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEntrega)) {
+            responder(false, 'Formato de fecha_entrega inválido. Use YYYY-MM-DD.', null, 400);
+        }
     }
+
+    // Normalizar a null si viene vacío
+    $fechaEntrega = $fechaEntrega !== '' ? $fechaEntrega : null;
 
     // ── 4. Ejecutar reprogramación via modelo ──────────────────────────────
     $resultado = PedidosModel::reprogramarPedido(

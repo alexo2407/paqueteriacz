@@ -2158,7 +2158,7 @@ class PedidosModel
         string  $numeroOrden,
         int     $actorUserId,
         int     $actorUserRole,
-        string  $fechaEntrega,
+        ?string $fechaEntrega,
         int     $idEstado = 4,
         ?string $motivo = null,
         ?int    $idCliente = null
@@ -2228,22 +2228,21 @@ class PedidosModel
             $db->exec("SET @current_user_id = {$actorUserId}, @current_observaciones = " .
                 $db->quote($obsTexto));
 
-            // 4. Actualizar estado + fecha_entrega (y opcionalmente id_cliente) en una sola query.
+            // 4. Actualizar estado (y opcionalmente fecha_entrega e id_cliente) en una sola query.
             // El trigger se dispara aquí y escribe el historial automáticamente.
-            $setClause = $idCliente !== null
-                ? 'id_estado = :nuevo_estado, fecha_entrega = :fecha_entrega, id_cliente = :id_cliente, updated_at = NOW()'
-                : 'id_estado = :nuevo_estado, fecha_entrega = :fecha_entrega, updated_at = NOW()';
+            $setClauses = ['id_estado = :nuevo_estado', 'updated_at = NOW()'];
+            $updParams  = [':nuevo_estado' => $idEstado, ':id' => $pedidoId];
 
-            $upd = $db->prepare("UPDATE pedidos SET {$setClause} WHERE id = :id");
-
-            $updParams = [
-                ':nuevo_estado'  => $idEstado,
-                ':fecha_entrega' => $fechaEntrega,
-                ':id'            => $pedidoId,
-            ];
+            if ($fechaEntrega !== null) {
+                $setClauses[]               = 'fecha_entrega = :fecha_entrega';
+                $updParams[':fecha_entrega'] = $fechaEntrega;
+            }
             if ($idCliente !== null) {
+                $setClauses[]             = 'id_cliente = :id_cliente';
                 $updParams[':id_cliente'] = $idCliente;
             }
+
+            $upd = $db->prepare('UPDATE pedidos SET ' . implode(', ', $setClauses) . ' WHERE id = :id');
             $upd->execute($updParams);
             // (sin INSERT manual — el trigger ya insertó en pedidos_historial_estados)
 
