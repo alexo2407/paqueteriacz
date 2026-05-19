@@ -1960,41 +1960,31 @@ class PedidosModel
             $stmt->bindParam(":id_pedido", $id_pedido, PDO::PARAM_INT);
 
             try {
+                $userId = self::resolveCurrentUserId();
+
+                // Establecer variables de sesión MySQL ANTES del UPDATE
+                // para que el trigger after_pedido_update_estado las use.
+                // Esto evita la doble inserción en pedidos_historial_estados.
+                $db->prepare("SET @current_user_id = :uid")->execute([':uid' => $userId]);
+                $db->prepare("SET @current_observaciones = :obs")->execute([':obs' => $observaciones]);
+                if ($fecha_registro) {
+                    $db->prepare("SET @current_created_at = :cat")->execute([':cat' => $fecha_registro]);
+                }
+
                 $stmt->execute();
                 $resultado = $stmt->rowCount() > 0;
 
-                if ($resultado) {
-                    $userId = self::resolveCurrentUserId();
-
-                    if ($fecha_registro) {
-                        $db->prepare("SET @current_created_at = :cat")->execute([':cat' => $fecha_registro]);
-                    }
-
-                    // 1. Insertar en historial específico de estados (Visible para clientes)
-                    $histQuery = "INSERT INTO pedidos_historial_estados 
-                                 (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at) 
-                                 VALUES (:id_pedido, :ant, :nuevo, :user, :obs, COALESCE(:created_at, NOW()))";
-                    $histStmt = $db->prepare($histQuery);
-                    $histStmt->execute([
-                        ':id_pedido' => $id_pedido,
-                        ':ant' => $estadoAnterior ?: null,
-                        ':nuevo' => $estado,
-                        ':user' => $userId,
-                        ':obs' => $observaciones,
-                        ':created_at' => $fecha_registro
-                    ]);
-
-                    // 2. Registrar auditoría (se omite si el caller ya lo hizo)
-                    if (!$skipAudit) {
-                        AuditoriaModel::registrar(
-                            'pedidos',
-                            $id_pedido,
-                            'actualizar',
-                            $userId,
-                            ['id_estado' => $estadoAnterior],
-                            ['id_estado' => $estado]
-                        );
-                    }
+                // El trigger after_pedido_update_estado ya insertó el historial de estados.
+                // Solo registramos auditoría de cambios si fue solicitado.
+                if ($resultado && !$skipAudit) {
+                    AuditoriaModel::registrar(
+                        'pedidos',
+                        $id_pedido,
+                        'actualizar',
+                        $userId,
+                        ['id_estado' => $estadoAnterior],
+                        ['id_estado' => $estado]
+                    );
                 }
 
                 return $resultado;
