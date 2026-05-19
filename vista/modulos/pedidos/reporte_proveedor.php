@@ -76,13 +76,19 @@ $currUserNombre     = $tokenRow['nombre'] ?? ($_SESSION['nombre'] ?? '');
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 // Default: 3 meses atrás para que los usuarios vean datos históricos recientes
-$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-d', strtotime('-3 months'));
-$fechaHasta  = $_GET['fecha_hasta'] ?? date('Y-m-d');
-$idEstado    = (int)($_GET['id_estado'] ?? 0);
+$fechaDesde    = $_GET['fecha_desde'] ?? date('Y-m-d', strtotime('-3 months'));
+$fechaHasta    = $_GET['fecha_hasta'] ?? date('Y-m-d');
+$idEstado      = (int)($_GET['id_estado'] ?? 0);
+$buscarOrden   = trim($_GET['numero_orden'] ?? '');   // ← nuevo: búsqueda por nº orden
 // Scoping: forzar filtro al usuario actual si no es admin
-$idProveedor = (!$isAdmin && $isProveedorExt) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
-$idCliente   = (!$isAdmin && $isClienteExt)   ? $currUserId : 0;
-$export      = isset($_GET['export']) && $_GET['export'] === '1';
+$idProveedor   = (!$isAdmin && $isProveedorExt) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
+$idCliente     = (!$isAdmin && $isClienteExt)   ? $currUserId : 0;
+$export        = isset($_GET['export']) && $_GET['export'] === '1';
+
+// ── Paginación ────────────────────────────────────────────────────────────────
+define('PER_PAGE', 50);
+$pagina    = max(1, (int)($_GET['pagina'] ?? 1));
+$offset    = ($pagina - 1) * PER_PAGE;
 
 // ── Catálogo de estados para el filtro dropdown ───────────────────────────────
 $estados = $db->query('SELECT id, nombre_estado FROM estados_pedidos ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
@@ -127,12 +133,30 @@ if ($isAdmin) {
 }
 
 if ($idEstado > 0) {
-    $where[]           = 'p.id_estado = :id_estado';
+    $where[]              = 'p.id_estado = :id_estado';
     $params[':id_estado'] = $idEstado;
+}
+
+// Filtro por número de orden (búsqueda parcial)
+if ($buscarOrden !== '') {
+    $where[]               = 'p.numero_orden LIKE :numero_orden';
+    $params[':numero_orden'] = '%' . $buscarOrden . '%';
 }
 
 $whereStr = 'WHERE ' . implode(' AND ', $where);
 
+// ── Count total para paginación ───────────────────────────────────────────────
+$sqlCount  = "SELECT COUNT(*) FROM pedidos p {$whereStr}";
+$stmtCount = $db->prepare($sqlCount);
+foreach ($params as $k => $v) $stmtCount->bindValue($k, $v);
+$stmtCount->execute();
+$totalRegistros = (int)$stmtCount->fetchColumn();
+$totalPaginas   = max(1, (int)ceil($totalRegistros / PER_PAGE));
+// Corregir página fuera de rango
+if ($pagina > $totalPaginas) $pagina = $totalPaginas;
+$offset = ($pagina - 1) * PER_PAGE;
+
+// ── Query principal paginada ──────────────────────────────────────────────────
 $sqlPedidos = "
     SELECT
         p.id,
@@ -152,12 +176,19 @@ $sqlPedidos = "
     LEFT JOIN monedas m          ON m.id  = p.id_moneda
     {$whereStr}
     ORDER BY p.fecha_ingreso DESC
+    LIMIT :limit OFFSET :offset
 ";
 
 $stmtPed = $db->prepare($sqlPedidos);
 foreach ($params as $k => $v) $stmtPed->bindValue($k, $v);
+$stmtPed->bindValue(':limit',  PER_PAGE, PDO::PARAM_INT);
+$stmtPed->bindValue(':offset', $offset,  PDO::PARAM_INT);
 $stmtPed->execute();
 $pedidos = $stmtPed->fetchAll(PDO::FETCH_ASSOC);
+
+// ── Para el export Excel: traer TODOS los registros sin paginación ─────────────
+// (solo se ejecuta cuando $export === true, ver bloque más abajo)
+$pedidosExport = [];
 
 // ── Query 2: Historial completo de esos pedidos ───────────────────────────────
 $historialPorPedido = [];
@@ -206,7 +237,35 @@ function colorEstado(string $estado): array {
 }
 
 // ── Excel export ──────────────────────────────────────────────────────────────
-if ($export && !empty($pedidos)) {
+if ($export) {
+    // Traer todos los registros para el Excel (sin LIMIT)
+    $sqlExport = "
+        SELECT
+            p.id,
+            p.numero_orden,
+            p.fecha_ingreso,
+            p.destinatario,
+            p.telefono,
+            p.direccion,
+            p.zona,
+            p.comentario,
+            ep.nombre_estado  AS estado_actual,
+            p.precio_total_local,
+            m.nombre          AS moneda,
+            p.created_at      AS fecha_creado
+        FROM pedidos p
+        LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+        LEFT JOIN monedas m          ON m.id  = p.id_moneda
+        {$whereStr}
+        ORDER BY p.fecha_ingreso DESC
+    ";
+    $stmtExp = $db->prepare($sqlExport);
+    foreach ($params as $k => $v) $stmtExp->bindValue($k, $v);
+    $stmtExp->execute();
+    $pedidosExport = $stmtExp->fetchAll(PDO::FETCH_ASSOC);
+}
+
+if ($export && !empty($pedidosExport)) {
     require_once __DIR__ . '/../../../vendor/autoload.php';
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -223,28 +282,51 @@ if ($export && !empty($pedidos)) {
         'Dirección', 'Zona', 'Comentario', 'Estado Actual',
         'Liquidación', 'Moneda', 'Fecha Creado',
     ];
-    $colIdx = 1;
-    foreach ($headersFixed as $h) {
-        $sheet->setCellValue($coord($colIdx++, 2), $h);
-    }
-    // Cabeceras dinámicas (pares Estado N / Fecha N)
-    for ($n = 1; $n <= $maxTransiciones; $n++) {
-        $sheet->setCellValue($coord($colIdx++, 2), "Estado {$n}");
-        $sheet->setCellValue($coord($colIdx++, 2), "Fecha {$n}");
-    }
-    $totalCols  = $colIdx - 1;
-    $lastColLtr = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
 
-    // Fila 1: Título
+    // Fila 1: Título (se define aquí, las celdas se configuran después de calcular el historial completo)
     $titulo = 'REPORTE DE PEDIDOS  ' . date('d/m/Y', strtotime($fechaDesde)) . ' → ' . date('d/m/Y', strtotime($fechaHasta));
-    $sheet->mergeCells("A1:{$lastColLtr}1");
-    $sheet->setCellValue('A1', $titulo);
     $sheet->getStyle('A1')->applyFromArray([
         'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 13],
         'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '1A3A4A']],
         'alignment' => ['horizontal' => 'center'],
     ]);
     $sheet->getRowDimension(1)->setRowHeight(22);
+
+    // Para el export, recalcular historial usando pedidosExport
+    $historialExport = [];
+    $maxTransicionesExport = 0;
+    if (!empty($pedidosExport)) {
+        $expIds = array_column($pedidosExport, 'id');
+        $expPlaceholders = implode(',', array_fill(0, count($expIds), '?'));
+        $sqlHistExp = "
+            SELECT h.id_pedido, ep_new.nombre_estado AS estado_nuevo, h.created_at AS fecha_cambio
+            FROM pedidos_historial_estados h
+            LEFT JOIN estados_pedidos ep_new ON ep_new.id = h.id_estado_nuevo
+            WHERE h.id_pedido IN ({$expPlaceholders})
+            ORDER BY h.id_pedido ASC, h.created_at ASC
+        ";
+        $stmtHExp = $db->prepare($sqlHistExp);
+        $stmtHExp->execute($expIds);
+        foreach ($stmtHExp->fetchAll(PDO::FETCH_ASSOC) as $h) {
+            $historialExport[$h['id_pedido']][] = ['estado' => $h['estado_nuevo'], 'fecha' => $h['fecha_cambio']];
+        }
+        foreach ($historialExport as $hist) {
+            $maxTransicionesExport = max($maxTransicionesExport, count($hist));
+        }
+    }
+    // Reconstruir encabezados con el máximo correcto del export
+    $colIdx = 1;
+    foreach ($headersFixed as $h) {
+        $sheet->setCellValue($coord($colIdx++, 2), $h);
+    }
+    for ($n = 1; $n <= $maxTransicionesExport; $n++) {
+        $sheet->setCellValue($coord($colIdx++, 2), "Estado {$n}");
+        $sheet->setCellValue($coord($colIdx++, 2), "Fecha {$n}");
+    }
+    $totalCols  = $colIdx - 1;
+    $lastColLtr = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+    $sheet->mergeCells("A1:{$lastColLtr}1");
+    $sheet->setCellValue('A1', $titulo);
 
     // Estilo cabecera fila 2
     $sheet->getStyle("A2:{$lastColLtr}2")->applyFromArray([
@@ -253,10 +335,10 @@ if ($export && !empty($pedidos)) {
         'alignment' => ['horizontal' => 'center', 'wrapText' => true],
     ]);
 
-    // Filas de datos
+
     $excelRow = 3;
-    foreach ($pedidos as $ped) {
-        $hist = $historialPorPedido[$ped['id']] ?? [];
+    foreach ($pedidosExport as $ped) {
+        $hist = $historialExport[$ped['id']] ?? [];
         $c = 1;
         $sheet->setCellValue($coord($c++, $excelRow), $ped['numero_orden']);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['fecha_ingreso']);
@@ -282,7 +364,7 @@ if ($export && !empty($pedidos)) {
             $ped['fecha_creado'] ? date('d/m/Y H:i', strtotime($ped['fecha_creado'])) : '');
 
         // Pares dinámicos del historial
-        for ($n = 0; $n < $maxTransiciones; $n++) {
+        for ($n = 0; $n < $maxTransicionesExport; $n++) {
             $entry  = $hist[$n] ?? null;
             $estado = $entry['estado'] ?? '';
             $fecha  = $entry ? date('d/m/Y H:i', strtotime($entry['fecha'])) : '';
@@ -458,12 +540,22 @@ if ($export && !empty($pedidos)) {
     <!-- Filtros -->
     <div class="card filter-card mb-4">
         <div class="card-body p-3">
-            <form method="GET" action="<?= RUTA_URL ?>pedidos/reportes" class="row g-2 align-items-end">
+            <form method="GET" action="<?= RUTA_URL ?>pedidos/reportes" class="row g-2 align-items-end" id="form-filtros">
 
                 <?php if ($isPublicLink): ?>
                 <input type="hidden" name="u" value="<?= htmlspecialchars($pubU) ?>">
                 <input type="hidden" name="t" value="<?= htmlspecialchars($pubT) ?>">
                 <?php endif; ?>
+
+                <!-- Búsqueda por número de orden -->
+                <div class="col-md-2 col-12">
+                    <label class="form-label small fw-semibold mb-1">
+                        <i class="bi bi-search"></i> Núm. de Orden
+                    </label>
+                    <input type="text" name="numero_orden" class="form-control form-control-sm"
+                           placeholder="Buscar…"
+                           value="<?= htmlspecialchars($buscarOrden) ?>">
+                </div>
 
                 <div class="col-md-2 col-6">
                     <label class="form-label small fw-semibold mb-1">
@@ -528,9 +620,12 @@ if ($export && !empty($pedidos)) {
 
                 <div class="col-auto ms-auto">
                     <small class="text-muted">
-                        <?= count($pedidos) ?> pedido<?= count($pedidos) != 1 ? 's' : '' ?>
+                        <?= number_format($totalRegistros) ?> pedido<?= $totalRegistros != 1 ? 's' : '' ?>
                         <?php if ($maxTransiciones > 0): ?>
                         · <?= $maxTransiciones ?> transiciones máx.
+                        <?php endif; ?>
+                        <?php if ($totalPaginas > 1): ?>
+                        · pág. <?= $pagina ?>/<?= $totalPaginas ?>
                         <?php endif; ?>
                     </small>
                 </div>
@@ -642,6 +737,66 @@ if ($export && !empty($pedidos)) {
             </div>
         </div>
     </div>
+
+    <?php if ($totalPaginas > 1): ?>
+    <!-- ── Paginación ── -->
+    <?php
+        // Construir base de parámetros sin la página para generar los enlaces
+        $qBase = array_filter($_GET, fn($k) => $k !== 'pagina', ARRAY_FILTER_USE_KEY);
+    ?>
+    <nav class="mt-3 d-flex justify-content-center align-items-center gap-2" aria-label="Paginación">
+        <!-- Anterior -->
+        <?php if ($pagina > 1): ?>
+        <a href="<?= RUTA_URL ?>pedidos/reportes?<?= http_build_query(array_merge($qBase, ['pagina' => $pagina - 1])) ?>"
+           class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-chevron-left"></i> Anterior
+        </a>
+        <?php else: ?>
+        <button class="btn btn-sm btn-outline-secondary" disabled><i class="bi bi-chevron-left"></i> Anterior</button>
+        <?php endif; ?>
+
+        <!-- Páginas numeradas (ventana de ±3) -->
+        <?php
+            $ventanaInicio = max(1, $pagina - 3);
+            $ventanaFin    = min($totalPaginas, $pagina + 3);
+        ?>
+        <?php if ($ventanaInicio > 1): ?>
+        <a href="<?= RUTA_URL ?>pedidos/reportes?<?= http_build_query(array_merge($qBase, ['pagina' => 1])) ?>"
+           class="btn btn-sm btn-outline-secondary">1</a>
+        <?php if ($ventanaInicio > 2): ?><span class="px-1 text-muted">…</span><?php endif; ?>
+        <?php endif; ?>
+
+        <?php for ($p = $ventanaInicio; $p <= $ventanaFin; $p++): ?>
+        <?php if ($p === $pagina): ?>
+        <button class="btn btn-sm btn-primary" disabled><?= $p ?></button>
+        <?php else: ?>
+        <a href="<?= RUTA_URL ?>pedidos/reportes?<?= http_build_query(array_merge($qBase, ['pagina' => $p])) ?>"
+           class="btn btn-sm btn-outline-secondary"><?= $p ?></a>
+        <?php endif; ?>
+        <?php endfor; ?>
+
+        <?php if ($ventanaFin < $totalPaginas): ?>
+        <?php if ($ventanaFin < $totalPaginas - 1): ?><span class="px-1 text-muted">…</span><?php endif; ?>
+        <a href="<?= RUTA_URL ?>pedidos/reportes?<?= http_build_query(array_merge($qBase, ['pagina' => $totalPaginas])) ?>"
+           class="btn btn-sm btn-outline-secondary"><?= $totalPaginas ?></a>
+        <?php endif; ?>
+
+        <!-- Siguiente -->
+        <?php if ($pagina < $totalPaginas): ?>
+        <a href="<?= RUTA_URL ?>pedidos/reportes?<?= http_build_query(array_merge($qBase, ['pagina' => $pagina + 1])) ?>"
+           class="btn btn-sm btn-outline-secondary">
+            Siguiente <i class="bi bi-chevron-right"></i>
+        </a>
+        <?php else: ?>
+        <button class="btn btn-sm btn-outline-secondary" disabled>Siguiente <i class="bi bi-chevron-right"></i></button>
+        <?php endif; ?>
+    </nav>
+    <p class="text-center text-muted small mt-1">
+        Mostrando <?= number_format(($pagina - 1) * PER_PAGE + 1) ?>–<?= number_format(min($pagina * PER_PAGE, $totalRegistros)) ?>
+        de <?= number_format($totalRegistros) ?> registros
+    </p>
+    <?php endif; ?>
+
     <?php endif; ?>
 
 </div>
