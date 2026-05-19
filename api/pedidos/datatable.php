@@ -73,14 +73,10 @@ if (!$isAdmin && !$isRepartidor) {
     }
 }
 
-// Búsqueda global (número de orden, destinatario, comentario, estado)
+// Búsqueda global: usar CONCAT para evitar HY093 (mismo named param múltiples veces)
+// PDO con emulate_prepares=false no permite reusar :search. CONCAT agrupa en un solo campo.
 if ($search !== '') {
-    $whereClauses[] = '(
-        p.numero_orden   LIKE :search
-        OR p.destinatario LIKE :search
-        OR p.comentario  LIKE :search
-        OR ep.nombre_estado LIKE :search
-    )';
+    $whereClauses[] = "CONCAT_WS(' ', p.numero_orden, p.destinatario, IFNULL(p.comentario,''), IFNULL(ep.nombre_estado,'')) LIKE :search";
     $params[':search'] = '%' . $search . '%';
 }
 
