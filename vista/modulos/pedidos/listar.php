@@ -332,21 +332,29 @@ endif;
 
 
 <?php
-// Obtener estadísticas de pedidos
+// Obtener estadísticas de pedidos mediante aggregación rápida (sin traer todos los registros a PHP)
+require_once __DIR__ . '/../../../modelo/pedido.php';
 $listarPedidos = new PedidosController();
 $estados = $listarPedidos->obtenerEstados();
-$pedidos = $listarPedidos->listarPedidosExtendidos();
-$totalPedidos = count($pedidos);
 
-// Contar por estado
-$pendientes = 0;
-$enProceso = 0;
-$entregados = 0;
-foreach ($pedidos as $p) {
-    $estado = strtolower($p['Estado'] ?? '');
-    if (strpos($estado, 'pend') !== false || strpos($estado, 'nuevo') !== false) $pendientes++;
-    elseif (strpos($estado, 'entreg') !== false) $entregados++;
-    else $enProceso++;
+// Contadores via query de agregación: mucho más rápido que fetchAll + count en PHP
+try {
+    $_db_stats = (new Conexion())->conectar();
+    $_stmt_stats = $_db_stats->query("
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN ep.nombre_estado LIKE '%pend%' OR ep.nombre_estado LIKE '%nuevo%' THEN 1 ELSE 0 END) AS pendientes,
+            SUM(CASE WHEN ep.nombre_estado LIKE '%entreg%' THEN 1 ELSE 0 END) AS entregados
+        FROM pedidos p
+        LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+    ");
+    $_counts = $_stmt_stats->fetch(PDO::FETCH_ASSOC);
+    $totalPedidos = (int)($_counts['total'] ?? 0);
+    $pendientes   = (int)($_counts['pendientes'] ?? 0);
+    $entregados   = (int)($_counts['entregados'] ?? 0);
+    $enProceso    = $totalPedidos - $pendientes - $entregados;
+} catch (Exception $_e) {
+    $totalPedidos = $pendientes = $enProceso = $entregados = 0;
 }
 ?>
 
@@ -544,104 +552,7 @@ require_once __DIR__ . '/../../../utils/permissions.php';
                     </tr>
                 </thead>
                 <tbody>
-                    <?php
-                    $listarPedidos = new PedidosController();
-                    $estados = $listarPedidos->obtenerEstados(); // Obtener lista de estados
-                    $pedidos = $listarPedidos->listarPedidosExtendidos();
-
-                    // Determinar si el usuario tiene permiso para cambiar el estado.
-                    // Proveedor (mensajero) SÍ puede cambiar a cualquier estado, incluyendo Entregado/Devuelto.
-                    // Cliente (externo) tiene estados restringidos: solo puede usar Reprogramado.
-                    $rolesNombres = $_SESSION['roles_nombres'] ?? [];
-                    $isAdmin      = in_array(ROL_NOMBRE_ADMIN,      $rolesNombres, true);
-                    $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR,  $rolesNombres, true);
-                    $isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR,   $rolesNombres, true);
-                    // FIX: Check for 'Cliente' string explicitly
-                    $isCliente = in_array('Cliente', $rolesNombres, true) || in_array('cliente', $rolesNombres, true);
-                    // Proveedores pueden cambiar estados: select siempre habilitado para ellos
-                    $disabledAttr = ''; // No se deshabilita por rol de Proveedor
-
-                    // IDs de estados terminales: si el pedido ya está en uno, el cliente no puede tocarlo
-                    $ESTADOS_TERMINALES_CLIENTE = [3, 7]; // 3=Entregado, 7=Devuelto
-                    // IDs de estados BLOQUEADOS como destino para el cliente (no puede seleccionarlos)
-                    $ESTADOS_BLOQUEADOS_CLIENTE = [3, 7]; // El cliente NO puede poner Entregado ni Devuelto
-                    // ¿Es cliente sin privilegios de admin? Aplica restricción
-                    $isClienteRestricto = $isCliente && !$isAdmin;
-
-                    foreach ($pedidos as $pedido): ?>
-                        <tr data-id="<?= $pedido['ID_Pedido'] ?>">
-                            <td><?= htmlspecialchars($pedido['Numero_Orden']) ?></td>
-                            <td><?= htmlspecialchars($pedido['Cliente']) ?></td>
-                            <td><?= htmlspecialchars($pedido['Comentario']) ?></td>
-
-                            <!-- Celda Editable para Estado -->
-                            <td class="editable" data-campo="estado">
-                                 <?php
-                                    // Calcular el ID del estado actual del pedido para data-estado
-                                    $idEstadoActualPedido = '';
-                                    foreach ($estados as $_e) {
-                                        if ($_e['nombre_estado'] == $pedido['Estado']) {
-                                            $idEstadoActualPedido = $_e['id'];
-                                            break;
-                                        }
-                                    }
-                                    // Si el pedido ya está en estado terminal, el cliente no puede cambiarlo
-                                    $esPedidoTerminal = $isClienteRestricto && in_array((int)$idEstadoActualPedido, $ESTADOS_TERMINALES_CLIENTE, true);
-                                    $disabledSelect = $disabledAttr ?: ($esPedidoTerminal ? 'disabled' : '');
-                                 ?>
-                                 <select class="form-select actualizarEstado"
-                                         data-id="<?= $pedido['ID_Pedido']; ?>"
-                                         data-estado="<?= htmlspecialchars($idEstadoActualPedido); ?>"
-                                         <?= $disabledSelect ?>>
-                                    <?php foreach ($estados as $estado):
-                                        $esEstadoActual = ($pedido['Estado'] == $estado['nombre_estado']);
-                                        $esBloqueado = in_array((int)$estado['id'], $ESTADOS_BLOQUEADOS_CLIENTE, true);
-                                        // Para cliente: ocultar Entregado y Devuelto si no es el estado actual
-                                        if ($isClienteRestricto && $esBloqueado && !$esEstadoActual) continue;
-                                    ?>
-                                        <option value="<?= $estado['id']; ?>"
-                                                <?= $esEstadoActual ? 'selected' : ''; ?>>
-                                            <?= htmlspecialchars($estado['nombre_estado']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <?php if ($isClienteRestricto): ?>
-                                    <small class="text-muted d-block mt-1" style="font-size:0.75rem;">
-                                        <?php if ($esPedidoTerminal): ?>
-                                            <i class="bi bi-lock-fill text-danger"></i>
-                                            Este pedido no puede ser modificado.
-                                        <?php else: ?>
-                                            <i class="bi bi-info-circle"></i>
-                                            No puedes cambiar a <strong>Entregado</strong> ni <strong>Devuelto</strong>.
-                                        <?php endif; ?>
-                                    </small>
-                                <?php endif; ?>
-                            </td>
-
-                            <td>
-                                <!-- <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-primary btn-sm">Ver</a> -->
-                                <?php if ($isCliente && !$isAdmin): ?>
-                                    <a href="<?= RUTA_URL ?>pedidos/ver/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-info btn-sm text-white"><i class="bi bi-eye"></i> Ver Detalle</a>
-                                <?php else: ?>
-                                    <a href="<?= RUTA_URL ?>pedidos/editar/<?php echo $pedido['ID_Pedido']; ?>" class="btn btn-warning btn-sm">Editar</a>
-                                <?php endif; ?>
-                                
-
-                                <?php if (!empty($pedido['latitud']) && !empty($pedido['longitud'])): ?>
-                                    <a href="https://www.google.com/maps/dir/?api=1&destination=<?= $pedido['latitud'] ?>,<?= $pedido['longitud'] ?>&travelmode=driving"
-                                        target="_blank" class="btn btn-success btn-sm">
-                                        <i class="bi bi-geo-alt"></i> Ir a Ruta
-                                    </a>
-                                <?php else: ?>
-                                    <button class="btn btn-secondary btn-sm" disabled>
-                                        <i class="bi bi-geo-alt"></i> Sin Coordenadas
-                                    </button>
-                                <?php endif; ?>
-
-
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                    <!-- Filas generadas por DataTables SSP vía AJAX -->
                 </tbody>
             </table>
         </div>
@@ -656,142 +567,190 @@ require_once __DIR__ . '/../../../utils/permissions.php';
 
 
 
+<?php
+// Datos de roles y estados para JS (seguros, sin lógica PHP en JS)
+$rolesNombres       = $_SESSION['roles_nombres'] ?? [];
+$isAdmin            = in_array(ROL_NOMBRE_ADMIN,     $rolesNombres, true);
+$isCliente          = in_array('Cliente', $rolesNombres, true) || in_array('cliente', $rolesNombres, true);
+$isClienteRestricto = $isCliente && !$isAdmin;
+$ESTADOS_TERMINALES_CLIENTE = [3, 7];
+$ESTADOS_BLOQUEADOS_CLIENTE = [3, 7];
+?>
 <script>
-    $(document).ready(function() {
-    $('#tblPedidos').DataTable({
-        responsive: true, // Activa la capacidad responsive
-        dom: 'Bfrtip', // Controles de exportación
-        buttons: [
-            'excel', 'pdf', 'print'
-        ],
-        order: [
-            [1, 'asc']
-        ],
-        language: {
-            search: "Buscar por Número de Orden o Cliente:",
-            lengthMenu: "Mostrar _MENU_ registros por página",
-            zeroRecords: "No se encontraron resultados",
-            info: "Mostrando página _PAGE_ de _PAGES_",
-            infoEmpty: "No hay registros disponibles",
-            infoFiltered: "(filtrado de _MAX_ registros totales)",
-            paginate: {
-                first: "Primero",
-                last: "Último",
-                next: "Siguiente",
-                previous: "Anterior"
-            }
-        }
+const RUTA_BASE          = '<?= RUTA_URL ?>';
+const ESTADOS_OPCIONES   = <?= json_encode($estados, JSON_UNESCAPED_UNICODE) ?>;
+const ESTADOS_BLOQUEADOS_CLIENTE = <?= json_encode($ESTADOS_BLOQUEADOS_CLIENTE) ?>;
+const ESTADOS_TERMINALES_CLIENTE = <?= json_encode($ESTADOS_TERMINALES_CLIENTE) ?>;
+const IS_CLIENTE_RESTRICTO = <?= ($isClienteRestricto) ? 'true' : 'false' ?>;
+const IS_ADMIN           = <?= ($isAdmin) ? 'true' : 'false' ?>;
+const IS_SOLO_CLIENTE    = <?= ($isCliente && !$isAdmin) ? 'true' : 'false' ?>;
+
+/**
+ * Construye el HTML del <select> de estado para una fila de DataTables SSP.
+ */
+function buildEstadoSelect(idPedido, idEstadoActual, nombreEstado) {
+    const esPedidoTerminal = IS_CLIENTE_RESTRICTO && ESTADOS_TERMINALES_CLIENTE.includes(parseInt(idEstadoActual));
+    const disabled = esPedidoTerminal ? 'disabled' : '';
+
+    let opts = '';
+    ESTADOS_OPCIONES.forEach(function(e) {
+        const esBloqueado = ESTADOS_BLOQUEADOS_CLIENTE.includes(parseInt(e.id));
+        const esActual    = parseInt(e.id) === parseInt(idEstadoActual);
+        // Para cliente restringido: ocultar bloqueados salvo que sea el actual
+        if (IS_CLIENTE_RESTRICTO && esBloqueado && !esActual) return;
+        opts += `<option value="${e.id}" ${esActual ? 'selected' : ''}>${e.nombre_estado}</option>`;
     });
 
-});
+    let hint = '';
+    if (IS_CLIENTE_RESTRICTO) {
+        hint = esPedidoTerminal
+            ? `<small class="text-muted d-block mt-1" style="font-size:.75rem;"><i class="bi bi-lock-fill text-danger"></i> Este pedido no puede ser modificado.</small>`
+            : `<small class="text-muted d-block mt-1" style="font-size:.75rem;"><i class="bi bi-info-circle"></i> No puedes cambiar a <strong>Entregado</strong> ni <strong>Devuelto</strong>.</small>`;
+    }
 
+    return `<select class="form-select actualizarEstado" data-id="${idPedido}" data-estado="${idEstadoActual}" ${disabled}>${opts}</select>${hint}`;
+}
+
+/**
+ * Construye el HTML de los botones de acción para una fila.
+ */
+function buildAcciones(row) {
+    const id  = row.ID_Pedido;
+    const lat = row.latitud;
+    const lng = row.longitud;
+    let html = '';
+
+    if (IS_SOLO_CLIENTE) {
+        html += `<a href="${RUTA_BASE}pedidos/ver/${id}" class="btn btn-info btn-sm text-white"><i class="bi bi-eye"></i> Ver Detalle</a> `;
+    } else {
+        html += `<a href="${RUTA_BASE}pedidos/editar/${id}" class="btn btn-warning btn-sm">Editar</a> `;
+    }
+
+    if (lat && lng && parseFloat(lat) !== 0 && parseFloat(lng) !== 0) {
+        html += `<a href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving" target="_blank" class="btn btn-success btn-sm"><i class="bi bi-geo-alt"></i> Ir a Ruta</a>`;
+    } else {
+        html += `<button class="btn btn-secondary btn-sm" disabled><i class="bi bi-geo-alt"></i> Sin Coord.</button>`;
+    }
+    return html;
+}
+
+$(document).ready(function() {
+    const table = $('#tblPedidos').DataTable({
+        processing : true,
+        serverSide : true,
+        responsive : true,
+        ajax: {
+            url  : RUTA_BASE + 'api/pedidos/datatable.php',
+            type : 'POST',
+            error: function(xhr, err, thrown) {
+                console.error('DataTables SSP error:', err, thrown, xhr.responseText);
+            }
+        },
+        columns: [
+            { data: 'Numero_Orden',  title: 'Nº Orden' },
+            { data: 'Cliente',       title: 'Destinatario' },
+            { data: 'Comentario',    title: 'Comentario', orderable: false },
+            {
+                data: null,
+                title: 'Estado',
+                orderable: false,
+                render: function(data, type, row) {
+                    return buildEstadoSelect(row.ID_Pedido, row.id_estado, row.Estado);
+                }
+            },
+            {
+                data: null,
+                title: 'Acciones',
+                orderable: false,
+                render: function(data, type, row) {
+                    return buildAcciones(row);
+                }
+            }
+        ],
+        order: [[0, 'desc']],
+        pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        dom: 'Bfrtip',
+        buttons: [
+            { extend: 'excel', text: '<i class="bi bi-file-earmark-excel"></i> Excel', className: 'btn btn-sm btn-success' },
+            { extend: 'pdf',   text: '<i class="bi bi-file-earmark-pdf"></i> PDF',   className: 'btn btn-sm btn-danger' },
+            { extend: 'print', text: '<i class="bi bi-printer"></i> Imprimir',        className: 'btn btn-sm btn-secondary' }
+        ],
+        language: {
+            processing:  '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div>',
+            search:      'Buscar:',
+            lengthMenu:  'Mostrar _MENU_ registros',
+            zeroRecords: 'No se encontraron resultados',
+            info:        'Mostrando _START_ a _END_ de _TOTAL_ pedidos',
+            infoEmpty:   'No hay registros disponibles',
+            infoFiltered:'(filtrado de _MAX_ totales)',
+            paginate: { first: 'Primero', last: 'Último', next: 'Siguiente', previous: 'Anterior' }
+        }
+    });
+});
 </script>
 
 <script>
-    // Estados BLOQUEADOS para el cliente como destino (no puede seleccionarlos)
-    // El cliente puede usar cualquier otro estado.
-    const ESTADOS_BLOQUEADOS_CLIENTE = <?= json_encode($ESTADOS_BLOQUEADOS_CLIENTE ?? []) ?>;
-    const ESTADOS_TERMINALES_CLIENTE = <?= json_encode($ESTADOS_TERMINALES_CLIENTE ?? []) ?>;
-    const IS_CLIENTE_RESTRICTO = <?= ($isClienteRestricto ?? false) ? 'true' : 'false' ?>;
+// Event delegation: captura el change en selects generados dinámicamente por DataTables SSP
+$(document).on('change', '.actualizarEstado', function() {
+    const select         = $(this);
+    const idPedido       = select.data('id');
+    const nuevoEstado    = parseInt(select.val(), 10);
+    const estadoAnterior = parseInt(select.data('estado'), 10);
+    const nombreEstado   = select.find('option:selected').text().trim();
 
-    $(document).ready(function() {
-        $(".actualizarEstado").change(function() {
-            let select = $(this);
-            let idPedido = select.data("id");
-            let nuevoEstado = parseInt(select.val(), 10);
-            let estadoAnterior = parseInt(select.data("estado"), 10) || parseInt(select.find("option[selected]").val(), 10);
-            let nombreEstado = select.find("option:selected").text().trim();
+    // Guard: pedido en estado terminal (cliente restringido)
+    if (IS_CLIENTE_RESTRICTO && ESTADOS_TERMINALES_CLIENTE.includes(estadoAnterior)) {
+        select.val(estadoAnterior);
+        Swal.fire({ title: 'Acción no permitida', text: 'Este pedido no puede ser modificado.', icon: 'warning', confirmButtonText: 'Entendido' });
+        return;
+    }
 
-            // Guard: si el pedido ya está en estado terminal, el cliente no puede cambiarlo
-            if (IS_CLIENTE_RESTRICTO && ESTADOS_TERMINALES_CLIENTE.includes(estadoAnterior)) {
-                select.val(estadoAnterior);
-                Swal.fire({
-                    title: 'Acción no permitida',
-                    text: 'Este pedido no puede ser modificado.',
-                    icon: 'warning',
-                    confirmButtonText: 'Entendido'
-                });
-                return;
-            }
+    // Guard: destino bloqueado para cliente
+    if (IS_CLIENTE_RESTRICTO && ESTADOS_BLOQUEADOS_CLIENTE.includes(nuevoEstado)) {
+        select.val(estadoAnterior);
+        Swal.fire({ title: 'Acción no permitida', text: 'No puedes cambiar el pedido a ese estado.', icon: 'warning', confirmButtonText: 'Entendido' });
+        return;
+    }
 
-            // Guard: el cliente no puede seleccionar Entregado ni Devuelto
-            if (IS_CLIENTE_RESTRICTO && ESTADOS_BLOQUEADOS_CLIENTE.includes(nuevoEstado)) {
-                select.val(estadoAnterior);
-                Swal.fire({
-                    title: 'Acción no permitida',
-                    text: 'No puedes cambiar el pedido a ese estado.',
-                    icon: 'warning',
-                    confirmButtonText: 'Entendido'
-                });
-                return;
-            }
-
-            // Preguntar por comentarios/observaciones usando SweetAlert2
-            Swal.fire({
-                title: 'Procesar Pedido',
-                text: '¿Deseas agregar algún comentario para el cambio a: ' + nombreEstado + '?',
-                input: 'textarea',
-                inputPlaceholder: 'Escribe tus observaciones aquí...',
-                showCancelButton: true,
-                confirmButtonText: 'Actualizar Estado',
-                cancelButtonText: 'Cancelar',
-                inputAttributes: {
-                    'aria-label': 'Escribe tus observaciones aquí'
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    let observaciones = result.value;
-
-                    // Deshabilita el select mientras se procesa
-                    select.prop("disabled", true);
-
-                    $.ajax({
-                        url: "<?= RUTA_URL ?>cambiarEstados",
-                        type: "POST",
-                        data: {
-                            id_pedido: idPedido,
-                            estado: nuevoEstado,
-                            observaciones: observaciones
-                        },
-                        dataType: "json",
-                        success: function(response) {
-                            if (response.success) {
-                                Swal.fire({
-                                    title: "¡Éxito!",
-                                    text: "Estado actualizado correctamente.",
-                                    icon: "success",
-                                    confirmButtonText: "OK"
-                                });
-                                select.data("estado", nuevoEstado);
-                                select.prop("disabled", false);
-                            } else {
-                                Swal.fire({
-                                    title: "Error",
-                                    text: response.message,
-                                    icon: "error",
-                                    confirmButtonText: "OK"
-                                });
-                                select.val(estadoAnterior);
-                                select.prop("disabled", false);
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            Swal.fire({
-                                title: "Error",
-                                text: "Hubo un problema al procesar la solicitud.",
-                                icon: "error"
-                            });
-                            select.val(estadoAnterior);
-                            select.prop("disabled", false);
-                        }
-                    });
-                } else {
-                    // Si cancela, revertir el select al estado anterior
+    Swal.fire({
+        title: 'Procesar Pedido',
+        text: '¿Deseas agregar algún comentario para el cambio a: ' + nombreEstado + '?',
+        input: 'textarea',
+        inputPlaceholder: 'Escribe tus observaciones aquí...',
+        showCancelButton: true,
+        confirmButtonText: 'Actualizar Estado',
+        cancelButtonText: 'Cancelar',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            select.prop('disabled', true);
+            $.ajax({
+                url: RUTA_BASE + 'cambiarEstados',
+                type: 'POST',
+                data: { id_pedido: idPedido, estado: nuevoEstado, observaciones: result.value },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({ title: '¡Éxito!', text: 'Estado actualizado correctamente.', icon: 'success', confirmButtonText: 'OK' });
+                        select.data('estado', nuevoEstado);
+                        select.prop('disabled', false);
+                    } else {
+                        Swal.fire({ title: 'Error', text: response.message, icon: 'error' });
+                        select.val(estadoAnterior);
+                        select.prop('disabled', false);
+                    }
+                },
+                error: function() {
+                    Swal.fire({ title: 'Error', text: 'Hubo un problema al procesar la solicitud.', icon: 'error' });
                     select.val(estadoAnterior);
+                    select.prop('disabled', false);
                 }
             });
-        });
+        } else {
+            select.val(estadoAnterior);
+        }
     });
+});
 </script>
 
 <!-- JS para manejar CSV import con Vista Previa y Import mejorado -->
