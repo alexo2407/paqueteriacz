@@ -51,23 +51,26 @@ $orderDir  = strtoupper($_REQUEST['order'][0]['dir'] ?? 'DESC') === 'ASC' ? 'ASC
 $orderSql  = ($columnasMapeadas[$orderCol] ?? 'p.id') . ' ' . $orderDir;
 
 // ── Restricciones por rol ──────────────────────────────────────────────────
-$rolesNombres   = $_SESSION['roles_nombres'] ?? [];
-$userId         = (int)($_SESSION['user_id'] ?? 0);
-$isAdmin        = isAdmin();
-$isRepartidor   = isRepartidor();
-$isClienteReal  = in_array('Proveedor', $rolesNombres, true); // ROL_NOMBRE_CLIENTE = 'Proveedor'
-$isProveedorReal = in_array('Cliente', $rolesNombres, true);  // ROL_NOMBRE_PROVEEDOR = 'Cliente'
+// Replicar exactamente PedidoQueryService::listarExtendidos()
+// DB 'Cliente'   (ID 4) = proveedor logístico  → pedidos en columna id_cliente
+// DB 'Proveedor' (ID 5) = cliente que envía     → pedidos en columna id_proveedor
+$rolesNombres    = $_SESSION['roles_nombres'] ?? [];
+$userId          = (int)($_SESSION['user_id'] ?? 0);
+$isAdmin         = isAdmin();
+$isRepartidor    = isRepartidor();
+$esClienteReal   = in_array('Cliente',   $rolesNombres, true) || in_array('cliente',   $rolesNombres, true);
+$esProveedorReal = in_array('Proveedor', $rolesNombres, true) || in_array('proveedor', $rolesNombres, true);
 
 // ── WHERE dinámico ─────────────────────────────────────────────────────────
 $whereClauses = [];
 $params       = [];
 
-// Filtro de propiedad por rol (en SQL, no en PHP)
+// Filtro en SQL — misma lógica que PedidoQueryService (array_filter → WHERE clause)
 if (!$isAdmin && !$isRepartidor) {
-    if ($isClienteReal) {
+    if ($esClienteReal) {
         $whereClauses[] = 'p.id_cliente = :uid';
         $params[':uid'] = $userId;
-    } elseif ($isProveedorReal) {
+    } elseif ($esProveedorReal) {
         $whereClauses[] = 'p.id_proveedor = :uid';
         $params[':uid'] = $userId;
     }

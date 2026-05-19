@@ -337,19 +337,43 @@ require_once __DIR__ . '/../../../modelo/pedido.php';
 $listarPedidos = new PedidosController();
 $estados = $listarPedidos->obtenerEstados();
 
-// Contadores via query de agregación: mucho más rápido que fetchAll + count en PHP
+// Contadores via query de agregación con filtro por rol
+// Misma lógica que PedidoQueryService y datatable.php
 try {
-    $_db_stats = (new Conexion())->conectar();
-    $_stmt_stats = $_db_stats->query("
+    require_once __DIR__ . '/../../../utils/permissions.php';
+    $_db_stats   = (new Conexion())->conectar();
+    $_roles_s    = $_SESSION['roles_nombres'] ?? [];
+    $_uid_s      = (int)($_SESSION['user_id'] ?? 0);
+    $_isAdmin_s  = isAdmin();
+    $_isRep_s    = isRepartidor();
+    $_esCli_s    = in_array('Cliente',   $_roles_s, true) || in_array('cliente',   $_roles_s, true);
+    $_esProv_s   = in_array('Proveedor', $_roles_s, true) || in_array('proveedor', $_roles_s, true);
+
+    // Construir WHERE según rol
+    $_whereStats = '';
+    $_paramsStats = [];
+    if (!$_isAdmin_s && !$_isRep_s) {
+        if ($_esCli_s) {
+            $_whereStats = 'WHERE p.id_cliente = :uid';
+            $_paramsStats[':uid'] = $_uid_s;
+        } elseif ($_esProv_s) {
+            $_whereStats = 'WHERE p.id_proveedor = :uid';
+            $_paramsStats[':uid'] = $_uid_s;
+        }
+    }
+
+    $_stmt_stats = $_db_stats->prepare("
         SELECT
             COUNT(*) AS total,
             SUM(CASE WHEN ep.nombre_estado LIKE '%pend%' OR ep.nombre_estado LIKE '%nuevo%' THEN 1 ELSE 0 END) AS pendientes,
             SUM(CASE WHEN ep.nombre_estado LIKE '%entreg%' THEN 1 ELSE 0 END) AS entregados
         FROM pedidos p
         LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+        $_whereStats
     ");
-    $_counts = $_stmt_stats->fetch(PDO::FETCH_ASSOC);
-    $totalPedidos = (int)($_counts['total'] ?? 0);
+    $_stmt_stats->execute($_paramsStats);
+    $_counts      = $_stmt_stats->fetch(PDO::FETCH_ASSOC);
+    $totalPedidos = (int)($_counts['total']      ?? 0);
     $pendientes   = (int)($_counts['pendientes'] ?? 0);
     $entregados   = (int)($_counts['entregados'] ?? 0);
     $enProceso    = $totalPedidos - $pendientes - $entregados;
