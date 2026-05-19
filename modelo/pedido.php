@@ -1938,7 +1938,7 @@ class PedidosModel
      *                         Usar cuando el caller (ej: actualizarPedido) ya generó
      *                         un registro unificado para la misma acción.
      */
-    public static function actualizarEstado($id_pedido, $estado, $observaciones = null, bool $skipAudit = false, $fecha_registro = null)
+    public static function actualizarEstado($id_pedido, $estado, $observaciones = null, bool $skipAudit = false, $fecha_registro = null, $fecha_entrega = null)
     {
         try {
             $db = (new Conexion())->conectar();
@@ -1948,16 +1948,20 @@ class PedidosModel
             $stmtAnterior->execute([':id' => $id_pedido]);
             $estadoAnterior = $stmtAnterior->fetchColumn();
 
-            // Si el estado es el mismo, no hacer nada (opcional)
-            if ($estadoAnterior == $estado) {
-                // return true; 
-            }
+            // Construir UPDATE: agregar fecha_entrega si el estado es Reprogramado (4) y se proporcionó
+            $ESTADO_REPROGRAMADO = 4;
+            $actualizarFecha = ($estado == $ESTADO_REPROGRAMADO && !empty($fecha_entrega));
 
-            $query = "UPDATE pedidos SET id_estado = :estado WHERE id = :id_pedido";
+            $query = $actualizarFecha
+                ? "UPDATE pedidos SET id_estado = :estado, fecha_entrega = :fecha_entrega WHERE id = :id_pedido"
+                : "UPDATE pedidos SET id_estado = :estado WHERE id = :id_pedido";
             $stmt = $db->prepare($query);
 
             $stmt->bindParam(":estado", $estado, PDO::PARAM_INT);
             $stmt->bindParam(":id_pedido", $id_pedido, PDO::PARAM_INT);
+            if ($actualizarFecha) {
+                $stmt->bindParam(":fecha_entrega", $fecha_entrega);
+            }
 
             try {
                 $userId = self::resolveCurrentUserId();

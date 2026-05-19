@@ -1117,6 +1117,17 @@ class PedidosController {
         $id_pedido = intval($datos["id_pedido"] ?? 0);
         $nuevo_estado = intval($datos["estado"] ?? 0);
         $observaciones = $datos["observaciones"] ?? null;
+        // fecha_entrega solo aplica cuando el estado es Reprogramado (4)
+        $fecha_entrega_raw = trim($datos["fecha_entrega"] ?? '');
+        $fecha_entrega = null;
+        if ($nuevo_estado === 4 && $fecha_entrega_raw !== '') {
+            // Aceptar formato Y-m-d o d/m/Y y normalizar a Y-m-d
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_entrega_raw)) {
+                $fecha_entrega = $fecha_entrega_raw;
+            } elseif (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $fecha_entrega_raw)) {
+                $fecha_entrega = implode('-', array_reverse(explode('/', $fecha_entrega_raw)));
+            }
+        }
 
         header('Content-Type: application/json');
 
@@ -1219,7 +1230,7 @@ class PedidosController {
         }
 
         // Ejecutar la actualización (admins y otros roles pasan sin restricciones adicionales)
-        $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado, $observaciones);
+        $resultado = PedidosModel::actualizarEstado($id_pedido, $nuevo_estado, $observaciones, false, null, $fecha_entrega);
 
         // Normalizar respuesta: el modelo puede devolver true/false o un array con error
         if (is_array($resultado)) {

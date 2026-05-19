@@ -737,21 +737,56 @@ $(document).on('change', '.actualizarEstado', function() {
         return;
     }
 
+    const ES_REPROGRAMADO = (nuevoEstado === 4);
+
+    // Construir HTML del modal según el estado
+    const htmlModal = ES_REPROGRAMADO
+        ? `<p class="text-muted mb-2" style="font-size:.9rem;">Cambio a: <strong>${nombreEstado}</strong></p>
+           <div class="mb-3 text-start">
+               <label class="form-label fw-semibold">📅 Nueva fecha de entrega <span class="text-danger">*</span></label>
+               <input type="date" id="swal-fecha-entrega" class="form-control" min="${new Date().toISOString().split('T')[0]}" required>
+           </div>
+           <div class="text-start">
+               <label class="form-label fw-semibold">💬 Observaciones</label>
+               <textarea id="swal-obs" class="form-control" rows="3" placeholder="Escribe tus observaciones aquí..."></textarea>
+           </div>`
+        : `<p class="text-muted mb-2" style="font-size:.9rem;">Cambio a: <strong>${nombreEstado}</strong></p>
+           <div class="text-start">
+               <label class="form-label fw-semibold">💬 Observaciones</label>
+               <textarea id="swal-obs" class="form-control" rows="3" placeholder="Escribe tus observaciones aquí..."></textarea>
+           </div>`;
+
     Swal.fire({
         title: 'Procesar Pedido',
-        text: '¿Deseas agregar algún comentario para el cambio a: ' + nombreEstado + '?',
-        input: 'textarea',
-        inputPlaceholder: 'Escribe tus observaciones aquí...',
+        html: htmlModal,
         showCancelButton: true,
         confirmButtonText: 'Actualizar Estado',
         cancelButtonText: 'Cancelar',
+        focusConfirm: false,
+        preConfirm: () => {
+            const obs = document.getElementById('swal-obs')?.value?.trim() || '';
+            if (ES_REPROGRAMADO) {
+                const fecha = document.getElementById('swal-fecha-entrega')?.value || '';
+                if (!fecha) {
+                    Swal.showValidationMessage('La fecha de entrega es obligatoria para Reprogramado.');
+                    return false;
+                }
+                return { obs, fecha_entrega: fecha };
+            }
+            return { obs, fecha_entrega: '' };
+        }
     }).then((result) => {
         if (result.isConfirmed) {
             select.prop('disabled', true);
             $.ajax({
                 url: RUTA_BASE + 'cambiarEstados',
                 type: 'POST',
-                data: { id_pedido: idPedido, estado: nuevoEstado, observaciones: result.value },
+                data: {
+                    id_pedido: idPedido,
+                    estado: nuevoEstado,
+                    observaciones: result.value.obs,
+                    fecha_entrega: result.value.fecha_entrega
+                },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
