@@ -736,9 +736,23 @@ class ProductoModel
             }
             
             // Filtro por usuario creador
-             if (!empty($filtros['id_usuario_creador'])) {
-                $where[] = 'p.id_usuario_creador = :id_usuario_creador';
-                $params[':id_usuario_creador'] = $filtros['id_usuario_creador'];
+            if (!empty($filtros['id_usuario_creador'])) {
+                $idUsuarioCreador = $filtros['id_usuario_creador'];
+                if (is_array($idUsuarioCreador)) {
+                    if (empty($idUsuarioCreador)) {
+                        $where[] = '1 = 0';
+                    } else {
+                        $placeholders = [];
+                        foreach ($idUsuarioCreador as $i => $v) {
+                            $placeholders[] = ':id_usr_creador_' . $i;
+                            $params[':id_usr_creador_' . $i] = (int)$v;
+                        }
+                        $where[] = 'p.id_usuario_creador IN (' . implode(',', $placeholders) . ')';
+                    }
+                } else {
+                    $where[] = 'p.id_usuario_creador = :id_usuario_creador';
+                    $params[':id_usuario_creador'] = (int)$idUsuarioCreador;
+                }
             }
             
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -809,7 +823,7 @@ class ProductoModel
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $value) {
                 // Bind int
-                if ($key === ':limit' || $key === ':offset') {
+                if ($key === ':limit' || $key === ':offset' || $key === ':id_usuario_creador' || strpos($key, ':id_usr_creador_') === 0) {
                      $stmt->bindValue($key, $value, PDO::PARAM_INT);
                 } else {
                      $stmt->bindValue($key, $value);
@@ -868,9 +882,23 @@ class ProductoModel
             }
 
              // Filtro por usuario creador
-             if (!empty($filtros['id_usuario_creador'])) {
-                $where[] = 'p.id_usuario_creador = :id_usuario_creador';
-                $params[':id_usuario_creador'] = $filtros['id_usuario_creador'];
+            if (!empty($filtros['id_usuario_creador'])) {
+                $idUsuarioCreador = $filtros['id_usuario_creador'];
+                if (is_array($idUsuarioCreador)) {
+                    if (empty($idUsuarioCreador)) {
+                        $where[] = '1 = 0';
+                    } else {
+                        $placeholders = [];
+                        foreach ($idUsuarioCreador as $i => $v) {
+                            $placeholders[] = ':id_usr_creador_' . $i;
+                            $params[':id_usr_creador_' . $i] = (int)$v;
+                        }
+                        $where[] = 'p.id_usuario_creador IN (' . implode(',', $placeholders) . ')';
+                    }
+                } else {
+                    $where[] = 'p.id_usuario_creador = :id_usuario_creador';
+                    $params[':id_usuario_creador'] = (int)$idUsuarioCreador;
+                }
             }
 
              if (!empty($filtros['nivel_stock'])) {
@@ -907,7 +935,11 @@ class ProductoModel
             
             $stmt = $db->prepare($sql);
             foreach ($params as $key => $value) {
-                $stmt->bindValue($key, $value);
+                if ($key === ':id_usuario_creador' || strpos($key, ':id_usr_creador_') === 0) {
+                    $stmt->bindValue($key, $value, PDO::PARAM_INT);
+                } else {
+                    $stmt->bindValue($key, $value);
+                }
             }
             $stmt->execute();
             return (int)$stmt->fetchColumn();

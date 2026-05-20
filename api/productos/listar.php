@@ -10,6 +10,22 @@ header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../modelo/producto.php';
 require_once __DIR__ . '/../utils/responder.php';
+require_once __DIR__ . '/../utils/autenticacion.php';
+require_once __DIR__ . '/../../utils/permissions.php';
+
+// Verificar autenticación
+$token = AuthMiddleware::obtenerTokenDeHeaders();
+if (!$token) {
+    responder(false, 'Token de autorización requerido.', null, 401);
+    exit;
+}
+
+$auth = new AuthMiddleware();
+$check = $auth->validarToken($token);
+if (!$check['success']) {
+    responder(false, 'Token inválido o expirado.', null, 401);
+    exit;
+}
 
 try {
     // Pagination params
@@ -27,11 +43,17 @@ try {
     if (isset($_GET['marca'])) $filtros['marca'] = $_GET['marca'];
     if (isset($_GET['activo'])) $filtros['activo'] = ($_GET['activo'] === '1' || $_GET['activo'] === 'true');
     
-    // Filtro por usuario creador (cliente)
-    if (isset($_GET['id_cliente'])) {
-        $filtros['id_usuario_creador'] = (int)$_GET['id_cliente'];
-    } elseif (isset($_GET['id_usuario'])) {
-        $filtros['id_usuario_creador'] = (int)$_GET['id_usuario'];
+    // Obtener filtro por usuario creador según rol del usuario logueado
+    $filtroUsuario = getIdUsuarioCreadorFilter();
+    if ($filtroUsuario !== null) {
+        $filtros['id_usuario_creador'] = $filtroUsuario;
+    } else {
+        // Admin, Vendedor o Repartidor pueden ver todos o filtrar por GET si se especifica
+        if (isset($_GET['id_cliente'])) {
+            $filtros['id_usuario_creador'] = (int)$_GET['id_cliente'];
+        } elseif (isset($_GET['id_usuario'])) {
+            $filtros['id_usuario_creador'] = (int)$_GET['id_usuario'];
+        }
     }
     
     // Switch to listarConFiltros which supports pagination
