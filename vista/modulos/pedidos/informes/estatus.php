@@ -67,7 +67,7 @@ $tokenEnlacePublico = $tokenRow['token_enlace_publico'] ?? '';
 $currUserNombre     = $tokenRow['nombre'] ?? ($_SESSION['nombre'] ?? '');
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
-$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-d', strtotime('-3 months'));
+$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-01');
 $fechaHasta  = $_GET['fecha_hasta'] ?? date('Y-m-d');
 $idProveedor = (!$isAdmin && $isProveedorExt) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
 $export      = isset($_GET['export']) && $_GET['export'] === '1';
@@ -161,9 +161,9 @@ if ($export) {
 
     // Colores por categoría
     $colores = [
-        'ENTREGADO'  => ['bg' => '22C55E', 'text' => 'FFFFFF'],
-        'EN PROCESO' => ['bg' => 'EAB308', 'text' => '000000'],
-        'RECHAZADO'  => ['bg' => 'EF4444', 'text' => 'FFFFFF'],
+        'ENTREGADO'  => ['bg' => '3CB043', 'text' => 'FFFFFF'],
+        'EN PROCESO' => ['bg' => 'F5E400', 'text' => '3D3200'],
+        'RECHAZADO'  => ['bg' => 'D42B2B', 'text' => 'FFFFFF'],
     ];
 
     $row = 3;
@@ -213,9 +213,9 @@ if ($export) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --clr-entregado:  #22c55e;
-            --clr-proceso:    #eab308;
-            --clr-rechazado:  #ef4444;
+            --clr-entregado:  #3cb043;
+            --clr-proceso:    #f5e400;
+            --clr-rechazado:  #d42b2b;
             --clr-dark:       #0f172a;
             --clr-card:       #1e293b;
             --clr-surface:    #f8fafc;
@@ -254,9 +254,9 @@ if ($export) {
             background: rgba(255,255,255,.08);
         }
         .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.18); }
-        .kpi-card.entregado  { background: linear-gradient(135deg, #16a34a, #22c55e); }
-        .kpi-card.en-proceso { background: linear-gradient(135deg, #ca8a04, #eab308); color: #1a1a00; }
-        .kpi-card.rechazado  { background: linear-gradient(135deg, #dc2626, #ef4444); }
+        .kpi-card.entregado  { background: #3cb043; color: #fff; }
+        .kpi-card.en-proceso { background: #f5e400; color: #3d3200; }
+        .kpi-card.rechazado  { background: #d42b2b; color: #fff; }
         .kpi-num  { font-size: 2.5rem; font-weight: 800; line-height: 1; }
         .kpi-pct  { font-size: 1rem; font-weight: 600; opacity: .85; }
         .kpi-lbl  { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .75; margin-top: .35rem; }
@@ -302,9 +302,9 @@ if ($export) {
             font-weight: 700;
             letter-spacing: .02em;
         }
-        .badge-entregado  { background: #dcfce7; color: #15803d; }
-        .badge-proceso    { background: #fef9c3; color: #854d0e; }
-        .badge-rechazado  { background: #fee2e2; color: #b91c1c; }
+        .badge-entregado  { background: #d4f5d6; color: #1d6b22; }
+        .badge-proceso    { background: #fdf8b0; color: #5a5000; }
+        .badge-rechazado  { background: #fad4d4; color: #8b1a1a; }
 
         /* Progress bar */
         .prog-bar-wrap { height: 10px; background: #e2e8f0; border-radius: 99px; overflow: hidden; min-width: 80px; }
@@ -544,7 +544,7 @@ if ($export) {
     const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO'];
     const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>];
     const total  = values.reduce((a, b) => a + b, 0);
-    const colors = ['#22c55e', '#eab308', '#ef4444'];
+    const colors = ['#3cb043', '#f5e400', '#d42b2b'];
 
     new Chart(ctx, {
         type: 'doughnut',

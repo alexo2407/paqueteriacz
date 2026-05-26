@@ -55,7 +55,7 @@ $tokenEnlacePublico = $tokenRow['token_enlace_publico'] ?? '';
 $currUserNombre     = $tokenRow['nombre'] ?? ($_SESSION['nombre'] ?? '');
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
-$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-d', strtotime('-3 months'));
+$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-01');
 $fechaHasta  = $_GET['fecha_hasta'] ?? date('Y-m-d');
 $idProveedor = (!$isAdmin && $isProveedorExt) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
 $export      = isset($_GET['export']) && $_GET['export'] === '1';
@@ -146,8 +146,8 @@ if ($export) {
     $sheet->getRowDimension(2)->setRowHeight(6);
 
     // Row 3 — headers
-    $headerColors = ['FFFFFF', 'FFFFFF', '22C55E', '22C55E', 'EF4444', 'EF4444', 'EAB308', 'EAB308'];
-    $headerBg     = ['1E293B', '1E293B', '15803D', '15803D', 'B91C1C', 'B91C1C', '854D0E', '854D0E'];
+    $headerColors = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', '3D3200'];
+    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', 'D42B2B', 'D42B2B', 'F5E400', 'F5E400'];
     foreach ($headers as $ci => $h) {
         $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci + 1);
         $sheet->setCellValue("{$col}3", $h);
@@ -168,9 +168,9 @@ if ($export) {
         $sheet->setCellValue("F{$row}", $reg['pct_rechazados'] . '%');
         $sheet->setCellValue("G{$row}", $reg['en_proceso']);
         $sheet->setCellValue("H{$row}", $reg['pct_en_proceso'] . '%');
-        $sheet->getStyle("C{$row}:D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'DCFCE7']], 'font' => ['color' => ['rgb' => '15803D'], 'bold' => true]]);
-        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FEE2E2']], 'font' => ['color' => ['rgb' => 'B91C1C'], 'bold' => true]]);
-        $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FEF9C3']], 'font' => ['color' => ['rgb' => '854D0E'], 'bold' => true]]);
+        $sheet->getStyle("C{$row}:D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '3CB043']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D42B2B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true]]);
         $row++;
     }
 
@@ -228,16 +228,16 @@ $chartEnProceso  = json_encode(array_column($regiones, 'en_proceso'));
         /* Tabla */
         .tabla-region { font-size: .84rem; }
         .tabla-region thead tr:first-child th { background: #1e293b; color: #fff; font-weight: 700; text-align: center; border: none; padding: .55rem .75rem; }
-        .tabla-region thead tr:last-child th.th-ent { background: #15803d; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
-        .tabla-region thead tr:last-child th.th-rec { background: #b91c1c; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
-        .tabla-region thead tr:last-child th.th-proc { background: #854d0e; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
+        .tabla-region thead tr:last-child th.th-ent  { background: #3cb043; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
+        .tabla-region thead tr:last-child th.th-rec  { background: #d42b2b; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
+        .tabla-region thead tr:last-child th.th-proc { background: #f5e400; color: #3d3200; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-base { background: #334155; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region tbody td { padding: .5rem .75rem; vertical-align: middle; border-color: #e2e8f0; }
         .tabla-region tfoot td { font-weight: 700; background: #f1f5f9; border-color: #e2e8f0; padding: .55rem .75rem; }
 
-        .cell-ent  { background: #dcfce7 !important; color: #15803d !important; font-weight: 700; text-align: center; }
-        .cell-rec  { background: #fee2e2 !important; color: #b91c1c !important; font-weight: 700; text-align: center; }
-        .cell-proc { background: #fef9c3 !important; color: #854d0e !important; font-weight: 700; text-align: center; }
+        .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
+        .cell-rec  { background: #fad4d4 !important; color: #8b1a1a !important; font-weight: 700; text-align: center; }
+        .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-num  { text-align: center; font-weight: 600; }
         .prov-name { font-weight: 600; color: #1e293b; }
     </style>
@@ -376,9 +376,9 @@ $chartEnProceso  = json_encode(array_column($regiones, 'en_proceso'));
                     <tr>
                         <th rowspan="2" style="vertical-align:middle">PROVINCIAS</th>
                         <th rowspan="2" class="text-center" style="vertical-align:middle">CANTIDAD</th>
-                        <th colspan="2" class="text-center" style="background:#15803d;color:#fff">ENTREGADO</th>
-                        <th colspan="2" class="text-center" style="background:#b91c1c;color:#fff">RECHAZADO</th>
-                        <th colspan="2" class="text-center" style="background:#854d0e;color:#fff">EN PROCESO</th>
+                        <th colspan="2" class="text-center" style="background:#3cb043;color:#fff">ENTREGADO</th>
+                        <th colspan="2" class="text-center" style="background:#d42b2b;color:#fff">RECHAZADO</th>
+                        <th colspan="2" class="text-center" style="background:#f5e400;color:#3d3200">EN PROCESO</th>
                     </tr>
                     <tr>
                         <th class="th-ent">Cant.</th>
@@ -443,24 +443,24 @@ $chartEnProceso  = json_encode(array_column($regiones, 'en_proceso'));
                 {
                     label: 'Entregado',
                     data: <?= $chartEntregados ?>,
-                    backgroundColor: 'rgba(34,197,94,.75)',
-                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(60,176,67,.8)',
+                    borderColor: '#3cb043',
                     borderWidth: 1.5,
                     borderRadius: 4,
                 },
                 {
                     label: 'Rechazado',
                     data: <?= $chartRechazados ?>,
-                    backgroundColor: 'rgba(239,68,68,.75)',
-                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(212,43,43,.8)',
+                    borderColor: '#d42b2b',
                     borderWidth: 1.5,
                     borderRadius: 4,
                 },
                 {
                     label: 'En Proceso',
                     data: <?= $chartEnProceso ?>,
-                    backgroundColor: 'rgba(234,179,8,.75)',
-                    borderColor: '#eab308',
+                    backgroundColor: 'rgba(245,228,0,.8)',
+                    borderColor: '#f5e400',
                     borderWidth: 1.5,
                     borderRadius: 4,
                 }
