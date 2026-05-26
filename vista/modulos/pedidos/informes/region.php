@@ -88,12 +88,13 @@ $whereStr = 'WHERE ' . implode(' AND ', $where);
 // ── Query: efectividad por región ─────────────────────────────────────────────
 // Homologación de departamento en cascada:
 //   Ruta A: p.id_departamento → departamentos.id              (FK directa)
-//   Ruta B: p.departmentName  → departamentos.nombre          (texto libre, homologado por nombre)
-//   Ruta C: p.id_codigo_postal → codigos_postales.id → dep.  (FK de CP)
-//   Ruta D: p.codigo_postal   → codigos_postales.codigo_postal (CP como texto, ej. NutraTrade)
+//   Ruta B: p.departmentName  → departamentos.nombre          (texto libre, homologado LOWER+TRIM)
+//   Ruta C: p.id_codigo_postal → codigos_postales.id → dep.  (FK numérica de CP)
+//   Ruta D: p.codigo_postal   → codigos_postales.codigo_postal (CP como texto, ej. GT5077)
+//   Ruta E: CONCAT(prefijo_pais, p.codigo_postal) → codigos_postales (CP sin prefijo, ej. 1057→GT1057)
 $sqlRegion = "
     SELECT
-        COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, d_cptxt.nombre, 'Sin Región') AS provincia,
+        COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, d_cptxt.nombre, d_norm.nombre, 'Sin Región') AS provincia,
         COUNT(*) AS cantidad,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0 END) AS entregados,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
@@ -112,15 +113,25 @@ $sqlRegion = "
           AND cp_hom.id = p.id_codigo_postal
     LEFT JOIN departamentos d_cp
            ON d_cp.id = cp_hom.id_departamento
-    -- Ruta D: via codigo_postal (texto, ej. GT5077) → codigos_postales
+    -- Ruta D: via codigo_postal (texto exacto, ej. GT5077)
     LEFT JOIN codigos_postales cp_txt
            ON d_fk.id IS NULL AND d_name.id IS NULL AND d_cp.id IS NULL
           AND cp_txt.codigo_postal = p.codigo_postal
     LEFT JOIN departamentos d_cptxt
            ON d_cptxt.id = cp_txt.id_departamento
+    -- Ruta E: CP sin prefijo de país → agregar prefijo y buscar (ej. 1057 + GT → GT1057)
+    LEFT JOIN paises pa_norm
+           ON pa_norm.id = p.id_pais
+    LEFT JOIN codigos_postales cp_norm
+           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_cp.id IS NULL AND d_cptxt.id IS NULL
+          AND pa_norm.prefijo_postal IS NOT NULL
+          AND p.codigo_postal NOT LIKE CONCAT(pa_norm.prefijo_postal, '%')
+          AND cp_norm.codigo_postal = CONCAT(pa_norm.prefijo_postal, p.codigo_postal)
+    LEFT JOIN departamentos d_norm
+           ON d_norm.id = cp_norm.id_departamento
     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
     {$whereStr}
-    GROUP BY COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, d_cptxt.nombre, 'Sin Región')
+    GROUP BY COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, d_cptxt.nombre, d_norm.nombre, 'Sin Región')
     ORDER BY cantidad DESC
 ";
 $stmtReg = $db->prepare($sqlRegion);
