@@ -86,18 +86,31 @@ if ($isAdmin && $idProveedor > 0) {
 $whereStr = 'WHERE ' . implode(' AND ', $where);
 
 // ── Query: efectividad por región ─────────────────────────────────────────────
+// Homologación de departamento en cascada:
+//   Ruta A: p.id_departamento → departamentos.id       (FK directa)
+//   Ruta B: p.departmentName  → departamentos.nombre   (texto libre homologado por nombre)
+//   Ruta C: p.id_codigo_postal → codigos_postales → departamentos.id (via CP)
 $sqlRegion = "
     SELECT
-        COALESCE(d.nombre, 'Sin Región') AS provincia,
+        COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, 'Sin Región') AS provincia,
         COUNT(*) AS cantidad,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0 END) AS entregados,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
                    OR LOWER(ep.nombre_estado) LIKE '%devuelto%'  THEN 1 ELSE 0 END) AS rechazados
     FROM pedidos p
-    LEFT JOIN departamentos d   ON d.id  = p.id_departamento
+    LEFT JOIN departamentos d_fk
+           ON d_fk.id = p.id_departamento
+    LEFT JOIN departamentos d_name
+           ON d_fk.id IS NULL
+          AND LOWER(TRIM(d_name.nombre)) = LOWER(TRIM(p.departmentName))
+    LEFT JOIN codigos_postales cp_hom
+           ON d_fk.id IS NULL AND d_name.id IS NULL
+          AND cp_hom.id = p.id_codigo_postal
+    LEFT JOIN departamentos d_cp
+           ON d_cp.id = cp_hom.id_departamento
     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
     {$whereStr}
-    GROUP BY d.id, d.nombre
+    GROUP BY COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, 'Sin Región')
     ORDER BY cantidad DESC
 ";
 $stmtReg = $db->prepare($sqlRegion);
