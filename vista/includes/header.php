@@ -466,6 +466,26 @@
             <a href="<?= RUTA_URL ?>pedidos/reportes" class="nav-link">
                 <i class="bi bi-file-earmark-bar-graph"></i> Reporte de Pedidos
             </a>
+            <!-- ═══ Grupo Informes ═══ -->
+            <a href="#navInformes" class="nav-link d-flex align-items-center justify-content-between"
+               data-bs-toggle="collapse" role="button"
+               aria-expanded="<?= (strpos($_SERVER['REQUEST_URI'] ?? '', 'informes') !== false) ? 'true' : 'false' ?>"
+               aria-controls="navInformes"
+               style="cursor:pointer">
+                <span><i class="bi bi-bar-chart-fill me-1"></i> Informes</span>
+                <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s" id="chevronInformes"></i>
+            </a>
+            <div class="collapse <?= (strpos($_SERVER['REQUEST_URI'] ?? '', 'informes') !== false) ? 'show' : '' ?>" id="navInformes">
+                <a href="<?= RUTA_URL ?>pedidos/informes/estatus" class="nav-link ps-4" style="font-size:.85rem">
+                    <i class="bi bi-pie-chart me-1"></i> Estatus de Órdenes
+                </a>
+                <a href="<?= RUTA_URL ?>pedidos/informes/region" class="nav-link ps-4" style="font-size:.85rem">
+                    <i class="bi bi-map me-1"></i> Efectividad por Región
+                </a>
+                <a href="<?= RUTA_URL ?>pedidos/informes/producto" class="nav-link ps-4" style="font-size:.85rem">
+                    <i class="bi bi-box-seam me-1"></i> Efectividad por Producto
+                </a>
+            </div>
             <?php endif; ?>
 
             <?php if ($isRepartidor || $isAdmin): ?>
@@ -572,6 +592,19 @@
         </nav>
     </div>
 </div><!-- /sidebar -->
+
+<script>
+// ── Chevron Informes collapse ─────────────────────────────────────────────────
+(function() {
+    const el = document.getElementById('navInformes');
+    const ch = document.getElementById('chevronInformes');
+    if (!el || !ch) return;
+    el.addEventListener('show.bs.collapse',  () => ch.style.transform = 'rotate(-180deg)');
+    el.addEventListener('hide.bs.collapse',  () => ch.style.transform = 'rotate(0deg)');
+    // Set initial state
+    if (el.classList.contains('show')) ch.style.transform = 'rotate(-180deg)';
+})();
+</script>
 
 <!-- ══════ MAIN CONTENT ══════ -->
 <main class="bs-main">
