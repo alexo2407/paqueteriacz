@@ -71,11 +71,15 @@ try {
             <div class="col-md-12 mb-3">
                 <div class="alert alert-info py-2 px-3 mb-0 small border-0 shadow-sm">
                     <i class="bi bi-info-circle-fill me-2"></i>
-                    Puedes usar el <strong>ID</strong> (numérico) o el <strong>Nombre</strong> (texto exacto) en tu archivo CSV.
-                    Ejemplo: <code>id_estado=1</code> es equivalente a <code>estado_nombre=En bodega</code> (consulta la tabla <strong>Estados</strong> para ver todos los IDs y nombres disponibles).
+                    Puedes usar el <strong>ID</strong> (numérico) o el <strong>Nombre</strong> (texto exacto) en tu archivo CSV para estados, proveedores, monedas y vendedores.
+                    Ejemplo: <code>id_estado=1</code> es equivalente a <code>estado_nombre=En bodega</code>.
+                    <br>
+                    <i class="bi bi-box-seam me-2 text-danger"></i>
+                    <strong>Productos:</strong> Puedes usar <code>id_producto</code> (ID numérico) <em>o</em> <code>producto_nombre</code> (nombre exacto).
+                    <strong class="text-danger">Los productos deben existir previamente</strong> — si el producto no se encuentra, la fila es <strong>rechazada</strong> y no se importa.
                     <br>
                     <i class="bi bi-geo-alt-fill me-2 text-primary"></i>
-                    <strong>Códigos Postales:</strong> Pueden estar asignados al <strong>Barrio</strong> o al <strong>Municipio</strong> según el país. 
+                    <strong>Códigos Postales:</strong> Pueden estar asignados al <strong>Barrio</strong> o al <strong>Municipio</strong> según el país.
                     El sistema prioriza el código postal del barrio si existe, de lo contrario usa el del municipio.
                 </div>
             </div>

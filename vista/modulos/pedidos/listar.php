@@ -120,16 +120,7 @@ endif;
                                             </select>
                                         </div>
 
-                                        <!-- Opciones adicionales -->
-                                        <div class="col-12">
-                                            <div class="form-check form-switch">
-                                                <input class="form-check-input" type="checkbox" id="auto_create_products" name="auto_create_products" value="1" checked>
-                                                <label class="form-check-label" for="auto_create_products">
-                                                    Crear productos automáticamente si no existen
-                                                </label>
-                                                <div class="form-text">Si desactivas esta opción, las filas con productos inexistentes serán rechazadas</div>
-                                            </div>
-                                        </div>
+                                        <!-- Nota: productos inexistentes generan error de validación y la fila es rechazada -->
                                     </div>
                                 </div>
                             </div>
@@ -146,113 +137,189 @@ endif;
                     <div class="mt-3 border rounded overflow-hidden" style="font-size:0.82rem;">
                         <!-- Header -->
                         <div class="d-flex align-items-center justify-content-between px-3 py-2 text-white" style="background:linear-gradient(135deg,#667eea,#764ba2)">
-                            <span class="fw-bold"><i class="bi bi-table me-1"></i> Referencia de Campos CSV</span>
+                            <span class="fw-bold"><i class="bi bi-file-earmark-excel me-1"></i> Referencia de Campos XLSX — Orden de Columnas</span>
                             <a href="<?= RUTA_URL ?>Pedidos/referencia" target="_blank" class="text-white small opacity-75">
                                 <i class="bi bi-box-arrow-up-right me-1"></i>Ver IDs disponibles
                             </a>
                         </div>
 
                         <div class="p-3">
+                            <!-- Leyenda de colores -->
+                            <div class="d-flex gap-3 mb-2 flex-wrap" style="font-size:0.75rem;">
+                                <span><span class="badge bg-danger me-1">REQ</span>Requerido</span>
+                                <span><span class="badge bg-warning text-dark me-1">OPT</span>Opcional</span>
+                                <span><span class="badge me-1" style="background:#1D6A3A;color:#fff;">PROD</span>Multi-producto</span>
+                            </div>
+
                             <!-- Tabla de campos -->
-                            <table class="table table-sm table-bordered mb-2" style="font-size:0.8rem;">
+                            <table class="table table-sm table-bordered mb-2" style="font-size:0.78rem;">
                                 <thead class="table-light">
                                     <tr>
-                                        <th style="min-width:130px">Campo CSV</th>
+                                        <th style="min-width:40px;">Col.</th>
+                                        <th style="min-width:145px;">Columna XLSX</th>
                                         <th>Tipo</th>
-                                        <th>Descripción / Valores aceptados</th>
+                                        <th>Descripción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- REQUERIDOS (ESTRICTOS) -->
                                     <tr class="table-danger bg-opacity-25">
-                                        <td><code>numero_orden</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted text-center fw-bold">A</td>
+                                        <td><code>numero_orden</code> <span class="badge bg-danger">REQ</span></td>
                                         <td class="text-muted">entero</td>
                                         <td>ID externo del pedido. Único por cliente.</td>
                                     </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">B</td>
+                                        <td><code>fecha_ingreso</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">fecha</td>
+                                        <td>Formato <code>DD/MM/YYYY</code>. Ej: <code>26/05/2025</code></td>
+                                    </tr>
                                     <tr class="table-danger bg-opacity-25">
-                                        <td><code>destinatario</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted text-center fw-bold">C</td>
+                                        <td><code>destinatario</code> <span class="badge bg-danger">REQ</span></td>
                                         <td class="text-muted">texto</td>
                                         <td>Nombre completo del destinatario.</td>
                                     </tr>
                                     <tr class="table-danger bg-opacity-25">
-                                        <td><code>id_producto</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
-                                        <td class="text-muted">entero</td>
-                                        <td>ID del producto (ver Referencia).</td>
-                                    </tr>
-                                    <tr class="table-danger bg-opacity-25">
-                                        <td><code>id_cliente</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
-                                        <td class="text-muted">entero</td>
-                                        <td>ID del cliente dueño del pedido. Se auto-completa en la plantilla.</td>
-                                    </tr>
-                                    <tr class="table-danger bg-opacity-25">
-                                        <td><code>id_proveedor</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
-                                        <td class="text-muted">entero</td>
-                                        <td>ID del proveedor de mensajería asignado.</td>
-                                    </tr>
-                                    <tr class="table-danger bg-opacity-25">
-                                        <td><code>telefono</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted text-center fw-bold">D</td>
+                                        <td><code>telefono</code> <span class="badge bg-danger">REQ</span></td>
                                         <td class="text-muted">texto</td>
-                                        <td>Teléfono de contacto (mínimo 7 dígitos).</td>
+                                        <td>Con código de país. Ej: <code>50245173646</code></td>
                                     </tr>
                                     <tr class="table-danger bg-opacity-25">
-                                        <td><code>direccion</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted text-center fw-bold">E</td>
+                                        <td><code>direccion</code> <span class="badge bg-danger">REQ</span></td>
                                         <td class="text-muted">texto</td>
-                                        <td>Dirección completa de entrega (mínimo 5 caracteres).</td>
+                                        <td>Dirección completa de entrega.</td>
                                     </tr>
                                     <tr class="table-danger bg-opacity-25">
-                                        <td><code>comentario</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted text-center fw-bold">F</td>
+                                        <td><code>comentario</code> <span class="badge bg-danger">REQ</span></td>
                                         <td class="text-muted">texto</td>
-                                        <td>Notas de entrega obligatorias.</td>
+                                        <td>Notas / coordenadas GPS. Ej: <code>14.302022, -90.799585</code></td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">G</td>
+                                        <td><code>zona</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Zona de reparto. Ej: <code>Norte</code></td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">H</td>
+                                        <td><code>codigo_postal</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Ej: <code>GT3155</code></td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">I</td>
+                                        <td><code>pais</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>País en texto libre. Ej: <code>Guatemala</code></td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">J</td>
+                                        <td><code>departamento</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Departamento en texto libre.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">K</td>
+                                        <td><code>municipio</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Municipio en texto libre.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">L</td>
+                                        <td><code>barrio</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Barrio o colonia en texto libre.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">M</td>
+                                        <td><code>entre_calles</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Referencia de calles cruzadas.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">N</td>
+                                        <td><code>estado</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Nombre del estado. Ej: <code>En ruta o proceso</code></td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">O</td>
+                                        <td><code>fecha_entrega</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">fecha</td>
+                                        <td>Fecha prometida en <code>DD/MM/YYYY</code>.</td>
                                     </tr>
                                     <tr class="table-danger bg-opacity-25">
-                                        <td><code>precio_total_local</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted text-center fw-bold">P</td>
+                                        <td><code>precio_total_local</code> <span class="badge bg-danger">REQ</span></td>
                                         <td class="text-muted">decimal</td>
-                                        <td>Precio total local (debe ser mayor a 0).</td>
+                                        <td>Total en moneda local (mayor a 0). Ej: <code>870</code></td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">Q</td>
+                                        <td><code>moneda</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Código de moneda. Ej: <code>GTQ</code>, <code>USD</code></td>
                                     </tr>
                                     <tr class="table-danger bg-opacity-25">
-                                        <td><code>es_combo</code>&nbsp;<span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted text-center fw-bold">R</td>
+                                        <td><code>cliente</code> <span class="badge bg-danger">REQ</span></td>
                                         <td class="text-muted">entero</td>
-                                        <td>1 si es combo, 0 si es estándar.</td>
+                                        <td>ID del cliente. La plantilla lo pre-rellena con tu sesión.</td>
                                     </tr>
-                                    <tr class="table-info bg-opacity-25">
-                                        <td><code>codigo_postal</code></td>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">S</td>
+                                        <td><code>id_proveedor</code> <span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">entero</td>
+                                        <td>ID del proveedor de mensajería.</td>
+                                    </tr>
+                                    <tr class="table-danger bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">T</td>
+                                        <td><code>es_combo</code> <span class="badge bg-danger">REQ</span></td>
+                                        <td class="text-muted">0 / 1</td>
+                                        <td><code>1</code> = multi-producto &nbsp;|&nbsp; <code>0</code> = un solo producto.</td>
+                                    </tr>
+                                    <!-- MULTI-PRODUCTO -->
+                                    <tr>
+                                        <td colspan="4" class="py-1 px-2 fw-bold text-white" style="background:#1D6A3A;font-size:0.74rem;">
+                                            <i class="bi bi-boxes me-1"></i> PRODUCTOS — se repiten hasta 5 veces: <code style="color:#a8ffbf;">Producto 1 / Cantidad 1</code> … <code style="color:#a8ffbf;">Producto 5 / Cantidad 5</code>
+                                        </td>
+                                    </tr>
+                                    <tr style="background:rgba(29,106,58,0.07);">
+                                        <td class="text-muted text-center fw-bold">U, W…</td>
+                                        <td><code>Producto <em>N</em></code> <span class="badge" style="background:#1D6A3A;color:#fff;">PROD</span></td>
                                         <td class="text-muted">texto</td>
-                                        <td>Código postal de la zona de entrega.</td>
+                                        <td>Nombre <strong>exacto</strong> del producto (debe existir). Si no se encuentra → fila <strong class="text-danger">rechazada</strong>.<br><small class="text-muted">Ver productos disponibles en "Ver IDs disponibles".</small></td>
                                     </tr>
-                                    <tr class="table-info bg-opacity-25">
-                                        <td><code>cantidad</code></td>
+                                    <tr style="background:rgba(29,106,58,0.07);">
+                                        <td class="text-muted text-center fw-bold">V, X…</td>
+                                        <td><code>Cantidad <em>N</em></code> <span class="badge bg-warning text-dark">OPT</span></td>
                                         <td class="text-muted">entero</td>
-                                        <td>Cantidad del producto solicitado (default 1).</td>
-                                    </tr>
-                                    <tr class="table-info bg-opacity-25">
-                                        <td><code>id_estado</code></td>
-                                        <td class="text-muted">entero</td>
-                                        <td>ID del estado inicial (1=Pendiente, etc).</td>
-                                    </tr>
-                                    <tr class="table-info bg-opacity-25">
-                                        <td><code>zona</code></td>
-                                        <td class="text-muted">texto</td>
-                                        <td>Nombre de la zona de entrega.</td>
+                                        <td>Cantidad del producto N (default <code>1</code>). Vacío = se omite ese producto.</td>
                                     </tr>
                                 </tbody>
                             </table>
 
-                            <!-- Ejemplo mínimo (Campos Estrictos) -->
-                            <div class="bg-dark rounded px-3 py-2" style="font-family:monospace;font-size:0.75rem;color:#e8e8e8;overflow-x:auto;white-space:nowrap;">
-                                <span class="text-success"># Ejemplo con los campos principales (Incluido en la descarga):</span><br>
-                                <span class="text-warning">numero_orden</span>,<span class="text-warning">destinatario</span>,<span class="text-warning">id_producto</span>,<span class="text-warning">id_cliente</span>,<span class="text-warning">id_proveedor</span>,<span class="text-warning">telefono</span>,<span class="text-warning">direccion</span>,<span class="text-warning">comentario</span>,<span class="text-warning">precio_total_local</span>,<span class="text-warning">es_combo</span>,<span class="text-warning">codigo_postal</span>,<span class="text-warning">cantidad</span>,<span class="text-warning">id_estado</span>,<span class="text-warning">zona</span><br>
-                                1001,Juan Pérez,1,<?= $_SESSION['user_id'] ?? '7' ?>,1,88112233,Colinas C-14,Entregar hoy,150.00,0,10000,1,1,Norte
+                            <!-- Ejemplo visual XLSX -->
+                            <div class="bg-dark rounded px-3 py-2 mb-2" style="font-family:monospace;font-size:0.71rem;color:#e8e8e8;overflow-x:auto;white-space:nowrap;">
+                                <span class="text-success"># Orden de columnas del XLSX (A → AD):</span><br>
+                                <span class="text-warning">A:num_orden</span> | <span class="text-info">B:fecha_ing</span> | <span class="text-warning">C:destinatario</span> | <span class="text-warning">D:telefono</span> | <span class="text-warning">E:direccion</span> | <span class="text-warning">F:comentario</span> | <span class="text-info">G:zona</span> | <span class="text-info">H:cod_postal</span> | <span class="text-info">I:pais</span> | <span class="text-info">J:depto</span> | <span class="text-info">K:municipio</span> | <span class="text-info">L:barrio</span> | <span class="text-info">M:entre_calles</span> | <span class="text-info">N:estado</span> | <span class="text-info">O:fecha_ent</span> | <span class="text-warning">P:total</span> | <span class="text-info">Q:moneda</span> | <span class="text-warning">R:cliente</span> | <span class="text-warning">S:proveedor</span> | <span class="text-warning">T:es_combo</span> | <span style="color:#7dff7d;">U:Producto 1</span> | <span style="color:#7dff7d;">V:Cantidad 1</span> | <span style="color:#aaffaa;">W:Producto 2</span> | <span style="color:#aaffaa;">X:Cantidad 2</span> | …<br>
+                                <span class="text-secondary">28028424</span> | <span class="text-secondary">26/05/2025</span> | <span class="text-secondary">Juan Pérez</span> | <span class="text-secondary">50245173646</span> | <span class="text-secondary">Zona 5, calle principal…</span> | <span class="text-secondary">14.302022,-90.799585</span> | <span class="text-secondary">Norte</span> | <span class="text-secondary">GT3155</span> | <span class="text-secondary">Guatemala</span> | <span class="text-secondary">Guatemala</span> | <span class="text-secondary">Guatemala</span> | | | <span class="text-secondary">En ruta o proceso</span> | | <span class="text-secondary">870</span> | <span class="text-secondary">GTQ</span> | <span class="text-secondary"><?= $_SESSION['user_id'] ?? '7' ?></span> | <span class="text-secondary">12</span> | <span class="text-secondary">1</span> | <span style="color:#7dff7d;">INMUSTEN</span> | <span style="color:#7dff7d;">2</span> | <span style="color:#aaffaa;">FLEXOSAMINE CAPSULAS</span> | <span style="color:#aaffaa;">1</span>
                             </div>
 
                             <div class="d-flex gap-2 mt-2 flex-wrap align-items-center">
-                                <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-lightbulb me-1"></i>Descarga la plantilla oficial (Incluye ejemplos y tu ID):</span>
-                                <a href="<?= RUTA_URL ?>public/pedidos_template.php" class="btn btn-xs btn-outline-success btn-sm py-1 px-3" style="font-size:0.8rem;" download>
-                                    <i class="bi bi-file-earmark-arrow-down-fill me-1"></i>Descargar Plantilla CSV (14 Campos)
+                                <span class="text-muted" style="font-size:0.75rem;"><i class="bi bi-lightbulb me-1"></i>Descarga la plantilla oficial (Excel con instrucciones y tu ID pre-rellenado):</span>
+                                <a href="<?= RUTA_URL ?>public/pedidos_template.php" class="btn btn-xs btn-outline-success btn-sm py-1 px-3" style="font-size:0.8rem;">
+                                    <i class="bi bi-file-earmark-excel-fill me-1"></i>Descargar Plantilla XLSX (Multi-Producto)
                                 </a>
                                 <span class="badge bg-warning text-dark ms-1"><i class="bi bi-exclamation-triangle me-1"></i>Usa Vista Previa antes de importar</span>
                             </div>
                         </div>
                     </div>
+
 
 
 
@@ -1089,19 +1156,60 @@ document.addEventListener('DOMContentLoaded', function(){
         
         // Vista previa de primeras filas
         if (data.primeras_filas && data.primeras_filas.length > 0) {
-            const cols = Object.keys(data.primeras_filas[0]);
+            // Columnas internas del sistema que no se muestran en la tabla preview
+            const HIDDEN_COLS = ['_productos', 'producto_nombre', 'cantidad'];
+
+            // Determinar columnas visibles (excluir internas)
+            const allCols = Object.keys(data.primeras_filas[0]);
+            const hasMultiProd = data.primeras_filas.some(r => Array.isArray(r['_productos']) && r['_productos'].length > 0);
+            const cols = allCols.filter(c => !HIDDEN_COLS.includes(c));
+
+            // Función para renderizar el valor de una celda de forma segura
+            function renderCell(val, col) {
+                if (val === null || val === undefined || val === '') return '<span class="text-muted">—</span>';
+                if (typeof val === 'object') return '<code class="small">' + JSON.stringify(val) + '</code>';
+                // Resaltar valores booleanos
+                if (val === '1' || val === 1) return '<span class="badge bg-success">' + val + '</span>';
+                return String(val);
+            }
+
+            // Función para renderizar el bloque de productos de una fila
+            function renderProductos(row) {
+                if (Array.isArray(row['_productos']) && row['_productos'].length > 0) {
+                    return row['_productos'].map((p, i) =>
+                        `<span class="badge me-1" style="background:#1D6A3A;font-size:0.75rem;">
+                            ${i+1}. ${p.nombre} × ${p.cantidad}
+                         </span>`
+                    ).join('');
+                }
+                // Un solo producto
+                const nombre = row['producto_nombre'] || '';
+                const cant   = row['cantidad'] || 1;
+                return nombre
+                    ? `<span class="badge bg-secondary">${nombre} × ${cant}</span>`
+                    : '<span class="text-muted">—</span>';
+            }
+
             let tableHtml = `
-                <h6>Primeras ${data.primeras_filas.length} filas del CSV</h6>
-                <table class="table table-sm table-bordered">
-                    <thead class="table-light">
-                        <tr>${cols.map(c => '<th class="small">' + c + '</th>').join('')}</tr>
+                <h6 class="mb-2">Primeras ${data.primeras_filas.length} filas del archivo</h6>
+                <div class="table-responsive" style="max-height:340px;overflow:auto;">
+                <table class="table table-sm table-bordered align-middle" style="font-size:0.75rem;white-space:nowrap;">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            <th>Productos</th>
+                            ${cols.map(c => '<th>' + c + '</th>').join('')}
+                        </tr>
                     </thead>
                     <tbody>
-                        ${data.primeras_filas.map(r => 
-                            '<tr>' + cols.map(c => '<td class="small">' + (r[c] || '') + '</td>').join('') + '</tr>'
+                        ${data.primeras_filas.map(r =>
+                            '<tr>' +
+                            '<td style="white-space:normal;min-width:180px;">' + renderProductos(r) + '</td>' +
+                            cols.map(c => '<td>' + renderCell(r[c], c) + '</td>').join('') +
+                            '</tr>'
                         ).join('')}
                     </tbody>
                 </table>
+                </div>
             `;
             document.getElementById('previewTable').innerHTML = tableHtml;
         }

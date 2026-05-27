@@ -313,36 +313,70 @@ class PedidosModel
 
                     $pedidoId = (int)$db->lastInsertId();
 
-                    // Resolver producto a id
-                    $productoId = null;
-                    $productoNombre = $row['producto_nombre'] ?? $row['producto'] ?? null;
+                    // ── Insertar productos del pedido ────────────────────────────────
+                    // Si viene _productos[] (multi-producto del XLSX) → iterar todos.
+                    // Si no, usar lógica estándar de un solo producto.
+                    $productosAInsertar = [];
 
-                    if (isset($row['id_producto']) && is_numeric($row['id_producto']) && (int)$row['id_producto'] > 0) {
-                        $productoId = (int)$row['id_producto'];
-                    } elseif (isset($row['producto_id']) && is_numeric($row['producto_id']) && (int)$row['producto_id'] > 0) {
-                        $productoId = (int)$row['producto_id'];
-                    } elseif (!empty($productoNombre)) {
-                        $p = ProductoModel::buscarPorNombre($productoNombre);
-                        if ($p && isset($p['id'])) {
-                            $productoId = (int)$p['id'];
-                        } elseif ($autoCreateProducts) {
-                            // Crear producto rápido solo si autoCreateProducts está activado
-                            $productoId = ProductoModel::crearRapido($productoNombre);
-                            // Registrar producto creado
-                            if (!in_array($productoNombre, $resultado['productos_creados'])) {
-                                $resultado['productos_creados'][] = $productoNombre;
+                    if (!empty($row['_productos']) && is_array($row['_productos'])) {
+                        // Modo multi-producto: resolver cada nombre → id
+                        foreach ($row['_productos'] as $prod) {
+                            $pNombre   = trim($prod['nombre'] ?? '');
+                            $pCantidad = (int)($prod['cantidad'] ?? 1);
+                            if ($pNombre === '' || $pCantidad < 1) continue;
+
+                            $pId = null;
+                            $p   = ProductoModel::buscarPorNombre($pNombre);
+                            if ($p && isset($p['id'])) {
+                                $pId = (int)$p['id'];
+                            } elseif ($autoCreateProducts) {
+                                $pId = ProductoModel::crearRapido($pNombre);
+                                if (!in_array($pNombre, $resultado['productos_creados'])) {
+                                    $resultado['productos_creados'][] = $pNombre;
+                                }
+                            } else {
+                                throw new Exception("Producto '{$pNombre}' no existe y autoCreateProducts está desactivado");
                             }
-                        } else {
-                            throw new Exception("Producto '{$productoNombre}' no existe y autoCreateProducts está desactivado");
+
+                            if ($pId !== null) {
+                                $productosAInsertar[] = ['id' => $pId, 'cantidad' => $pCantidad];
+                            }
+                        }
+                    } else {
+                        // Modo estándar: un solo producto
+                        $productoId     = null;
+                        $productoNombre = $row['producto_nombre'] ?? $row['producto'] ?? null;
+
+                        if (isset($row['id_producto']) && is_numeric($row['id_producto']) && (int)$row['id_producto'] > 0) {
+                            $productoId = (int)$row['id_producto'];
+                        } elseif (isset($row['producto_id']) && is_numeric($row['producto_id']) && (int)$row['producto_id'] > 0) {
+                            $productoId = (int)$row['producto_id'];
+                        } elseif (!empty($productoNombre)) {
+                            $p = ProductoModel::buscarPorNombre($productoNombre);
+                            if ($p && isset($p['id'])) {
+                                $productoId = (int)$p['id'];
+                            } elseif ($autoCreateProducts) {
+                                $productoId = ProductoModel::crearRapido($productoNombre);
+                                if (!in_array($productoNombre, $resultado['productos_creados'])) {
+                                    $resultado['productos_creados'][] = $productoNombre;
+                                }
+                            } else {
+                                throw new Exception("Producto '{$productoNombre}' no existe y autoCreateProducts está desactivado");
+                            }
+                        }
+
+                        $cantidad = isset($row['cantidad']) ? (int)$row['cantidad'] : 1;
+                        if ($productoId !== null && $cantidad > 0) {
+                            $productosAInsertar[] = ['id' => $productoId, 'cantidad' => $cantidad];
                         }
                     }
 
-                    $cantidad = isset($row['cantidad']) ? (int)$row['cantidad'] : 1;
-                    if ($productoId !== null && $cantidad > 0) {
+                    // Insertar en pedidos_productos
+                    foreach ($productosAInsertar as $prod) {
                         $detalleStmt->execute([
-                            ':id_pedido' => $pedidoId,
-                            ':id_producto' => $productoId,
-                            ':cantidad' => $cantidad
+                            ':id_pedido'  => $pedidoId,
+                            ':id_producto' => $prod['id'],
+                            ':cantidad'   => $prod['cantidad'],
                         ]);
                     }
 
@@ -351,12 +385,14 @@ class PedidosModel
 
                     // Registrar auditoría para esta fila importada
                     try {
-                        // Construir datos para auditoría
                         $datosAuditoria = $row;
                         $datosAuditoria['id'] = $pedidoId;
-                        if ($productoId) {
-                            $datosAuditoria['producto_id'] = $productoId;
-                            $datosAuditoria['cantidad'] = $cantidad;
+                        // Agregar resumen de productos insertados a la auditoría
+                        if (!empty($productosAInsertar)) {
+                            $datosAuditoria['productos_insertados'] = $productosAInsertar;
+                            // Compat: primer producto para sistemas que lo usen
+                            $datosAuditoria['producto_id'] = $productosAInsertar[0]['id'];
+                            $datosAuditoria['cantidad']    = $productosAInsertar[0]['cantidad'];
                         }
 
                         AuditoriaModel::registrar(

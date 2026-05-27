@@ -206,38 +206,57 @@ class CSVPedidoValidator
     }
     
     /**
-     * Validar producto (por ID o por nombre)
+     * Validar producto(s) de la fila:
+     * - Si tiene _productos[] (multi-producto del XLSX) → validar cada uno
+     * - Si no, validar por id_producto o producto_nombre (modo estándar)
      */
     private function validarProducto($row)
     {
         $errores = [];
         $advertencias = [];
-        
-        $productoId = $row['id_producto'] ?? $row['producto_id'] ?? null;
+
+        // MODO MULTI-PRODUCTO: viene de la normalización del controlador
+        if (!empty($row['_productos']) && is_array($row['_productos'])) {
+            foreach ($row['_productos'] as $i => $prod) {
+                $nombre = trim($prod['nombre'] ?? '');
+                if ($nombre === '') continue;
+
+                $nombreNorm = mb_strtolower($nombre);
+                if (!isset($this->productosCache['nombre:' . $nombreNorm])) {
+                    $n = $i + 1;
+                    $errores[] = "Producto {$n} '{$nombre}' no encontrado en el sistema (debe existir previamente)";
+                }
+            }
+            // Si no hay ningún producto con nombre válido → error
+            $hayProductos = false;
+            foreach ($row['_productos'] as $prod) {
+                if (trim($prod['nombre'] ?? '') !== '') { $hayProductos = true; break; }
+            }
+            if (!$hayProductos) {
+                $errores[] = "El pedido multi-producto no tiene ningún producto especificado";
+            }
+            return ['errores' => $errores, 'advertencias' => $advertencias];
+        }
+
+        // MODO ESTÁNDAR: un solo producto por id o nombre
+        $productoId     = $row['id_producto'] ?? $row['producto_id'] ?? null;
         $productoNombre = trim($row['producto'] ?? $row['producto_nombre'] ?? '');
-        
-        // Si viene id_producto, validar que existe
+
         if (!empty($productoId)) {
             if (!is_numeric($productoId)) {
                 $errores[] = "id_producto no es numérico: {$productoId}";
             } elseif (!isset($this->productosCache[(int)$productoId])) {
                 $errores[] = "id_producto {$productoId} no existe en la base de datos";
             }
-        }
-        // Si viene producto por nombre
-        elseif (!empty($productoNombre)) {
+        } elseif (!empty($productoNombre)) {
             $nombreNorm = mb_strtolower($productoNombre);
-            $existe = isset($this->productosCache['nombre:' . $nombreNorm]);
-            
-            if (!$existe) {
-                $advertencias[] = "producto '{$productoNombre}' no existe, se creará automáticamente";
+            if (!isset($this->productosCache['nombre:' . $nombreNorm])) {
+                $errores[] = "producto '{$productoNombre}' no encontrado en el sistema (los productos deben existir previamente)";
             }
-        }
-        // Ninguno de los dos
-        else {
+        } else {
             $errores[] = "debe especificar id_producto o producto/producto_nombre";
         }
-        
+
         return ['errores' => $errores, 'advertencias' => $advertencias];
     }
     
@@ -247,23 +266,22 @@ class CSVPedidoValidator
      */
     private function validarReferenciasFKOpcionales($row, &$errores, &$advertencias)
     {
-        // Validar id_estado o estado_nombre
+        // Validar id_estado o estado/estado_nombre (el XLSX usa columna 'estado' en texto libre)
+        $estadoTexto = $row['estado'] ?? $row['estado_nombre'] ?? '';
         if (!empty($row['id_estado'])) {
             $idEstado = (int)$row['id_estado'];
             if (!isset($this->estadosCache[$idEstado])) {
                 $estadosDisponibles = implode(', ', array_filter(array_keys($this->estadosCache), 'is_int'));
                 $errores[] = "id_estado {$idEstado} no existe. IDs disponibles: {$estadosDisponibles}";
             }
-        } elseif (!empty($row['estado_nombre'])) {
-            $nombreBuscado = mb_strtolower(trim($row['estado_nombre']));
+        } elseif (!empty($estadoTexto)) {
+            $nombreBuscado = mb_strtolower(trim($estadoTexto));
             if (!isset($this->estadosCache['nombre:' . $nombreBuscado])) {
                 $nombresDisponibles = [];
                 foreach ($this->estadosCache as $key => $val) {
-                    if (is_int($key)) {
-                        $nombresDisponibles[] = $val['nombre_estado'];
-                    }
+                    if (is_int($key)) $nombresDisponibles[] = $val['nombre_estado'];
                 }
-                $errores[] = "estado_nombre '{$row['estado_nombre']}' no encontrado. Disponibles: " . implode(', ', $nombresDisponibles);
+                $errores[] = "estado '{$estadoTexto}' no encontrado. Disponibles: " . implode(', ', $nombresDisponibles);
             }
         }
         
@@ -283,23 +301,24 @@ class CSVPedidoValidator
             $advertencias[] = "proveedor no especificado (se usará valor por defecto si está configurado)";
         }
         
-        // Validar id_moneda o moneda_codigo
-        if (!empty($row['id_moneda'])) {
-            $idMoneda = (int)$row['id_moneda'];
+        // Validar id_moneda o moneda/moneda_codigo (el XLSX usa columna 'moneda' con código de texto)
+        // id_moneda=0 se trata como "no especificado"
+        $idMonedaRaw  = $row['id_moneda'] ?? '';
+        $monedaTexto  = $row['moneda'] ?? $row['moneda_codigo'] ?? '';
+        if (!empty($idMonedaRaw) && (int)$idMonedaRaw !== 0) {
+            $idMoneda = (int)$idMonedaRaw;
             if (!isset($this->monedasCache[$idMoneda])) {
                 $monedasDisponibles = implode(', ', array_filter(array_keys($this->monedasCache), 'is_int'));
                 $errores[] = "id_moneda {$idMoneda} no existe. IDs disponibles: {$monedasDisponibles}";
             }
-        } elseif (!empty($row['moneda_codigo'])) {
-            $codigoBuscado = mb_strtoupper(trim($row['moneda_codigo']));
+        } elseif (!empty($monedaTexto)) {
+            $codigoBuscado = mb_strtoupper(trim($monedaTexto));
             if (!isset($this->monedasCache['codigo:' . $codigoBuscado])) {
                 $codigosDisponibles = [];
                 foreach ($this->monedasCache as $key => $val) {
-                    if (is_int($key)) {
-                        $codigosDisponibles[] = $val['codigo'];
-                    }
+                    if (is_int($key)) $codigosDisponibles[] = $val['codigo'];
                 }
-                $errores[] = "moneda_codigo '{$row['moneda_codigo']}' no encontrado. Disponibles: " . implode(', ', $codigosDisponibles);
+                $errores[] = "moneda '{$monedaTexto}' no encontrada. Disponibles: " . implode(', ', $codigosDisponibles);
             }
         } else {
             $advertencias[] = "moneda no especificada (se usará valor por defecto si está configurado)";
@@ -395,9 +414,20 @@ class CSVPedidoValidator
      */
     public function completarIDs(&$row)
     {
-        // Estado
-        if (empty($row['id_estado']) && !empty($row['estado_nombre'])) {
-            $nombre = mb_strtolower(trim($row['estado_nombre']));
+        // Producto por nombre → resolver id_producto
+        $productoId  = $row['id_producto'] ?? $row['producto_id'] ?? null;
+        $productoNom = trim($row['producto'] ?? $row['producto_nombre'] ?? '');
+        if (empty($productoId) && !empty($productoNom)) {
+            $nombreNorm = mb_strtolower($productoNom);
+            if (isset($this->productosCache['nombre:' . $nombreNorm])) {
+                $row['id_producto'] = $this->productosCache['nombre:' . $nombreNorm]['id'];
+            }
+        }
+
+        // Estado (XLSX usa 'estado' con nombre de texto)
+        $estadoTexto = $row['estado'] ?? $row['estado_nombre'] ?? '';
+        if (empty($row['id_estado']) && !empty($estadoTexto)) {
+            $nombre = mb_strtolower(trim($estadoTexto));
             if (isset($this->estadosCache['nombre:' . $nombre])) {
                 $row['id_estado'] = $this->estadosCache['nombre:' . $nombre]['id'];
             }
@@ -411,9 +441,11 @@ class CSVPedidoValidator
             }
         }
         
-        // Moneda
-        if (empty($row['id_moneda']) && !empty($row['moneda_codigo'])) {
-            $codigo = mb_strtoupper(trim($row['moneda_codigo']));
+        // Moneda (XLSX usa 'moneda' con código de texto como 'GTQ')
+        $idMonedaRaw = $row['id_moneda'] ?? '';
+        $monedaTexto = $row['moneda'] ?? $row['moneda_codigo'] ?? '';
+        if ((empty($idMonedaRaw) || (int)$idMonedaRaw === 0) && !empty($monedaTexto)) {
+            $codigo = mb_strtoupper(trim($monedaTexto));
             if (isset($this->monedasCache['codigo:' . $codigo])) {
                 $row['id_moneda'] = $this->monedasCache['codigo:' . $codigo]['id'];
             }

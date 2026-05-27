@@ -1,69 +1,177 @@
 <?php
 /**
- * CSVHelper - Utilidades para manejo de archivos CSV
- * 
+ * CSVHelper - Utilidades para manejo de archivos CSV/XLSX
+ *
  * Funciones helper para:
  * - Detección de delimitadores
- * - Normalización de cabeceras
+ * - Normalización de cabeceras (incluye alias para plantilla XLSX oficial)
+ * - Lectura de archivos XLSX vía PhpSpreadsheet
  * - Exportación de errores
  * - Lectura por chunks
- * 
+ *
  * @author Sistema Paquetería CZ
- * @version 1.0
+ * @version 2.0
  */
 
 class CSVHelper
 {
     /**
+     * Mapa de alias: encabezado en la plantilla XLSX → clave interna del sistema.
+     * Se normalizan a minúsculas y con guion bajo antes de buscar en este mapa.
+     */
+    private static $HEADER_ALIASES = [
+        // Columnas fijas de la plantilla XLSX oficial
+        'num._orden'            => 'numero_orden',
+        'num_orden'             => 'numero_orden',
+        'núm._orden'            => 'numero_orden',
+        'núm_orden'             => 'numero_orden',
+        'número_orden'          => 'numero_orden',
+        'fecha_ing.'            => 'fecha_ingreso',
+        'fecha_ing'             => 'fecha_ingreso',
+        'fecha_ingreso'         => 'fecha_ingreso',
+        'depto._(texto_libre)'  => 'departamento',
+        'depto_(texto_libre)'   => 'departamento',
+        'depto.'                => 'departamento',
+        'departamento'          => 'departamento',
+        'país_(texto_libre)'    => 'pais',
+        'pais_(texto_libre)'    => 'pais',
+        'país'                  => 'pais',
+        'municipio_(texto_libre)' => 'municipio',
+        'barrio_(texto_libre)'  => 'barrio',
+        'entre_calles'          => 'entre_calles',
+        'código_postal'         => 'codigo_postal',
+        'codigo_postal'         => 'codigo_postal',
+        'fecha_ent.'            => 'fecha_entrega',
+        'fecha_ent'             => 'fecha_entrega',
+        'fecha_entrega'         => 'fecha_entrega',
+        'total'                 => 'precio_total_local',
+        'precio_total_local'    => 'precio_total_local',
+        'cliente_(id)'          => 'id_cliente',
+        'cliente'               => 'id_cliente',
+        'proveedor_(id)'        => 'id_proveedor',
+        'proveedor'             => 'id_proveedor',
+        'id_proveedor'          => 'id_proveedor',
+        'es_combo_(0/1)'        => 'es_combo',
+        'es_combo'              => 'es_combo',
+    ];
+
+    /**
+     * Leer un archivo XLSX y retornar [ headers[], rows[][] ]
+     * Requiere PhpSpreadsheet en vendor/
+     *
+     * @param string $filepath Ruta absoluta al .xlsx
+     * @return array ['headers' => [], 'rows' => []]
+     */
+    public static function readXlsx(string $filepath): array
+    {
+        $autoload = __DIR__ . '/../vendor/autoload.php';
+        if (!file_exists($autoload)) {
+            throw new \Exception('PhpSpreadsheet no instalado. Ejecuta composer install.');
+        }
+        require_once $autoload;
+
+        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filepath);
+        $reader->setReadDataOnly(true);
+        // Leer solo la primera hoja (hoja "Pedidos")
+        $reader->setLoadSheetsOnly(['Pedidos']);
+        try {
+            $spreadsheet = $reader->load($filepath);
+        } catch (\Throwable $e) {
+            // Puede fallar si la hoja no existe; cargar la primera
+            $reader2 = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filepath);
+            $reader2->setReadDataOnly(true);
+            $spreadsheet = $reader2->load($filepath);
+        }
+
+        $sheet = $spreadsheet->getActiveSheet();
+        $data  = $sheet->toArray(null, true, true, false);
+
+        if (empty($data)) {
+            return ['headers' => [], 'rows' => []];
+        }
+
+        // Primera fila = encabezados
+        $headers = array_shift($data);
+        $headers = self::normalizeHeaders($headers);
+
+        // Filas de datos
+        $rows = [];
+        foreach ($data as $rawRow) {
+            $assoc = [];
+            foreach ($headers as $i => $hdr) {
+                $assoc[$hdr] = isset($rawRow[$i]) ? (string)$rawRow[$i] : '';
+            }
+            // Omitir filas completamente vacías
+            $empty = true;
+            foreach ($assoc as $v) {
+                if ($v !== '' && $v !== null) { $empty = false; break; }
+            }
+            if (!$empty) {
+                $rows[] = $assoc;
+            }
+        }
+
+        return ['headers' => $headers, 'rows' => $rows];
+    }
+
+    /**
      * Detectar delimitador del CSV analizando la primera línea
-     * 
+     *
      * @param string $firstLine Primera línea del CSV
-     * @return string Delimitador detectado (',' o ';')
+     * @return string Delimitador detectado (',', ';', '\t' o '|')
      */
     public static function detectDelimiter($firstLine)
     {
-        // Eliminar BOM si existe
         $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine);
-        
-        $countComma = substr_count($firstLine, ',');
-        $countSemi = substr_count($firstLine, ';');
-        $countTab = substr_count($firstLine, "\t");
-        $countPipe = substr_count($firstLine, '|');
-        
-        // Obtener el delimitador con mayor frecuencia
         $delimiters = [
-            ',' => $countComma,
-            ';' => $countSemi,
-            "\t" => $countTab,
-            '|' => $countPipe
+            ',' => substr_count($firstLine, ','),
+            ';' => substr_count($firstLine, ';'),
+            "\t" => substr_count($firstLine, "\t"),
+            '|' => substr_count($firstLine, '|'),
         ];
-        
         arsort($delimiters);
         $detected = array_key_first($delimiters);
-        
-        // Si el más frecuente es 0, usar coma por defecto
         return $delimiters[$detected] > 0 ? $detected : ',';
     }
-    
+
     /**
-     * Normalizar cabeceras del CSV (trim, lowercase, sin BOM)
-     * 
-     * @param array $headers Array de cabeceras
-     * @return array Cabeceras normalizadas
+     * Normalizar cabeceras: trim, lowercase, quitar acento en vocal inicial,
+     * espacios → guion bajo, y aplicar alias de la plantilla XLSX.
+     * Columnas de multi-producto ("Producto 1" → "producto_1") se normalizan automáticamente.
+     *
+     * @param array $headers
+     * @return array
      */
-    public static function normalizeHeaders(array $headers)
+    public static function normalizeHeaders(array $headers): array
     {
-        return array_map(function($h) {
-            // Eliminar BOM, trim, lowercase
-            $h = preg_replace('/^\xEF\xBB\xBF/', '', $h);
+        return array_map(function ($h) {
+            if ($h === null || $h === '') return '';
+            // Quitar BOM, trim
+            $h = preg_replace('/^\xEF\xBB\xBF/', '', (string)$h);
             $h = trim($h);
-            $h = mb_strtolower($h);
-            // Reemplazar espacios por guiones bajos
-            $h = str_replace(' ', '_', $h);
+            // Lowercase manteniendo caracteres especiales
+            $h = mb_strtolower($h, 'UTF-8');
+            // Espacios y puntos especiales → guion bajo
+            $h = str_replace([' ', '\u{00A0}'], '_', $h);
+
+            // Buscar en alias (clave ya normalizada con guion bajo)
+            if (isset(self::$HEADER_ALIASES[$h])) {
+                return self::$HEADER_ALIASES[$h];
+            }
+
+            // Columnas multi-producto: "producto_n" y "cantidad_n"
+            // Acepta: "producto_1", "producto 1", "producto1"
+            if (preg_match('/^producto[_\s]?(\d+)$/', $h, $m)) {
+                return 'producto_' . $m[1];
+            }
+            if (preg_match('/^cantidad[_\s]?(\d+)$/', $h, $m)) {
+                return 'cantidad_' . $m[1];
+            }
+
             return $h;
         }, $headers);
     }
-    
+
     /**
      * Exportar filas con error a un archivo CSV
      * 
@@ -185,60 +293,56 @@ class CSVHelper
     }
     
     /**
-     * Validar que el archivo subido es un CSV válido
-     * 
+     * Validar que el archivo subido es un CSV o XLSX válido
+     *
      * @param array $file $_FILES['nombre_campo']
-     * @return array ['valido' => bool, 'error' => string|null]
+     * @return array ['valido' => bool, 'error' => string|null, 'es_xlsx' => bool]
      */
-    public static function validateUploadedFile($file)
+    public static function validateUploadedFile($file): array
     {
         if (!isset($file) || $file['error'] !== UPLOAD_ERR_OK) {
             $messages = [
-                UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize.',
-                UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño permitido por el formulario.',
-                UPLOAD_ERR_PARTIAL => 'El archivo fue subido parcialmente.',
-                UPLOAD_ERR_NO_FILE => 'No se envió ningún archivo.',
+                UPLOAD_ERR_INI_SIZE   => 'El archivo excede upload_max_filesize.',
+                UPLOAD_ERR_FORM_SIZE  => 'El archivo excede el tamaño permitido por el formulario.',
+                UPLOAD_ERR_PARTIAL    => 'El archivo fue subido parcialmente.',
+                UPLOAD_ERR_NO_FILE    => 'No se envió ningún archivo.',
                 UPLOAD_ERR_NO_TMP_DIR => 'Falta carpeta temporal en el servidor.',
                 UPLOAD_ERR_CANT_WRITE => 'Fallo al escribir el archivo en disco.',
-                UPLOAD_ERR_EXTENSION => 'Subida detenida por extensión PHP.'
+                UPLOAD_ERR_EXTENSION  => 'Subida detenida por extensión PHP.',
             ];
-            
             $error = $messages[$file['error']] ?? 'Error desconocido al subir el archivo.';
-            return ['valido' => false, 'error' => $error];
+            return ['valido' => false, 'error' => $error, 'es_xlsx' => false];
         }
-        
-        // Validar extensión
+
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, ['csv', 'txt'])) {
-            return ['valido' => false, 'error' => 'El archivo debe ser .csv o .txt'];
+        $allowedExt = ['csv', 'txt', 'xlsx'];
+        if (!in_array($ext, $allowedExt, true)) {
+            return ['valido' => false, 'error' => 'El archivo debe ser .csv, .txt o .xlsx', 'es_xlsx' => false];
         }
-        
-        // Validar tamaño máximo (10MB por defecto)
-        $maxSize = 10 * 1024 * 1024; // 10MB
+
+        $maxSize = 10 * 1024 * 1024; // 10 MB
         if ($file['size'] > $maxSize) {
-            return ['valido' => false, 'error' => 'El archivo excede el tamaño máximo de 10MB'];
+            return ['valido' => false, 'error' => 'El archivo excede el tamaño máximo de 10MB', 'es_xlsx' => false];
         }
-        
-        // Validar MIME type (puede ser text/csv, text/plain, application/csv, etc)
-        $allowedMimes = [
-            'text/csv',
-            'text/plain',
-            'application/csv',
-            'application/vnd.ms-excel',
-            'text/comma-separated-values'
-        ];
-        
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mimeType = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
-        
-        if (!in_array($mimeType, $allowedMimes)) {
-            return ['valido' => false, 'error' => "Tipo de archivo no permitido: {$mimeType}"];
+
+        $esXlsx = ($ext === 'xlsx');
+
+        if (!$esXlsx) {
+            $finfo     = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType  = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+            $allowedMimes = [
+                'text/csv', 'text/plain', 'application/csv',
+                'application/vnd.ms-excel', 'text/comma-separated-values',
+            ];
+            if (!in_array($mimeType, $allowedMimes, true)) {
+                return ['valido' => false, 'error' => "Tipo de archivo no permitido: {$mimeType}", 'es_xlsx' => false];
+            }
         }
-        
-        return ['valido' => true, 'error' => null];
+
+        return ['valido' => true, 'error' => null, 'es_xlsx' => $esXlsx];
     }
-    
+
     /**
      * Obtener tamaño estimado de filas en el CSV sin cargarlo completo
      * 

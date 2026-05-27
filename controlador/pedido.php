@@ -1300,34 +1300,65 @@ class PedidosController {
                 exit;
             }
             
-            $tmp = $_FILES['csv_file']['tmp_name'];
+            $tmp      = $_FILES['csv_file']['tmp_name'];
             $filename = $_FILES['csv_file']['name'];
             $filesize = $_FILES['csv_file']['size'];
+            $esXlsx   = $validacion['es_xlsx'] ?? false;
             
-            $handle = fopen($tmp, 'r');
-            if ($handle === false) {
-                throw new Exception('No se pudo abrir el archivo CSV');
-            }
-            
-            // Detectar delimitador
-            $firstLine = fgets($handle);
-            if ($firstLine === false) {
+            // ── LECTURA DEL ARCHIVO ─────────────────────────────────────────
+            if ($esXlsx) {
+                // Leer XLSX via PhpSpreadsheet
+                $xlsxData = CSVHelper::readXlsx($tmp);
+                $cols     = $xlsxData['headers'];
+                $allRows  = $xlsxData['rows'];
+                $delimiter = ',';
+            } else {
+                // Leer CSV clásico
+                $handle = fopen($tmp, 'r');
+                if ($handle === false) throw new Exception('No se pudo abrir el archivo');
+
+                $firstLine = fgets($handle);
+                if ($firstLine === false) { fclose($handle); throw new Exception('El archivo parece estar vacío'); }
+
+                $delimiter = CSVHelper::detectDelimiter($firstLine);
+                rewind($handle);
+
+                $header = fgetcsv($handle, 0, $delimiter);
+                if ($header === false) { fclose($handle); throw new Exception('No se pudo leer la cabecera del archivo'); }
+
+                $cols = CSVHelper::normalizeHeaders($header);
+
+                $allRows = [];
+                $line    = 1;
+                while (!feof($handle)) {
+                    $raw = fgets($handle);
+                    if ($raw === false) break;
+                    $line++;
+                    if ($line === 2) $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
+
+                    $row = str_getcsv(rtrim($raw, "\r\n"), $delimiter, '"');
+                    if (count($row) !== count($cols)) {
+                        $alt    = $delimiter === ',' ? ';' : ',';
+                        $altRow = str_getcsv(rtrim($raw, "\r\n"), $alt, '"');
+                        if (count($altRow) === count($cols)) $row = $altRow;
+                    }
+
+                    $dataRow = [];
+                    foreach ($cols as $i => $colName) {
+                        $dataRow[$colName] = isset($row[$i]) ? trim($row[$i]) : '';
+                    }
+
+                    $allEmpty = true;
+                    foreach ($dataRow as $v) {
+                        if ($v !== null && $v !== '') { $allEmpty = false; break; }
+                    }
+                    if ($allEmpty) continue;
+
+                    $allRows[] = $dataRow;
+                }
                 fclose($handle);
-                throw new Exception('El CSV parece estar vacío');
             }
-            
-            $delimiter = CSVHelper::detectDelimiter($firstLine);
-            rewind($handle);
-            
-            // Leer y normalizar header
-            $header = fgetcsv($handle, 0, $delimiter);
-            if ($header === false) {
-                fclose($handle);
-                throw new Exception('No se pudo leer la cabecera del CSV');
-            }
-            
-            $cols = CSVHelper::normalizeHeaders($header);
-            
+
             // Validar columnas mínimas requeridas
             $required = ['numero_orden'];
             $missing = [];
@@ -1336,8 +1367,7 @@ class PedidosController {
             }
             
             if (!empty($missing)) {
-                fclose($handle);
-                $msg = 'Faltan columnas requeridas en el CSV: ' . implode(', ', $missing);
+                $msg = 'Faltan columnas requeridas: ' . implode(', ', $missing);
                 if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode(['success' => false, 'message' => $msg], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
@@ -1347,71 +1377,66 @@ class PedidosController {
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
                 exit;
             }
-            
+
+            // ── NORMALIZACIÓN MULTI-PRODUCTO ────────────────────────────────
+            // Convierte columnas "producto_N" / "cantidad_N" en arrays internos
+            // para que el validador y el modelo los procesen correctamente.
+            foreach ($allRows as &$fila) {
+                $productos = [];
+                for ($p = 1; $p <= 10; $p++) {
+                    $nombreKey   = 'producto_' . $p;
+                    $cantidadKey = 'cantidad_' . $p;
+                    $nombre      = trim($fila[$nombreKey] ?? '');
+                    $cantidad    = trim($fila[$cantidadKey] ?? '1');
+                    // Siempre limpiar las claves indexadas del row (vacías o no)
+                    unset($fila[$nombreKey], $fila[$cantidadKey]);
+                    if ($nombre === '') continue;
+                    $productos[] = [
+                        'nombre'   => $nombre,
+                        'cantidad' => ($cantidad !== '' ? (int)$cantidad : 1),
+                    ];
+                }
+                // Si solo hay 1 producto y no venía id_producto, asignarlo al campo estándar
+                if (!empty($productos)) {
+                    if (count($productos) === 1) {
+                        // Formato estándar: un solo producto
+                        if (empty($fila['id_producto']) && empty($fila['producto_nombre'])) {
+                            $fila['producto_nombre'] = $productos[0]['nombre'];
+                        }
+                        if (empty($fila['cantidad'])) {
+                            $fila['cantidad'] = $productos[0]['cantidad'];
+                        }
+                    } else {
+                        // Multi-producto: guardar array para que el modelo lo use
+                        $fila['_productos'] = $productos;
+                        // Para validación: el primer producto se trata como el principal
+                        if (empty($fila['producto_nombre'])) {
+                            $fila['producto_nombre'] = $productos[0]['nombre'];
+                        }
+                        if (empty($fila['cantidad'])) {
+                            $fila['cantidad'] = $productos[0]['cantidad'];
+                        }
+                        $fila['es_combo'] = 1;
+                    }
+                }
+
+                // Alias de columnas del XLSX → campos internos del sistema
+                if (!empty($fila['id_cliente']) && empty($fila['id_cliente'])) {
+                    // ya mapeado por normalizeHeaders
+                }
+            }
+            unset($fila);
+
             // Obtener valores por defecto desde POST
             $defaultValues = [];
-            if (!empty($_POST['default_estado'])) {
-                $defaultValues['estado'] = (int)$_POST['default_estado'];
-            }
-            if (!empty($_POST['default_proveedor'])) {
-                $defaultValues['proveedor'] = (int)$_POST['default_proveedor'];
-            }
-            if (!empty($_POST['default_moneda'])) {
-                $defaultValues['moneda'] = (int)$_POST['default_moneda'];
-            }
-            if (!empty($_POST['default_vendedor'])) {
-                $defaultValues['vendedor'] = (int)$_POST['default_vendedor'];
-            }
-            
-            $autoCreateProducts = !isset($_POST['auto_create_products']) || $_POST['auto_create_products'] !== '0';
-            
-            // Leer todas las filas
-            $allRows = [];
-            $line = 1; // Header es línea 1
-            
-            while (!feof($handle)) {
-                $raw = fgets($handle);
-                if ($raw === false) break;
-                $line++;
-                
-                // Quitar BOM si aparece
-                if ($line === 2) {
-                    $raw = preg_replace('/^\xEF\xBB\xBF/', '', $raw);
-                }
-                
-                $row = str_getcsv(rtrim($raw, "\r\n"), $delimiter, '"');
-                
-                // Si no coincide el número de columnas, intentar delimitador alternativo
-                if (count($row) !== count($cols)) {
-                    $alt = $delimiter === ',' ? ';' : ',';
-                    $altRow = str_getcsv(rtrim($raw, "\r\n"), $alt, '"');
-                    if (count($altRow) === count($cols)) {
-                        $row = $altRow;
-                    }
-                }
-                
-                // Mapear a asociativo
-                $dataRow = [];
-                foreach ($cols as $i => $colName) {
-                    $val = isset($row[$i]) ? trim($row[$i]) : '';
-                    $dataRow[$colName] = $val;
-                }
-                
-                // Omitir filas completamente vacías
-                $allEmpty = true;
-                foreach ($dataRow as $v) {
-                    if ($v !== null && $v !== '') {
-                        $allEmpty = false;
-                        break;
-                    }
-                }
-                if ($allEmpty) continue;
-                
-                $allRows[] = $dataRow;
-            }
-            
-            fclose($handle);
-            
+            if (!empty($_POST['default_estado']))    $defaultValues['estado']    = (int)$_POST['default_estado'];
+            if (!empty($_POST['default_proveedor'])) $defaultValues['proveedor'] = (int)$_POST['default_proveedor'];
+            if (!empty($_POST['default_moneda']))    $defaultValues['moneda']    = (int)$_POST['default_moneda'];
+            if (!empty($_POST['default_vendedor']))  $defaultValues['vendedor']  = (int)$_POST['default_vendedor'];
+
+            // Productos inexistentes SIEMPRE rechazan la fila
+            $autoCreateProducts = false;
+
             // VALIDACIÓN COMPLETA
             $validator = new CSVPedidoValidator();
             $resumenValidacion = $validator->validarLote($allRows);
