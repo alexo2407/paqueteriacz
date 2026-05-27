@@ -96,9 +96,12 @@ $sqlRegion = "
     SELECT
         COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, d_cptxt.nombre, d_norm.nombre, 'Sin Región') AS provincia,
         COUNT(*) AS cantidad,
-        SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0 END) AS entregados,
+        SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 0
+                  WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0 END) AS entregados,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
-                   OR LOWER(ep.nombre_estado) LIKE '%devuelto%'  THEN 1 ELSE 0 END) AS rechazados
+                   OR LOWER(ep.nombre_estado) LIKE '%devuelto%'
+                   OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
+                   OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 1 ELSE 0 END) AS rechazados
     FROM pedidos p
     -- Ruta A: FK directa id_departamento
     LEFT JOIN departamentos d_fk

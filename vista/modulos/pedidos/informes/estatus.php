@@ -104,9 +104,11 @@ $whereStr = 'WHERE ' . implode(' AND ', $where);
 $sqlEstatus = "
     SELECT
         CASE
-            WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 'ENTREGADO'
             WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
-              OR LOWER(ep.nombre_estado) LIKE '%devuelto%'  THEN 'RECHAZADO'
+              OR LOWER(ep.nombre_estado) LIKE '%devuelto%'
+              OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
+              OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 'RECHAZADO'
+            WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 'ENTREGADO'
             ELSE 'EN PROCESO'
         END AS categoria,
         COUNT(*) AS total
