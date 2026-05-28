@@ -111,34 +111,42 @@ if (!$isAdmin && ($isRealCliente || $isRealProveedor)) {
 }
 
 // ── Determinar tipo de JOIN y dónde poner los filtros de pedido ──────────────
-// Si es admin Y hay filtros de pedido → INNER JOIN (excluye ajustes manuales, solo pedidos)
-// En cualquier otro caso → LEFT JOIN con los filtros en el ON (incluye ajustes manuales)
+// SIEMPRE usamos LEFT JOIN para no excluir movimientos manuales (sin referencia a pedido).
+// Cuando hay filtros de pedido (cliente/proveedor/estado), la condición se pone en el WHERE
+// pero con una cláusula OR que preserva los movimientos que NO son de pedido (entradas manuales).
 $hayFiltrosPedido = ($idCliente > 0 || $idProveedor > 0 || $idEstado > 0);
-$joinType = ($hayFiltrosPedido && $isAdmin) ? 'INNER JOIN' : 'LEFT JOIN';
+// Siempre LEFT JOIN — los ajustes/entradas manuales no tienen referencia_id de pedido
+// y deben aparecer siempre, independientemente del filtro de cliente.
+$joinType = 'LEFT JOIN';
 
+// Condiciones de filtro sobre pedidos: se aplican en el WHERE pero permiten
+// pasar los movimientos que no están ligados a un pedido (referencia_tipo IS NULL o != 'pedido')
+$pedidoFilterConditions = [];
 if ($idCliente > 0) {
-    if ($joinType === 'INNER JOIN') {
-        $where[]              = 'ped.id_cliente = :id_cliente';
-    } else {
-        $joinOnExtras[]       = 'ped.id_cliente = :id_cliente';
-    }
+    $joinOnExtras[]        = 'ped.id_cliente = :id_cliente';
     $params[':id_cliente'] = $idCliente;
+    $pedidoFilterConditions[] = 'ped.id_cliente = :id_cliente_w';
+    $params[':id_cliente_w']  = $idCliente;
 }
 if ($idProveedor > 0) {
-    if ($joinType === 'INNER JOIN') {
-        $where[]                = 'ped.id_proveedor = :id_proveedor';
-    } else {
-        $joinOnExtras[]         = 'ped.id_proveedor = :id_proveedor';
-    }
-    $params[':id_proveedor'] = $idProveedor;
+    $joinOnExtras[]           = 'ped.id_proveedor = :id_proveedor';
+    $params[':id_proveedor']  = $idProveedor;
+    $pedidoFilterConditions[] = 'ped.id_proveedor = :id_proveedor_w';
+    $params[':id_proveedor_w'] = $idProveedor;
 }
 if ($idEstado > 0) {
-    if ($joinType === 'INNER JOIN') {
-        $where[]             = 'ped.id_estado = :id_estado';
-    } else {
-        $joinOnExtras[]      = 'ped.id_estado = :id_estado';
-    }
+    $joinOnExtras[]       = 'ped.id_estado = :id_estado';
     $params[':id_estado'] = $idEstado;
+    $pedidoFilterConditions[] = 'ped.id_estado = :id_estado_w';
+    $params[':id_estado_w']   = $idEstado;
+}
+
+// Si hay filtros de pedido, añadir condición al WHERE que incluye tanto
+// los movimientos de pedidos que cumplen el filtro COMO los movimientos manuales (sin pedido).
+if (!empty($pedidoFilterConditions)) {
+    $pedidoCond = implode(' AND ', $pedidoFilterConditions);
+    // Incluir movimiento si: (cumple filtros de pedido) O (no es un movimiento de pedido)
+    $where[] = "( ({$pedidoCond}) OR (s.referencia_tipo IS NULL OR s.referencia_tipo != 'pedido') )";
 }
 
 $whereStr  = 'WHERE ' . implode(' AND ', $where);
