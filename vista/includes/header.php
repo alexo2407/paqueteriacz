@@ -467,7 +467,7 @@
                 <i class="bi bi-file-earmark-bar-graph"></i> Reporte de Pedidos
             </a>
             <!-- ═══ Grupo Informes ═══ -->
-            <?php if (!$isProveedor): ?>
+            <?php if ($isAdmin || !$isProveedor): ?>
             <a href="#navInformes" class="nav-link d-flex align-items-center justify-content-between"
                data-bs-toggle="collapse" role="button"
                aria-expanded="<?= (strpos($_SERVER['REQUEST_URI'] ?? '', 'informes') !== false) ? 'true' : 'false' ?>"
@@ -487,7 +487,7 @@
                     <i class="bi bi-box-seam me-1"></i> Efectividad por Producto
                 </a>
             </div>
-            <?php endif; // !$isProveedor (Informes) ?>
+            <?php endif; // Admin || !$isProveedor (Informes) ?>
             <?php endif; // isAdmin || isProveedor || isCliente (Operaciones) ?>
 
             <?php if ($isRepartidor || $isAdmin): ?>
@@ -501,7 +501,7 @@
             <hr class="sidebar-divider">
             <div class="sidebar-label">Inventario</div>
             <a href="<?= RUTA_URL ?>productos/listar" class="nav-link"><i class="bi bi-grid"></i> Productos</a>
-            <?php if (!$isProveedor): // ocultar gestión de stock al rol Cliente ?>
+            <?php if ($isAdmin || !$isProveedor): // ocultar gestión de stock al rol Cliente ?>
             <a href="<?= RUTA_URL ?>categorias/listar" class="nav-link"><i class="bi bi-folder2"></i> Categorías</a>
             <a href="<?= RUTA_URL ?>stock/listar" class="nav-link"><i class="bi bi-arrow-down-up"></i> Mov. de Stock</a>
             <a href="<?= RUTA_URL ?>stock/kardex" class="nav-link"><i class="bi bi-file-earmark-text"></i> Kardex</a>
