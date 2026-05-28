@@ -467,6 +467,7 @@
                 <i class="bi bi-file-earmark-bar-graph"></i> Reporte de Pedidos
             </a>
             <!-- ═══ Grupo Informes ═══ -->
+            <?php if (!$isProveedor): ?>
             <a href="#navInformes" class="nav-link d-flex align-items-center justify-content-between"
                data-bs-toggle="collapse" role="button"
                aria-expanded="<?= (strpos($_SERVER['REQUEST_URI'] ?? '', 'informes') !== false) ? 'true' : 'false' ?>"
@@ -486,7 +487,8 @@
                     <i class="bi bi-box-seam me-1"></i> Efectividad por Producto
                 </a>
             </div>
-            <?php endif; ?>
+            <?php endif; // !$isProveedor (Informes) ?>
+            <?php endif; // isAdmin || isProveedor || isCliente (Operaciones) ?>
 
             <?php if ($isRepartidor || $isAdmin): ?>
             <a href="<?= RUTA_URL ?>seguimiento/listar" class="nav-link">
@@ -499,6 +501,7 @@
             <hr class="sidebar-divider">
             <div class="sidebar-label">Inventario</div>
             <a href="<?= RUTA_URL ?>productos/listar" class="nav-link"><i class="bi bi-grid"></i> Productos</a>
+            <?php if (!$isProveedor): // ocultar gestión de stock al rol Cliente ?>
             <a href="<?= RUTA_URL ?>categorias/listar" class="nav-link"><i class="bi bi-folder2"></i> Categorías</a>
             <a href="<?= RUTA_URL ?>stock/listar" class="nav-link"><i class="bi bi-arrow-down-up"></i> Mov. de Stock</a>
             <a href="<?= RUTA_URL ?>stock/kardex" class="nav-link"><i class="bi bi-file-earmark-text"></i> Kardex</a>
@@ -509,9 +512,10 @@
             <a href="<?= RUTA_URL ?>stock/inventario_periodo" class="nav-link"><i class="bi bi-table"></i> Inventario Período</a>
             <a href="<?= RUTA_URL ?>stock/crear" class="nav-link"><i class="bi bi-plus-circle"></i> Nuevo Movimiento</a>
             <?php endif; ?>
+            <?php endif; ?>
 
             <!-- ═══ Geografía ═══ -->
-            <?php if ($isAdmin || $isProveedor || $isVendedor): ?>
+            <?php if ($isAdmin || $isVendedor): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Geografía</div>
             <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-geo-fill"></i> Códigos Postales</a>
@@ -520,11 +524,12 @@
             <a href="<?= RUTA_URL ?>municipios/listar" class="nav-link"><i class="bi bi-pin-map"></i> Municipios</a>
             <a href="<?= RUTA_URL ?>barrios/listar" class="nav-link"><i class="bi bi-building"></i> Barrios</a>
             <a href="<?= RUTA_URL ?>monedas/listar" class="nav-link"><i class="bi bi-currency-exchange"></i> Monedas</a>
-            <?php elseif ($isCliente): ?>
+            <?php elseif ($isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Geografía</div>
             <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-geo-fill"></i> Códigos Postales</a>
             <?php endif; ?>
+
 
             <!-- ═══ CRM Relay ═══ -->
             <?php if ($isAdmin || $isProveedorCRM || $isClienteCRM): ?>
@@ -564,12 +569,8 @@
             <a href="<?= RUTA_URL ?>auditoria/accesos" class="nav-link"><i class="bi bi-person-badge"></i> Hist. Accesos</a>
             <?php endif; ?>
 
-            <!-- ═══ Auditoría (Proveedor no-Admin) ═══ -->
-            <?php if ($isProveedor && !$isAdmin): ?>
-            <hr class="sidebar-divider">
-            <div class="sidebar-label">Administración</div>
-            <a href="<?= RUTA_URL ?>auditoria/historial" class="nav-link"><i class="bi bi-clock-history"></i> Auditoría</a>
-            <?php endif; ?>
+            <?php /* Auditoría solo visible para Admin */ ?>
+
 
             <!-- ═══ Documentación (Admin) ═══ -->
             <?php if ($isAdmin): ?>
