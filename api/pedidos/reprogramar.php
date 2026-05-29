@@ -10,7 +10,7 @@
  *
  * ─── Body JSON (application/json) ─────────────────────────────────────────
  *  numero_orden   string   (requerido)  Número de orden del pedido
- *  fecha_entrega  string   (requerido)  Nueva fecha de entrega (YYYY-MM-DD)
+ *  fecha_entrega  string   (cond.)    Nueva fecha de entrega (YYYY-MM-DD). Solo requerida si id_estado=4
  *  id_estado      int      (opcional)   Estado destino (default: 4 = Reprogramado)
  *  id_cliente     int      (opcional)   ID del cliente a asignar al pedido
  *  motivo         string   (opcional)   Razón de la reprogramación
@@ -128,15 +128,12 @@ try {
         if ($fechaEntrega < $hoy) {
             responder(false, 'La fecha_entrega no puede ser en el pasado.', null, 400);
         }
-    } elseif ($fechaEntrega !== '') {
-        // Si se envía fecha aunque no sea Reprogramado, validar formato igualmente
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEntrega)) {
-            responder(false, 'Formato de fecha_entrega inválido. Use YYYY-MM-DD.', null, 400);
-        }
+    } else {
+        // Para cualquier otro estado, fecha_entrega se ignora aunque se envíe.
+        // No se actualiza la fecha del pedido si no es una reprogramación.
+        $fechaEntrega = null;
     }
 
-    // Normalizar a null si viene vacío
-    $fechaEntrega = $fechaEntrega !== '' ? $fechaEntrega : null;
 
     // ── 4. Ejecutar reprogramación via modelo ──────────────────────────────
     $resultado = PedidosModel::reprogramarPedido(

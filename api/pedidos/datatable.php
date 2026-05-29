@@ -100,10 +100,10 @@ try {
     $whereRolOnly = [];
     $paramsRol = [];
     if (!$isAdmin && !$isRepartidor) {
-        if ($isClienteReal) {
+        if ($esClienteReal) {
             $whereRolOnly[] = 'p.id_cliente = :uid';
             $paramsRol[':uid'] = $userId;
-        } elseif ($isProveedorReal) {
+        } elseif ($esProveedorReal) {
             $whereRolOnly[] = 'p.id_proveedor = :uid';
             $paramsRol[':uid'] = $userId;
         }
