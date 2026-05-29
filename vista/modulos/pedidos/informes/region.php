@@ -489,7 +489,7 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="<?= RUTA_URL ?>vista/js/chart.umd.min.js"></script>
 <script>
 <?php if (!empty($regiones)): ?>
 (function() {

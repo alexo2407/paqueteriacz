@@ -201,10 +201,35 @@ if ($export) {
         ]);
     }
 
-    $row = 4;
-    $idx = 1;
+    $row        = 4;
+    $xlsMesAct  = '';
+    $xlsIdxMes  = 0;
+    $mesesExcel = [
+        1=>'ENERO', 2=>'FEBRERO', 3=>'MARZO', 4=>'ABRIL',
+        5=>'MAYO', 6=>'JUNIO', 7=>'JULIO', 8=>'AGOSTO',
+        9=>'SEPTIEMBRE', 10=>'OCTUBRE', 11=>'NOVIEMBRE', 12=>'DICIEMBRE'
+    ];
     foreach ($semanas as $sem) {
-        $label = 'Semana ' . $idx . ' — ' . date('d/m/Y', strtotime($sem['lunes'])) . ' al ' . date('d/m/Y', strtotime($sem['sabado']));
+        $numMesXls = (int)date('n', strtotime($sem['lunes']));
+        $mesClave  = date('Y-n', strtotime($sem['lunes']));
+
+        // Fila separadora de mes al cambiar de mes
+        if ($mesClave !== $xlsMesAct) {
+            $xlsMesAct = $mesClave;
+            $xlsIdxMes = 1;
+            $sheet->mergeCells("A{$row}:F{$row}");
+            $sheet->setCellValue("A{$row}", '📅 ' . $mesesExcel[$numMesXls] . ' ' . date('Y', strtotime($sem['lunes'])));
+            $sheet->getStyle("A{$row}")->applyFromArray([
+                'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
+                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '1E293B']],
+                'alignment' => ['horizontal' => 'left'],
+            ]);
+            $row++;
+        } else {
+            $xlsIdxMes++;
+        }
+
+        $label = 'Semana ' . $xlsIdxMes . ' — ' . date('d/m/Y', strtotime($sem['lunes'])) . ' al ' . date('d/m/Y', strtotime($sem['sabado']));
 
         // Fila de cantidades
         $sheet->setCellValue("A{$row}", $label);
@@ -233,8 +258,8 @@ if ($export) {
         $sheet->getStyle("F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
         $row++;
         $row++; // fila vacía entre semanas
-        $idx++;
     }
+
 
     // Totales
     $pctTotE  = $totalCantidad > 0 ? round($totalEntregados    / $totalCantidad * 100) : 0;
@@ -277,15 +302,18 @@ $chartEntregados    = [];
 $chartRechazados    = [];
 $chartEnProceso     = [];
 $chartReprogramados = [];
-$idx = 1;
+$semMesActual = '';
+$semIdxMes    = 0;
 foreach ($semanas as $sem) {
-    $numMes = (int)date('n', strtotime($sem['lunes']));
-    $chartLabels[]        = 'Sem ' . $idx . ' - ' . $mesesCortos[$numMes];
+    $numMes    = (int)date('n', strtotime($sem['lunes']));
+    $mesClave  = date('Y-n', strtotime($sem['lunes'])); // para detectar cambio de mes
+    if ($mesClave !== $semMesActual) { $semMesActual = $mesClave; $semIdxMes = 1; }
+    else $semIdxMes++;
+    $chartLabels[]        = 'Sem ' . $semIdxMes . ' ' . $mesesCortos[$numMes];
     $chartEntregados[]    = $sem['entregados'];
     $chartRechazados[]    = $sem['rechazados'];
     $chartEnProceso[]     = $sem['en_proceso'];
     $chartReprogramados[] = $sem['reprogramados'];
-    $idx++;
 }
 $chartLabelsJson        = json_encode($chartLabels);
 $chartEntregadosJson    = json_encode($chartEntregados);
@@ -459,19 +487,19 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
     <!-- Filtros -->
     <div class="filter-card mb-3">
         <div class="card-body p-3">
-            <form method="GET" action="<?= RUTA_URL ?>pedidos/informes/semana" class="row g-2 align-items-end">
+            <form method="GET" action="<?= RUTA_URL ?>pedidos/informes/semana" class="row g-2 align-items-end" id="frmFiltroSemana">
                 <?php if ($isPublicLink): ?>
                 <input type="hidden" name="u" value="<?= htmlspecialchars($pubU) ?>">
                 <input type="hidden" name="t" value="<?= htmlspecialchars($pubT) ?>">
                 <?php endif; ?>
                 <div class="col-md-3 col-6">
                     <label class="form-label small fw-semibold mb-1"><i class="bi bi-calendar3"></i> Desde</label>
-                    <input type="date" name="fecha_desde" class="form-control form-control-sm"
+                    <input type="date" name="fecha_desde" id="filtroDesde" class="form-control form-control-sm"
                            value="<?= htmlspecialchars($fechaDesde) ?>">
                 </div>
                 <div class="col-md-3 col-6">
                     <label class="form-label small fw-semibold mb-1"><i class="bi bi-calendar3"></i> Hasta</label>
-                    <input type="date" name="fecha_hasta" class="form-control form-control-sm"
+                    <input type="date" name="fecha_hasta" id="filtroHasta" class="form-control form-control-sm"
                            value="<?= htmlspecialchars($fechaHasta) ?>">
                 </div>
                 <?php if ($isAdmin): ?>
@@ -487,10 +515,17 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     </select>
                 </div>
                 <?php endif; ?>
-                <div class="col-md-2 col-12">
-                    <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">
+                <div class="col-md-auto col-12 d-flex gap-2 flex-wrap">
+                    <button type="submit" class="btn btn-primary btn-sm fw-semibold">
                         <i class="bi bi-search me-1"></i>Aplicar
                     </button>
+                    <button type="button" class="btn btn-outline-info btn-sm fw-semibold" onclick="filtrarMesActual()" title="Ver solo el mes en curso">
+                        <i class="bi bi-calendar-check me-1"></i>Mes en Curso
+                    </button>
+                    <a href="<?= RUTA_URL ?>pedidos/informes/semana<?= $isPublicLink ? '?u='.$pubU.'&t='.$pubT : '' ?>"
+                       class="btn btn-outline-secondary btn-sm fw-semibold" title="Restablecer filtros">
+                        <i class="bi bi-x-circle me-1"></i>Limpiar
+                    </a>
                 </div>
                 <div class="col-auto ms-auto d-flex align-items-center">
                     <small class="text-muted"><?= number_format($totalCantidad) ?> pedidos · <?= count($semanas) ?> semanas</small>
@@ -498,6 +533,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
             </form>
         </div>
     </div>
+
 
     <?php if (empty($semanas)): ?>
     <div class="chart-card text-center py-5">
@@ -538,7 +574,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
     <!-- Gráfica de líneas -->
     <div class="chart-card">
         <div class="chart-title"><i class="bi bi-graph-up me-2 text-primary"></i>Tendencia por Semana</div>
-        <div style="position:relative; min-height:300px;">
+        <div style="position:relative; height:180px; width:100%;">
             <canvas id="semanaChart"></canvas>
         </div>
     </div>
@@ -559,16 +595,31 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     </tr>
                 </thead>
                 <tbody>
-                <?php $idx = 1; foreach ($semanas as $sem):
+                <?php
+                $mesActual  = '';
+                $semIdxMes  = 0;
+                $colSpanTotal = 6; // FECHA + CANTIDAD + 4 estados
+                foreach ($semanas as $sem):
                     $numMes   = (int)date('n', strtotime($sem['lunes']));
                     $nomMes   = $meses[$numMes];
+                    $mesClave = date('Y-n', strtotime($sem['lunes']));
+                    // Nuevo mes: insertar fila separadora y reiniciar contador
+                    if ($mesClave !== $mesActual):
+                        $mesActual = $mesClave;
+                        $semIdxMes = 1;
                 ?>
+                <tr>
+                    <td colspan="6" style="background:#1e293b;color:#fff;font-weight:800;font-size:.9rem;padding:.6rem 1rem;letter-spacing:.04em;text-transform:uppercase;border:none">
+                        <i class="bi bi-calendar3 me-2 opacity-75"></i><?= $nomMes ?> <?= date('Y', strtotime($sem['lunes'])) ?>
+                    </td>
+                </tr>
+                <?php else: $semIdxMes++; endif; ?>
                 <!-- Fila cantidades -->
                 <tr class="row-semana-header">
                     <td>
-                        <span class="sem-label">Semana <?= $idx ?> &mdash; <?= $nomMes ?></span><br>
+                        <span class="sem-label">Semana <?= $semIdxMes ?> &mdash; <?= $nomMes ?></span><br>
                         <span class="sem-rango">
-                            <?= date('d/m/Y', strtotime($sem['lunes'])) ?> – <?= date('d/m/Y', strtotime($sem['sabado'])) ?>
+                            <?= date('d/m/Y', strtotime($sem['lunes'])) ?> &ndash; <?= date('d/m/Y', strtotime($sem['sabado'])) ?>
                         </span>
                     </td>
                     <td class="cell-num"><?= number_format($sem['cantidad']) ?></td>
@@ -586,7 +637,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     <td class="pct-proc"><?= $sem['pct_en_proceso'] ?>%</td>
                     <td class="pct-rep"><?= $sem['pct_reprogramados'] ?>%</td>
                 </tr>
-                <?php $idx++; endforeach; ?>
+                <?php endforeach; ?>
                 </tbody>
                 <tfoot>
                     <tr>
@@ -607,7 +658,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="<?= RUTA_URL ?>vista/js/chart.umd.min.js"></script>
 <script>
 <?php if (!empty($semanas)): ?>
 (function() {
@@ -651,6 +702,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
@@ -680,6 +732,15 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
 })();
 <?php endif; ?>
 
+function filtrarMesActual() {
+    const now   = new Date();
+    const y     = now.getFullYear();
+    const m     = String(now.getMonth() + 1).padStart(2, '0');
+    const lastD = new Date(y, now.getMonth() + 1, 0).getDate();
+    document.getElementById('filtroDesde').value = `${y}-${m}-01`;
+    document.getElementById('filtroHasta').value = `${y}-${m}-${lastD}`;
+    document.getElementById('frmFiltroSemana').submit();
+}
 function toggleEnlacePublico(action) {
     const actionText = action === 'habilitar'
         ? 'Esto generará un enlace público compartible.'
