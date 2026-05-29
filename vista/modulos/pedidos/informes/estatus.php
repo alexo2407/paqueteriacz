@@ -2,7 +2,7 @@
 /**
  * Informe: Estatus de Órdenes
  * Ruta: GET /pedidos/informes/estatus
- * Muestra gráfica dona + tabla con ENTREGADO / EN PROCESO / RECHAZADO
+ * Muestra gráfica dona + tabla con ENTREGADO / EN PROCESO / RECHAZADO / REPROGRAMADO
  */
 
 require_once __DIR__ . '/../../../../config/config.php';
@@ -109,6 +109,7 @@ $sqlEstatus = "
               OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
               OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 'RECHAZADO'
             WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 'ENTREGADO'
+            WHEN LOWER(ep.nombre_estado) LIKE '%reprogramado%' THEN 'REPROGRAMADO'
             ELSE 'EN PROCESO'
         END AS categoria,
         COUNT(*) AS total
@@ -116,15 +117,15 @@ $sqlEstatus = "
     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
     {$whereStr}
     GROUP BY categoria
-    ORDER BY FIELD(categoria, 'ENTREGADO', 'EN PROCESO', 'RECHAZADO')
+    ORDER BY FIELD(categoria, 'ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'REPROGRAMADO')
 ";
 $stmtEst = $db->prepare($sqlEstatus);
 foreach ($params as $k => $v) $stmtEst->bindValue($k, $v);
 $stmtEst->execute();
 $rows = $stmtEst->fetchAll(PDO::FETCH_ASSOC);
 
-// Normalizar a las 3 categorías (aunque alguna tenga 0)
-$data = ['ENTREGADO' => 0, 'EN PROCESO' => 0, 'RECHAZADO' => 0];
+// Normalizar a las 4 categorías (aunque alguna tenga 0)
+$data = ['ENTREGADO' => 0, 'EN PROCESO' => 0, 'RECHAZADO' => 0, 'REPROGRAMADO' => 0];
 foreach ($rows as $r) {
     $data[$r['categoria']] = (int)$r['total'];
 }
@@ -163,9 +164,10 @@ if ($export) {
 
     // Colores por categoría
     $colores = [
-        'ENTREGADO'  => ['bg' => '3CB043', 'text' => 'FFFFFF'],
-        'EN PROCESO' => ['bg' => 'F5E400', 'text' => '3D3200'],
-        'RECHAZADO'  => ['bg' => 'D42B2B', 'text' => 'FFFFFF'],
+        'ENTREGADO'    => ['bg' => '3CB043', 'text' => 'FFFFFF'],
+        'EN PROCESO'   => ['bg' => 'F5E400', 'text' => '3D3200'],
+        'RECHAZADO'    => ['bg' => 'D42B2B', 'text' => 'FFFFFF'],
+        'REPROGRAMADO' => ['bg' => 'F97316', 'text' => 'FFFFFF'],
     ];
 
     $row = 3;
@@ -215,12 +217,13 @@ if ($export) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --clr-entregado:  #3cb043;
-            --clr-proceso:    #f5e400;
-            --clr-rechazado:  #d42b2b;
-            --clr-dark:       #0f172a;
-            --clr-card:       #1e293b;
-            --clr-surface:    #f8fafc;
+            --clr-entregado:    #3cb043;
+            --clr-proceso:      #f5e400;
+            --clr-rechazado:    #d42b2b;
+            --clr-reprogramado: #f97316;
+            --clr-dark:         #0f172a;
+            --clr-card:         #1e293b;
+            --clr-surface:      #f8fafc;
         }
         body { background: var(--clr-surface); font-family: 'Inter', sans-serif; }
 
@@ -236,8 +239,9 @@ if ($export) {
         .rpt-header h4 { font-weight: 800; font-size: 1.25rem; margin-bottom: .25rem; }
 
         /* KPI Cards */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        @media (max-width: 640px) { .kpi-grid { grid-template-columns: 1fr; } }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px) { .kpi-grid { grid-template-columns: 1fr; } }
         .kpi-card {
             border-radius: 14px;
             padding: 1.5rem 1.25rem;
@@ -256,9 +260,10 @@ if ($export) {
             background: rgba(255,255,255,.08);
         }
         .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.18); }
-        .kpi-card.entregado  { background: #3cb043; color: #fff; }
-        .kpi-card.en-proceso { background: #f5e400; color: #3d3200; }
-        .kpi-card.rechazado  { background: #d42b2b; color: #fff; }
+        .kpi-card.entregado     { background: #3cb043; color: #fff; }
+        .kpi-card.en-proceso    { background: #f5e400; color: #3d3200; }
+        .kpi-card.rechazado     { background: #d42b2b; color: #fff; }
+        .kpi-card.reprogramado  { background: #f97316; color: #fff; }
         .kpi-num  { font-size: 2.5rem; font-weight: 800; line-height: 1; }
         .kpi-pct  { font-size: 1rem; font-weight: 600; opacity: .85; }
         .kpi-lbl  { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .75; margin-top: .35rem; }
@@ -304,16 +309,18 @@ if ($export) {
             font-weight: 700;
             letter-spacing: .02em;
         }
-        .badge-entregado  { background: #d4f5d6; color: #1d6b22; }
-        .badge-proceso    { background: #fdf8b0; color: #5a5000; }
-        .badge-rechazado  { background: #fad4d4; color: #8b1a1a; }
+        .badge-entregado     { background: #d4f5d6; color: #1d6b22; }
+        .badge-proceso       { background: #fdf8b0; color: #5a5000; }
+        .badge-rechazado     { background: #fad4d4; color: #8b1a1a; }
+        .badge-reprogramado  { background: #ffedd5; color: #9a3412; }
 
         /* Progress bar */
         .prog-bar-wrap { height: 10px; background: #e2e8f0; border-radius: 99px; overflow: hidden; min-width: 80px; }
         .prog-bar-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
-        .prog-entregado  { background: var(--clr-entregado); }
-        .prog-proceso    { background: var(--clr-proceso); }
-        .prog-rechazado  { background: var(--clr-rechazado); }
+        .prog-entregado     { background: var(--clr-entregado); }
+        .prog-proceso       { background: var(--clr-proceso); }
+        .prog-rechazado     { background: var(--clr-rechazado); }
+        .prog-reprogramado  { background: var(--clr-reprogramado); }
 
         /* Filtros */
         .filter-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 1.25rem; }
@@ -446,9 +453,10 @@ if ($export) {
     <!-- KPI Cards -->
     <?php
     $categorias = [
-        ['key' => 'ENTREGADO',  'cls' => 'entregado',  'icon' => 'bi-check-circle-fill'],
-        ['key' => 'EN PROCESO', 'cls' => 'en-proceso',  'icon' => 'bi-arrow-repeat'],
-        ['key' => 'RECHAZADO',  'cls' => 'rechazado',   'icon' => 'bi-x-circle-fill'],
+        ['key' => 'ENTREGADO',    'cls' => 'entregado',    'icon' => 'bi-check-circle-fill'],
+        ['key' => 'EN PROCESO',   'cls' => 'en-proceso',   'icon' => 'bi-arrow-repeat'],
+        ['key' => 'RECHAZADO',    'cls' => 'rechazado',    'icon' => 'bi-x-circle-fill'],
+        ['key' => 'REPROGRAMADO', 'cls' => 'reprogramado', 'icon' => 'bi-calendar2-check-fill'],
     ];
     ?>
     <div class="kpi-grid">
@@ -499,7 +507,10 @@ if ($export) {
                         <?php foreach ($categorias as $cat):
                             $cnt = $data[$cat['key']];
                             $pct = $totalGeneral > 0 ? round($cnt / $totalGeneral * 100, 1) : 0;
-                            $clsB = $cat['key'] === 'ENTREGADO' ? 'entregado' : ($cat['key'] === 'EN PROCESO' ? 'proceso' : 'rechazado');
+                            if ($cat['key'] === 'ENTREGADO')    { $clsB = 'entregado'; }
+                            elseif ($cat['key'] === 'EN PROCESO') { $clsB = 'proceso'; }
+                            elseif ($cat['key'] === 'RECHAZADO')  { $clsB = 'rechazado'; }
+                            else                                   { $clsB = 'reprogramado'; }
                             $progCls = 'prog-' . $clsB;
                         ?>
                         <tr>
@@ -543,10 +554,10 @@ if ($export) {
     const ctx = document.getElementById('donaChart');
     if (!ctx) return;
 
-    const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO'];
-    const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>];
+    const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'REPROGRAMADO'];
+    const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>, <?= $data['REPROGRAMADO'] ?>];
     const total  = values.reduce((a, b) => a + b, 0);
-    const colors = ['#3cb043', '#f5e400', '#d42b2b'];
+    const colors = ['#3cb043', '#f5e400', '#d42b2b', '#f97316'];
 
     new Chart(ctx, {
         type: 'doughnut',
