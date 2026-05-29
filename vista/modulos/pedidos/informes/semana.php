@@ -365,11 +365,11 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
         .cell-num  { text-align: center; font-weight: 600; }
 
-        /* Celdas de porcentaje con color sólido */
-        .pct-ent  { background: var(--clr-entregado) !important;    color: #fff !important; font-weight: 700; text-align: center; border-radius: 4px; }
-        .pct-rec  { background: var(--clr-rechazado) !important;    color: #fff !important; font-weight: 700; text-align: center; border-radius: 4px; }
-        .pct-proc { background: var(--clr-proceso) !important;      color: #3d3200 !important; font-weight: 700; text-align: center; border-radius: 4px; }
-        .pct-rep  { background: var(--clr-reprogramado) !important; color: #fff !important; font-weight: 700; text-align: center; border-radius: 4px; }
+        /* Celdas de porcentaje con color sólido — especificidad mayor que .row-pct td */
+        .row-pct .pct-ent  { background: var(--clr-entregado) !important;    color: #fff !important; font-weight: 700; text-align: center; }
+        .row-pct .pct-rec  { background: var(--clr-rechazado) !important;    color: #fff !important; font-weight: 700; text-align: center; }
+        .row-pct .pct-proc { background: var(--clr-proceso) !important;      color: #3d3200 !important; font-weight: 700; text-align: center; }
+        .row-pct .pct-rep  { background: var(--clr-reprogramado) !important; color: #fff !important; font-weight: 700; text-align: center; }
     </style>
 </head>
 <?php if (!$isPublicLink): ?>
