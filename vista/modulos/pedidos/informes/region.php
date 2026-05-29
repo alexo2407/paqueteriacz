@@ -351,6 +351,8 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
                         <i class="bi bi-map me-2"></i>Efectividad por Región</a></li>
                     <li><a class="dropdown-item" href="<?= RUTA_URL ?>pedidos/informes/producto">
                         <i class="bi bi-box-seam me-2"></i>Efectividad por Producto</a></li>
+                    <li><a class="dropdown-item" href="<?= RUTA_URL ?>pedidos/informes/semana">
+                        <i class="bi bi-calendar-week me-2"></i>Tendencia Semanal</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="<?= RUTA_URL ?>pedidos/reportes">
                         <i class="bi bi-table me-2"></i>Reporte de Pedidos</a></li>

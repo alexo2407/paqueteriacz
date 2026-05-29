@@ -1437,6 +1437,7 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && ($ruta[1] ?? '') === 'reportes'
 // GET ?enlace=pedidos/informes/estatus
 // GET ?enlace=pedidos/informes/region
 // GET ?enlace=pedidos/informes/producto
+// GET ?enlace=pedidos/informes/semana
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'pedidos' && ($ruta[1] ?? '') === 'informes') {
     $subInforme = $ruta[2] ?? '';
@@ -1450,6 +1451,10 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && ($ruta[1] ?? '') === 'informes'
     }
     if ($subInforme === 'producto') {
         require_once __DIR__ . '/../vista/modulos/pedidos/informes/producto.php';
+        exit;
+    }
+    if ($subInforme === 'semana') {
+        require_once __DIR__ . '/../vista/modulos/pedidos/informes/semana.php';
         exit;
     }
 }
