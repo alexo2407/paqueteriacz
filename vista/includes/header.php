@@ -486,6 +486,9 @@
                 <a href="<?= RUTA_URL ?>pedidos/informes/producto" class="nav-link ps-4" style="font-size:.85rem">
                     <i class="bi bi-box-seam me-1"></i> Efectividad por Producto
                 </a>
+                <a href="<?= RUTA_URL ?>pedidos/informes/semana" class="nav-link ps-4" style="font-size:.85rem">
+                    <i class="bi bi-calendar-week me-1"></i> Tendencia Semanal
+                </a>
             </div>
             <?php endif; // Admin || !$isProveedor (Informes) ?>
             <?php endif; // isAdmin || isProveedor || isCliente (Operaciones) ?>
