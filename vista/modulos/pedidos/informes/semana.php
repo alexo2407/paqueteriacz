@@ -259,6 +259,18 @@ if ($export) {
     exit;
 }
 
+// Nombres de meses en español
+$meses = [
+    1=>'Enero', 2=>'Febrero', 3=>'Marzo', 4=>'Abril',
+    5=>'Mayo', 6=>'Junio', 7=>'Julio', 8=>'Agosto',
+    9=>'Septiembre', 10=>'Octubre', 11=>'Noviembre', 12=>'Diciembre'
+];
+$mesesCortos = [
+    1=>'Ene', 2=>'Feb', 3=>'Mar', 4=>'Abr',
+    5=>'May', 6=>'Jun', 7=>'Jul', 8=>'Ago',
+    9=>'Sep', 10=>'Oct', 11=>'Nov', 12=>'Dic'
+];
+
 // ── Datos para Chart.js ───────────────────────────────────────────────────────
 $chartLabels        = [];
 $chartEntregados    = [];
@@ -267,7 +279,8 @@ $chartEnProceso     = [];
 $chartReprogramados = [];
 $idx = 1;
 foreach ($semanas as $sem) {
-    $chartLabels[]        = 'Sem ' . $idx;
+    $numMes = (int)date('n', strtotime($sem['lunes']));
+    $chartLabels[]        = 'Sem ' . $idx . ' - ' . $mesesCortos[$numMes];
     $chartEntregados[]    = $sem['entregados'];
     $chartRechazados[]    = $sem['rechazados'];
     $chartEnProceso[]     = $sem['en_proceso'];
@@ -546,11 +559,14 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     </tr>
                 </thead>
                 <tbody>
-                <?php $idx = 1; foreach ($semanas as $sem): ?>
+                <?php $idx = 1; foreach ($semanas as $sem):
+                    $numMes   = (int)date('n', strtotime($sem['lunes']));
+                    $nomMes   = $meses[$numMes];
+                ?>
                 <!-- Fila cantidades -->
                 <tr class="row-semana-header">
                     <td>
-                        <span class="sem-label">Semana <?= $idx ?></span><br>
+                        <span class="sem-label">Semana <?= $idx ?> &mdash; <?= $nomMes ?></span><br>
                         <span class="sem-rango">
                             <?= date('d/m/Y', strtotime($sem['lunes'])) ?> – <?= date('d/m/Y', strtotime($sem['sabado'])) ?>
                         </span>
