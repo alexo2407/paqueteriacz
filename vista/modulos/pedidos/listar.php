@@ -394,6 +394,174 @@ endif;
 </div>
 
 
+<!-- ============================================================
+     Modal: Reasignar Proveedor en Pedidos
+     Modo A: proveedor único  + Excel con solo numero_orden
+     Modo B: Excel con numero_orden + id_proveedor por fila
+     ============================================================ -->
+<div class="modal fade" id="modalReasignarPedido" tabindex="-1" aria-labelledby="modalReasignarPedidoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                <h5 class="modal-title" id="modalReasignarPedidoLabel">
+                    <i class="bi bi-arrow-repeat me-2"></i> Reasignar Proveedor en Pedidos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formReasignar" enctype="multipart/form-data">
+
+                    <p class="text-muted mb-3 small"><i class="bi bi-info-circle me-1"></i> Elige cómo asignar el nuevo proveedor a los pedidos afectados:</p>
+
+                    <!-- Selector de modo -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="border rounded-3 p-3 h-100 modo-card active" id="cardModoA" onclick="switchModoReasignar('A')">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                         style="width:38px;height:38px;background:linear-gradient(135deg,#3b82f6,#2563eb);">
+                                        <i class="bi bi-person-check text-white"></i>
+                                    </div>
+                                    <strong>Proveedor único</strong>
+                                    <span class="badge ms-auto" id="badgeModoA" style="background:#3b82f6;">Seleccionado</span>
+                                </div>
+                                <p class="small text-muted mb-0">Selecciona <strong>un solo proveedor</strong> y sube un Excel con la lista de <code>numero_orden</code>. Se aplica a todos los pedidos del archivo.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="border rounded-3 p-3 h-100 modo-card" id="cardModoB" onclick="switchModoReasignar('B')">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                         style="width:38px;height:38px;background:linear-gradient(135deg,#667eea,#764ba2);">
+                                        <i class="bi bi-table text-white"></i>
+                                    </div>
+                                    <strong>Proveedor por fila</strong>
+                                    <span class="badge ms-auto d-none" id="badgeModoB" style="background:#764ba2;">Seleccionado</span>
+                                </div>
+                                <p class="small text-muted mb-0">Sube un Excel con <code>numero_orden</code> + <code>id_proveedor</code>. Cada fila puede tener un proveedor distinto.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="modo" id="reasignar_modo_input" value="A">
+
+                    <!-- Modo A: selector de proveedor -->
+                    <div id="seccionModoA">
+                        <div class="mb-3">
+                            <label for="reasignar_proveedor_global" class="form-label fw-bold">
+                                <i class="bi bi-person-badge me-1"></i> Nuevo Proveedor <span class="text-danger">*</span>
+                            </label>
+                            <select name="id_proveedor_global" id="reasignar_proveedor_global" class="form-select select2-searchable" data-placeholder="Buscar proveedor...">
+                                <option value="">-- Seleccionar proveedor --</option>
+                                <?php
+                                $proveedoresReasignar = (new PedidosController())->obtenerProveedores();
+                                foreach ($proveedoresReasignar as $pR):
+                                ?>
+                                    <option value="<?= $pR['id'] ?>"><?= htmlspecialchars($pR['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text">Este proveedor se asignará a <strong>todos</strong> los pedidos del archivo.</div>
+                        </div>
+                    </div>
+
+                    <!-- Modo B: info -->
+                    <div id="seccionModoB" class="d-none">
+                        <div class="alert alert-info py-2 mb-3 small">
+                            <i class="bi bi-table me-1"></i>
+                            El Excel debe tener exactamente 2 columnas: <code>numero_orden</code> (col. A) e <code>id_proveedor</code> (col. B).
+                        </div>
+                    </div>
+
+                    <!-- Archivo -->
+                    <div class="mb-3">
+                        <label for="reasignar_file" class="form-label fw-bold">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Archivo Excel / CSV <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" name="reasignar_file" id="reasignar_file" accept=".xlsx,.csv,.txt" class="form-control" required>
+                        <div class="form-text">Formatos: .xlsx, .csv (máximo 10MB)</div>
+                    </div>
+
+                    <!-- Referencia de columnas dinámica -->
+                    <div class="border rounded overflow-hidden mb-3" style="font-size:0.82rem;">
+                        <div class="px-3 py-2 text-white fw-bold d-flex justify-content-between align-items-center"
+                             style="background:linear-gradient(135deg,#3b82f6,#2563eb)">
+                            <span><i class="bi bi-file-earmark-excel me-1"></i> Formato del archivo</span>
+                            <a href="<?= RUTA_URL ?>public/reasignacion_template.php?modo=A" id="linkPlantillaReasignar"
+                               class="text-white small opacity-75" download>
+                                <i class="bi bi-download me-1"></i>Descargar plantilla
+                            </a>
+                        </div>
+                        <div class="p-3">
+                            <div id="referenciaColumnasModoA">
+                                <table class="table table-sm table-bordered mb-0" style="font-size:0.78rem;">
+                                    <thead class="table-light"><tr><th>Col.</th><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                                    <tbody>
+                                        <tr class="table-danger bg-opacity-25">
+                                            <td class="text-center fw-bold">A</td>
+                                            <td><code>numero_orden</code> <span class="badge bg-danger">REQ</span></td>
+                                            <td class="text-muted">entero</td>
+                                            <td>Número de orden del pedido a reasignar</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="mt-2 bg-dark rounded px-3 py-2" style="font-family:monospace;font-size:0.71rem;color:#e8e8e8;">
+                                    <span class="text-warning">A:numero_orden</span><br>
+                                    <span class="text-secondary">28028424</span><br>
+                                    <span class="text-secondary">28028425</span><br>
+                                    <span class="text-secondary">28028426</span>
+                                </div>
+                            </div>
+                            <div id="referenciaColumnasModoB" class="d-none">
+                                <table class="table table-sm table-bordered mb-0" style="font-size:0.78rem;">
+                                    <thead class="table-light"><tr><th>Col.</th><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                                    <tbody>
+                                        <tr class="table-danger bg-opacity-25">
+                                            <td class="text-center fw-bold">A</td>
+                                            <td><code>numero_orden</code> <span class="badge bg-danger">REQ</span></td>
+                                            <td class="text-muted">entero</td>
+                                            <td>Número de orden del pedido</td>
+                                        </tr>
+                                        <tr class="table-danger bg-opacity-25">
+                                            <td class="text-center fw-bold">B</td>
+                                            <td><code>id_proveedor</code> <span class="badge bg-danger">REQ</span></td>
+                                            <td class="text-muted">entero</td>
+                                            <td>ID del nuevo proveedor de mensajería</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div class="mt-2 bg-dark rounded px-3 py-2" style="font-family:monospace;font-size:0.71rem;color:#e8e8e8;">
+                                    <span class="text-warning">A:numero_orden</span> | <span class="text-warning">B:id_proveedor</span><br>
+                                    <span class="text-secondary">28028424</span> | <span class="text-secondary">12</span><br>
+                                    <span class="text-secondary">28028425</span> | <span class="text-secondary">15</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progreso -->
+                    <div id="reasignarProgress" class="progress d-none" style="height:22px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated w-100" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">Procesando...</div>
+                    </div>
+
+                    <!-- Resultados -->
+                    <div id="reasignarResultados" class="d-none mt-3"></div>
+
+                </form>
+            </div>
+            <div class="modal-footer flex-wrap gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancelar
+                </button>
+                <button type="button" id="btnProcesarReasignar" class="btn text-white"
+                        style="background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;">
+                    <i class="bi bi-arrow-repeat me-1"></i> Procesar Reasignación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 
 
@@ -498,6 +666,33 @@ try {
 .btn-import:hover {
     color: white;
     box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+}
+.btn-reasignar {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none;
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.btn-reasignar:hover {
+    color: white;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+    transform: translateY(-1px);
+}
+.modo-card {
+    border: 2px solid #dee2e6 !important;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+.modo-card.active {
+    border-color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.06);
+}
+.modo-card:hover {
+    border-color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.04);
 }
 .btn-new-order {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -621,6 +816,9 @@ require_once __DIR__ . '/../../../utils/permissions.php';
                     <a href="<?= RUTA_URL ?>Pedidos/referencia" class="btn btn-outline-info">
                         <i class="bi bi-book me-1"></i> Referencia
                     </a>
+                    <button type="button" class="btn btn-reasignar" data-bs-toggle="modal" data-bs-target="#modalReasignarPedido">
+                        <i class="bi bi-arrow-repeat me-1"></i> Reasignar Pedido
+                    </button>
                 </div>
                 <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="btn btn-new-order">
                     <i class="bi bi-plus-circle me-2"></i>Nuevo Pedido
@@ -1339,6 +1537,149 @@ document.addEventListener('DOMContentLoaded', function(){
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
+    });
+});
+</script>
+
+<script>
+// ============================================================
+// REASIGNAR PROVEEDOR EN PEDIDOS
+// ============================================================
+function switchModoReasignar(modo) {
+    document.getElementById('reasignar_modo_input').value = modo;
+
+    const cardA  = document.getElementById('cardModoA');
+    const cardB  = document.getElementById('cardModoB');
+    const badgeA = document.getElementById('badgeModoA');
+    const badgeB = document.getElementById('badgeModoB');
+    const secA   = document.getElementById('seccionModoA');
+    const secB   = document.getElementById('seccionModoB');
+    const refA   = document.getElementById('referenciaColumnasModoA');
+    const refB   = document.getElementById('referenciaColumnasModoB');
+    const linkPlantilla = document.getElementById('linkPlantillaReasignar');
+
+    if (modo === 'A') {
+        cardA.classList.add('active');    cardB.classList.remove('active');
+        badgeA.classList.remove('d-none'); badgeB.classList.add('d-none');
+        secA.classList.remove('d-none'); secB.classList.add('d-none');
+        refA.classList.remove('d-none'); refB.classList.add('d-none');
+        if (linkPlantilla) linkPlantilla.href = RUTA_BASE + 'public/reasignacion_template.php?modo=A';
+    } else {
+        cardB.classList.add('active');    cardA.classList.remove('active');
+        badgeB.classList.remove('d-none'); badgeA.classList.add('d-none');
+        secB.classList.remove('d-none'); secA.classList.add('d-none');
+        refB.classList.remove('d-none'); refA.classList.add('d-none');
+        if (linkPlantilla) linkPlantilla.href = RUTA_BASE + 'public/reasignacion_template.php?modo=B';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    // Procesar reasignación
+    document.getElementById('btnProcesarReasignar').addEventListener('click', function () {
+        const modo     = document.getElementById('reasignar_modo_input').value;
+        const fileInp  = document.getElementById('reasignar_file');
+        const progress = document.getElementById('reasignarProgress');
+        const results  = document.getElementById('reasignarResultados');
+        const btn      = this;
+
+        if (!fileInp.files.length) {
+            Swal.fire('Archivo requerido', 'Por favor selecciona un archivo Excel o CSV.', 'warning');
+            return;
+        }
+
+        if (modo === 'A') {
+            const prov = document.getElementById('reasignar_proveedor_global').value;
+            if (!prov) {
+                Swal.fire('Proveedor requerido', 'Selecciona el nuevo proveedor antes de continuar.', 'warning');
+                return;
+            }
+        }
+
+        const formData = new FormData(document.getElementById('formReasignar'));
+        progress.classList.remove('d-none');
+        results.classList.add('d-none');
+        btn.disabled = true;
+
+        fetch(RUTA_BASE + 'pedidos/reasignarProveedor', {
+            method:  'POST',
+            body:    formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(data => {
+            progress.classList.add('d-none');
+            btn.disabled = false;
+            results.classList.remove('d-none');
+
+            const s          = data.stats || {};
+            const isOk       = data.success && (s.actualizados || 0) > 0;
+            const bgColor    = isOk ? '#d1fae5' : (s.actualizados > 0 ? '#fef3c7' : '#fee2e2');
+            const bdrColor   = isOk ? '#10b981' : (s.actualizados > 0 ? '#f59e0b' : '#ef4444');
+            const icon       = isOk ? '✅' : (s.actualizados > 0 ? '⚠️' : '❌');
+
+            let html = `
+                <div class="rounded-3 p-3" style="background:${bgColor};border:2px solid ${bdrColor};">
+                    <h6 class="fw-bold mb-3">${icon} Resultado de la Reasignación</h6>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3">
+                            <div class="text-center rounded-2 p-2 bg-white shadow-sm">
+                                <div class="fs-3 fw-bold text-primary">${s.total ?? 0}</div>
+                                <div class="small text-muted">Total filas</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center rounded-2 p-2 bg-white shadow-sm">
+                                <div class="fs-3 fw-bold text-success">${s.actualizados ?? 0}</div>
+                                <div class="small text-muted">Actualizados</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center rounded-2 p-2 bg-white shadow-sm">
+                                <div class="fs-3 fw-bold text-warning">${s.no_encontrados ?? 0}</div>
+                                <div class="small text-muted">No encontrados</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="text-center rounded-2 p-2 bg-white shadow-sm">
+                                <div class="fs-3 fw-bold text-danger">${s.errores ?? 0}</div>
+                                <div class="small text-muted">Errores</div>
+                            </div>
+                        </div>
+                    </div>`;
+
+            if (data.detalle_no_encontrados && data.detalle_no_encontrados.length > 0) {
+                html += `<div class="mt-2"><strong class="small">⚠️ No encontrados (max 30):</strong>
+                    <div class="small text-muted mt-1">${data.detalle_no_encontrados.join(' · ')}</div></div>`;
+            }
+            if (data.detalle_errores && data.detalle_errores.length > 0) {
+                html += `<div class="mt-2"><strong class="small">❌ Errores:</strong>
+                    <ul class="small text-danger mb-0 mt-1">`
+                    + data.detalle_errores.map(e => `<li>${e}</li>`).join('')
+                    + `</ul></div>`;
+            }
+            html += `<div class="small text-muted mt-2">⏱ Tiempo: ${s.tiempo_segundos ?? '?'}s</div></div>`;
+            results.innerHTML = html;
+
+            // Recargar DataTable si hubo actualizaciones
+            if ((s.actualizados ?? 0) > 0 && typeof $ !== 'undefined' && $.fn.DataTable) {
+                $('#tblPedidos').DataTable().ajax.reload(null, false);
+            }
+        })
+        .catch(err => {
+            progress.classList.add('d-none');
+            btn.disabled = false;
+            Swal.fire('Error de conexión', 'No se pudo procesar la reasignación. Intenta de nuevo.', 'error');
+            console.error('[Reasignar]', err);
+        });
+    });
+
+    // Reset al cerrar modal
+    document.getElementById('modalReasignarPedido').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('formReasignar').reset();
+        document.getElementById('reasignarResultados').classList.add('d-none');
+        document.getElementById('reasignarProgress').classList.add('d-none');
+        switchModoReasignar('A');
     });
 });
 </script>

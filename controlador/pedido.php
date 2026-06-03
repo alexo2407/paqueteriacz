@@ -1748,5 +1748,184 @@ class PedidosController {
         }
         exit;
     }
-}
 
+    /**
+     * Reasignar proveedor en pedidos existentes mediante CSV/XLSX.
+     *
+     * Modo A: Excel con columna numero_orden + proveedor único seleccionado en el modal.
+     * Modo B: Excel con columnas numero_orden + id_proveedor (uno por fila).
+     *
+     * Reutiliza actualizarPedido() que ya registra auditoría y historial automáticamente.
+     *
+     * @return void (JSON response)
+     */
+    public function reasignarProveedorCSV()
+    {
+        require_once __DIR__ . '/../utils/session.php';
+        require_once __DIR__ . '/../utils/CSVHelper.php';
+        require_once __DIR__ . '/../utils/permissions.php';
+        start_secure_session();
+
+        header('Content-Type: application/json');
+
+        if (empty($_SESSION['registrado'])) {
+            http_response_code(401);
+            echo json_encode(['success' => false, 'message' => 'No autenticado.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Solo Admin o Proveedor pueden reasignar
+        if (!isAdmin() && !isProveedor()) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Acceso denegado.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $modo            = $_POST['modo'] ?? 'A';
+        $proveedorGlobal = !empty($_POST['id_proveedor_global']) ? (int)$_POST['id_proveedor_global'] : null;
+        $tiempoInicio    = microtime(true);
+
+        // Validar archivo recibido
+        if (!isset($_FILES['reasignar_file'])) {
+            echo json_encode(['success' => false, 'message' => 'No se recibió el archivo.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $validacion = CSVHelper::validateUploadedFile($_FILES['reasignar_file']);
+        if (!$validacion['valido']) {
+            echo json_encode(['success' => false, 'message' => $validacion['error']], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($modo === 'A' && !$proveedorGlobal) {
+            echo json_encode(['success' => false, 'message' => 'Debe seleccionar un proveedor en Modo A.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $tmp    = $_FILES['reasignar_file']['tmp_name'];
+        $esXlsx = $validacion['es_xlsx'] ?? false;
+
+        try {
+            // ── Leer archivo ──────────────────────────────────────────────────
+            if ($esXlsx) {
+                $xlsxData = CSVHelper::readXlsx($tmp);
+                $cols     = $xlsxData['headers'];
+                $allRows  = $xlsxData['rows'];
+            } else {
+                $handle = fopen($tmp, 'r');
+                if (!$handle) throw new Exception('No se pudo abrir el archivo.');
+                $firstLine = fgets($handle);
+                $delimiter = CSVHelper::detectDelimiter($firstLine);
+                rewind($handle);
+                $header  = fgetcsv($handle, 0, $delimiter);
+                $cols    = CSVHelper::normalizeHeaders($header);
+                $allRows = [];
+                while (!feof($handle)) {
+                    $raw = fgets($handle);
+                    if ($raw === false) break;
+                    $row     = str_getcsv(rtrim($raw, "\r\n"), $delimiter, '"');
+                    $dataRow = [];
+                    foreach ($cols as $i => $colName) {
+                        $dataRow[$colName] = isset($row[$i]) ? trim($row[$i]) : '';
+                    }
+                    $allEmpty = true;
+                    foreach ($dataRow as $v) { if ($v !== '') { $allEmpty = false; break; } }
+                    if (!$allEmpty) $allRows[] = $dataRow;
+                }
+                fclose($handle);
+            }
+
+            if (empty($allRows)) {
+                echo json_encode(['success' => false, 'message' => 'El archivo está vacío o no tiene filas de datos.'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // ── Validar columnas obligatorias ─────────────────────────────────
+            if (!in_array('numero_orden', $cols)) {
+                echo json_encode(['success' => false, 'message' => 'El archivo debe tener la columna numero_orden (columna A).'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+            if ($modo === 'B' && !in_array('id_proveedor', $cols)) {
+                echo json_encode(['success' => false, 'message' => 'En Modo B el archivo debe tener la columna id_proveedor (columna B).'], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            $db = (new Conexion())->conectar();
+
+            // ── Validar proveedor global (Modo A) ─────────────────────────────
+            if ($modo === 'A') {
+                $stmtV = $db->prepare("SELECT id FROM usuarios WHERE id = :id LIMIT 1");
+                $stmtV->execute([':id' => $proveedorGlobal]);
+                if (!$stmtV->fetchColumn()) {
+                    echo json_encode(['success' => false, 'message' => 'El proveedor seleccionado no existe en el sistema.'], JSON_UNESCAPED_UNICODE);
+                    exit;
+                }
+            }
+
+            $stmtPed      = $db->prepare("SELECT id FROM pedidos WHERE numero_orden = :n LIMIT 1");
+            $total         = count($allRows);
+            $actualizados  = 0;
+            $noEncontrados = [];
+            $errores       = [];
+
+            foreach ($allRows as $idx => $fila) {
+                $numeroOrden = trim($fila['numero_orden'] ?? '');
+                if ($numeroOrden === '') continue;
+
+                // Determinar proveedor para esta fila
+                if ($modo === 'A') {
+                    $idProveedor = $proveedorGlobal;
+                } else {
+                    $idProveedor = !empty($fila['id_proveedor']) ? (int)$fila['id_proveedor'] : null;
+                    if (!$idProveedor) {
+                        $errores[] = 'Fila ' . ($idx + 2) . ": id_proveedor vacío o inválido (numero_orden: $numeroOrden)";
+                        continue;
+                    }
+                }
+
+                // Buscar pedido por numero_orden
+                $stmtPed->execute([':n' => $numeroOrden]);
+                $pedidoId = $stmtPed->fetchColumn();
+
+                if (!$pedidoId) {
+                    $noEncontrados[] = "numero_orden: $numeroOrden";
+                    continue;
+                }
+
+                // Actualizar — el modelo registra auditoría + historial automáticamente
+                try {
+                    PedidosModel::actualizarPedido([
+                        'id_pedido'    => (int)$pedidoId,
+                        'id_proveedor' => $idProveedor,
+                    ]);
+                    $actualizados++;
+                } catch (Exception $e) {
+                    $errores[] = "numero_orden $numeroOrden: " . $e->getMessage();
+                }
+            }
+
+            $tiempo = round(microtime(true) - $tiempoInicio, 3);
+
+            echo json_encode([
+                'success' => $actualizados > 0,
+                'message' => "$actualizados pedidos reasignados de $total filas procesadas.",
+                'stats'   => [
+                    'total'           => $total,
+                    'actualizados'    => $actualizados,
+                    'no_encontrados'  => count($noEncontrados),
+                    'errores'         => count($errores),
+                    'tiempo_segundos' => $tiempo,
+                ],
+                'detalle_no_encontrados' => array_slice($noEncontrados, 0, 30),
+                'detalle_errores'        => array_slice($errores, 0, 30),
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error interno: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
+}

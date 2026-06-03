@@ -29,6 +29,12 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
         exit;
     }
 
+    if ($accion === 'reasignarProveedor') {
+        // Reasignación masiva de proveedor via Excel/CSV
+        $ctrl->reasignarProveedorCSV();
+        exit;
+    }
+
     if ($accion === 'guardarPedido') {
         // DEBUG: Log entrada inmediata
         if (defined('DEBUG') && DEBUG) {
