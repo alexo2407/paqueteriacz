@@ -15,17 +15,19 @@ require_once __DIR__ . '/../services/AddressService.php';
 require_once __DIR__ . '/../modelo/codigos_postales.php';
 require_once __DIR__ . '/../utils/LogisticaNotifHelper.php';
 
-class PedidosController {
+class PedidosController
+{
 
     // Specialized controllers for separation of concerns
     private $queryService;
     private $apiController;
 
-    public function __construct() {
+    public function __construct()
+    {
         // Load specialized classes
         require_once __DIR__ . '/pedidos/PedidoQueryService.php';
         require_once __DIR__ . '/pedidos/PedidoApiController.php';
-        
+
         // Initialize services
         $this->queryService = new PedidoQueryService();
         $this->apiController = new PedidoApiController();
@@ -55,7 +57,8 @@ class PedidosController {
      * @param array|object $jsonData
      * @return array
      */
-    public function crearPedidoAPI($jsonData, $autoEnqueue = false, $authUserId = 0, $authUserRole = '') {
+    public function crearPedidoAPI($jsonData, $autoEnqueue = false, $authUserId = 0, $authUserRole = '')
+    {
         // Delegate to specialized API controller
         return $this->apiController->crear($jsonData, $autoEnqueue, $authUserId, $authUserRole);
     }
@@ -63,7 +66,7 @@ class PedidosController {
     /**
      * API endpoint: Crear múltiples pedidos desde JSON.
      * Lee php://input, decodifica JSON y espera la clave 'pedidos' como array.
-    * Para cada pedido inserta una fila en `pedidos` y sus productos en `pedidos_productos`.
+     * Para cada pedido inserta una fila en `pedidos` y sus productos en `pedidos_productos`.
      * Continúa en errores por pedido y devuelve un resumen por pedido.
      *
      * Uso: POST /api/pedidos/multiple (o la ruta que corresponda) con body JSON.
@@ -87,13 +90,17 @@ class PedidosController {
 
         // Delegar al controlador especializado
         $results = $this->apiController->crearMultiple($payload, $autoEnqueue, $authUserId, $authUserRole);
-        
+
         // Generar resumen
         $summary = [
             'total' => count($payload['pedidos']),
             'processed' => count($results['results'] ?? []),
-            'success' => count(array_filter($results['results'] ?? [], function($r){ return $r['success']; })),
-            'failed' => count(array_filter($results['results'] ?? [], function($r){ return !$r['success']; }))
+            'success' => count(array_filter($results['results'] ?? [], function ($r) {
+                return $r['success'];
+            })),
+            'failed' => count(array_filter($results['results'] ?? [], function ($r) {
+                return !$r['success'];
+            }))
         ];
 
         echo json_encode(['summary' => $summary, 'results' => $results['results'] ?? []], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
@@ -139,7 +146,7 @@ class PedidosController {
             ];
         }
     }
-    
+
 
     /**
      * Ver detalles del pedido (Read-Only).
@@ -160,7 +167,7 @@ class PedidosController {
 
         $roles = $_SESSION['roles_nombres'] ?? [];
         $userId = $_SESSION['user_id'] ?? 0;
-        
+
         $isAdmin = in_array(ROL_NOMBRE_ADMIN, $roles);
         $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $roles);
         // Fix: Use literal string too
@@ -170,7 +177,7 @@ class PedidosController {
         // 3. Fetch Data
         // Use verPedido helper which returns array of orders (compat with view)
         $detallesPedido = $this->verPedido($id);
-        
+
         if (empty($detallesPedido)) {
             $this->redirect('pedidos', 'Pedido no encontrado', 'error');
             return;
@@ -182,26 +189,26 @@ class PedidosController {
         if ($isCliente && !$isAdmin && !$isRepartidor) {
             // Must match ID Cliente
             if ((int)$pedido['id_cliente'] !== (int)$userId) {
-               // Log unauthorized access attempt
-               error_log("Unauthorized access attempt to pedido $id by client user $userId");
-               http_response_code(403);
-               include "vista/modulos/errores/403.php"; // Assuming you have a 403 view, or just die
-               if (!file_exists("vista/modulos/errores/403.php")) die("403 Forbidden - No tienes permiso para ver este pedido.");
-               exit;
+                // Log unauthorized access attempt
+                error_log("Unauthorized access attempt to pedido $id by client user $userId");
+                http_response_code(403);
+                include "vista/modulos/errores/403.php"; // Assuming you have a 403 view, or just die
+                if (!file_exists("vista/modulos/errores/403.php")) die("403 Forbidden - No tienes permiso para ver este pedido.");
+                exit;
             }
         }
 
         if ($isProveedor && !$isAdmin && !$isRepartidor && !$isCliente) {
-             // Must match ID Proveedor
-             if ((int)$pedido['id_proveedor'] !== (int)$userId) {
+            // Must match ID Proveedor
+            if ((int)$pedido['id_proveedor'] !== (int)$userId) {
                 http_response_code(403);
                 die("403 Forbidden - No tienes permiso para ver este pedido.");
-             }
+            }
         }
-        
+
         // 5. Load View
         // The view expects $detallesPedido variable
-        
+
 
 
         include "vista/modulos/pedidos/ver.php";
@@ -217,7 +224,8 @@ class PedidosController {
      * @param array $data Datos del pedido
      * @return array
      */
-    private function validarDatosPedido($data) {
+    private function validarDatosPedido($data)
+    {
         $errores = [];
 
         // Minimal required fields for provider API: número de orden and destinatario.
@@ -298,7 +306,7 @@ class PedidosController {
             'limit' => $limit,
             'offset' => $offset
         ];
-        
+
         // Ownership Security Filters
         require_once __DIR__ . '/../utils/permissions.php';
         if (!isAdmin()) {
@@ -307,12 +315,12 @@ class PedidosController {
 
         // Add support for filters from GET if needed
         if (isset($_GET['estado'])) $filtros['id_estado'] = (int)$_GET['estado'];
-        if (isset($_GET['destinatario'])) $filtros['destinatario'] = $_GET['destinatario']; 
-        
+        if (isset($_GET['destinatario'])) $filtros['destinatario'] = $_GET['destinatario'];
+
         // Nuevos filtros
         if (isset($_GET['numero_orden'])) $filtros['numero_orden'] = $_GET['numero_orden'];
-        if (isset($_GET['numero_cliente'])) $filtros['id_cliente'] = (int)$_GET['numero_cliente']; 
-        
+        if (isset($_GET['numero_cliente'])) $filtros['id_cliente'] = (int)$_GET['numero_cliente'];
+
         // Filtros adicionales soportados por el modelo
         if (isset($_GET['fecha_desde'])) $filtros['fecha_desde'] = $_GET['fecha_desde'];
         if (isset($_GET['fecha_hasta'])) $filtros['fecha_hasta'] = $_GET['fecha_hasta'];
@@ -352,7 +360,8 @@ class PedidosController {
      * @param array $data Campos a actualizar (debe incluir id y campos editables).
      * @return array Envelope con success/message
      */
-    public function actualizarPedido($data) {
+    public function actualizarPedido($data)
+    {
         $resultado = PedidosModel::actualizarPedido($data);
         if ($resultado) {
             // Notificación logística al actualizar datos del pedido
@@ -371,20 +380,22 @@ class PedidosController {
             ];
         }
     }
-    
+
     /**
      * Obtener lista de estados posibles de pedidos.
      * @return array
      */
-    public function obtenerEstados() {
+    public function obtenerEstados()
+    {
         return PedidosModel::obtenerEstados();
     }
-    
+
     /**
      * Obtener la lista de vendedores/repartidores disponibles.
      * @return array
      */
-    public function obtenerVendedores() {
+    public function obtenerVendedores()
+    {
         // "Usuario asignado" corresponde a Repartidor
         return PedidosModel::obtenerVendedores();
     }
@@ -394,7 +405,8 @@ class PedidosController {
      * Alias explícito para obtener repartidores (útil en vistas).
      * @return array
      */
-    public function obtenerRepartidores() {
+    public function obtenerRepartidores()
+    {
         return PedidosModel::obtenerRepartidores();
     }
 
@@ -402,7 +414,8 @@ class PedidosController {
      * Obtener productos disponibles.
      * @return array
      */
-    public function obtenerProductos() {
+    public function obtenerProductos()
+    {
         return PedidosModel::obtenerProductos();
     }
 
@@ -410,7 +423,8 @@ class PedidosController {
      * Obtener proveedores registrados.
      * @return array
      */
-    public function obtenerProveedores() {
+    public function obtenerProveedores()
+    {
         return PedidosModel::obtenerProveedores();
     }
 
@@ -418,7 +432,8 @@ class PedidosController {
      * Obtener clientes registrados.
      * @return array
      */
-    public function obtenerClientes() {
+    public function obtenerClientes()
+    {
         return PedidosModel::obtenerClientes();
     }
 
@@ -426,7 +441,8 @@ class PedidosController {
      * Obtener monedas existentes (incluye tasa_usd si aplica).
      * @return array
      */
-    public function obtenerMonedas() {
+    public function obtenerMonedas()
+    {
         return PedidosModel::obtenerMonedas();
     }
 
@@ -447,7 +463,8 @@ class PedidosController {
     /**
      * Obtener configuración de CP para la vista (Performance Map)
      */
-    public function obtenerConfiguracionCP($idPais) {
+    public function obtenerConfiguracionCP($idPais)
+    {
         if (!$idPais) return ['useCpMap' => false, 'total' => 0, 'map' => []];
 
         $total = CodigosPostalesModel::contarActivosPorPais($idPais);
@@ -464,7 +481,8 @@ class PedidosController {
     /**
      * Obtener configuración global de CP para autocompletado universal (País -> Ubicación)
      */
-    public function obtenerConfiguracionCPGlobal() {
+    public function obtenerConfiguracionCPGlobal()
+    {
         $total = CodigosPostalesModel::contarActivosGlobal();
         // Regla: <= 2000 para cargar mapa en vivo
         $useGlobalMap = ($total <= 2000);
@@ -503,11 +521,12 @@ class PedidosController {
      * @param array $data
      * @return array|void
      */
-    public function guardarPedidoFormulario(array $data) {
+    public function guardarPedidoFormulario(array $data)
+    {
         // CSRF Protection
         require_once __DIR__ . '/../utils/csrf.php';
         require_csrf_token($data['csrf_token'] ?? null);
-        
+
         $errores = [];
 
         // Logging condicional (solo en modo DEBUG). Guardamos información
@@ -539,14 +558,14 @@ class PedidosController {
                 // no interrumpir la ejecución por errores de logging
             }
         }
-        
-        
+
+
         $numeroOrden = trim($data['numero_orden'] ?? '');
         $destinatario = trim($data['destinatario'] ?? '');
         $telefono = preg_replace('/\s+/', '', (string)($data['telefono'] ?? ''));
 
         // Helper: parsear enteros positivos enviados como string o int.
-        $parse_positive_int = function($arr, $key) {
+        $parse_positive_int = function ($arr, $key) {
             if (!isset($arr[$key])) return null;
             $v = $arr[$key];
             if ($v === null || $v === '') return null;
@@ -558,13 +577,13 @@ class PedidosController {
 
         $productoId = $parse_positive_int($data, 'producto_id');
         $cantidadProducto = $parse_positive_int($data, 'cantidad_producto');
-        
+
         // FORZAR ESTADO INICIAL "EN BODEGA" (ID 1)
         // Regla de negocio estricta: todo pedido nuevo nace en bodega.
-        $estado = 1; 
-        
+        $estado = 1;
+
         $vendedor = $parse_positive_int($data, 'vendedor');
-        
+
         // Leer valores de los campos del formulario
         // NOTA: Los nombres en BD están invertidos históricamente:
         // - Rol ID 4 en BD se llama "Cliente" pero son PROVEEDORES de mensajería
@@ -573,12 +592,12 @@ class PedidosController {
         $proveedor = $parse_positive_int($data, 'proveedor');
         $idCliente = $parse_positive_int($data, 'id_cliente');
         if (!$idCliente) $idCliente = $parse_positive_int($data, 'cliente');
-        
+
         // Aplicar auto-asignación por defecto si no viene valor, pero permitir override
         require_once __DIR__ . '/../utils/permissions.php';
-        
+
         $currentUserId = $_SESSION['user_id'];
-        
+
         // 1. Validar ID Cliente
         if ($idCliente) {
             // Si viene un ID, solo validar que sea un Cliente válido
@@ -586,12 +605,12 @@ class PedidosController {
                 $errores[] = "El usuario seleccionado como Cliente no tiene el rol adecuado.";
             }
         } else {
-             // Si no viene cliente, intentar auto-asignar si soy cliente
-             if (isCliente() && !isSuperAdmin() && !isVendedor()) {
-                 $idCliente = $currentUserId;
-             }
+            // Si no viene cliente, intentar auto-asignar si soy cliente
+            if (isCliente() && !isSuperAdmin() && !isVendedor()) {
+                $idCliente = $currentUserId;
+            }
         }
-        
+
         // 2. Validar ID Proveedor
         if ($proveedor) {
             // Si viene un ID, solo validar que sea un Proveedor válido
@@ -603,22 +622,22 @@ class PedidosController {
             // Antes auto-asignábamos forzosamente. Ahora permitimos que venga vacío.
             // PERO si el usuario QUIERE auto-asignarse (porque el front lo pre-seleccionó), vendrá en el POST.
             // Si viene vacío, asumimos que no quiere proveedor (o no seleccionó).
-            
+
             // Opcional: Si es proveedor estricto y no mandó nada, ¿lo forzamos?
             // El usuario dijo "evitar auto asignación". Así que si lo deja vacío, es vacío.
         }
-        
+
         // Regla de Negocio: Cliente no puede ser Proveedor de su propio pedido (generalmente)
         // (Mantenemos esta validación lógica)
         if ($idCliente && $proveedor && $idCliente == $proveedor) {
-             $errores[] = "El Cliente y el Proveedor no pueden ser el mismo usuario.";
+            $errores[] = "El Cliente y el Proveedor no pueden ser el mismo usuario.";
         }
-        
+
         // Validar que haya un proveedor (antes del swap)
         if ($proveedor === null || $proveedor === false) {
             $errores[] = 'Selecciona un proveedor válido.';
         }
-        
+
         $moneda = $parse_positive_int($data, 'moneda');
 
         $comentario = trim($data['comentario'] ?? '');
@@ -636,7 +655,7 @@ class PedidosController {
 
         $precioLocal = null;
         $precioUsdEntrada = null;
-        
+
         // Nuevos campos de pricing de combo
         $precioTotalLocal = null;
         $precioTotalUsd = null;
@@ -650,7 +669,7 @@ class PedidosController {
         if (isset($data['precio_usd']) && $data['precio_usd'] !== '') {
             $precioUsdEntrada = (float)str_replace(',', '.', (string)$data['precio_usd']);
         }
-        
+
         // Nuevos campos de combo pricing
         if (isset($data['precio_total_local']) && $data['precio_total_local'] !== '') {
             $precioTotalLocal = (float)str_replace(',', '.', (string)$data['precio_total_local']);
@@ -678,19 +697,19 @@ class PedidosController {
                     'cantidad_devuelta' => 0,
                 ];
             }
-        } 
-        
+        }
+
         // Fallback or Legacy: if no items found in 'productos', try single fields
         if (empty($items)) {
-             $productoId = $parse_positive_int($data, 'producto_id');
-             $cantidadProducto = $parse_positive_int($data, 'cantidad_producto');
-             if ($productoId && $cantidadProducto) {
+            $productoId = $parse_positive_int($data, 'producto_id');
+            $cantidadProducto = $parse_positive_int($data, 'cantidad_producto');
+            if ($productoId && $cantidadProducto) {
                 $items = [[
                     'id_producto' => (int)$productoId,
                     'cantidad' => (int)$cantidadProducto,
                     'cantidad_devuelta' => 0,
                 ]];
-             }
+            }
         }
 
         // Validaciones de campos REQUERIDOS
@@ -702,11 +721,11 @@ class PedidosController {
                 $errores[] = 'El número de orden debe ser un entero positivo.';
             }
         }
-        
+
         if (empty($items)) {
             $errores[] = 'El pedido debe incluir al menos un producto válido (ya sea por lista o campos individuales).';
         }
-        
+
         // Estado y vendedor ahora son opcionales
         if ($proveedor === null || $proveedor === false) {
             $errores[] = 'Selecciona un proveedor válido.';
@@ -721,9 +740,9 @@ class PedidosController {
 
         // Validación server-side de stock: iterar sobre $items ya procesados
         foreach ($items as $item) {
-             $pid = (int)$item['id_producto'];
-             $qty = (int)$item['cantidad'];
-             try {
+            $pid = (int)$item['id_producto'];
+            $qty = (int)$item['cantidad'];
+            try {
                 $stockDisponible = ProductoModel::obtenerStockTotal($pid);
                 if ($stockDisponible !== null && $stockDisponible >= 0) {
                     if ($stockDisponible > 0 && $qty > $stockDisponible) {
@@ -824,7 +843,8 @@ class PedidosController {
                     $idPais = $paisDerivado;
                     $payload['id_pais'] = $paisDerivado;
                 }
-            } catch (Exception $e) { /* silently continue */ }
+            } catch (Exception $e) { /* silently continue */
+            }
         }
         if ($idPais && $cpVal) {
             $cp_norm = AddressService::normalizarCP($cpVal, $idPais);
@@ -839,7 +859,7 @@ class PedidosController {
 
             if ($homologacion) {
                 $payload['id_codigo_postal'] = $homologacion['id'];
-                
+
                 // Si la homologación tiene ubicación completa, SOBRESCRIBIR para integridad
                 if (!empty($homologacion['id_departamento']) && !empty($homologacion['id_municipio'])) {
                     $payload['id_departamento'] = (int)$homologacion['id_departamento'];
@@ -896,11 +916,12 @@ class PedidosController {
      * @param array $data
      * @return void
      */
-    public function guardarEdicion($data) {
+    public function guardarEdicion($data)
+    {
         // CSRF Protection
         require_once __DIR__ . '/../utils/csrf.php';
         require_csrf_token($data['csrf_token'] ?? null);
-        
+
         // Soporte para peticiones AJAX: si el header X-Requested-With == XMLHttpRequest
         // o el cliente solicita JSON por Accept, devolvemos JSON en lugar de hacer
         // redirect + set_flash. Esto facilita que el frontend maneje la respuesta
@@ -910,12 +931,13 @@ class PedidosController {
 
 
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
-                 || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+            || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 
         // Helper to persist the submitted edit data in session for non-AJAX redirects
-        $persistOldEdit = function($d) {
+        $persistOldEdit = function ($d) {
             try {
-                require_once __DIR__ . '/../utils/session.php'; start_secure_session();
+                require_once __DIR__ . '/../utils/session.php';
+                start_secure_session();
                 $id = isset($d['id_pedido']) ? (int)$d['id_pedido'] : 'new';
                 $_SESSION['old_pedido_edit_' . $id] = $d;
             } catch (Exception $e) {
@@ -927,7 +949,7 @@ class PedidosController {
         ob_start();
 
         // Helper to send JSON response cleanly
-        $sendJson = function($data, $code = 200) {
+        $sendJson = function ($data, $code = 200) {
             // Discard any previous output
             $buffered = ob_get_clean();
             if (!empty($buffered) && defined('DEBUG') && DEBUG) {
@@ -940,79 +962,117 @@ class PedidosController {
         };
 
         try {
-        // Validaciones mínimas
+            // Validaciones mínimas
             if (!isset($data['id_pedido']) || !is_numeric($data['id_pedido'])) {
                 $resp = ['success' => false, 'message' => 'ID de pedido inválido.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/listar'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/listar');
+                exit;
             }
 
             // [SECURITY] Validar permisos de edición
-            require_once __DIR__ . '/../utils/session.php'; start_secure_session();
+            require_once __DIR__ . '/../utils/session.php';
+            start_secure_session();
             $checkPerms = $this->apiController->validarPermisosEdicion(
-                (int)$data['id_pedido'], 
-                $_SESSION['user_id'] ?? 0, 
+                (int)$data['id_pedido'],
+                $_SESSION['user_id'] ?? 0,
                 $_SESSION['rol'] ?? '',
                 [] // Campos a editar (vacío para usar validación de estado solamente)
             );
 
             if (!$checkPerms['permitido']) {
                 $resp = ['success' => false, 'message' => $checkPerms['mensaje']];
-                if ($isAjax) { $sendJson($resp, 403); }
+                if ($isAjax) {
+                    $sendJson($resp, 403);
+                }
                 $persistOldEdit($data);
-                set_flash('error', $resp['message']); 
-                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido']); 
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido']);
                 exit;
             }
 
             // DEBUG: Log POST data specifically for persistence debugging
             if (defined('DEBUG') && DEBUG) {
-                 file_put_contents(__DIR__ . '/../logs/debug_pedido.log', date('Y-m-d H:i:s') . " - ID: {$data['id_pedido']} - DATA: " . json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
+                file_put_contents(__DIR__ . '/../logs/debug_pedido.log', date('Y-m-d H:i:s') . " - ID: {$data['id_pedido']} - DATA: " . json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND);
             }
 
 
             if (!is_numeric($data['latitud']) || !is_numeric($data['longitud'])) {
                 $resp = ['success' => false, 'message' => 'Las coordenadas no tienen un formato válido.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorLatLong');
+                exit;
             }
 
             // Validación básica para cantidad y precio (si vienen)
             if (isset($data['cantidad_producto']) && $data['cantidad_producto'] !== '' && !is_numeric($data['cantidad_producto'])) {
                 $resp = ['success' => false, 'message' => 'La cantidad debe ser un número.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorCantidad');
+                exit;
             }
-            
+
             // Validaciones de precios legacy
             if (isset($data['precio_local']) && $data['precio_local'] !== '' && !is_numeric($data['precio_local'])) {
                 $resp = ['success' => false, 'message' => 'El precio local debe ser un valor numérico.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecio');
+                exit;
             }
-            
+
             // Validaciones de nuevos campos de combo pricing
             if (isset($data['precio_total_local']) && $data['precio_total_local'] !== '' && !is_numeric($data['precio_total_local'])) {
                 $resp = ['success' => false, 'message' => 'El precio total local debe ser un valor numérico.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecioTotalLocal'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecioTotalLocal');
+                exit;
             }
             if (isset($data['precio_total_usd']) && $data['precio_total_usd'] !== '' && !is_numeric($data['precio_total_usd'])) {
                 $resp = ['success' => false, 'message' => 'El precio total USD debe ser un valor numérico.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecioTotalUsd'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorPrecioTotalUsd');
+                exit;
             }
             if (isset($data['tasa_conversion_usd']) && $data['tasa_conversion_usd'] !== '' && !is_numeric($data['tasa_conversion_usd'])) {
                 $resp = ['success' => false, 'message' => 'La tasa de conversión debe ser un valor numérico.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorTasaConversion'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/errorTasaConversion');
+                exit;
             }
 
             // Asegurar que es_combo se actualice correctamente (si no está en POST es 0)
@@ -1033,7 +1093,8 @@ class PedidosController {
                         $idPais = $paisDerivado;
                         $data['id_pais'] = $paisDerivado;
                     }
-                } catch (Exception $e) { /* silently continue */ }
+                } catch (Exception $e) { /* silently continue */
+                }
             }
             if ($idPais && $cpVal) {
                 $cp_norm = AddressService::normalizarCP($cpVal, $idPais);
@@ -1048,7 +1109,7 @@ class PedidosController {
 
                 if ($homologacion) {
                     $data['id_codigo_postal'] = $homologacion['id'];
-                    
+
                     // Si tiene ubicación completa, sobrescribir para integridad
                     if (!empty($homologacion['id_departamento']) && !empty($homologacion['id_municipio'])) {
                         $data['id_departamento'] = (int)$homologacion['id_departamento'];
@@ -1065,18 +1126,30 @@ class PedidosController {
 
             if ($resultado) {
                 $resp = ['success' => true, 'message' => 'Pedido actualizado correctamente.'];
-                if ($isAjax) { $sendJson($resp); }
-                require_once __DIR__ . '/../utils/session.php'; set_flash('success', $resp['message']); header('Location: '. RUTA_URL . 'pedidos/editar/' . $data['id_pedido']); exit;
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('success', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido']);
+                exit;
             } else {
                 $resp = ['success' => false, 'message' => 'No se realizaron cambios en el pedido.'];
-                if ($isAjax) { $sendJson($resp); }
+                if ($isAjax) {
+                    $sendJson($resp);
+                }
                 // persist submitted edit payload so the edit page can repopulate fields
                 $persistOldEdit($data);
-                require_once __DIR__ . '/../utils/session.php'; set_flash('error', $resp['message']); header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error'); exit;
+                require_once __DIR__ . '/../utils/session.php';
+                set_flash('error', $resp['message']);
+                header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error');
+                exit;
             }
         } catch (Exception $e) {
             $msg = 'Error interno: ' . $e->getMessage();
-            if ($isAjax) { $sendJson(['success' => false, 'message' => $msg], 500); }
+            if ($isAjax) {
+                $sendJson(['success' => false, 'message' => $msg], 500);
+            }
             // persist submitted edit payload before redirecting back
             $persistOldEdit($data);
             header('Location: ' . RUTA_URL . 'pedidos/editar/' . ($data['id_pedido'] ?? '') . '/error' . urlencode($e->getMessage()));
@@ -1094,14 +1167,15 @@ class PedidosController {
      * @param array $datos Contiene id_pedido y estado
      * @return void (imprime JSON y hace exit)
      */
-    public static function actualizarEstadoAjax($datos) {
+    public static function actualizarEstadoAjax($datos)
+    {
         // Seguridad: sólo usuarios autenticados pueden cambiar estados
         require_once __DIR__ . '/../utils/session.php';
         start_secure_session();
 
         // Detectar si la petición viene por AJAX (fetch/XHR)
         $isAjaxRequest = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
-                        || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+            || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 
         // Si no hay sesión activa, devolver JSON 401 para AJAX en lugar de redirigir.
         if (empty($_SESSION['registrado'])) {
@@ -1265,14 +1339,14 @@ class PedidosController {
         require_once __DIR__ . '/../utils/CSVPedidoValidator.php';
         require_once __DIR__ . '/../utils/CSVHelper.php';
         require_once __DIR__ . '/../modelo/importacion.php';
-        
+
         $tiempoInicio = microtime(true);
         $isPreview = isset($_POST['preview']) && $_POST['preview'] === '1';
         $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
-        
+
         // Constante para tamaño de chunk
         if (!defined('CHUNK_SIZE')) define('CHUNK_SIZE', 100);
-        
+
         try {
             // Validar archivo subido
             if (!isset($_FILES['csv_file'])) {
@@ -1286,7 +1360,7 @@ class PedidosController {
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
                 exit;
             }
-            
+
             $validacion = CSVHelper::validateUploadedFile($_FILES['csv_file']);
             if (!$validacion['valido']) {
                 $resp = ['success' => false, 'message' => $validacion['error']];
@@ -1299,12 +1373,12 @@ class PedidosController {
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
                 exit;
             }
-            
+
             $tmp      = $_FILES['csv_file']['tmp_name'];
             $filename = $_FILES['csv_file']['name'];
             $filesize = $_FILES['csv_file']['size'];
             $esXlsx   = $validacion['es_xlsx'] ?? false;
-            
+
             // ── LECTURA DEL ARCHIVO ─────────────────────────────────────────
             if ($esXlsx) {
                 // Leer XLSX via PhpSpreadsheet
@@ -1318,13 +1392,19 @@ class PedidosController {
                 if ($handle === false) throw new Exception('No se pudo abrir el archivo');
 
                 $firstLine = fgets($handle);
-                if ($firstLine === false) { fclose($handle); throw new Exception('El archivo parece estar vacío'); }
+                if ($firstLine === false) {
+                    fclose($handle);
+                    throw new Exception('El archivo parece estar vacío');
+                }
 
                 $delimiter = CSVHelper::detectDelimiter($firstLine);
                 rewind($handle);
 
                 $header = fgetcsv($handle, 0, $delimiter);
-                if ($header === false) { fclose($handle); throw new Exception('No se pudo leer la cabecera del archivo'); }
+                if ($header === false) {
+                    fclose($handle);
+                    throw new Exception('No se pudo leer la cabecera del archivo');
+                }
 
                 $cols = CSVHelper::normalizeHeaders($header);
 
@@ -1350,7 +1430,10 @@ class PedidosController {
 
                     $allEmpty = true;
                     foreach ($dataRow as $v) {
-                        if ($v !== null && $v !== '') { $allEmpty = false; break; }
+                        if ($v !== null && $v !== '') {
+                            $allEmpty = false;
+                            break;
+                        }
                     }
                     if ($allEmpty) continue;
 
@@ -1365,7 +1448,7 @@ class PedidosController {
             foreach ($required as $r) {
                 if (!in_array($r, $cols)) $missing[] = $r;
             }
-            
+
             if (!empty($missing)) {
                 $msg = 'Faltan columnas requeridas: ' . implode(', ', $missing);
                 if ($isAjax) {
@@ -1453,7 +1536,7 @@ class PedidosController {
             // VALIDACIÓN COMPLETA
             $validator = new CSVPedidoValidator();
             $resumenValidacion = $validator->validarLote($allRows);
-            
+
             // MODO PREVIEW: Retornar resumen sin insertar
             if ($isPreview) {
                 $previewData = [
@@ -1465,12 +1548,12 @@ class PedidosController {
                     'default_values' => $defaultValues,
                     'auto_create_products' => $autoCreateProducts
                 ];
-                
+
                 header('Content-Type: application/json');
                 echo json_encode($previewData, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
-            
+
             // Si NO puede importar (todos con errores), detener
             if (!$resumenValidacion['puede_importar']) {
                 $msg = 'No hay filas válidas para importar. Total de errores: ' . count($resumenValidacion['errores']);
@@ -1488,7 +1571,7 @@ class PedidosController {
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
                 exit;
             }
-            
+
             // PROCESAMIENTO POR CHUNKS
             $totalFilas = count($allRows);
             $totalExitosas = 0;
@@ -1496,20 +1579,20 @@ class PedidosController {
             $filasErrorneas = [];
             $erroresFilasErrorneas = [];
             $todosProductosCreados = [];
-            
+
             for ($i = 0; $i < $totalFilas; $i += CHUNK_SIZE) {
                 $chunk = array_slice($allRows, $i, CHUNK_SIZE);
-                
+
                 // Filtrar solo filas válidas del chunk
                 $chunkValido = [];
                 foreach ($chunk as $index => $fila) {
                     $lineNumber = $i + $index + 2; // +2 porque header es 1 y arrays empiezan en 0
                     $validacion = $validator->validarFila($fila, $lineNumber);
-                    
+
                     if ($validacion['valido']) {
                         // Completar IDs si se usaron nombres
                         $validator->completarIDs($fila);
-                        
+
                         // Aplicar valores por defecto a la fila
                         if (!empty($defaultValues['estado']) && empty($fila['id_estado'])) {
                             $fila['id_estado'] = $defaultValues['estado'];
@@ -1520,7 +1603,7 @@ class PedidosController {
                         if (!empty($defaultValues['vendedor']) && empty($fila['id_vendedor'])) {
                             $fila['id_vendedor'] = $defaultValues['vendedor'];
                         }
-                        
+
                         $chunkValido[] = $fila;
                     } else {
                         // Guardar fila errónea para exportar
@@ -1530,25 +1613,25 @@ class PedidosController {
                         $todosErrores[] = $errorMsg;
                     }
                 }
-                
+
                 // Insertar chunk válido
                 if (!empty($chunkValido)) {
                     $resultado = PedidosModel::insertarPedidosLote($chunkValido, $autoCreateProducts, $defaultValues);
                     $totalExitosas += $resultado['inserted'];
-                    
+
                     if (!empty($resultado['errors'])) {
                         $todosErrores = array_merge($todosErrores, $resultado['errors']);
                     }
-                    
+
                     if (!empty($resultado['productos_creados'])) {
                         $todosProductosCreados = array_merge($todosProductosCreados, $resultado['productos_creados']);
                     }
                 }
             }
-            
+
             $tiempoFin = microtime(true);
             $tiempoProcesamiento = round($tiempoFin - $tiempoInicio, 3);
-            
+
             // Exportar filas erróneas como CSV si existen
             $archivoErrores = null;
             if (!empty($filasErrorneas)) {
@@ -1558,7 +1641,7 @@ class PedidosController {
                     error_log('Error al exportar CSV de errores: ' . $e->getMessage());
                 }
             }
-            
+
             // REGISTRAR AUDITORÍA
             try {
                 $auditData = [
@@ -1576,21 +1659,21 @@ class PedidosController {
                     'errores_detallados' => array_slice($todosErrores, 0, 50), // Solo primeros 50 errores
                     'archivo_errores' => $archivoErrores
                 ];
-                
+
                 ImportacionModel::registrar($auditData);
             } catch (Exception $e) {
                 error_log('Error al registrar auditoría de importación: ' . $e->getMessage());
             }
-            
+
             // RESPUESTA
             $msg = "{$totalExitosas} pedidos importados correctamente de {$totalFilas} filas.";
             $estadoFinal = 'completado';
-            
+
             if (count($todosErrores) > 0) {
                 $msg .= " " . count($todosErrores) . " filas con error.";
                 $estadoFinal = $totalExitosas > 0 ? 'parcial' : 'fallido';
             }
-            
+
             $responseData = [
                 'success' => $totalExitosas > 0,
                 'message' => $msg,
@@ -1605,17 +1688,17 @@ class PedidosController {
                 'estado' => $estadoFinal,
                 'errors_list' => array_slice($todosErrores, 0, 10) // Enviar primeros 10 errores para debug
             ];
-            
+
             if ($archivoErrores) {
                 $responseData['error_file_url'] = 'logs/' . $archivoErrores;
             }
-            
+
             if ($isAjax) {
                 header('Content-Type: application/json');
                 echo json_encode($responseData, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
-            
+
             // Para peticiones normales
             if (!empty($todosErrores)) {
                 $_SESSION['import_errors'] = array_slice($todosErrores, 0, 100); // Máximo 100 errores en sesión
@@ -1623,10 +1706,9 @@ class PedidosController {
             } else {
                 set_flash('success', $msg);
             }
-            
+
             header('Location: ' . RUTA_URL . 'pedidos/listar');
             exit;
-            
         } catch (Exception $e) {
             // Logging detallado del error
             $logDir = __DIR__ . '/../logs';
@@ -1638,7 +1720,7 @@ class PedidosController {
             $dump .= "Message: " . $e->getMessage() . "\n";
             $dump .= "Trace: \n" . $e->getTraceAsString() . "\n";
             @file_put_contents($logDir . '/import_errors.log', $dump . "\n\n", FILE_APPEND | LOCK_EX);
-            
+
             if ($isAjax) {
                 header('Content-Type: application/json', true, 500);
                 echo json_encode([
@@ -1648,20 +1730,21 @@ class PedidosController {
                 ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit;
             }
-            
+
             set_flash('error', 'Ocurrió un error interno durante la importación. Contacta al administrador con el ID: ' . $errorId);
             header('Location: ' . RUTA_URL . 'pedidos/listar');
             exit;
         }
     }
-    
-    
-    
+
+
+
     /**
      * Endpoint API para obtener el historial de estados de un pedido
      * GET /pedidos/historial/<id> o ?id=<id>
      */
-    public function historial($id = null) {
+    public function historial($id = null)
+    {
         // Soporte para llamar historial($id) desde router o historial() con $_GET
         if ($id === null && isset($_GET['id'])) {
             $id = $_GET['id'];
@@ -1679,14 +1762,14 @@ class PedidosController {
 
         try {
             $historial = PedidosModel::obtenerHistorialEstados((int)$id);
-            
+
             echo json_encode([
                 'success' => true,
                 'data' => $historial
             ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             echo json_encode([
-                'success' => false, 
+                'success' => false,
                 'message' => 'Error al obtener historial: ' . $e->getMessage()
             ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         }
@@ -1697,33 +1780,72 @@ class PedidosController {
      * Buscar historial de estados con filtros avanzados para el panel administrativo.
      * Soporta: numero_orden, fecha_desde, fecha_hasta, id_cliente (vendedor), id_proveedor (logística).
      */
-    public function adminTrackingSearch() {
+    public function adminTrackingSearch()
+    {
         require_once __DIR__ . '/../utils/session.php';
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../modelo/conexion.php';
         header('Content-Type: application/json');
 
-        // Solo permitir a administradores o roles autorizados de logística
-        require_once __DIR__ . '/../utils/permissions.php';
-        $rolesNames = $_SESSION['roles_nombres'] ?? [];
-        $sessionRol = $_SESSION['rol'] ?? 0;
-        $currentUserId = getCurrentUserId();
-        
-        // Nota sobre inversión: 
-        // ID 4 (ROL_PROVEEDOR en código) = NutraTrade (Nombre "Cliente" en UI) -> Almacenado en id_proveedor
-        // ID 5 (ROL_CLIENTE en código)   = Mensajería (Nombre "Proveedor" en UI) -> Almacenado en id_cliente
-        $isNutraTrade = isProveedor() || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
-        $isMensajeria = isCliente()   || $sessionRol == 5 || in_array('Proveedor', $rolesNames) || in_array('proveedor', $rolesNames);
-        $isAdmin      = isAdmin();
+        // ── Autenticación dual: sesión normal O token público ──────────────────
+        $isPublicAccess = isset($_GET['u']) && isset($_GET['t']);
 
-        if (!$isAdmin && !$isNutraTrade && !$isMensajeria) {
-             echo json_encode(['success' => false, 'message' => 'Acceso denegado.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-             exit;
+        if ($isPublicAccess) {
+            $pubU = (int)$_GET['u'];
+            $pubT = (string)$_GET['t'];
+
+            $dbPub   = (new Conexion())->conectar();
+            // Validar token Y obtener rol en la misma query
+            $stmtPub = $dbPub->prepare(
+                "SELECT u.token_enlace_publico, ur.id_rol
+                 FROM usuarios u
+                 LEFT JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                 WHERE u.id = :id
+                 LIMIT 1"
+            );
+            $stmtPub->execute([':id' => $pubU]);
+            $pubRow  = $stmtPub->fetch(PDO::FETCH_ASSOC);
+            $dbToken = $pubRow['token_enlace_publico'] ?? '';
+            $pubRol  = (int)($pubRow['id_rol'] ?? 0);
+
+            if (empty($dbToken) || !hash_equals($dbToken, $pubT)) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Enlace público inválido o revocado.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // Determinar permisos reales del usuario del token
+            // NOTA: Las constantes están invertidas en permissions.php:
+            //   ROL_CLIENTE  = 4 → "Cliente" en UI = NutraTrade (crea pedidos, va en id_proveedor)
+            //   ROL_PROVEEDOR = 5 → "Proveedor" en UI = Mensajería (va en id_cliente)
+            $currentUserId = $pubU;
+            $isAdmin      = ($pubRol == ROL_ADMIN);
+            $isNutraTrade = ($pubRol == ROL_CLIENTE);   // ID 4 = "Cliente" UI = NutraTrade
+            $isMensajeria = ($pubRol == ROL_PROVEEDOR); // ID 5 = "Proveedor" UI = Mensajería
+        } else {
+            // Acceso normal por sesión
+            $rolesNames    = $_SESSION['roles_nombres'] ?? [];
+            $sessionRol    = $_SESSION['rol'] ?? 0;
+            $currentUserId = getCurrentUserId();
+
+            // Nota sobre inversión:
+            // ID 4 (ROL_PROVEEDOR en código) = NutraTrade (Nombre "Cliente" en UI) -> Almacenado en id_proveedor
+            // ID 5 (ROL_CLIENTE en código)   = Mensajería (Nombre "Proveedor" en UI) -> Almacenado en id_cliente
+            $isNutraTrade = isProveedor() || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
+            $isMensajeria = isCliente()   || $sessionRol == 5 || in_array('Proveedor', $rolesNames) || in_array('proveedor', $rolesNames);
+            $isAdmin      = isAdmin();
+
+            if (!$isAdmin && !$isNutraTrade && !$isMensajeria) {
+                echo json_encode(['success' => false, 'message' => 'Acceso denegado.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+                exit;
+            }
         }
 
         $filtros = [];
         if (!empty($_GET['numero_orden'])) $filtros['numero_orden'] = trim($_GET['numero_orden']);
         if (!empty($_GET['fecha_desde']))  $filtros['fecha_desde']  = $_GET['fecha_desde'];
         if (!empty($_GET['fecha_hasta']))  $filtros['fecha_hasta']  = $_GET['fecha_hasta'];
-        
+
         // Seguridad: Filtrado dinámico según el rol
         if (!$isAdmin) {
             if ($isNutraTrade) {
@@ -1733,6 +1855,10 @@ class PedidosController {
             } else if ($isMensajeria) {
                 // Mensajería/RutaEX se guarda usualmente como id_cliente
                 $filtros['id_cliente'] = $currentUserId;
+            }
+            // Si ningún rol coincide (caso raro), restringir por pertenencia para evitar fuga de datos
+            if (!$isNutraTrade && !$isMensajeria) {
+                $filtros['id_usuario_pertenencia'] = $currentUserId;
             }
         } else {
             // Admin puede filtrar por cualquier campo pasado en la URL
@@ -1839,7 +1965,12 @@ class PedidosController {
                         $dataRow[$colName] = isset($row[$i]) ? trim($row[$i]) : '';
                     }
                     $allEmpty = true;
-                    foreach ($dataRow as $v) { if ($v !== '') { $allEmpty = false; break; } }
+                    foreach ($dataRow as $v) {
+                        if ($v !== '') {
+                            $allEmpty = false;
+                            break;
+                        }
+                    }
                     if (!$allEmpty) $allRows[] = $dataRow;
                 }
                 fclose($handle);
@@ -1929,7 +2060,6 @@ class PedidosController {
                 'detalle_no_encontrados' => array_slice($noEncontrados, 0, 30),
                 'detalle_errores'        => array_slice($errores, 0, 30),
             ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,

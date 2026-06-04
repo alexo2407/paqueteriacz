@@ -37,7 +37,9 @@ class EnlacesController
         $modulo = $segmentos[0] ?? 'inicio';
         $modulosPublicos = ['inicio', 'login', '', 'api', 'recuperar-password', 'reset-password'];
 
-        $isRutaPublicaExtendida = in_array($modulo, $modulosPublicos, true) || strpos($url, 'stock/inventario_publico') === 0;
+        $isRutaPublicaExtendida = in_array($modulo, $modulosPublicos, true)
+            || strpos($url, 'stock/inventario_publico') === 0
+            || (strpos($url, 'seguimiento/admin_tracking') === 0 && isset($_GET['u']) && isset($_GET['t']));
 
         if (!$isRutaPublicaExtendida) {
             require_once __DIR__ . '/../utils/session.php';

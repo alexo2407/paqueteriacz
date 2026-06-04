@@ -3,43 +3,124 @@
  * vista/modulos/seguimiento/admin_tracking.php
  * Vista de Seguimiento Administrativo con la interfaz nativa del sistema (Bootstrap 5) y paginación.
  */
-include("vista/includes/header.php");
 
-// Verificación de seguridad (Admin o Cliente únicamente)
+require_once __DIR__ . '/../../../config/config.php';
+require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
-$rolesNames = $_SESSION['roles_nombres'] ?? [];
-$isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNames, true);
-$sessionRol = $_SESSION['rol'] ?? 0;
-$isCliente = isCliente() || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
-$currentUserId = getCurrentUserId();
+require_once __DIR__ . '/../../../modelo/conexion.php';
+require_once __DIR__ . '/../../../modelo/pedido.php';
+require_once __DIR__ . '/../../../controlador/pedido.php';
 
-if (!$isAdmin && !$isCliente) {
-    echo "<div class='container py-5 text-center'>
-            <div class='card shadow-sm border-0 p-5 mx-auto' style='max-width: 600px; border-radius: 20px;'>
-                <i class='bi bi-lock-fill text-danger mb-3' style='font-size: 4rem;'></i>
-                <h3 class='fw-bold'>Acceso Denegado</h3>
-                <p class='text-muted'>Esta sección es exclusiva para usuarios autorizados.</p>
-                <div class='mt-4'>
-                    <a href='".RUTA_URL."' class='btn btn-primary rounded-pill px-4'>
-                        <i class='bi bi-house-door me-1'></i> Volver al Inicio
-                    </a>
+start_secure_session();
+
+// ── Autenticación dual: sesión normal O token público ──────────────────────
+$isPublicLink = isset($_GET['u']) && isset($_GET['t']);
+
+if ($isPublicLink) {
+    $pubU = (int)$_GET['u'];
+    $pubT = (string)$_GET['t'];
+
+    $dbPub   = (new Conexion())->conectar();
+    $stmtPub = $dbPub->prepare(
+        "SELECT u.token_enlace_publico, ur.id_rol
+         FROM usuarios u
+         LEFT JOIN usuarios_roles ur ON ur.id_usuario = u.id
+         WHERE u.id = :id
+         LIMIT 1"
+    );
+    $stmtPub->execute([':id' => $pubU]);
+    $pubRow  = $stmtPub->fetch(PDO::FETCH_ASSOC);
+    $dbToken = $pubRow['token_enlace_publico'] ?? '';
+    $pubRol  = (int)($pubRow['id_rol'] ?? 0);
+
+    if (empty($dbToken) || !hash_equals($dbToken, $pubT)) {
+        echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Enlace Inválido</title>
+        <style>
+            body{margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#0f172a;font-family:system-ui,sans-serif}
+            .card{background:#1e293b;padding:3rem 2.5rem;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.4);text-align:center;max-width:420px;width:90%;border-top:4px solid #ef4444}
+            h1{font-size:1.4rem;color:#f1f5f9;font-weight:700;margin-bottom:.5rem}
+            p{color:#94a3b8;font-size:.95rem;line-height:1.5}
+        </style></head><body>
+        <div class="card">
+            <div style="font-size:3rem;margin-bottom:1rem">🔗</div>
+            <h1>Acceso Denegado</h1>
+            <p>El enlace público ya no es válido o ha sido revocado.</p>
+        </div></body></html>';
+        exit;
+    }
+
+    // Determinar rol real del usuario del token
+    // ROL_ADMIN=1, ROL_CLIENTE=4 (NutraTrade en UI), ROL_PROVEEDOR=5 (Mensajería en UI)
+    $isAdmin       = ($pubRol == ROL_ADMIN);
+    $isCliente     = ($pubRol == ROL_CLIENTE || $pubRol == ROL_PROVEEDOR); // cualquier rol no-admin con pedidos
+    $currentUserId = $pubU;
+    $db            = $dbPub;
+} else {
+    require_login();
+    $rolesNames    = $_SESSION['roles_nombres'] ?? [];
+    $isAdmin       = in_array(ROL_NOMBRE_ADMIN, $rolesNames, true);
+    $sessionRol    = $_SESSION['rol'] ?? 0;
+    $isCliente     = isCliente() || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
+    $currentUserId = getCurrentUserId();
+    $db            = (new Conexion())->conectar();
+}
+
+// ── Token de enlace público para el usuario logueado ──────────────────────
+$stmtToken      = $db->prepare("SELECT token_enlace_publico, nombre FROM usuarios WHERE id = :id");
+$stmtToken->execute([':id' => $currentUserId]);
+$tokenRow           = $stmtToken->fetch(PDO::FETCH_ASSOC);
+$tokenEnlacePublico = $tokenRow['token_enlace_publico'] ?? '';
+
+if (!$isPublicLink) {
+    // ── Verificar acceso (solo Admin o Cliente) ────────────────────────────
+    if (!$isAdmin && !$isCliente) {
+        include("vista/includes/header.php");
+        echo "<div class='container py-5 text-center'>
+                <div class='card shadow-sm border-0 p-5 mx-auto' style='max-width: 600px; border-radius: 20px;'>
+                    <i class='bi bi-lock-fill text-danger mb-3' style='font-size: 4rem;'></i>
+                    <h3 class='fw-bold'>Acceso Denegado</h3>
+                    <p class='text-muted'>Esta sección es exclusiva para usuarios autorizados.</p>
+                    <div class='mt-4'>
+                        <a href='" . RUTA_URL . "' class='btn btn-primary rounded-pill px-4'>
+                            <i class='bi bi-house-door me-1'></i> Volver al Inicio
+                        </a>
+                    </div>
                 </div>
-            </div>
-          </div>";
-    include("vista/includes/footer.php");
-    exit;
+              </div>";
+        include("vista/includes/footer.php");
+        exit;
+    }
 }
 
 $pedidoController = new PedidosController();
 if ($isAdmin) {
-    $clientes = $pedidoController->obtenerClientes();
+    $clientes    = $pedidoController->obtenerClientes();
     $proveedores = $pedidoController->obtenerProveedores();
 } else {
-    $clientes = []; // No se listan otros clientes
-    // Solo proveedores que tienen pedidos asignados este cliente
+    $clientes    = [];
     $proveedores = PedidosModel::obtenerProveedoresPorCliente($currentUserId);
 }
 ?>
+<?php if (!$isPublicLink): ?>
+<?php include __DIR__ . '/../../../vista/includes/header.php'; ?>
+<?php else: ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracking de Estados de Pedido — RutaEx</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        const RUTA_URL = '<?= RUTA_URL ?>';
+    </script>
+</head>
+<body class="bg-light">
+<?php endif; ?>
 
 <style>
 /* Estilos alineados con dashboard.php */
@@ -47,12 +128,18 @@ if ($isAdmin) {
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     border-radius: 20px; padding: 2.25rem 2.5rem; color: white;
     margin-bottom: 2rem; box-shadow: 0 10px 35px rgba(30,60,114,0.18);
-    position: relative; overflow: hidden;
+    position: relative; overflow: visible;
 }
-.tracking-header::after {
+/* El círculo decorativo se contiene en un pseudo-overlay para no cortar dropdowns */
+.tracking-header-overlay {
+    position: absolute; inset: 0; border-radius: 20px;
+    overflow: hidden; pointer-events: none; z-index: 0;
+}
+.tracking-header-overlay::after {
     content: ''; position: absolute; top: -50px; right: -50px;
     width: 200px; height: 200px; background: rgba(255,255,255,0.05); border-radius: 50%;
 }
+.tracking-header .row { position: relative; z-index: 1; }
 .tracking-header h2 { font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
 .tracking-header p { opacity: 0.85; margin-bottom: 0; font-size: 1.05rem; }
 
@@ -162,12 +249,36 @@ if ($isAdmin) {
 <div class="container-fluid py-4">
     <!-- Encabezado -->
     <div class="tracking-header">
+        <div class="tracking-header-overlay"></div>
         <div class="row align-items-center">
             <div class="col-lg-8">
                 <h2><i class="bi bi-geo-fill me-3"></i>Tracking de Estados de Pedido</h2>
                 <p class="opacity-75">Visualiza y audita cada movimiento, cambio de estado y motivo del historial logístico.</p>
             </div>
-            <div class="col-lg-4 text-md-end pt-3 pt-lg-0">
+            <div class="col-lg-4 text-md-end pt-3 pt-lg-0 d-flex gap-2 justify-content-end align-items-center flex-wrap">
+                <?php if (!$isPublicLink): ?>
+                <!-- Botón Enlace Público -->
+                <?php if (!empty($tokenEnlacePublico)): ?>
+                <div class="dropdown">
+                    <button class="btn btn-warning btn-sm fw-bold shadow-sm dropdown-toggle" type="button"
+                            data-bs-toggle="dropdown" aria-expanded="false" id="btnEnlaceDropdown">
+                        <i class="bi bi-share fs-6"></i> Enlace
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li><button class="dropdown-item fw-semibold text-primary" onclick="copiarEnlacePublico()">
+                            <i class="bi bi-link-45deg me-2"></i>Copiar Enlace Público</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item text-danger fw-semibold" onclick="toggleEnlacePublico('deshabilitar')">
+                            <i class="bi bi-trash me-2"></i>Revocar Acceso</button></li>
+                    </ul>
+                </div>
+                <?php else: ?>
+                <button type="button" class="btn btn-outline-warning text-white btn-sm fw-bold border-2"
+                        onclick="toggleEnlacePublico('habilitar')" id="btnHabilitarEnlace">
+                    <i class="bi bi-link-45deg fs-6"></i> Habilitar Enlace
+                </button>
+                <?php endif; ?>
+                <?php endif; ?>
                 <div class="d-inline-flex bg-white rounded-pill p-1 align-items-center shadow-sm border border-white border-opacity-10">
                     <span class="px-3 py-1 fw-bold small text-uppercase ls-1" style="color: #1e3c72 !important;">Seguimiento Administrativo</span>
                 </div>
@@ -178,6 +289,11 @@ if ($isAdmin) {
     <!-- Filtros de Búsqueda -->
     <div class="search-card">
         <form id="formTrackingSearch" class="row g-3 align-items-end">
+            <?php if ($isPublicLink): ?>
+            <input type="hidden" name="u" value="<?= htmlspecialchars($pubU) ?>">
+            <input type="hidden" name="t" value="<?= htmlspecialchars($pubT) ?>">
+            <?php endif; ?>
+
             <!-- Referencia -->
             <div class="<?= $isAdmin ? 'col-xl-3' : 'col-xl-4' ?> col-lg-4 col-md-12">
                 <label class="form-label mb-1 text-secondary fw-bold" style="font-size: 0.72rem; letter-spacing: 0.5px;"><i class="bi bi-search me-1"></i> REFERENCIA DE PEDIDO</label>
@@ -270,6 +386,7 @@ if ($isAdmin) {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('formTrackingSearch');
@@ -538,6 +655,67 @@ document.addEventListener('DOMContentLoaded', function() {
         return { class: 'badge-default', icon: 'bi-info-circle' };
     }
 });
+
+// ── Enlace Público ────────────────────────────────────────────────────────
+function toggleEnlacePublico(action) {
+    const actionText = action === 'habilitar'
+        ? 'Esto generará un enlace público compartible para el Tracking de Pedidos.'
+        : 'Los enlaces previos dejarán de funcionar.';
+    Swal.fire({
+        title: action === 'habilitar' ? '¿Activar enlace público?' : '¿Revocar acceso?',
+        text: actionText, icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: action === 'habilitar' ? '#3085d6' : '#d33',
+        cancelButtonColor: '#adb5bd',
+        confirmButtonText: 'Sí, ' + action,
+        cancelButtonText: 'Cancelar'
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const fd = new FormData();
+        fd.append('action', action);
+        fetch(`${RUTA_URL}ajax/enlaces_publicos.php`, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: '¡Listo!', text: data.message,
+                        showConfirmButton: false, timer: 1500 })
+                        .then(() => window.location.reload());
+                } else {
+                    Swal.fire('Error', data.message || 'Error desconocido', 'error');
+                }
+            })
+            .catch(() => Swal.fire('Error', 'Error en la conexión.', 'error'));
+    });
+}
+
+function copiarEnlacePublico() {
+    const baseUrl = `${RUTA_URL}seguimiento/admin_tracking`;
+    const finalUrl = `${baseUrl}?u=<?= (int)$currentUserId ?>&t=<?= htmlspecialchars($tokenEnlacePublico) ?>`;
+    navigator.clipboard.writeText(finalUrl).then(() => {
+        Swal.fire({
+            icon: 'success',
+            title: 'Enlace copiado',
+            text: 'Cualquier persona con este enlace podrá ver el Tracking de Pedidos.',
+            confirmButtonText: 'Entendido'
+        });
+    }).catch(() => {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Copia manual requerida',
+            text: 'Copia este enlace:',
+            input: 'text',
+            inputValue: finalUrl,
+            confirmButtonText: 'Cerrar'
+        });
+    });
+}
 </script>
 
-<?php include("vista/includes/footer.php"); ?>
+<?php if (!$isPublicLink): ?>
+<?php include __DIR__ . '/../../../vista/includes/footer.php'; ?>
+<?php else: ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+<?php endif; ?>
