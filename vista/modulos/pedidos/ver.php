@@ -202,7 +202,7 @@ if (!empty($fechaEntregaRaw)) {
                                 <h3>Pedido #<?= htmlspecialchars($pedido['numero_orden'] ?? 'N/A') ?></h3>
                                 <p class="mb-0 opacity-75">
                                     <i class="bi bi-calendar-event me-1"></i>
-                                    <?= htmlspecialchars($pedido['fecha_ingreso'] ?? '') ?>
+                                    <?= date('d/m/Y H:i', strtotime($pedido['fecha_ingreso'] ?? 'now')) ?>
                                 </p>
                             </div>
                         </div>

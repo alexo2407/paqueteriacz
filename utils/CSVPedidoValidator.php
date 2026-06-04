@@ -285,7 +285,7 @@ class CSVPedidoValidator
             }
         }
         
-        // Validar id_proveedor o proveedor_nombre
+        // Validar id_proveedor o proveedor_nombre (REQUERIDO)
         if (!empty($row['id_proveedor'])) {
             $idProveedor = (int)$row['id_proveedor'];
             if (!isset($this->proveedoresCache[$idProveedor])) {
@@ -298,7 +298,7 @@ class CSVPedidoValidator
                 $errores[] = "proveedor_nombre '{$row['proveedor_nombre']}' no encontrado. Ver referencia de valores.";
             }
         } else {
-            $advertencias[] = "proveedor no especificado (se usará valor por defecto si está configurado)";
+            $errores[] = "id_proveedor es obligatorio. Especifica el ID del proveedor de mensajería en la columna S (ver 'Ver IDs disponibles').";
         }
         
         // Validar id_moneda o moneda/moneda_codigo (el XLSX usa columna 'moneda' con código de texto)

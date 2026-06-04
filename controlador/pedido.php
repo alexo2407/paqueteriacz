@@ -1437,6 +1437,19 @@ class PedidosController {
             // Productos inexistentes SIEMPRE rechazan la fila
             $autoCreateProducts = false;
 
+            // Pre-aplicar valores por defecto a TODAS las filas ANTES de validar.
+            // Así el validador ve el dato completo (ej: si el usuario eligió un
+            // "Proveedor por defecto" en Opciones Avanzadas, esa intención se respeta).
+            if (!empty($defaultValues)) {
+                foreach ($allRows as &$filaPreDefault) {
+                    if (!empty($defaultValues['estado'])    && empty($filaPreDefault['id_estado']))    $filaPreDefault['id_estado']    = $defaultValues['estado'];
+                    if (!empty($defaultValues['proveedor']) && empty($filaPreDefault['id_proveedor'])) $filaPreDefault['id_proveedor'] = $defaultValues['proveedor'];
+                    if (!empty($defaultValues['moneda'])    && empty($filaPreDefault['id_moneda']))    $filaPreDefault['id_moneda']    = $defaultValues['moneda'];
+                    if (!empty($defaultValues['vendedor'])  && empty($filaPreDefault['id_vendedor']))  $filaPreDefault['id_vendedor']  = $defaultValues['vendedor'];
+                }
+                unset($filaPreDefault);
+            }
+
             // VALIDACIÓN COMPLETA
             $validator = new CSVPedidoValidator();
             $resumenValidacion = $validator->validarLote($allRows);
@@ -1500,9 +1513,6 @@ class PedidosController {
                         // Aplicar valores por defecto a la fila
                         if (!empty($defaultValues['estado']) && empty($fila['id_estado'])) {
                             $fila['id_estado'] = $defaultValues['estado'];
-                        }
-                        if (!empty($defaultValues['proveedor']) && empty($fila['id_proveedor'])) {
-                            $fila['id_proveedor'] = $defaultValues['proveedor'];
                         }
                         if (!empty($defaultValues['moneda']) && empty($fila['id_moneda'])) {
                             $fila['id_moneda'] = $defaultValues['moneda'];
