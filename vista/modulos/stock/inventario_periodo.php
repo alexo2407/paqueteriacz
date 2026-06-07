@@ -161,15 +161,16 @@ $sqlMovs = "
         pr.id                                                           AS id_producto,
         pr.nombre                                                       AS producto,
         COALESCE(s.tipo_movimiento, 'otro')                             AS tipo_movimiento,
-        SUM(CASE WHEN s.cantidad > 0 THEN  s.cantidad ELSE 0 END)      AS entradas,
-        SUM(CASE WHEN s.cantidad < 0 THEN -s.cantidad ELSE 0 END)      AS salidas
+        CASE WHEN s.cantidad > 0 THEN  s.cantidad ELSE 0 END          AS entradas,
+        CASE WHEN s.cantidad < 0 THEN -s.cantidad ELSE 0 END          AS salidas,
+        s.referencia_id,
+        s.referencia_tipo
     FROM stock s
     JOIN productos pr ON pr.id = s.id_producto
     {$joinType} pedidos ped
         ON {$joinOnStr}
     {$whereStr}
-    GROUP BY DATE(s.created_at), pr.id, pr.nombre, s.tipo_movimiento
-    ORDER BY fecha ASC, pr.nombre ASC
+    ORDER BY fecha ASC, pr.nombre ASC, s.created_at ASC
 ";
 
 $stmt = $db->prepare($sqlMovs);
@@ -238,9 +239,12 @@ foreach ($rawMovs as $m) {
     }
     $pivot[$fecha][$pid]['entradas'] += (int)$m['entradas'];
     $pivot[$fecha][$pid]['salidas']  += (int)$m['salidas'];
-    $pivot[$fecha][$pid]['tipos'][$tipo] = [
+    $pivot[$fecha][$pid]['tipos'][] = [
+        'tipo' => $tipo,
         'e' => (int)$m['entradas'],
         's' => (int)$m['salidas'],
+        'ref_id' => (int)($m['referencia_id'] ?? 0),
+        'ref_tipo' => $m['referencia_tipo'] ?? '',
     ];
     $colsList[$pid] = $m['producto'];
 }
@@ -279,12 +283,30 @@ foreach ($dateRange as $fecha) {
         $saldosAcum[$pid] = ($saldosAcum[$pid] ?? 0) + $e - $s;
 
         // Pasar totales + desglose por tipo_movimiento a las filas
-        $rowEntry['data'][$pid] = ['total' => $e, 'tipos' => array_filter(
-            array_map(fn($t) => $t['e'], $tipos)
-        )];
-        $rowSalid['data'][$pid] = ['total' => $s, 'tipos' => array_filter(
-            array_map(fn($t) => $t['s'], $tipos)
-        )];
+        $rowEntry['data'][$pid] = [
+            'total' => $e,
+            'tipos' => array_filter(
+                array_map(fn($t) => [
+                    'tipo' => $t['tipo'], 
+                    'cant' => $t['e'],
+                    'ref_id' => $t['ref_id'],
+                    'ref_tipo' => $t['ref_tipo']
+                ], $tipos),
+                fn($t) => $t['cant'] > 0
+            )
+        ];
+        $rowSalid['data'][$pid] = [
+            'total' => $s,
+            'tipos' => array_filter(
+                array_map(fn($t) => [
+                    'tipo' => $t['tipo'], 
+                    'cant' => $t['s'],
+                    'ref_id' => $t['ref_id'],
+                    'ref_tipo' => $t['ref_tipo']
+                ], $tipos),
+                fn($t) => $t['cant'] > 0
+            )
+        ];
         $rowTotal['data'][$pid] = $saldosAcum[$pid];
     }
 
@@ -697,24 +719,162 @@ if ($export && !empty($colsList)) {
     <?php else: ?>
 
     <!-- Leyenda -->
-    <div class="d-flex gap-4 mb-2 small flex-wrap px-1 align-items-center">
-        <span class="d-flex align-items-center gap-1">
-            <span class="badge" style="background:#2e7d32"><i class="bi bi-arrow-up-short"></i> Entradas</span>
-            Unidades ingresadas ese día
-        </span>
-        <span class="d-flex align-items-center gap-1">
-            <span class="badge" style="background:#bf360c"><i class="bi bi-arrow-down-short"></i> Salidas</span>
-            Unidades despachadas ese día
-        </span>
-        <span class="d-flex align-items-center gap-1">
-            <span class="badge" style="background:#ffd600;color:#000">T</span>
-            Saldo acumulado al cierre del día
-        </span>
-        <span class="ms-auto">
-            <button id="btnToggleSinMov" class="btn btn-sm btn-outline-secondary" onclick="toggleSinMovimiento()">
-                <i class="bi bi-eye-slash me-1"></i>Solo días con actividad
-            </button>
-        </span>
+    <div class="mb-3 p-2 border rounded bg-light small shadow-sm">
+        <div class="d-flex gap-4 flex-wrap align-items-center mb-1">
+            <span class="d-flex align-items-center gap-1">
+                <span class="badge" style="background:#2e7d32"><i class="bi bi-arrow-up-short"></i> Entradas</span>
+                Unidades ingresadas ese día
+            </span>
+            <span class="d-flex align-items-center gap-1">
+                <span class="badge" style="background:#bf360c"><i class="bi bi-arrow-down-short"></i> Salidas</span>
+                Unidades despachadas ese día
+            </span>
+            <span class="d-flex align-items-center gap-1">
+                <span class="badge" style="background:#ffd600;color:#000">T</span>
+                Saldo acumulado al cierre del día
+            </span>
+            <span class="ms-auto">
+                <button id="btnToggleSinMov" class="btn btn-sm btn-outline-secondary" onclick="toggleSinMovimiento()">
+                    <i class="bi bi-eye-slash me-1"></i>Solo días con actividad
+                </button>
+            </span>
+        </div>
+        <div class="text-muted border-top pt-1 mt-1 d-flex gap-3 align-items-center flex-wrap" style="font-size: 0.85em;">
+            <span><i class="bi bi-info-circle me-1"></i><strong>Agrupación de despachos:</strong> Los envíos regulares del día se consolidan (ej: <code>10 En Ruta</code>).</span>
+            <span><i class="bi bi-arrow-right-short"></i><strong>Reintentos:</strong> Los reintentos del mismo pedido se desglosan individualmente indicando el ID del pedido y número de intento (ej: <code>1 (#8842 - 2° int.) En Ruta</code>) para un mejor control.</span>
+            <span class="ms-sm-auto"><i class="bi bi-diagram-3-fill me-1"></i><a href="#collapseReglasStock" class="text-decoration-none text-primary fw-bold" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="collapseReglasStock">Ver lógica de estados de stock <i class="bi bi-chevron-down"></i></a></span>
+        </div>
+
+        <!-- Tabla Colapsable de Reglas de Stock por Estado -->
+        <div class="collapse mt-2" id="collapseReglasStock">
+            <div class="table-responsive border rounded bg-white p-2">
+                <table class="table table-sm table-hover mb-0 text-dark align-middle" style="font-size:0.8rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 20%;">Estado del Pedido</th>
+                            <th style="width: 20%;">Movimiento de Stock</th>
+                            <th style="width: 25%;">Impacto en Inventario</th>
+                            <th>Explicación / Regla de Negocio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge bg-secondary">1. En bodega</span></td>
+                            <td><strong class="text-warning"><i class="bi bi-bookmark-fill"></i> Reserva</strong></td>
+                            <td>
+                                Incrementa la cantidad reservada.
+                                <div class="mt-1">
+                                    <span class="badge bg-success" style="font-size:.7rem;">
+                                        <i class="bi bi-eye me-1"></i>Aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>El stock físico permanece intacto, pero se compromete para evitar que sea vendido a otros pedidos.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-primary">2. En ruta o proceso</span></td>
+                            <td><strong class="text-danger"><i class="bi bi-arrow-down-circle-fill"></i> Salida Física</strong></td>
+                            <td>
+                                Resta stock físico y libera la reserva.
+                                <div class="mt-1">
+                                    <span class="badge bg-success" style="font-size:.7rem;">
+                                        <i class="bi bi-eye me-1"></i>Aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>Se registra el despacho real del producto. Evita doble salida física en reintentos aplicando límites basados en devoluciones previas.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-success">3. Entregado</span></td>
+                            <td><span class="text-muted">Ninguno</span></td>
+                            <td>
+                                Sin cambios en inventario.
+                                <div class="mt-1">
+                                    <span class="badge bg-secondary" style="font-size:.7rem;">
+                                        <i class="bi bi-eye-slash me-1"></i>No aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>El producto ya fue descontado del stock físico al pasar a estar <em>En ruta</em>. Si el pedido se entregó sin pasar por En ruta, la salida se aplica automáticamente.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-danger">5. Cancelado</span></td>
+                            <td><strong class="text-success"><i class="bi bi-unlock-fill"></i> Libera Reserva</strong></td>
+                            <td>
+                                Resta la cantidad reservada.
+                                <div class="mt-1">
+                                    <span class="badge bg-success" style="font-size:.7rem;">
+                                        <i class="bi bi-eye me-1"></i>Aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>Las unidades reservadas se liberan inmediatamente, volviendo a estar disponibles para otros pedidos.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-warning text-dark">7. Devuelto</span></td>
+                            <td><span class="text-muted">Ninguno</span></td>
+                            <td>
+                                Sin cambios en esta etapa.
+                                <div class="mt-1">
+                                    <span class="badge bg-secondary" style="font-size:.7rem;">
+                                        <i class="bi bi-eye-slash me-1"></i>No aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>Indica la notificación/acuse de devolución en ruta. El reingreso del producto al inventario no ocurre hasta la recepción física confirmada en la bodega (estado 15).</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-dark">9. Rechazado</span></td>
+                            <td><span class="text-muted">Ninguno</span></td>
+                            <td>
+                                Sin cambios en esta etapa.
+                                <div class="mt-1">
+                                    <span class="badge bg-secondary" style="font-size:.7rem;">
+                                        <i class="bi bi-eye-slash me-1"></i>No aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>El destinatario rechazó el pedido, pero el producto sigue físicamente en posesión del repartidor en ruta hasta que retorne a bodega. Usar estado 15 cuando llegue físicamente.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge bg-info text-dark">15. Devuelto a bodega</span></td>
+                            <td><strong class="text-success"><i class="bi bi-arrow-up-circle-fill"></i> Entrada Física</strong></td>
+                            <td>
+                                Suma stock físico.
+                                <div class="mt-1">
+                                    <span class="badge bg-success" style="font-size:.7rem;">
+                                        <i class="bi bi-eye me-1"></i>Aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>Confirma que el producto físicamente regresó y fue reingresado al inventario de la bodega.</td>
+                        </tr>
+                        <tr class="table-secondary">
+                            <td>
+                                <span class="badge" style="background:#6b7280">Otros estados</span>
+                                <div class="mt-1" style="font-size:.75rem;color:#6b7280">
+                                    Reprogramado, Pendiente de asignación, En espera, etc.
+                                </div>
+                            </td>
+                            <td><span class="text-muted"><i class="bi bi-dash-circle me-1"></i>Ninguno</span></td>
+                            <td>
+                                <span class="text-secondary fw-semibold">Sin cambios en inventario.</span>
+                                <div class="mt-1">
+                                    <span class="badge bg-warning text-dark" style="font-size:.7rem;">
+                                        <i class="bi bi-eye-slash me-1"></i>No aparece en esta vista
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                Los pedidos en estos estados <strong>existen en el sistema</strong> pero <strong>no generan ningún movimiento de stock</strong>
+                                (ni entrada, ni salida, ni reserva). Por eso <strong>no aparecen en el inventario de período</strong>.
+                                Son pedidos activos en gestión que aún no han impactado el inventario físico.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
     <?php
     // Activar "solo días con actividad" por defecto si hay algún filtro aplicado
@@ -789,7 +949,7 @@ if ($export && !empty($colsList)) {
             $tipoMeta = [
                 'entrada'    => ['label' => 'Ingreso',            'bg' => '#2e7d32', 'fg' => '#fff', 'icon' => 'bi-plus-circle-fill'],
                 'salida'     => ['label' => $nombreEstadoFiltro,  'bg' => '#bf360c', 'fg' => '#fff', 'icon' => $iconoEstadoFiltro],
-                'devolucion' => ['label' => 'Devuelto/Rechaz.',   'bg' => '#1565c0', 'fg' => '#fff', 'icon' => 'bi-reply-fill'],
+                'devolucion' => ['label' => 'Dev. a bodega',      'bg' => '#1565c0', 'fg' => '#fff', 'icon' => 'bi-house-check-fill'],
                 'ajuste'     => ['label' => 'Ajuste manual',      'bg' => '#6a1b9a', 'fg' => '#fff', 'icon' => 'bi-wrench-adjustable'],
                 'otro'       => ['label' => 'Movimiento',         'bg' => '#546e7a', 'fg' => '#fff', 'icon' => 'bi-circle-fill'],
             ];
@@ -811,13 +971,71 @@ if ($export && !empty($colsList)) {
                     ?>
                     <td style="min-width:80px;vertical-align:middle">
                     <?php if ($cell['total'] > 0): ?>
-                        <?php foreach ($cell['tipos'] as $tipo => $cant): ?>
-                        <?php $m = $tipoMeta[$tipo] ?? $tipoMeta['otro']; ?>
+                        <?php 
+                        // Contar cuántos movimientos de cada tipo tiene cada pedido (referencia_id)
+                        $countsByRef = [];
+                        foreach ($cell['tipos'] as $t) {
+                            if ($t['ref_tipo'] === 'pedido' && $t['ref_id'] > 0) {
+                                $key = $t['tipo'] . '_' . $t['ref_id'];
+                                $countsByRef[$key] = ($countsByRef[$key] ?? 0) + 1;
+                            }
+                        }
+
+                        // Separar movimientos agrupados e individuales
+                        $normalByType = [];
+                        $individualBadges = [];
+                        $currentIndices = [];
+
+                        foreach ($cell['tipos'] as $t) {
+                            $tipo = $t['tipo'];
+                            $cant = $t['cant'];
+                            $refId = $t['ref_id'];
+                            $refTipo = $t['ref_tipo'];
+                            
+                            $key = $tipo . '_' . $refId;
+                            $isMultIntento = ($refTipo === 'pedido' && $refId > 0 && ($countsByRef[$key] ?? 0) > 1);
+                            
+                            if ($isMultIntento) {
+                                if (!isset($currentIndices[$key])) {
+                                    $currentIndices[$key] = 0;
+                                }
+                                $currentIndices[$key]++;
+                                
+                                $suffixText = ($tipo === 'salida') ? 'int.' : (($tipo === 'devolucion') ? 'dev.' : 'mov.');
+                                $individualBadges[] = [
+                                    'tipo' => $tipo,
+                                    'cant' => $cant,
+                                    'extraLabel' => " (#{$refId} - {$currentIndices[$key]}° {$suffixText})",
+                                ];
+                            } else {
+                                $normalByType[$tipo] = ($normalByType[$tipo] ?? 0) + $cant;
+                            }
+                        }
+
+                        // Combinar badges
+                        $renderBadges = [];
+                        foreach ($normalByType as $tipo => $cant) {
+                            $renderBadges[] = [
+                                'tipo' => $tipo,
+                                'cant' => $cant,
+                                'extraLabel' => '',
+                            ];
+                        }
+                        foreach ($individualBadges as $ib) {
+                            $renderBadges[] = $ib;
+                        }
+
+                        foreach ($renderBadges as $badge):
+                            $tipo = $badge['tipo'];
+                            $cant = $badge['cant'];
+                            $extraLabel = $badge['extraLabel'];
+                            $m = $tipoMeta[$tipo] ?? $tipoMeta['otro'];
+                        ?>
                         <span class="badge d-inline-flex align-items-center gap-1 mb-1"
                               style="background:<?= $m['bg'] ?>;color:<?= $m['fg'] ?>;font-size:.72rem"
                               title="<?= $m['label'] ?>: <?= $cant ?> unidades">
                             <i class="bi <?= $m['icon'] ?>"></i>
-                            <span><?= $cant ?></span>
+                            <span><?= $cant ?><?= $extraLabel ?></span>
                             <small style="opacity:.8;font-size:.65rem"><?= $m['label'] ?></small>
                         </span>
                         <?php endforeach; ?>
@@ -839,13 +1057,71 @@ if ($export && !empty($colsList)) {
                     ?>
                     <td style="min-width:80px;vertical-align:middle">
                     <?php if ($cell['total'] > 0): ?>
-                        <?php foreach ($cell['tipos'] as $tipo => $cant): ?>
-                        <?php $m = $tipoMeta[$tipo] ?? $tipoMeta['otro']; ?>
+                        <?php 
+                        // Contar cuántos movimientos de cada tipo tiene cada pedido (referencia_id)
+                        $countsByRef = [];
+                        foreach ($cell['tipos'] as $t) {
+                            if ($t['ref_tipo'] === 'pedido' && $t['ref_id'] > 0) {
+                                $key = $t['tipo'] . '_' . $t['ref_id'];
+                                $countsByRef[$key] = ($countsByRef[$key] ?? 0) + 1;
+                            }
+                        }
+
+                        // Separar movimientos agrupados e individuales
+                        $normalByType = [];
+                        $individualBadges = [];
+                        $currentIndices = [];
+
+                        foreach ($cell['tipos'] as $t) {
+                            $tipo = $t['tipo'];
+                            $cant = $t['cant'];
+                            $refId = $t['ref_id'];
+                            $refTipo = $t['ref_tipo'];
+                            
+                            $key = $tipo . '_' . $refId;
+                            $isMultIntento = ($refTipo === 'pedido' && $refId > 0 && ($countsByRef[$key] ?? 0) > 1);
+                            
+                            if ($isMultIntento) {
+                                if (!isset($currentIndices[$key])) {
+                                    $currentIndices[$key] = 0;
+                                }
+                                $currentIndices[$key]++;
+                                
+                                $suffixText = ($tipo === 'salida') ? 'int.' : (($tipo === 'devolucion') ? 'dev.' : 'mov.');
+                                $individualBadges[] = [
+                                    'tipo' => $tipo,
+                                    'cant' => $cant,
+                                    'extraLabel' => " (#{$refId} - {$currentIndices[$key]}° {$suffixText})",
+                                ];
+                            } else {
+                                $normalByType[$tipo] = ($normalByType[$tipo] ?? 0) + $cant;
+                            }
+                        }
+
+                        // Combinar badges
+                        $renderBadges = [];
+                        foreach ($normalByType as $tipo => $cant) {
+                            $renderBadges[] = [
+                                'tipo' => $tipo,
+                                'cant' => $cant,
+                                'extraLabel' => '',
+                            ];
+                        }
+                        foreach ($individualBadges as $ib) {
+                            $renderBadges[] = $ib;
+                        }
+
+                        foreach ($renderBadges as $badge):
+                            $tipo = $badge['tipo'];
+                            $cant = $badge['cant'];
+                            $extraLabel = $badge['extraLabel'];
+                            $m = $tipoMeta[$tipo] ?? $tipoMeta['otro'];
+                        ?>
                         <span class="badge d-inline-flex align-items-center gap-1 mb-1"
                               style="background:<?= $m['bg'] ?>;color:<?= $m['fg'] ?>;font-size:.72rem"
                               title="<?= $m['label'] ?>: <?= $cant ?> unidades">
                             <i class="bi <?= $m['icon'] ?>"></i>
-                            <span><?= $cant ?></span>
+                            <span><?= $cant ?><?= $extraLabel ?></span>
                             <small style="opacity:.8;font-size:.65rem"><?= $m['label'] ?></small>
                         </span>
                         <?php endforeach; ?>

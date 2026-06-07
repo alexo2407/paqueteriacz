@@ -1,4 +1,5 @@
-<?php
+﻿<?php
+ob_start();
 /**
  * Informe: Tendencia Semanal de Órdenes
  * Ruta: GET /pedidos/informes/semana
@@ -47,14 +48,14 @@ if ($isPublicLink) {
     $pubRol = (int)$stmtRol->fetchColumn();
 
     $isAdmin        = false;
-    $isProveedorExt = ($pubRol == ROL_CLIENTE);
+    $isProveedorExt = ($pubRol == ROL_CLIENTE || $pubRol == ROL_PROVEEDOR);
     $currUserId     = $pubU;
     $db             = $dbPub;
 } else {
     require_login();
     $isAdmin        = isSuperAdmin();
     $currRol        = $_SESSION['rol'] ?? 0;
-    $isProveedorExt = ($currRol == ROL_CLIENTE);
+    $isProveedorExt = ($currRol == ROL_CLIENTE || $currRol == ROL_PROVEEDOR);
     $currUserId     = getCurrentUserId();
     $db             = (new Conexion())->conectar();
 }
@@ -82,14 +83,14 @@ if ($isAdmin) {
         "SELECT DISTINCT u.id, u.nombre
          FROM usuarios u
          INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-         WHERE ur.id_rol = " . ROL_CLIENTE . " AND u.activo = 1
+         WHERE ur.id_rol IN (" . ROL_CLIENTE . ", " . ROL_PROVEEDOR . ") AND u.activo = 1
          ORDER BY u.nombre ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // ── WHERE ─────────────────────────────────────────────────────────────────────
 $where  = ['p.fecha_ingreso BETWEEN :desde AND :hasta'];
-$params = [':desde' => $fechaDesde, ':hasta' => $fechaHasta];
+$params = [':desde' => $fechaDesde . ' 00:00:00', ':hasta' => $fechaHasta . ' 23:59:59'];
 
 if ($isAdmin && $idProveedor > 0) {
     $where[]                 = 'p.id_proveedor = :id_proveedor';
@@ -125,11 +126,13 @@ $sqlSemana = "
             WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0
         END)                            AS entregados,
         SUM(CASE
-            WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
-              OR LOWER(ep.nombre_estado) LIKE '%devuelto%'
+            WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%' THEN 1 ELSE 0
+        END)                            AS rechazados,
+        SUM(CASE
+            WHEN LOWER(ep.nombre_estado) LIKE '%devuelto%'
               OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
               OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 1 ELSE 0
-        END)                            AS rechazados,
+        END)                            AS devueltos,
         SUM(CASE
             WHEN LOWER(ep.nombre_estado) LIKE '%reprogramado%' THEN 1 ELSE 0
         END)                            AS reprogramados
@@ -148,19 +151,24 @@ $semanas = $stmtSem->fetchAll(PDO::FETCH_ASSOC);
 $totalCantidad      = 0;
 $totalEntregados    = 0;
 $totalRechazados    = 0;
+$totalDevueltos     = 0;
 $totalEnProceso     = 0;
 $totalReprogramados = 0;
 
 foreach ($semanas as &$sem) {
     $sem['reprogramados']     = (int)($sem['reprogramados'] ?? 0);
-    $sem['en_proceso']        = $sem['cantidad'] - $sem['entregados'] - $sem['rechazados'] - $sem['reprogramados'];
+    $sem['devueltos']         = (int)($sem['devueltos']     ?? 0);
+    $sem['en_proceso']        = $sem['cantidad'] - $sem['entregados'] - $sem['rechazados'] - $sem['devueltos'] - $sem['reprogramados'];
+    if ($sem['en_proceso'] < 0) $sem['en_proceso'] = 0;
     $sem['pct_entregados']    = $sem['cantidad'] > 0 ? round($sem['entregados']    / $sem['cantidad'] * 100) : 0;
     $sem['pct_rechazados']    = $sem['cantidad'] > 0 ? round($sem['rechazados']    / $sem['cantidad'] * 100) : 0;
+    $sem['pct_devueltos']     = $sem['cantidad'] > 0 ? round($sem['devueltos']     / $sem['cantidad'] * 100) : 0;
     $sem['pct_en_proceso']    = $sem['cantidad'] > 0 ? round($sem['en_proceso']    / $sem['cantidad'] * 100) : 0;
     $sem['pct_reprogramados'] = $sem['cantidad'] > 0 ? round($sem['reprogramados'] / $sem['cantidad'] * 100) : 0;
     $totalCantidad      += $sem['cantidad'];
     $totalEntregados    += $sem['entregados'];
     $totalRechazados    += $sem['rechazados'];
+    $totalDevueltos     += $sem['devueltos'];
     $totalEnProceso     += $sem['en_proceso'];
     $totalReprogramados += $sem['reprogramados'];
 }
@@ -177,7 +185,7 @@ if ($export) {
     $sheet->setTitle('Tendencia Semanal');
 
     $titulo = 'TENDENCIA SEMANAL — ' . date('d/m/Y', strtotime($fechaDesde)) . ' → ' . date('d/m/Y', strtotime($fechaHasta));
-    $sheet->mergeCells('A1:F1');
+    $sheet->mergeCells('A1:G1');
     $sheet->setCellValue('A1', $titulo);
     $sheet->getStyle('A1')->applyFromArray([
         'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 13],
@@ -187,10 +195,10 @@ if ($export) {
     $sheet->getRowDimension(1)->setRowHeight(22);
     $sheet->getRowDimension(2)->setRowHeight(6);
 
-    // Cabeceras
-    $headers   = ['FECHA (Semana)',  'CANTIDAD DE ORDENES', 'ENTREGADO', 'RECHAZADO', 'EN PROCESO', 'REPROGRAMADO'];
-    $headerBg  = ['1E293B', '334155', '3CB043', 'D42B2B', 'F5E400', 'F97316'];
-    $headerTxt = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', 'FFFFFF'];
+    // Cabeceras (7 columnas: A-G)
+    $headers   = ['FECHA (Semana)', 'CANTIDAD DE ORDENES', 'ENTREGADO', 'RECHAZADO', 'DEVUELTO', 'EN PROCESO', 'REPROGRAMADO'];
+    $headerBg  = ['1E293B', '334155', '3CB043', 'C0392B', 'B71C1C', 'F5E400', 'F97316'];
+    $headerTxt = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', 'FFFFFF'];
     foreach ($headers as $ci => $h) {
         $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci + 1);
         $sheet->setCellValue("{$col}3", $h);
@@ -217,7 +225,7 @@ if ($export) {
         if ($mesClave !== $xlsMesAct) {
             $xlsMesAct = $mesClave;
             $xlsIdxMes = 1;
-            $sheet->mergeCells("A{$row}:F{$row}");
+            $sheet->mergeCells("A{$row}:G{$row}");
             $sheet->setCellValue("A{$row}", '📅 ' . $mesesExcel[$numMesXls] . ' ' . date('Y', strtotime($sem['lunes'])));
             $sheet->getStyle("A{$row}")->applyFromArray([
                 'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
@@ -231,17 +239,19 @@ if ($export) {
 
         $label = 'Semana ' . $xlsIdxMes . ' — ' . date('d/m/Y', strtotime($sem['lunes'])) . ' al ' . date('d/m/Y', strtotime($sem['sabado']));
 
-        // Fila de cantidades
+        // Fila de cantidades (A=label, B=total, C=entregados, D=rechazados, E=devueltos, F=en_proceso, G=reprogramados)
         $sheet->setCellValue("A{$row}", $label);
         $sheet->setCellValue("B{$row}", $sem['cantidad']);
         $sheet->setCellValue("C{$row}", $sem['entregados']);
         $sheet->setCellValue("D{$row}", $sem['rechazados']);
-        $sheet->setCellValue("E{$row}", $sem['en_proceso']);
-        $sheet->setCellValue("F{$row}", $sem['reprogramados']);
+        $sheet->setCellValue("E{$row}", $sem['devueltos']);
+        $sheet->setCellValue("F{$row}", $sem['en_proceso']);
+        $sheet->setCellValue("G{$row}", $sem['reprogramados']);
         $sheet->getStyle("C{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D4F5D6']], 'font' => ['color' => ['rgb' => '1D6B22'], 'bold' => true]]);
         $sheet->getStyle("D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FAD4D4']], 'font' => ['color' => ['rgb' => '8B1A1A'], 'bold' => true]]);
-        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FDF8B0']], 'font' => ['color' => ['rgb' => '5A5000'], 'bold' => true]]);
-        $sheet->getStyle("F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFEDD5']], 'font' => ['color' => ['rgb' => '9A3412'], 'bold' => true]]);
+        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'EDE9FE']], 'font' => ['color' => ['rgb' => '5B21B6'], 'bold' => true]]);
+        $sheet->getStyle("F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FDF8B0']], 'font' => ['color' => ['rgb' => '5A5000'], 'bold' => true]]);
+        $sheet->getStyle("G{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFEDD5']], 'font' => ['color' => ['rgb' => '9A3412'], 'bold' => true]]);
         $row++;
 
         // Fila de porcentajes
@@ -249,37 +259,41 @@ if ($export) {
         $sheet->setCellValue("B{$row}", '');
         $sheet->setCellValue("C{$row}", $sem['pct_entregados'] . '%');
         $sheet->setCellValue("D{$row}", $sem['pct_rechazados'] . '%');
-        $sheet->setCellValue("E{$row}", $sem['pct_en_proceso'] . '%');
-        $sheet->setCellValue("F{$row}", $sem['pct_reprogramados'] . '%');
+        $sheet->setCellValue("E{$row}", $sem['pct_devueltos'] . '%');
+        $sheet->setCellValue("F{$row}", $sem['pct_en_proceso'] . '%');
+        $sheet->setCellValue("G{$row}", $sem['pct_reprogramados'] . '%');
         $sheet->getStyle("A{$row}")->applyFromArray(['font' => ['bold' => true, 'italic' => true, 'color' => ['rgb' => '475569']], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F1F5F9']]]);
         $sheet->getStyle("C{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '3CB043']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
         $sheet->getStyle("D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D42B2B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
-        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
-        $sheet->getStyle("F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
+        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '7C3AED']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
+        $sheet->getStyle("F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
+        $sheet->getStyle("G{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
         $row++;
         $row++; // fila vacía entre semanas
     }
 
-
     // Totales
     $pctTotE  = $totalCantidad > 0 ? round($totalEntregados    / $totalCantidad * 100) : 0;
     $pctTotR  = $totalCantidad > 0 ? round($totalRechazados    / $totalCantidad * 100) : 0;
+    $pctTotD  = $totalCantidad > 0 ? round($totalDevueltos     / $totalCantidad * 100) : 0;
     $pctTotP  = $totalCantidad > 0 ? round($totalEnProceso     / $totalCantidad * 100) : 0;
     $pctTotRp = $totalCantidad > 0 ? round($totalReprogramados / $totalCantidad * 100) : 0;
     $sheet->setCellValue("A{$row}", 'TOTALES');
     $sheet->setCellValue("B{$row}", $totalCantidad);
     $sheet->setCellValue("C{$row}", $totalEntregados . ' (' . $pctTotE . '%)');
     $sheet->setCellValue("D{$row}", $totalRechazados . ' (' . $pctTotR . '%)');
-    $sheet->setCellValue("E{$row}", $totalEnProceso . ' (' . $pctTotP . '%)');
-    $sheet->setCellValue("F{$row}", $totalReprogramados . ' (' . $pctTotRp . '%)');
-    $sheet->getStyle("A{$row}:F{$row}")->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E2E8F0']]]);
+    $sheet->setCellValue("E{$row}", $totalDevueltos  . ' (' . $pctTotD . '%)');
+    $sheet->setCellValue("F{$row}", $totalEnProceso  . ' (' . $pctTotP . '%)');
+    $sheet->setCellValue("G{$row}", $totalReprogramados . ' (' . $pctTotRp . '%)');
+    $sheet->getStyle("A{$row}:G{$row}")->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E2E8F0']]]);
 
-    foreach (range('A', 'F') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+    foreach (range('A', 'H') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
 
     $filename = 'Tendencia_Semanal_' . date('Ymd', strtotime($fechaDesde)) . '_' . date('Ymd', strtotime($fechaHasta)) . '.xlsx';
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header("Content-Disposition: attachment; filename=\"{$filename}\"");
     header('Cache-Control: max-age=0');
+    while (ob_get_level() > 0) ob_end_clean();
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
     exit;
 }
@@ -300,6 +314,7 @@ $mesesCortos = [
 $chartLabels        = [];
 $chartEntregados    = [];
 $chartRechazados    = [];
+$chartDevueltos     = [];
 $chartEnProceso     = [];
 $chartReprogramados = [];
 $semMesActual = '';
@@ -312,12 +327,14 @@ foreach ($semanas as $sem) {
     $chartLabels[]        = 'Sem ' . $semIdxMes . ' ' . $mesesCortos[$numMes];
     $chartEntregados[]    = $sem['entregados'];
     $chartRechazados[]    = $sem['rechazados'];
+    $chartDevueltos[]     = $sem['devueltos'];
     $chartEnProceso[]     = $sem['en_proceso'];
     $chartReprogramados[] = $sem['reprogramados'];
 }
 $chartLabelsJson        = json_encode($chartLabels);
 $chartEntregadosJson    = json_encode($chartEntregados);
 $chartRechazadosJson    = json_encode($chartRechazados);
+$chartDevueltosJson     = json_encode($chartDevueltos);
 $chartEnProcesoJson     = json_encode($chartEnProceso);
 $chartReprogramadosJson = json_encode($chartReprogramados);
 ?>
@@ -334,7 +351,8 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         :root {
             --clr-entregado:    #3cb043;
             --clr-proceso:      #f5e400;
-            --clr-rechazado:    #d42b2b;
+            --clr-rechazado:    #c0392b;
+            --clr-devuelto:     #b71c1c;
             --clr-reprogramado: #f97316;
         }
         body { background: #f8fafc; font-family: 'Inter', sans-serif; }
@@ -347,9 +365,10 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         .rpt-header h4 { font-weight: 800; font-size: 1.25rem; margin-bottom: .25rem; }
 
         /* KPI grid */
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 480px) { .kpi-grid { grid-template-columns: 1fr; } }
+        .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 700px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px)  { .kpi-grid { grid-template-columns: 1fr; } }
         .kpi-card {
             border-radius: 14px; padding: 1.25rem 1rem; color: #fff;
             box-shadow: 0 4px 20px rgba(0,0,0,.12); transition: transform .2s, box-shadow .2s;
@@ -363,6 +382,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         .kpi-card.entregado    { background: var(--clr-entregado); }
         .kpi-card.en-proceso   { background: var(--clr-proceso); color: #3d3200; }
         .kpi-card.rechazado    { background: var(--clr-rechazado); }
+        .kpi-card.devuelto     { background: var(--clr-devuelto); }
         .kpi-card.reprogramado { background: var(--clr-reprogramado); }
         .kpi-num { font-size: 2rem; font-weight: 800; line-height: 1; }
         .kpi-pct { font-size: .9rem; font-weight: 600; opacity: .85; }
@@ -383,7 +403,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
             text-align: center; border: none; padding: .6rem .75rem;
         }
         .tabla-semana thead th.th-ent  { background: #3cb043; }
-        .tabla-semana thead th.th-rec  { background: #d42b2b; }
+        .tabla-semana thead th.th-rec  { background: #c0392b; }
         .tabla-semana thead th.th-proc { background: #f5e400; color: #3d3200; }
         .tabla-semana thead th.th-rep  { background: #f97316; }
 
@@ -401,7 +421,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
 
         /* Celdas de cantidad */
         .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
-        .cell-rec  { background: #fad4d4 !important; color: #8b1a1a !important; font-weight: 700; text-align: center; }
+        .cell-rec  { background: #fae0dc !important; color: #7b1a11 !important; font-weight: 700; text-align: center; }
         .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
         .cell-num  { text-align: center; font-weight: 600; }
@@ -547,13 +567,15 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
     <?php
     $pctTotE  = $totalCantidad > 0 ? round($totalEntregados    / $totalCantidad * 100, 1) : 0;
     $pctTotR  = $totalCantidad > 0 ? round($totalRechazados    / $totalCantidad * 100, 1) : 0;
+    $pctTotD  = $totalCantidad > 0 ? round($totalDevueltos     / $totalCantidad * 100, 1) : 0;
     $pctTotP  = $totalCantidad > 0 ? round($totalEnProceso     / $totalCantidad * 100, 1) : 0;
     $pctTotRp = $totalCantidad > 0 ? round($totalReprogramados / $totalCantidad * 100, 1) : 0;
     $kpisTotal = [
-        ['key' => 'ENTREGADO',    'cls' => 'entregado',    'icon' => 'bi-check-circle-fill', 'val' => $totalEntregados,    'pct' => $pctTotE],
-        ['key' => 'RECHAZADO',    'cls' => 'rechazado',    'icon' => 'bi-x-circle-fill',     'val' => $totalRechazados,    'pct' => $pctTotR],
-        ['key' => 'EN PROCESO',   'cls' => 'en-proceso',   'icon' => 'bi-arrow-repeat',      'val' => $totalEnProceso,     'pct' => $pctTotP],
-        ['key' => 'REPROGRAMADO', 'cls' => 'reprogramado', 'icon' => 'bi-calendar2-check-fill', 'val' => $totalReprogramados, 'pct' => $pctTotRp],
+        ['key' => 'ENTREGADO',    'cls' => 'entregado',    'icon' => 'bi-check-circle-fill',       'val' => $totalEntregados,    'pct' => $pctTotE],
+        ['key' => 'RECHAZADO',    'cls' => 'rechazado',    'icon' => 'bi-x-circle-fill',            'val' => $totalRechazados,    'pct' => $pctTotR],
+        ['key' => 'DEVUELTO',     'cls' => 'devuelto',     'icon' => 'bi-arrow-return-left',        'val' => $totalDevueltos,     'pct' => $pctTotD],
+        ['key' => 'EN PROCESO',   'cls' => 'en-proceso',   'icon' => 'bi-arrow-repeat',             'val' => $totalEnProceso,     'pct' => $pctTotP],
+        ['key' => 'REPROGRAMADO', 'cls' => 'reprogramado', 'icon' => 'bi-calendar2-check-fill',    'val' => $totalReprogramados, 'pct' => $pctTotRp],
     ];
     ?>
     <div class="kpi-grid">
@@ -590,6 +612,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                         <th style="vertical-align:middle; text-align:center">CANTIDAD<br>DE ORDENES</th>
                         <th class="th-ent text-center">ENTREGADO</th>
                         <th class="th-rec text-center">RECHAZADO</th>
+                        <th class="text-center" style="background:#b71c1c;color:#fff;font-weight:700">DEVUELTO</th>
                         <th class="th-proc text-center">EN PROCESO</th>
                         <th class="th-rep text-center">REPROGRAMADO</th>
                     </tr>
@@ -598,7 +621,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                 <?php
                 $mesActual  = '';
                 $semIdxMes  = 0;
-                $colSpanTotal = 6; // FECHA + CANTIDAD + 4 estados
+                $colSpanTotal = 7; // FECHA + CANTIDAD + 5 estados
                 foreach ($semanas as $sem):
                     $numMes   = (int)date('n', strtotime($sem['lunes']));
                     $nomMes   = $meses[$numMes];
@@ -609,7 +632,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                         $semIdxMes = 1;
                 ?>
                 <tr>
-                    <td colspan="6" style="background:#1e293b;color:#fff;font-weight:800;font-size:.9rem;padding:.6rem 1rem;letter-spacing:.04em;text-transform:uppercase;border:none">
+                    <td colspan="7" style="background:#1e293b;color:#fff;font-weight:800;font-size:.9rem;padding:.6rem 1rem;letter-spacing:.04em;text-transform:uppercase;border:none">
                         <i class="bi bi-calendar3 me-2 opacity-75"></i><?= $nomMes ?> <?= date('Y', strtotime($sem['lunes'])) ?>
                     </td>
                 </tr>
@@ -625,6 +648,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     <td class="cell-num"><?= number_format($sem['cantidad']) ?></td>
                     <td class="cell-ent"><?= number_format($sem['entregados']) ?></td>
                     <td class="cell-rec"><?= number_format($sem['rechazados']) ?></td>
+                    <td style="background:#fee2e2;color:#7f1d1d;font-weight:700;text-align:center"><?= number_format($sem['devueltos']) ?></td>
                     <td class="cell-proc"><?= number_format($sem['en_proceso']) ?></td>
                     <td class="cell-rep"><?= number_format($sem['reprogramados']) ?></td>
                 </tr>
@@ -634,6 +658,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     <td></td>
                     <td class="pct-ent"><?= $sem['pct_entregados'] ?>%</td>
                     <td class="pct-rec"><?= $sem['pct_rechazados'] ?>%</td>
+                    <td style="background:#b71c1c;color:#fff;font-weight:700;text-align:center"><?= $sem['pct_devueltos'] ?>%</td>
                     <td class="pct-proc"><?= $sem['pct_en_proceso'] ?>%</td>
                     <td class="pct-rep"><?= $sem['pct_reprogramados'] ?>%</td>
                 </tr>
@@ -645,6 +670,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                         <td><?= number_format($totalCantidad) ?></td>
                         <td class="cell-ent"><?= number_format($totalEntregados) ?> (<?= $pctTotE ?>%)</td>
                         <td class="cell-rec"><?= number_format($totalRechazados) ?> (<?= $pctTotR ?>%)</td>
+                        <td style="background:#ede9fe;color:#5b21b6;font-weight:700;text-align:center"><?= number_format($totalDevueltos) ?> (<?= $pctTotD ?>%)</td>
                         <td class="cell-proc"><?= number_format($totalEnProceso) ?> (<?= $pctTotP ?>%)</td>
                         <td class="cell-rep"><?= number_format($totalReprogramados) ?> (<?= $pctTotRp ?>%)</td>
                     </tr>
@@ -680,7 +706,14 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                 {
                     label: 'Rechazado',
                     data: <?= $chartRechazadosJson ?>,
-                    borderColor: '#d42b2b', backgroundColor: 'rgba(212,43,43,.12)',
+                    borderColor: '#c0392b', backgroundColor: 'rgba(192,57,43,.12)',
+                    borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6,
+                    fill: false, tension: 0.3,
+                },
+                {
+                    label: 'Devuelto',
+                    data: <?= $chartDevueltosJson ?>,
+                    borderColor: '#b71c1c', backgroundColor: 'rgba(183,28,28,.12)',
                     borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6,
                     fill: false, tension: 0.3,
                 },

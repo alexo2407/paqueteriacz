@@ -1,4 +1,5 @@
 <?php
+ob_start();
 /**
  * Informe: Efectividad por Producto
  * Ruta: GET /pedidos/informes/producto
@@ -35,14 +36,14 @@ if ($isPublicLink) {
     $stmtRol->execute([':id' => $pubU]);
     $pubRol         = (int)$stmtRol->fetchColumn();
     $isAdmin        = false;
-    $isProveedorExt = ($pubRol == ROL_CLIENTE);
+    $isProveedorExt = ($pubRol == ROL_CLIENTE || $pubRol == ROL_PROVEEDOR);
     $currUserId     = $pubU;
     $db             = $dbPub;
 } else {
     require_login();
     $isAdmin        = isSuperAdmin();
     $currRol        = $_SESSION['rol'] ?? 0;
-    $isProveedorExt = ($currRol == ROL_CLIENTE);
+    $isProveedorExt = ($currRol == ROL_CLIENTE || $currRol == ROL_PROVEEDOR);
     $currUserId     = getCurrentUserId();
     $db             = (new Conexion())->conectar();
 }
@@ -72,7 +73,7 @@ if ($isAdmin) {
 
 // ── WHERE ─────────────────────────────────────────────────────────────────────
 $where  = ['p.fecha_ingreso BETWEEN :desde AND :hasta'];
-$params = [':desde' => $fechaDesde, ':hasta' => $fechaHasta];
+$params = [':desde' => $fechaDesde . ' 00:00:00', ':hasta' => $fechaHasta . ' 23:59:59'];
 
 if ($isAdmin && $idProveedor > 0) {
     $where[]                 = 'p.id_proveedor = :id_proveedor';
@@ -85,25 +86,26 @@ if ($isAdmin && $idProveedor > 0) {
 }
 $whereStr = 'WHERE ' . implode(' AND ', $where);
 
-// ── Query: efectividad por producto ──────────────────────────────────────────
-// Usamos pedidos_productos para el vínculo pedido → producto
+// ── Query: efectividad por producto ─────────────────────────────────────────
+// Agrupa por el producto vinculado al pedido (LEFT JOIN para incluir pedidos
+// aunque no tengan un producto seleccionado, mostrándolos como "Sin producto")
 $sqlProducto = "
     SELECT
-        pr.nombre AS producto,
-        COUNT(DISTINCT p.id) AS cantidad,
+        COALESCE(pr.nombre, '(Sin producto)')                              AS producto,
+        COUNT(DISTINCT p.id)                                               AS cantidad,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 0
                   WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0 END) AS entregados,
-        SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
-                   OR LOWER(ep.nombre_estado) LIKE '%devuelto%'
+        SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%' THEN 1 ELSE 0 END) AS rechazados,
+        SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%devuelto%'
                    OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
-                   OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 1 ELSE 0 END) AS rechazados,
+                   OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 1 ELSE 0 END) AS devueltos,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%reprogramado%' THEN 1 ELSE 0 END) AS reprogramados
     FROM pedidos p
-    INNER JOIN pedidos_productos pp  ON pp.id_pedido  = p.id
-    INNER JOIN productos pr          ON pr.id          = pp.id_producto
+    LEFT  JOIN pedidos_productos pp  ON pp.id_pedido  = p.id
+    LEFT  JOIN productos pr          ON pr.id          = pp.id_producto
     LEFT  JOIN estados_pedidos ep    ON ep.id          = p.id_estado
     {$whereStr}
-    GROUP BY pr.id, pr.nombre
+    GROUP BY COALESCE(pr.id, 0), COALESCE(pr.nombre, '(Sin producto)')
     ORDER BY cantidad DESC
 ";
 $stmtProd = $db->prepare($sqlProducto);
@@ -115,19 +117,24 @@ $productos = $stmtProd->fetchAll(PDO::FETCH_ASSOC);
 $totalCantidad      = 0;
 $totalEntregados    = 0;
 $totalRechazados    = 0;
+$totalDevueltos     = 0;
 $totalEnProceso     = 0;
 $totalReprogramados = 0;
 
 foreach ($productos as &$prod) {
     $prod['reprogramados']     = (int)($prod['reprogramados'] ?? 0);
-    $prod['en_proceso']        = $prod['cantidad'] - $prod['entregados'] - $prod['rechazados'] - $prod['reprogramados'];
+    $prod['devueltos']         = (int)($prod['devueltos']     ?? 0);
+    $prod['en_proceso']        = $prod['cantidad'] - $prod['entregados'] - $prod['rechazados'] - $prod['devueltos'] - $prod['reprogramados'];
+    if ($prod['en_proceso'] < 0) $prod['en_proceso'] = 0;
     $prod['pct_entregados']    = $prod['cantidad'] > 0 ? round($prod['entregados']    / $prod['cantidad'] * 100) : 0;
     $prod['pct_rechazados']    = $prod['cantidad'] > 0 ? round($prod['rechazados']    / $prod['cantidad'] * 100) : 0;
+    $prod['pct_devueltos']     = $prod['cantidad'] > 0 ? round($prod['devueltos']     / $prod['cantidad'] * 100) : 0;
     $prod['pct_en_proceso']    = $prod['cantidad'] > 0 ? round($prod['en_proceso']    / $prod['cantidad'] * 100) : 0;
     $prod['pct_reprogramados'] = $prod['cantidad'] > 0 ? round($prod['reprogramados'] / $prod['cantidad'] * 100) : 0;
     $totalCantidad      += $prod['cantidad'];
     $totalEntregados    += $prod['entregados'];
     $totalRechazados    += $prod['rechazados'];
+    $totalDevueltos     += $prod['devueltos'];
     $totalEnProceso     += $prod['en_proceso'];
     $totalReprogramados += $prod['reprogramados'];
 }
@@ -154,7 +161,7 @@ if ($export) {
     $sheet->getRowDimension(2)->setRowHeight(6);
 
     $headerColors = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', '3D3200', 'FFFFFF', 'FFFFFF'];
-    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', 'D42B2B', 'D42B2B', 'F5E400', 'F5E400', 'F97316', 'F97316'];
+    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', 'C0392B', 'C0392B', 'F5E400', 'F5E400', 'F97316', 'F97316'];
     foreach ($headers as $ci => $h) {
         $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci + 1);
         $sheet->setCellValue("{$col}3", $h);
@@ -174,7 +181,7 @@ if ($export) {
         $sheet->setCellValue("G{$row}", $prod['en_proceso']);  $sheet->setCellValue("H{$row}", $prod['pct_en_proceso'] . '%');
         $sheet->setCellValue("I{$row}", $prod['reprogramados']); $sheet->setCellValue("J{$row}", $prod['pct_reprogramados'] . '%');
         $sheet->getStyle("C{$row}:D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '3CB043']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
-        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D42B2B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'C0392B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true]]);
         $sheet->getStyle("I{$row}:J{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $row++;
@@ -197,6 +204,7 @@ if ($export) {
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header("Content-Disposition: attachment; filename=\"{$filename}\"");
     header('Cache-Control: max-age=0');
+    while (ob_get_level() > 0) ob_end_clean();
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
     exit;
 }
@@ -236,14 +244,14 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
         .tabla-prod { font-size: .84rem; }
         .tabla-prod thead tr:first-child th { background: #1e293b; color: #fff; font-weight: 700; text-align: center; border: none; padding: .55rem .75rem; }
         .tabla-prod thead tr:last-child th.th-ent  { background: #3cb043; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
-        .tabla-prod thead tr:last-child th.th-rec  { background: #d42b2b; color: #fff; font-weight: 600; text-size: .78rem; }
+        .tabla-prod thead tr:last-child th.th-rec  { background: #c0392b; color: #fff; font-weight: 600; text-size: .78rem; }
         .tabla-prod thead tr:last-child th.th-proc { background: #f5e400; color: #3d3200; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-prod thead tr:last-child th.th-rep  { background: #f97316; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-prod tbody td { padding: .5rem .75rem; vertical-align: middle; border-color: #e2e8f0; }
         .tabla-prod tfoot td { font-weight: 700; background: #f1f5f9; border-color: #e2e8f0; padding: .55rem .75rem; }
 
         .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
-        .cell-rec  { background: #fad4d4 !important; color: #8b1a1a !important; font-weight: 700; text-align: center; }
+        .cell-rec  { background: #fae0dc !important; color: #7b1a11 !important; font-weight: 700; text-align: center; }
         .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
         .cell-num  { text-align: center; font-weight: 600; }
@@ -399,7 +407,7 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
                         <th rowspan="2" style="vertical-align:middle">PRODUCTO</th>
                         <th rowspan="2" class="text-center" style="vertical-align:middle">CANTIDAD</th>
                         <th colspan="2" class="text-center" style="background:#3cb043;color:#fff">ENTREGADO</th>
-                        <th colspan="2" class="text-center" style="background:#d42b2b;color:#fff">RECHAZADO</th>
+                        <th colspan="2" class="text-center" style="background:#c0392b;color:#fff">RECHAZADO</th>
                         <th colspan="2" class="text-center" style="background:#f5e400;color:#3d3200">EN PROCESO</th>
                         <th colspan="2" class="text-center" style="background:#f97316;color:#fff">REPROGRAMADO</th>
                     </tr>
@@ -473,7 +481,7 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
             labels: <?= $chartLabels ?>,
             datasets: [
                 { label: 'Entregado',     data: <?= $chartEntregados ?>,    backgroundColor: 'rgba(60,176,67,.8)',   borderColor: '#3cb043', borderWidth: 1.5, borderRadius: 4 },
-                { label: 'Rechazado',     data: <?= $chartRechazados ?>,    backgroundColor: 'rgba(212,43,43,.8)',   borderColor: '#d42b2b', borderWidth: 1.5, borderRadius: 4 },
+                { label: 'Rechazado',     data: <?= $chartRechazados ?>,    backgroundColor: 'rgba(192,57,43,.8)',   borderColor: '#c0392b', borderWidth: 1.5, borderRadius: 4 },
                 { label: 'En Proceso',    data: <?= $chartEnProceso ?>,     backgroundColor: 'rgba(245,228,0,.8)',   borderColor: '#f5e400', borderWidth: 1.5, borderRadius: 4 },
                 { label: 'Reprogramado',  data: <?= $chartReprogramados ?>, backgroundColor: 'rgba(249,115,22,.8)', borderColor: '#f97316', borderWidth: 1.5, borderRadius: 4 }
             ]

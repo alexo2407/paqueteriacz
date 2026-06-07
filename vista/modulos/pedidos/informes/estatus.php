@@ -1,8 +1,9 @@
-<?php
+﻿<?php
+ob_start();
 /**
  * Informe: Estatus de Órdenes
  * Ruta: GET /pedidos/informes/estatus
- * Muestra gráfica dona + tabla con ENTREGADO / EN PROCESO / RECHAZADO / REPROGRAMADO
+ * Muestra gráfica dona + tabla con ENTREGADO / EN PROCESO / RECHAZADO / DEVUELTO / REPROGRAMADO
  */
 
 require_once __DIR__ . '/../../../../config/config.php';
@@ -47,14 +48,14 @@ if ($isPublicLink) {
     $pubRol = (int)$stmtRol->fetchColumn();
 
     $isAdmin        = false;
-    $isProveedorExt = ($pubRol == ROL_CLIENTE);
+    $isProveedorExt = ($pubRol == ROL_CLIENTE || $pubRol == ROL_PROVEEDOR);
     $currUserId     = $pubU;
     $db             = $dbPub;
 } else {
     require_login();
     $isAdmin        = isSuperAdmin();
     $currRol        = $_SESSION['rol'] ?? 0;
-    $isProveedorExt = ($currRol == ROL_CLIENTE);
+    $isProveedorExt = ($currRol == ROL_CLIENTE || $currRol == ROL_PROVEEDOR);
     $currUserId     = getCurrentUserId();
     $db             = (new Conexion())->conectar();
 }
@@ -79,14 +80,14 @@ if ($isAdmin) {
         "SELECT DISTINCT u.id, u.nombre
          FROM usuarios u
          INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
-         WHERE ur.id_rol = " . ROL_CLIENTE . " AND u.activo = 1
+         WHERE ur.id_rol IN (" . ROL_CLIENTE . ", " . ROL_PROVEEDOR . ") AND u.activo = 1
          ORDER BY u.nombre ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // ── Construcción de WHERE ─────────────────────────────────────────────────────
 $where  = ['p.fecha_ingreso BETWEEN :desde AND :hasta'];
-$params = [':desde' => $fechaDesde, ':hasta' => $fechaHasta];
+$params = [':desde' => $fechaDesde . ' 00:00:00', ':hasta' => $fechaHasta . ' 23:59:59'];
 
 if ($isAdmin && $idProveedor > 0) {
     $where[]                 = 'p.id_proveedor = :id_proveedor';
@@ -104,10 +105,10 @@ $whereStr = 'WHERE ' . implode(' AND ', $where);
 $sqlEstatus = "
     SELECT
         CASE
-            WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
-              OR LOWER(ep.nombre_estado) LIKE '%devuelto%'
+            WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%' THEN 'RECHAZADO'
+            WHEN LOWER(ep.nombre_estado) LIKE '%devuelto%'
               OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
-              OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 'RECHAZADO'
+              OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 'DEVUELTO'
             WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 'ENTREGADO'
             WHEN LOWER(ep.nombre_estado) LIKE '%reprogramado%' THEN 'REPROGRAMADO'
             ELSE 'EN PROCESO'
@@ -117,15 +118,15 @@ $sqlEstatus = "
     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
     {$whereStr}
     GROUP BY categoria
-    ORDER BY FIELD(categoria, 'ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'REPROGRAMADO')
+    ORDER BY FIELD(categoria, 'ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'DEVUELTO', 'REPROGRAMADO')
 ";
 $stmtEst = $db->prepare($sqlEstatus);
 foreach ($params as $k => $v) $stmtEst->bindValue($k, $v);
 $stmtEst->execute();
 $rows = $stmtEst->fetchAll(PDO::FETCH_ASSOC);
 
-// Normalizar a las 4 categorías (aunque alguna tenga 0)
-$data = ['ENTREGADO' => 0, 'EN PROCESO' => 0, 'RECHAZADO' => 0, 'REPROGRAMADO' => 0];
+// Normalizar a las 5 categorías (aunque alguna tenga 0)
+$data = ['ENTREGADO' => 0, 'EN PROCESO' => 0, 'RECHAZADO' => 0, 'DEVUELTO' => 0, 'REPROGRAMADO' => 0];
 foreach ($rows as $r) {
     $data[$r['categoria']] = (int)$r['total'];
 }
@@ -166,14 +167,15 @@ if ($export) {
     $colores = [
         'ENTREGADO'    => ['bg' => '3CB043', 'text' => 'FFFFFF'],
         'EN PROCESO'   => ['bg' => 'F5E400', 'text' => '3D3200'],
-        'RECHAZADO'    => ['bg' => 'D42B2B', 'text' => 'FFFFFF'],
+        'RECHAZADO'    => ['bg' => 'C0392B', 'text' => 'FFFFFF'],
+        'DEVUELTO'     => ['bg' => 'B71C1C', 'text' => 'FFFFFF'],
         'REPROGRAMADO' => ['bg' => 'F97316', 'text' => 'FFFFFF'],
     ];
 
     $row = 3;
     foreach ($data as $cat => $cnt) {
         $pct = $totalGeneral > 0 ? round($cnt / $totalGeneral * 100, 1) : 0;
-        $clr = $colores[$cat];
+        $clr = $colores[$cat] ?? ['bg' => '94a3b8', 'text' => 'FFFFFF'];
         $sheet->setCellValue("A{$row}", $cat);
         $sheet->setCellValue("B{$row}", $cnt);
         $sheet->setCellValue("C{$row}", $pct . '%');
@@ -202,6 +204,7 @@ if ($export) {
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header("Content-Disposition: attachment; filename=\"{$filename}\"");
     header('Cache-Control: max-age=0');
+    while (ob_get_level() > 0) ob_end_clean();
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
     exit;
 }
@@ -219,7 +222,8 @@ if ($export) {
         :root {
             --clr-entregado:    #3cb043;
             --clr-proceso:      #f5e400;
-            --clr-rechazado:    #d42b2b;
+            --clr-rechazado:    #c0392b;
+            --clr-devuelto:     #b71c1c;
             --clr-reprogramado: #f97316;
             --clr-dark:         #0f172a;
             --clr-card:         #1e293b;
@@ -239,9 +243,10 @@ if ($export) {
         .rpt-header h4 { font-weight: 800; font-size: 1.25rem; margin-bottom: .25rem; }
 
         /* KPI Cards */
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 480px) { .kpi-grid { grid-template-columns: 1fr; } }
+        .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 700px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px)  { .kpi-grid { grid-template-columns: 1fr; } }
         .kpi-card {
             border-radius: 14px;
             padding: 1.5rem 1.25rem;
@@ -262,7 +267,8 @@ if ($export) {
         .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.18); }
         .kpi-card.entregado     { background: #3cb043; color: #fff; }
         .kpi-card.en-proceso    { background: #f5e400; color: #3d3200; }
-        .kpi-card.rechazado     { background: #d42b2b; color: #fff; }
+        .kpi-card.rechazado     { background: #c0392b; color: #fff; }
+        .kpi-card.devuelto      { background: #b71c1c; color: #fff; }
         .kpi-card.reprogramado  { background: #f97316; color: #fff; }
         .kpi-num  { font-size: 2.5rem; font-weight: 800; line-height: 1; }
         .kpi-pct  { font-size: 1rem; font-weight: 600; opacity: .85; }
@@ -311,7 +317,8 @@ if ($export) {
         }
         .badge-entregado     { background: #d4f5d6; color: #1d6b22; }
         .badge-proceso       { background: #fdf8b0; color: #5a5000; }
-        .badge-rechazado     { background: #fad4d4; color: #8b1a1a; }
+        .badge-rechazado     { background: #fae0dc; color: #7b1a11; }
+        .badge-devuelto      { background: #fee2e2; color: #7f1d1d; }
         .badge-reprogramado  { background: #ffedd5; color: #9a3412; }
 
         /* Progress bar */
@@ -320,6 +327,7 @@ if ($export) {
         .prog-entregado     { background: var(--clr-entregado); }
         .prog-proceso       { background: var(--clr-proceso); }
         .prog-rechazado     { background: var(--clr-rechazado); }
+        .prog-devuelto      { background: var(--clr-devuelto); }
         .prog-reprogramado  { background: var(--clr-reprogramado); }
 
         /* Filtros */
@@ -458,6 +466,7 @@ if ($export) {
         ['key' => 'ENTREGADO',    'cls' => 'entregado',    'icon' => 'bi-check-circle-fill'],
         ['key' => 'EN PROCESO',   'cls' => 'en-proceso',   'icon' => 'bi-arrow-repeat'],
         ['key' => 'RECHAZADO',    'cls' => 'rechazado',    'icon' => 'bi-x-circle-fill'],
+        ['key' => 'DEVUELTO',     'cls' => 'devuelto',     'icon' => 'bi-arrow-return-left'],
         ['key' => 'REPROGRAMADO', 'cls' => 'reprogramado', 'icon' => 'bi-calendar2-check-fill'],
     ];
     ?>
@@ -509,10 +518,11 @@ if ($export) {
                         <?php foreach ($categorias as $cat):
                             $cnt = $data[$cat['key']];
                             $pct = $totalGeneral > 0 ? round($cnt / $totalGeneral * 100, 1) : 0;
-                            if ($cat['key'] === 'ENTREGADO')    { $clsB = 'entregado'; }
-                            elseif ($cat['key'] === 'EN PROCESO') { $clsB = 'proceso'; }
-                            elseif ($cat['key'] === 'RECHAZADO')  { $clsB = 'rechazado'; }
-                            else                                   { $clsB = 'reprogramado'; }
+                            if ($cat['key'] === 'ENTREGADO')      { $clsB = 'entregado'; }
+                            elseif ($cat['key'] === 'EN PROCESO')  { $clsB = 'proceso'; }
+                            elseif ($cat['key'] === 'RECHAZADO')   { $clsB = 'rechazado'; }
+                            elseif ($cat['key'] === 'DEVUELTO')    { $clsB = 'devuelto'; }
+                            else                                    { $clsB = 'reprogramado'; }
                             $progCls = 'prog-' . $clsB;
                         ?>
                         <tr>
@@ -556,10 +566,10 @@ if ($export) {
     const ctx = document.getElementById('donaChart');
     if (!ctx) return;
 
-    const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'REPROGRAMADO'];
-    const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>, <?= $data['REPROGRAMADO'] ?>];
+    const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'DEVUELTO', 'REPROGRAMADO'];
+    const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>, <?= $data['DEVUELTO'] ?>, <?= $data['REPROGRAMADO'] ?>];
     const total  = values.reduce((a, b) => a + b, 0);
-    const colors = ['#3cb043', '#f5e400', '#d42b2b', '#f97316'];
+    const colors = ['#3cb043', '#f5e400', '#c0392b', '#b71c1c', '#f97316'];
 
     new Chart(ctx, {
         type: 'doughnut',
