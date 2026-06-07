@@ -38,8 +38,8 @@ class MonedasController
         $codigo = trim($data['codigo'] ?? '');
         $nombre = trim($data['nombre'] ?? '');
         $tasa = $data['tasa_usd'] ?? null;
-        if ($codigo === '' || $nombre === '') {
-            return ['success' => false, 'message' => 'Código y nombre son obligatorios.', 'id' => null];
+        if ($codigo === '' || $nombre === '' || $tasa === null || $tasa === '') {
+            return ['success' => false, 'message' => 'Código, nombre y tasa de cambio son obligatorios.', 'id' => null];
         }
         $id = MonedaModel::crear($codigo, $nombre, $tasa);
         if ($id === null) return ['success' => false, 'message' => 'No fue posible crear la moneda.', 'id' => null];
@@ -57,7 +57,9 @@ class MonedasController
         $codigo = trim($data['codigo'] ?? '');
         $nombre = trim($data['nombre'] ?? '');
         $tasa = $data['tasa_usd'] ?? null;
-        if ($codigo === '' || $nombre === '') return ['success' => false, 'message' => 'Código y nombre obligatorios.'];
+        if ($codigo === '' || $nombre === '' || $tasa === null || $tasa === '') {
+            return ['success' => false, 'message' => 'Código, nombre y tasa de cambio son obligatorios.'];
+        }
         $ok = MonedaModel::actualizar($id, $codigo, $nombre, $tasa);
         return $ok ? ['success' => true, 'message' => 'Moneda actualizada.'] : ['success' => false, 'message' => 'No fue posible actualizar.'];
     }

@@ -65,7 +65,7 @@ class MonedaModel
             $stmt->bindValue(':codigo', $codigo, PDO::PARAM_STR);
             $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
             if ($tasa_usd === null || $tasa_usd === '') {
-                $stmt->bindValue(':tasa_usd', null, PDO::PARAM_NULL);
+                $stmt->bindValue(':tasa_usd', '1.0000');
             } else {
                 $stmt->bindValue(':tasa_usd', $tasa_usd);
             }
@@ -109,7 +109,7 @@ class MonedaModel
             $stmt->bindValue(':codigo', $codigo, PDO::PARAM_STR);
             $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
             if ($tasa_usd === null || $tasa_usd === '') {
-                $stmt->bindValue(':tasa_usd', null, PDO::PARAM_NULL);
+                $stmt->bindValue(':tasa_usd', '1.0000');
             } else {
                 $stmt->bindValue(':tasa_usd', $tasa_usd);
             }

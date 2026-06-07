@@ -69,10 +69,10 @@ $m = $ctrl->ver($id);
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label fw-bold">Tasa de Cambio (vs USD)</label>
+                            <label class="form-label fw-bold">Tasa de Cambio (vs USD) <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="bi bi-graph-up-arrow"></i></span>
-                                <input type="number" step="0.0001" min="0" class="form-control" name="tasa_usd" value="<?= htmlspecialchars($m['tasa_usd'] ?? '') ?>" />
+                                <input type="number" step="0.0001" min="0" class="form-control" name="tasa_usd" value="<?= htmlspecialchars($m['tasa_usd'] ?? '') ?>" required />
                             </div>
                             <div class="form-text">Valor de 1 unidad de esta moneda en USD (Dólares).</div>
                         </div>
