@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 ob_start();
 /**
  * Informe: Efectividad por Región
@@ -245,11 +245,15 @@ if ($export) {
     foreach (range('A', 'L') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
 
     $filename = 'Efectividad_Region_' . date('Ymd', strtotime($fechaDesde)) . '_' . date('Ymd', strtotime($fechaHasta)) . '.xlsx';
+    $tmpFile = tempnam(sys_get_temp_dir(), 'rpt_');
+    (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmpFile);
+    while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header("Content-Disposition: attachment; filename=\"{$filename}\"");
-    header('Cache-Control: max-age=0');
-    while (ob_get_level() > 0) ob_end_clean();
-    (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
+    header('Content-Length: ' . filesize($tmpFile));
+    header('Cache-Control: max-age=0, no-store');
+    readfile($tmpFile);
+    @unlink($tmpFile);
     exit;
 }
 
