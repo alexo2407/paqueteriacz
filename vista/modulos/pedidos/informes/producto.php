@@ -148,9 +148,9 @@ if ($export) {
     $sheet->setTitle('Efectividad Producto');
 
     $titulo  = 'EFECTIVIDAD POR PRODUCTO — ' . date('d/m/Y', strtotime($fechaDesde)) . ' → ' . date('d/m/Y', strtotime($fechaHasta));
-    $headers = ['PRODUCTO', 'CANTIDAD', 'ENTREGADO', '%', 'RECHAZADO', '%', 'EN PROCESO', '%', 'REPROGRAMADO', '%'];
+    $headers = ['PRODUCTO', 'CANTIDAD', 'ENTREGADO', '%', 'RECHAZADO', '%', 'DEVUELTO', '%', 'EN PROCESO', '%', 'REPROGRAMADO', '%'];
 
-    $sheet->mergeCells('A1:J1');
+    $sheet->mergeCells('A1:L1');
     $sheet->setCellValue('A1', $titulo);
     $sheet->getStyle('A1')->applyFromArray([
         'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 13],
@@ -160,8 +160,8 @@ if ($export) {
     $sheet->getRowDimension(1)->setRowHeight(22);
     $sheet->getRowDimension(2)->setRowHeight(6);
 
-    $headerColors = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', '3D3200', 'FFFFFF', 'FFFFFF'];
-    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', 'C0392B', 'C0392B', 'F5E400', 'F5E400', 'F97316', 'F97316'];
+    $headerColors = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', '3D3200', 'FFFFFF', 'FFFFFF'];
+    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', 'C0392B', 'C0392B', 'B71C1C', 'B71C1C', 'F5E400', 'F5E400', 'F97316', 'F97316'];
     foreach ($headers as $ci => $h) {
         $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci + 1);
         $sheet->setCellValue("{$col}3", $h);
@@ -176,29 +176,33 @@ if ($export) {
     foreach ($productos as $prod) {
         $sheet->setCellValue("A{$row}", $prod['producto']);
         $sheet->setCellValue("B{$row}", $prod['cantidad']);
-        $sheet->setCellValue("C{$row}", $prod['entregados']); $sheet->setCellValue("D{$row}", $prod['pct_entregados'] . '%');
-        $sheet->setCellValue("E{$row}", $prod['rechazados']); $sheet->setCellValue("F{$row}", $prod['pct_rechazados'] . '%');
-        $sheet->setCellValue("G{$row}", $prod['en_proceso']);  $sheet->setCellValue("H{$row}", $prod['pct_en_proceso'] . '%');
-        $sheet->setCellValue("I{$row}", $prod['reprogramados']); $sheet->setCellValue("J{$row}", $prod['pct_reprogramados'] . '%');
+        $sheet->setCellValue("C{$row}", $prod['entregados']);   $sheet->setCellValue("D{$row}", $prod['pct_entregados'] . '%');
+        $sheet->setCellValue("E{$row}", $prod['rechazados']);   $sheet->setCellValue("F{$row}", $prod['pct_rechazados'] . '%');
+        $sheet->setCellValue("G{$row}", $prod['devueltos']);    $sheet->setCellValue("H{$row}", $prod['pct_devueltos'] . '%');
+        $sheet->setCellValue("I{$row}", $prod['en_proceso']);   $sheet->setCellValue("J{$row}", $prod['pct_en_proceso'] . '%');
+        $sheet->setCellValue("K{$row}", $prod['reprogramados']); $sheet->setCellValue("L{$row}", $prod['pct_reprogramados'] . '%');
         $sheet->getStyle("C{$row}:D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '3CB043']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'C0392B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
-        $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true]]);
-        $sheet->getStyle("I{$row}:J{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'B71C1C']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("I{$row}:J{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true]]);
+        $sheet->getStyle("K{$row}:L{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $row++;
     }
 
     $pctTotE  = $totalCantidad > 0 ? round($totalEntregados    / $totalCantidad * 100) : 0;
     $pctTotR  = $totalCantidad > 0 ? round($totalRechazados    / $totalCantidad * 100) : 0;
+    $pctTotD  = $totalCantidad > 0 ? round($totalDevueltos     / $totalCantidad * 100) : 0;
     $pctTotP  = $totalCantidad > 0 ? round($totalEnProceso     / $totalCantidad * 100) : 0;
     $pctTotRp = $totalCantidad > 0 ? round($totalReprogramados / $totalCantidad * 100) : 0;
     $sheet->setCellValue("A{$row}", 'TOTALES'); $sheet->setCellValue("B{$row}", $totalCantidad);
-    $sheet->setCellValue("C{$row}", $totalEntregados); $sheet->setCellValue("D{$row}", $pctTotE . '%');
-    $sheet->setCellValue("E{$row}", $totalRechazados); $sheet->setCellValue("F{$row}", $pctTotR . '%');
-    $sheet->setCellValue("G{$row}", $totalEnProceso);  $sheet->setCellValue("H{$row}", $pctTotP . '%');
-    $sheet->setCellValue("I{$row}", $totalReprogramados); $sheet->setCellValue("J{$row}", $pctTotRp . '%');
-    $sheet->getStyle("A{$row}:J{$row}")->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E2E8F0']]]);
+    $sheet->setCellValue("C{$row}", $totalEntregados);    $sheet->setCellValue("D{$row}", $pctTotE  . '%');
+    $sheet->setCellValue("E{$row}", $totalRechazados);    $sheet->setCellValue("F{$row}", $pctTotR  . '%');
+    $sheet->setCellValue("G{$row}", $totalDevueltos);     $sheet->setCellValue("H{$row}", $pctTotD  . '%');
+    $sheet->setCellValue("I{$row}", $totalEnProceso);     $sheet->setCellValue("J{$row}", $pctTotP  . '%');
+    $sheet->setCellValue("K{$row}", $totalReprogramados); $sheet->setCellValue("L{$row}", $pctTotRp . '%');
+    $sheet->getStyle("A{$row}:L{$row}")->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'E2E8F0']]]);
 
-    foreach (range('A', 'J') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
+    foreach (range('A', 'L') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
 
     $filename = 'Efectividad_Producto_' . date('Ymd', strtotime($fechaDesde)) . '_' . date('Ymd', strtotime($fechaHasta)) . '.xlsx';
     $tmpFile = tempnam(sys_get_temp_dir(), 'rpt_');
