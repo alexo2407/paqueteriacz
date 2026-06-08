@@ -23,7 +23,9 @@ class ForwardingService
      * Para agregar un nuevo proveedor, solo añadir aquí y crear la clase.
      */
     private static $providerMap = [
-        'logispro' => 'LogisProProvider',
+        'logispro'  => 'LogisProProvider',
+        'hlexpress' => 'HLExpressProvider',
+        'caex'      => 'CAEXProvider',
     ];
 
     /**
@@ -89,7 +91,9 @@ class ForwardingService
 
             // Preparar payload y registrar request
             $payload = $provider->mapearCampos($pedido, $pedido['productos'] ?? [], $authData);
-            $logData['request_payload'] = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $logData['request_payload'] = is_string($payload)
+                ? $payload
+                : json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             // Registrar log como pending
             $logId = ForwardingModel::registrarLog($logData);

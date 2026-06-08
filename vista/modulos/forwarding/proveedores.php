@@ -234,6 +234,7 @@ function testConnection() {
             slug: document.getElementById('provSlug').value || 'logispro',
             base_url: document.getElementById('provBaseUrl').value,
             auth_endpoint: document.getElementById('provAuthEp').value,
+            auth_method: document.getElementById('provAuthMethod').value,
             userName: document.getElementById('provUserName').value,
             password: document.getElementById('provPassword').value,
         })

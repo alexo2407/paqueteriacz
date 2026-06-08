@@ -57,13 +57,22 @@ if ($method === 'POST') {
     switch ($action) {
 
         case 'crear':
-            $required = ['nombre', 'slug', 'base_url', 'userName', 'password'];
+            $required = ['nombre', 'slug', 'base_url', 'auth_method', 'password'];
             foreach ($required as $f) {
                 if (empty($input[$f])) {
                     echo json_encode(['success' => false, 'message' => "Campo requerido: $f"]);
                     exit;
                 }
             }
+            // userName es requerido para JWT y Basic, pero opcional para API Key
+            $authMethod = $input['auth_method'] ?? 'bearer_jwt';
+            if ($authMethod === 'bearer_jwt' || $authMethod === 'basic') {
+                if (empty($input['userName'])) {
+                    echo json_encode(['success' => false, 'message' => "Campo requerido: userName"]);
+                    exit;
+                }
+            }
+
             // Verificar slug único
             $existing = ForwardingModel::obtenerProveedorPorSlug($input['slug']);
             if ($existing) {
@@ -76,10 +85,10 @@ if ($method === 'POST') {
                 'base_url'       => $input['base_url'],
                 'auth_endpoint'  => $input['auth_endpoint'] ?? '/api/AccountApi',
                 'order_endpoint' => $input['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
-                'auth_method'    => $input['auth_method'] ?? 'bearer_jwt',
+                'auth_method'    => $authMethod,
                 'credentials'    => json_encode([
-                    'userName' => $input['userName'],
-                    'password' => $input['password'],
+                    'userName' => $input['userName'] ?? '',
+                    'password' => $input['password'] ?? '',
                     'webhook_secret' => !empty($input['webhook_secret']) ? $input['webhook_secret'] : bin2hex(random_bytes(16)),
                 ]),
                 'default_config' => !empty($input['default_config']) ? $input['default_config'] : null,
@@ -135,18 +144,31 @@ if ($method === 'POST') {
         case 'test':
             $testPass = $input['password'] ?? '';
             $testUser = $input['userName'] ?? '';
+            $authMethod = $input['auth_method'] ?? '';
+            $slug = $input['slug'] ?? '';
             
-            if ((empty($testPass) || empty($testUser)) && !empty($input['id'])) {
+            if (!empty($input['id'])) {
                 $existingProv = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
                 if ($existingProv) {
                     $creds = json_decode($existingProv['credentials'] ?? '{}', true);
                     if (empty($testPass)) $testPass = $creds['password'] ?? '';
                     if (empty($testUser)) $testUser = $creds['userName'] ?? '';
+                    if (empty($authMethod)) $authMethod = $existingProv['auth_method'] ?? '';
+                    if (empty($slug)) $slug = $existingProv['slug'] ?? '';
                 }
             }
 
-            if (empty($input['base_url']) || empty($testUser) || empty($testPass)) {
-                echo json_encode(['success' => false, 'message' => 'base_url, userName y password requeridos']);
+            if (empty($authMethod)) {
+                $authMethod = ($slug === 'hlexpress') ? 'api_key' : 'bearer_jwt';
+            }
+
+            if (empty($input['base_url']) || empty($testPass)) {
+                echo json_encode(['success' => false, 'message' => 'base_url y password/API Key son requeridos']);
+                exit;
+            }
+
+            if (($authMethod === 'bearer_jwt' || $authMethod === 'basic') && empty($testUser)) {
+                echo json_encode(['success' => false, 'message' => 'userName es requerido para este método de autenticación']);
                 exit;
             }
             require_once __DIR__ . '/../services/ForwardingService.php';
