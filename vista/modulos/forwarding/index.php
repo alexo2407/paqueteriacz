@@ -188,7 +188,14 @@ try {
                                 <small class="text-muted">Actualizaciones de LogisPro · RutaEx</small>
                             </div>
                         </a>
-                    </div>
+                        <a href="<?= RUTA_URL ?>forwarding/mapeos" class="quick-link">
+                            <i class="bi bi-diagram-3" style="color:#10b981;"></i>
+                            <div>
+                                <div class="fw-semibold">Mapeos de Campos</div>
+                                <small class="text-muted">Configurar integraciones dinámicas</small>
+                            </div>
+                        </a>
+
                 </div>
             </div>
         </div>

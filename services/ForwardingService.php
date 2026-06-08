@@ -26,6 +26,7 @@ class ForwardingService
         'logispro'  => 'LogisProProvider',
         'hlexpress' => 'HLExpressProvider',
         'caex'      => 'CAEXProvider',
+        'dynamic'   => 'DynamicProvider',  // Motor dinámico configurable por UI
     ];
 
     /**
@@ -198,8 +199,12 @@ class ForwardingService
 
         $credentials = json_decode($regla['credentials'] ?? '{}', true) ?: [];
         $config = [
-            'auth_endpoint'  => $regla['auth_endpoint'] ?? '/api/AccountApi',
-            'order_endpoint' => $regla['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+            'auth_endpoint'   => $regla['auth_endpoint']  ?? '/api/AccountApi',
+            'order_endpoint'  => $regla['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+            'auth_method'     => $regla['auth_method']    ?? 'bearer_jwt',
+            // Para DynamicProvider: ID del proveedor y formato de payload
+            'id_provider'     => (int)($regla['id_provider'] ?? 0),
+            'payload_format'  => $regla['payload_format'] ?? 'json',
         ];
 
         return new $className($regla['base_url'], $credentials, $config);

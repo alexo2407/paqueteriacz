@@ -590,4 +590,141 @@ class ForwardingModel
             return null;
         }
     }
+
+    // =========================================================================
+    // API FIELDS (forwarding_api_fields)
+    // =========================================================================
+
+    /**
+     * Obtener todos los campos definidos para un proveedor.
+     * @param int $idProvider
+     * @return array
+     */
+    public static function obtenerApiFields($idProvider)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT f.*, m.internal_key, m.transform_rule, m.id AS mapping_id
+                FROM forwarding_api_fields f
+                LEFT JOIN forwarding_api_mappings m ON m.id_api_field = f.id
+                WHERE f.id_provider = :id_provider
+                ORDER BY f.sort_order ASC, f.id ASC
+            ");
+            $stmt->execute([':id_provider' => (int)$idProvider]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("ForwardingModel::obtenerApiFields error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Crear un campo de API.
+     * @param array $data
+     * @return int|false
+     */
+    public static function crearApiField($data)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                INSERT INTO forwarding_api_fields
+                    (id_provider, field_path, label, field_type, is_required, default_value, sort_order)
+                VALUES
+                    (:id_provider, :field_path, :label, :field_type, :is_required, :default_value, :sort_order)
+            ");
+            $stmt->execute([
+                ':id_provider'   => (int)$data['id_provider'],
+                ':field_path'    => trim($data['field_path']),
+                ':label'         => trim($data['label']),
+                ':field_type'    => $data['field_type'] ?? 'string',
+                ':is_required'   => (int)($data['is_required'] ?? 0),
+                ':default_value' => $data['default_value'] ?? null,
+                ':sort_order'    => (int)($data['sort_order'] ?? 0),
+            ]);
+            return (int)$db->lastInsertId();
+        } catch (Exception $e) {
+            error_log("ForwardingModel::crearApiField error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Eliminar un campo de API (en cascada también borra su mapeo).
+     * @param int $id
+     * @return bool
+     */
+    public static function eliminarApiField($id)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("DELETE FROM forwarding_api_fields WHERE id = :id");
+            $stmt->execute([':id' => (int)$id]);
+            return true;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::eliminarApiField error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // API MAPPINGS (forwarding_api_mappings)
+    // =========================================================================
+
+    /**
+     * Guardar (crear o actualizar) el mapeo de un campo de API.
+     * @param int $idApiField
+     * @param string $internalKey
+     * @param string|null $transformRule
+     * @return bool
+     */
+    public static function guardarApiMapping($idApiField, $internalKey, $transformRule = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
+                VALUES (:id_api_field, :internal_key, :transform_rule)
+                ON DUPLICATE KEY UPDATE
+                    internal_key   = VALUES(internal_key),
+                    transform_rule = VALUES(transform_rule),
+                    updated_at     = CURRENT_TIMESTAMP
+            ");
+            $stmt->execute([
+                ':id_api_field'   => (int)$idApiField,
+                ':internal_key'   => trim($internalKey),
+                ':transform_rule' => $transformRule,
+            ]);
+            return true;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::guardarApiMapping error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtener todos los mapeos activos de un proveedor (para el PayloadBuilder).
+     * @param int $idProvider
+     * @return array
+     */
+    public static function obtenerMapeosDeProveedor($idProvider)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT f.field_path, f.field_type, f.is_required, f.default_value,
+                       m.internal_key, m.transform_rule
+                FROM forwarding_api_fields f
+                INNER JOIN forwarding_api_mappings m ON m.id_api_field = f.id
+                WHERE f.id_provider = :id_provider
+                ORDER BY f.sort_order ASC, f.id ASC
+            ");
+            $stmt->execute([':id_provider' => (int)$idProvider]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("ForwardingModel::obtenerMapeosDeProveedor error: " . $e->getMessage());
+            return [];
+        }
+    }
 }
