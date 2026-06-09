@@ -90,7 +90,8 @@ function processIteration($processors) {
                     echo "[{$timestamp}] ✓ Job #{$jobId} completed: {$result['message']}\n";
                 } else {
                     // Incrementar contador de intentos
-                    LogisticsQueueService::incrementarIntento($jobId, $result['message']);
+                    $isPermanent = !empty($result['is_permanent']);
+                    LogisticsQueueService::incrementarIntento($jobId, $result['message'], $isPermanent);
                     $failed++;
                     $errors[] = "Job #{$jobId}: {$result['message']}";
                     echo "[{$timestamp}] ✗ Job #{$jobId} failed: {$result['message']}\n";

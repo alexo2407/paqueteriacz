@@ -66,9 +66,15 @@ class ForwardingEvalProcessor extends BaseProcessor {
             // Consolidar resultados
             $success = true;
             $detalles = [];
+            $isPermanent = false;
             foreach ($resultados as $res) {
                 if (!$res['success']) {
                     $success = false;
+                    $httpStatus = isset($res['http_status']) ? (int)$res['http_status'] : 0;
+                    // Error HTTP 4xx (excepto 429) es un error permanente de cliente (400 Bad Request, 404 Not Found, etc.)
+                    if ($httpStatus >= 400 && $httpStatus < 500 && $httpStatus !== 429) {
+                        $isPermanent = true;
+                    }
                 }
                 $detalles[] = ($res['provider'] ?? 'unknown') . ': ' . ($res['message'] ?? 'sin mensaje');
             }
@@ -78,7 +84,8 @@ class ForwardingEvalProcessor extends BaseProcessor {
             
             return [
                 'success' => $success,
-                'message' => $msgFinal
+                'message' => $msgFinal,
+                'is_permanent' => $isPermanent
             ];
             
         } catch (Exception $e) {

@@ -35,9 +35,15 @@ class ForwardingRetryProcessor extends BaseProcessor {
             // Reintentar indicando que viene de la cola para no re-encolar en caso de fallo
             $resultado = ForwardingService::reintentarRegla($pedidoId, $idRegla, true);
             
+            $success = !empty($resultado['success']);
+            $httpStatus = isset($resultado['http_status']) ? (int)$resultado['http_status'] : 0;
+            // Error HTTP 4xx (excepto 429) es un error permanente de cliente
+            $isPermanent = !$success && ($httpStatus >= 400 && $httpStatus < 500 && $httpStatus !== 429);
+
             return [
-                'success' => !empty($resultado['success']),
-                'message' => $resultado['message'] ?? 'Reintento ejecutado sin mensaje de respuesta'
+                'success' => $success,
+                'message' => $resultado['message'] ?? 'Reintento ejecutado sin mensaje de respuesta',
+                'is_permanent' => $isPermanent
             ];
             
         } catch (Exception $e) {

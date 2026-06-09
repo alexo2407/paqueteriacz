@@ -236,12 +236,12 @@ class LogisticsQueueService {
      * @param string $error Mensaje de error
      * @return bool True si se actualizó
      */
-    public static function incrementarIntento($id, $error) {
+    public static function incrementarIntento($id, $error, $isPermanent = false) {
         try {
             $db = (new Conexion())->conectar();
             
             // Obtener trabajo actual
-            $stmt = $db->prepare("SELECT attempts FROM logistics_queue WHERE id = :id");
+            $stmt = $db->prepare("SELECT attempts, max_intentos FROM logistics_queue WHERE id = :id");
             $stmt->execute([':id' => $id]);
             $job = $stmt->fetch(PDO::FETCH_ASSOC);
             
@@ -250,6 +250,12 @@ class LogisticsQueueService {
             }
             
             $attempts = (int)$job['attempts'] + 1;
+            $maxIntentos = (int)$job['max_intentos'];
+            
+            if ($isPermanent) {
+                // Forzar a alcanzar el número máximo de intentos para detener futuros reintentos
+                $attempts = $maxIntentos;
+            }
             
             // Calcular backoff exponencial
             $backoffIndex = min($attempts - 1, count(self::BACKOFF_SECONDS) - 1);
