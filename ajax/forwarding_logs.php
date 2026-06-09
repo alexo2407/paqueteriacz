@@ -103,6 +103,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    // ── Reintento masivo ──────────────────────────────────────────────────
+    if ($action === 'retry_bulk') {
+        $logIds = isset($body['ids']) ? (array)$body['ids'] : [];
+        $logIds = array_filter(array_map('intval', $logIds));
+
+        if (empty($logIds)) {
+            echo json_encode(['success' => false, 'message' => 'No se proporcionaron IDs de log válidos']);
+            exit;
+        }
+
+        try {
+            $db   = (new Conexion())->conectar();
+            $placeholders = implode(',', array_fill(0, count($logIds), '?'));
+            $stmt = $db->prepare("
+                SELECT id, id_pedido, id_rule
+                FROM forwarding_log
+                WHERE id IN ($placeholders)
+            ");
+            $stmt->execute($logIds);
+            $logsToRetry = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => 'Error al obtener logs: ' . $e->getMessage()]);
+            exit;
+        }
+
+        if (empty($logsToRetry)) {
+            echo json_encode(['success' => false, 'message' => "No se encontraron los logs solicitados"]);
+            exit;
+        }
+
+        require_once __DIR__ . '/../services/ForwardingService.php';
+        $successCount = 0;
+        $failCount = 0;
+
+        foreach ($logsToRetry as $logRow) {
+            $idPedido = (int)$logRow['id_pedido'];
+            $idRule   = (int)$logRow['id_rule'];
+            
+            $resultado = ForwardingService::reintentarRegla($idPedido, $idRule);
+            if (!empty($resultado['success'])) {
+                $successCount++;
+            } else {
+                $failCount++;
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => "Proceso finalizado. $successCount exitosos, $failCount fallidos."
+        ]);
+        exit;
+    }
+
     // ── Cancelar envío y detener reintentos ────────────────────────────────
     if ($action === 'cancel') {
         $logIds = isset($body['ids']) ? (array)$body['ids'] : [];

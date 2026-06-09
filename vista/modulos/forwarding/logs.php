@@ -100,6 +100,9 @@ $proveedores = ForwardingModel::obtenerProveedores();
                     <button class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1" onclick="bulkCancel()">
                         <i class="bi bi-x-circle"></i> Cancelar seleccionados
                     </button>
+                    <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1" onclick="bulkRetry()">
+                        <i class="bi bi-arrow-clockwise"></i> Reenviar seleccionados
+                    </button>
                     <button class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1" onclick="bulkDelete()">
                         <i class="bi bi-trash"></i> Eliminar seleccionados
                     </button>
@@ -414,6 +417,68 @@ function bulkCancel() {
                         title: 'Error al cancelar',
                         text: data.message || 'No se pudieron cancelar los logs seleccionados.'
                     });
+                }
+            })
+            .catch(err => {
+                Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+            });
+        }
+    });
+}
+
+function bulkRetry() {
+    const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
+    const ids = Array.from(checkedBoxes).map(chk => parseInt(chk.value));
+    
+    if (ids.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'Atención', text: 'No has seleccionado ningún log apto.' });
+        return;
+    }
+
+    Swal.fire({
+        title: `¿Reenviar ${ids.length} envíos seleccionados?`,
+        text: 'Esto intentará reenviar manualmente los envíos fallidos o pendientes.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, reenviar todos',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.fire({
+                title: 'Procesando...',
+                html: 'Reenviando los envíos seleccionados, por favor espera.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'retry_bulk', ids: ids })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Proceso terminado',
+                        text: data.message
+                    }).then(() => {
+                        document.getElementById('chkSelectAll').checked = false;
+                        updateBulkActionsVisible();
+                        loadLogs();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudieron reenviar los logs seleccionados.'
+                    }).then(() => loadLogs());
                 }
             })
             .catch(err => {
