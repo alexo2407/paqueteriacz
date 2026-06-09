@@ -188,28 +188,31 @@ class ForwardingService
     {
         $slug = $regla['slug'];
 
-        if (!isset(self::$providerMap[$slug])) {
-            throw new Exception("Provider no soportado: $slug");
+        // Si el slug tiene una clase dedicada, usarla.
+        // Si no, usar DynamicProvider como fallback genérico (configurable por UI).
+        if (isset(self::$providerMap[$slug])) {
+            $className = self::$providerMap[$slug];
+            $filePath  = __DIR__ . '/providers/' . $className . '.php';
+            if (!file_exists($filePath)) {
+                throw new Exception("Archivo de provider no encontrado: $filePath");
+            }
+            require_once $filePath;
+        } else {
+            // Fallback a DynamicProvider para cualquier slug creado desde la UI
+            $className = 'DynamicProvider';
+            require_once __DIR__ . '/providers/DynamicProvider.php';
         }
-
-        $className = self::$providerMap[$slug];
-        $filePath  = __DIR__ . '/providers/' . $className . '.php';
-
-        if (!file_exists($filePath)) {
-            throw new Exception("Archivo de provider no encontrado: $filePath");
-        }
-
-        require_once $filePath;
 
         $credentials = json_decode($regla['credentials'] ?? '{}', true) ?: [];
-        $config = [
+        $defaultConfig = json_decode($regla['default_config'] ?? '{}', true) ?: [];
+        $config = array_merge($defaultConfig, [
             'auth_endpoint'   => $regla['auth_endpoint']  ?? '/api/AccountApi',
             'order_endpoint'  => $regla['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
             'auth_method'     => $regla['auth_method']    ?? 'bearer_jwt',
             // Para DynamicProvider: ID del proveedor y formato de payload
             'id_provider'     => (int)($regla['id_provider'] ?? 0),
             'payload_format'  => $regla['payload_format'] ?? 'json',
-        ];
+        ]);
 
         return new $className($regla['base_url'], $credentials, $config);
     }
@@ -255,21 +258,27 @@ class ForwardingService
         try {
             $slug = $providerData['slug'] ?? 'logispro';
 
-            if (!isset(self::$providerMap[$slug])) {
-                return ['success' => false, 'message' => "Provider '$slug' no soportado"];
+            // Si el slug tiene clase dedicada, usarla; si no, DynamicProvider.
+            if (isset(self::$providerMap[$slug])) {
+                $className = self::$providerMap[$slug];
+                require_once __DIR__ . '/providers/' . $className . '.php';
+            } else {
+                $className = 'DynamicProvider';
+                require_once __DIR__ . '/providers/DynamicProvider.php';
             }
-
-            $className = self::$providerMap[$slug];
-            require_once __DIR__ . '/providers/' . $className . '.php';
 
             $credentials = is_string($providerData['credentials'] ?? '')
                 ? (json_decode($providerData['credentials'], true) ?: [])
                 : ($providerData['credentials'] ?? []);
 
-            $config = [
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
                 'auth_endpoint'  => $providerData['auth_endpoint'] ?? '/api/AccountApi',
                 'order_endpoint' => $providerData['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
-            ];
+                'auth_method'    => $providerData['auth_method']    ?? 'bearer_jwt',
+                'payload_format' => $providerData['payload_format'] ?? 'json',
+                'id_provider'    => (int)($providerData['id'] ?? 0),
+            ]);
 
             $provider = new $className($providerData['base_url'], $credentials, $config);
 
@@ -281,10 +290,10 @@ class ForwardingService
             $authData = $provider->authenticate();
 
             return [
-                'success'     => true,
-                'message'     => 'Conexión exitosa',
-                'customersId' => $authData['customersId'] ?? null,
-                'token_preview' => substr($authData['token'] ?? '', 0, 20) . '...',
+                'success'       => true,
+                'message'       => 'Conexión exitosa',
+                'customersId'   => $authData['customersId'] ?? null,
+                'token_preview' => substr($authData['token'] ?? $authData['userName'] ?? '', 0, 20) . '...',
             ];
         } catch (Exception $e) {
             return [

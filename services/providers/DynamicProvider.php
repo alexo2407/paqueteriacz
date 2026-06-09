@@ -11,12 +11,22 @@
  * Compatible con:
  *   - payload_format = 'json'  → envía JSON + Authorization header
  *   - payload_format = 'xml'   → envía XML plano
- *   - payload_format = 'soap'  → envuelve XML en SOAP Envelope
+ *   - payload_format = 'soap'  → envuelve XML en SOAP Envelope completo
+ *
+ * Configuración SOAP (via default_config del proveedor en BD):
+ *   - soap_action         (string)  Valor del header SOAPAction
+ *   - soap_namespace      (string)  xmlns del tag raíz del body
+ *   - soap_envelope_tag   (string)  Tag raíz del método SOAP (ej: 'GenerarGuia')
+ *   - soap_item_tag       (string)  Tag para elementos de arrays (ej: 'Pieza', 'item')
+ *   - soap_auth_in_body   (bool)    Si true, las credenciales van dentro del XML body
+ *   - soap_auth_tag       (string)  Tag del nodo de autenticación (default: 'Autenticacion')
+ *   - soap_auth_login_tag (string)  Sub-tag del usuario (default: 'Login')
+ *   - soap_auth_pass_tag  (string)  Sub-tag del password (default: 'Password')
  */
 
 require_once __DIR__ . '/BaseProvider.php';
-require_once __DIR__ . '/PayloadBuilderService.php';
-require_once __DIR__ . '/../modelo/forwarding.php';
+require_once __DIR__ . '/../PayloadBuilderService.php';
+require_once __DIR__ . '/../../modelo/forwarding.php';
 
 class DynamicProvider extends BaseProvider
 {
@@ -47,13 +57,29 @@ class DynamicProvider extends BaseProvider
     /**
      * Autenticación genérica.
      * Soporta: bearer_jwt (login/password), api_key, basic.
+     *
+     * En modo SOAP con soap_auth_in_body = true, retorna directamente
+     * las credenciales crudas para que se inyecten dentro del XML body.
      */
     public function authenticate()
     {
-        $method  = $this->config['auth_method'] ?? 'api_key';
-        $apiKey  = $this->credentials['password'] ?? $this->credentials['apiKey'] ?? '';
-        $user    = $this->credentials['userName'] ?? $this->credentials['user'] ?? '';
-        $pass    = $this->credentials['password'] ?? '';
+        $method = $this->config['auth_method'] ?? 'api_key';
+        $user   = $this->credentials['userName'] ?? $this->credentials['user'] ?? '';
+        $pass   = $this->credentials['password'] ?? '';
+        $apiKey = $this->credentials['password'] ?? $this->credentials['apiKey'] ?? '';
+
+        // SOAP con credenciales en body: no hay request HTTP de auth
+        // Las credenciales se inyectan directamente en el envelope por soapEnvelope()
+        if ($this->payloadFormat === 'soap' && !empty($this->config['soap_auth_in_body'])) {
+            if (empty($user) || empty($pass)) {
+                throw new Exception("DynamicProvider SOAP: Usuario y Contraseña requeridos para auth en body.");
+            }
+            return [
+                'auth_method' => 'soap_body',
+                'userName'    => $user,
+                'password'    => $pass,
+            ];
+        }
 
         // API Key simple (sin request HTTP)
         if ($method === 'api_key') {
@@ -118,13 +144,18 @@ class DynamicProvider extends BaseProvider
         $headers = $this->buildHeaders($authData);
 
         // Serializar payload según formato
-        $body = $this->serializarPayload($payload);
+        $body = $this->serializarPayload($payload, $authData);
 
         $response   = $this->httpRequest('POST', $endpoint, $headers, $body, 30);
         $httpStatus = $response['http_status'];
 
         if ($response['error']) {
             throw new Exception("DynamicProvider createOrder: error de red: " . $response['error']);
+        }
+
+        // Para SOAP, parsear la respuesta XML para extraer el ID externo
+        if ($this->payloadFormat === 'soap') {
+            return $this->parsearRespuestaSoap($response);
         }
 
         $success = in_array($httpStatus, [200, 201]);
@@ -157,10 +188,12 @@ class DynamicProvider extends BaseProvider
     // Privados
     // -------------------------------------------------------------------------
 
+    /**
+     * Construir los headers HTTP según el formato y método de auth.
+     */
     private function buildHeaders(array $authData): array
     {
         $method = $authData['auth_method'] ?? 'api_key';
-        $token  = $authData['token'] ?? '';
 
         $contentType = match($this->payloadFormat) {
             'xml', 'soap' => 'Content-Type: text/xml; charset=utf-8',
@@ -169,46 +202,147 @@ class DynamicProvider extends BaseProvider
 
         $headers = [$contentType, 'Accept: application/json'];
 
-        switch ($method) {
-            case 'api_key':
-                // Soporte para header personalizado via config (ej: X-API-KEY, Authorization, etc.)
-                $headerName = $this->config['api_key_header'] ?? 'X-API-KEY';
-                $headers[]  = "{$headerName}: {$token}";
-                break;
-            case 'basic':
-                $headers[] = "Authorization: Basic {$token}";
-                break;
-            case 'bearer_jwt':
-                $headers[] = "Authorization: Bearer {$token}";
-                break;
+        // En modo SOAP con auth en body, las credenciales van dentro del XML.
+        // No se agrega Authorization header en ese caso.
+        $soapAuthInBody = $this->payloadFormat === 'soap' && !empty($this->config['soap_auth_in_body']);
+
+        if (!$soapAuthInBody) {
+            switch ($method) {
+                case 'api_key':
+                    $headerName = $this->config['api_key_header'] ?? 'X-API-KEY';
+                    $headers[]  = "{$headerName}: " . ($authData['token'] ?? '');
+                    break;
+                case 'basic':
+                    $headers[] = "Authorization: Basic " . ($authData['token'] ?? '');
+                    break;
+                case 'bearer_jwt':
+                    $headers[] = "Authorization: Bearer " . ($authData['token'] ?? '');
+                    break;
+            }
         }
 
+        // SOAPAction header (solo en modo soap, si está configurado)
         if ($this->payloadFormat === 'soap') {
             $soapAction = $this->config['soap_action'] ?? '';
-            if ($soapAction) $headers[] = "SOAPAction: \"{$soapAction}\"";
+            if ($soapAction) {
+                $headers[] = "SOAPAction: \"{$soapAction}\"";
+            }
+            // Content-Length para compatibilidad con algunos servidores SOAP
+            // Se agrega en serializarPayload() ya que no tenemos el body aquí
         }
 
         return $headers;
     }
 
-    private function serializarPayload(array $payload): string
+    /**
+     * Serializar el payload según el formato configurado.
+     *
+     * @param array $payload  Array PHP del payload ya mapeado
+     * @param array $authData Datos de autenticación (para SOAP con auth en body)
+     * @return string         Body listo para enviar
+     */
+    private function serializarPayload(array $payload, array $authData = []): string
     {
         switch ($this->payloadFormat) {
             case 'xml':
-                return PayloadBuilderService::arrayToXml($payload, $this->config['xml_root'] ?? 'request');
+                $rootTag = $this->config['xml_root'] ?? 'request';
+                $itemTag = $this->config['soap_item_tag'] ?? 'item';
+                return PayloadBuilderService::arrayToXml($payload, $rootTag, $itemTag);
 
             case 'soap':
-                $innerXml   = PayloadBuilderService::arrayToXml($payload, $this->config['soap_body_tag'] ?? 'Body');
-                $namespace  = $this->config['soap_namespace'] ?? 'http://schemas.xmlsoap.org/soap/envelope/';
-                return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-                    . "<soap:Envelope xmlns:soap=\"{$namespace}\">\n"
-                    . "  <soap:Body>\n"
-                    . "    " . $innerXml . "\n"
-                    . "  </soap:Body>\n"
-                    . "</soap:Envelope>";
+                // Credenciales para inyectar en el body si soap_auth_in_body = true
+                $credForBody = [];
+                if (!empty($this->config['soap_auth_in_body'])) {
+                    $credForBody = [
+                        'userName' => $authData['userName'] ?? $this->credentials['userName'] ?? '',
+                        'password' => $authData['password'] ?? $this->credentials['password'] ?? '',
+                    ];
+                }
+
+                return PayloadBuilderService::soapEnvelope($payload, $this->config, $credForBody);
 
             default: // json
                 return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         }
+    }
+
+    /**
+     * Parsear la respuesta SOAP y extraer el ID externo.
+     * Busca tags comunes: GuiaID, CodigoGuia, NumeroGuia, OrderId, Id, TrackingId.
+     *
+     * @param array $response Respuesta de httpRequest()
+     * @return array ['success', 'external_order_id', 'response', 'http_status']
+     * @throws Exception si la respuesta indica error
+     */
+    private function parsearRespuestaSoap(array $response): array
+    {
+        $httpStatus = $response['http_status'];
+        $body       = $response['body'];
+
+        $externalId = null;
+        $success    = false;
+        $errorMsg   = 'Error desconocido en respuesta SOAP';
+
+        // Tags candidatos para el ID externo (en orden de preferencia)
+        $idTags = array_filter(array_map('trim', explode(',',
+            $this->config['soap_response_id_tags'] ?? 'GuiaID,CodigoGuia,NumeroGuia,OrderId,Id,TrackingId'
+        )));
+
+        if ($httpStatus === 200 && !empty($body)) {
+            try {
+                $xml = new SimpleXMLElement($body);
+                $xml->registerXPathNamespace('soap', 'http://schemas.xmlsoap.org/soap/envelope/');
+
+                // Buscar error SOAP (Fault)
+                $faultNode = $xml->xpath('//soap:Fault') ?: $xml->xpath('//*[local-name()="Fault"]');
+                if (!empty($faultNode)) {
+                    $errorMsg = (string)($faultNode[0]->faultstring ?? $faultNode[0]->Reason ?? 'SOAP Fault');
+                } else {
+                    // Buscar el ID externo con los tags configurados
+                    foreach ($idTags as $tag) {
+                        $nodes = $xml->xpath("//*[local-name()='{$tag}']");
+                        if (!empty($nodes) && (string)$nodes[0] !== '') {
+                            $externalId = (string)$nodes[0];
+                            $success    = true;
+                            break;
+                        }
+                    }
+
+                    // Si no encontramos ID pero tampoco hay Fault, considerar éxito si HTTP 200
+                    if (!$success) {
+                        $success  = true; // HTTP 200 sin Fault = probablemente OK
+                        $errorMsg = "Respuesta 200 pero no se encontró ID externo. Tags buscados: " . implode(', ', $idTags);
+                    }
+                }
+            } catch (Exception $ex) {
+                $errorMsg = "Error parseando XML SOAP de respuesta: " . $ex->getMessage();
+            }
+        } else {
+            // HTTP != 200 o body vacío
+            if (!empty($body)) {
+                try {
+                    $xml = new SimpleXMLElement($body);
+                    $faultNode = $xml->xpath('//*[local-name()="Fault"]');
+                    $errorMsg  = !empty($faultNode)
+                        ? (string)($faultNode[0]->faultstring ?? 'SOAP Fault')
+                        : "HTTP Status {$httpStatus}";
+                } catch (Exception $ex) {
+                    $errorMsg = "HTTP Status {$httpStatus}";
+                }
+            } else {
+                $errorMsg = "HTTP Status {$httpStatus} — respuesta vacía";
+            }
+        }
+
+        if (!$success) {
+            throw new Exception("DynamicProvider SOAP falló: " . $errorMsg, (int)$httpStatus);
+        }
+
+        return [
+            'success'           => true,
+            'external_order_id' => $externalId,
+            'response'          => ['raw_xml' => $body],
+            'http_status'       => $httpStatus,
+        ];
     }
 }

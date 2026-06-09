@@ -85,13 +85,14 @@ if ($method === 'POST') {
                 'base_url'       => $input['base_url'],
                 'auth_endpoint'  => $input['auth_endpoint'] ?? '/api/AccountApi',
                 'order_endpoint' => $input['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'payload_format' => in_array($input['payload_format'] ?? '', ['json','xml','soap']) ? $input['payload_format'] : 'json',
                 'auth_method'    => $authMethod,
                 'credentials'    => json_encode([
-                    'userName' => $input['userName'] ?? '',
-                    'password' => $input['password'] ?? '',
+                    'userName'       => $input['userName'] ?? '',
+                    'password'       => $input['password'] ?? '',
                     'webhook_secret' => !empty($input['webhook_secret']) ? $input['webhook_secret'] : bin2hex(random_bytes(16)),
                 ]),
-                'default_config' => !empty($input['default_config']) ? $input['default_config'] : null,
+                'default_config' => buildDefaultConfig($input),
             ]);
             echo json_encode([
                 'success' => $id !== false,
@@ -110,6 +111,10 @@ if ($method === 'POST') {
             foreach ($fields as $f) {
                 if (isset($input[$f])) $data[$f] = $input[$f];
             }
+            // Actualizar payload_format si viene en el request
+            if (!empty($input['payload_format']) && in_array($input['payload_format'], ['json','xml','soap'])) {
+                $data['payload_format'] = $input['payload_format'];
+            }
             // Actualizar credenciales si se proporcionan o cambian
             $existingProv = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
             $creds = json_decode($existingProv['credentials'] ?? '{}', true);
@@ -125,9 +130,9 @@ if ($method === 'POST') {
             if ($updateCreds) {
                 $data['credentials'] = json_encode($creds);
             }
-            if (isset($input['default_config'])) {
-                $data['default_config'] = $input['default_config'];
-            }
+            // Mergear soap_config dentro de default_config
+            $data['default_config'] = buildDefaultConfig($input, $existingProv['default_config'] ?? null);
+
             $ok = ForwardingModel::actualizarProveedor((int)$input['id'], $data);
             echo json_encode(['success' => $ok, 'message' => $ok ? 'Proveedor actualizado' : 'Error al actualizar']);
             break;
@@ -172,11 +177,27 @@ if ($method === 'POST') {
                 exit;
             }
             require_once __DIR__ . '/../services/ForwardingService.php';
+
+            // Pasar default_config y payload_format para que DynamicProvider SOAP funcione en el test
+            $defaultConfig = null;
+            $payloadFormat = $input['payload_format'] ?? 'json';
+            $providerId    = (int)($input['id'] ?? 0);
+            if (!empty($input['id']) && isset($existingProv)) {
+                $defaultConfig = $existingProv['default_config'] ?? null;
+                if (empty($payloadFormat) || $payloadFormat === 'json') {
+                    $payloadFormat = $existingProv['payload_format'] ?? 'json';
+                }
+            }
+
             $result = ForwardingService::testConexion([
-                'slug'           => $input['slug'] ?? 'logispro',
+                'id'             => $providerId,
+                'slug'           => $slug ?: ($input['slug'] ?? 'logispro'),
                 'base_url'       => $input['base_url'],
-                'auth_endpoint'  => $input['auth_endpoint'] ?? '/api/AccountApi',
+                'auth_endpoint'  => $input['auth_endpoint'] ?? '',
                 'order_endpoint' => $input['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'auth_method'    => $authMethod,
+                'payload_format' => $payloadFormat,
+                'default_config' => $defaultConfig,
                 'credentials'    => [
                     'userName' => $testUser,
                     'password' => $testPass,
@@ -192,3 +213,48 @@ if ($method === 'POST') {
 }
 
 echo json_encode(['success' => false, 'message' => 'Método no soportado']);
+
+/**
+ * Construir el JSON de default_config mergeando la config existente con el soap_config del request.
+ *
+ * @param array       $input         Input del request
+ * @param string|null $existingJson  JSON existente en la BD (para merge en actualizar)
+ * @return string|null               JSON resultante o null si no hay nada que guardar
+ */
+function buildDefaultConfig(array $input, ?string $existingJson = null): ?string
+{
+    // Partir de config existente
+    $config = !empty($existingJson) ? (json_decode($existingJson, true) ?: []) : [];
+
+    // Mergear soap_config si viene en el request
+    if (!empty($input['soap_config']) && is_array($input['soap_config'])) {
+        $soapFields = [
+            'soap_action', 'soap_namespace', 'soap_envelope_tag', 'soap_item_tag',
+            'soap_response_id_tags', 'soap_auth_tag', 'soap_auth_login_tag',
+            'soap_auth_pass_tag', 'soap_auth_in_body',
+        ];
+        foreach ($soapFields as $k) {
+            if (array_key_exists($k, $input['soap_config'])) {
+                $v = $input['soap_config'][$k];
+                // Si es el booleano, guardarlo como 1/0
+                if ($k === 'soap_auth_in_body') {
+                    $config[$k] = $v ? 1 : 0;
+                } elseif ($v !== '' && $v !== null) {
+                    $config[$k] = $v;
+                } else {
+                    unset($config[$k]); // Limpiar campo vacío
+                }
+            }
+        }
+    }
+
+    // Si el request trae un default_config JSON raw (legacy), también mergearlo
+    if (!empty($input['default_config']) && is_string($input['default_config'])) {
+        $rawConfig = json_decode($input['default_config'], true);
+        if (is_array($rawConfig)) {
+            $config = array_merge($config, $rawConfig);
+        }
+    }
+
+    return !empty($config) ? json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null;
+}

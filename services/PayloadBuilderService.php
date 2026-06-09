@@ -1,8 +1,9 @@
 <?php
+require_once __DIR__ . '/../modelo/conexion.php';
 /**
  * PayloadBuilderService
  *
- * Motor dinámico que construye el payload (JSON/XML) de una petición a proveedor
+ * Motor dinámico que construye el payload (JSON/XML/SOAP) de una petición a proveedor
  * externo a partir de un array de reglas de mapeo almacenadas en BD.
  *
  * Soporta:
@@ -11,6 +12,7 @@
  *   - Type casting:                      string, int, float, boolean
  *   - Transform rules:                   to_int, to_float, to_bool, limit:N
  *   - Valores por defecto                si el campo interno está vacío
+ *   - SOAP Envelope completo             con namespaces, SOAPAction, auth en body
  */
 class PayloadBuilderService
 {
@@ -39,11 +41,16 @@ class PayloadBuilderService
             ['key' => 'lat',                  'label' => 'Latitud'],
             ['key' => 'lng',                  'label' => 'Longitud'],
             // Productos (arreglo — usar prefijo productos[])
-            ['key' => 'productos[].producto_nombre', 'label' => 'Productos → Nombre'],
-            ['key' => 'productos[].sku',             'label' => 'Productos → SKU'],
-            ['key' => 'productos[].cantidad',        'label' => 'Productos → Cantidad (bruta)'],
-            ['key' => 'productos[].cantidad_neta',   'label' => 'Productos → Cantidad (neta, -devueltos)'],
+            ['key' => 'productos[].producto_nombre',     'label' => 'Productos → Nombre'],
+            ['key' => 'productos[].sku',                 'label' => 'Productos → SKU'],
+            ['key' => 'productos[].cantidad',            'label' => 'Productos → Cantidad (bruta)'],
+            ['key' => 'productos[].cantidad_neta',       'label' => 'Productos → Cantidad (neta, -devueltos)'],
             ['key' => 'productos[].precio_unitario_usd', 'label' => 'Productos → Precio Unitario USD'],
+            // Claves virtuales especiales
+            ['key' => '_total_units',   'label' => 'Total de Unidades (suma cantidad_neta) — genera N elementos vacíos repetidos'],
+            ['key' => '_now_datetime',  'label' => 'Fecha y Hora Actual (ISO 8601: 2024-01-15T10:30:00)'],
+            ['key' => '_today',         'label' => 'Fecha Actual (YYYY-MM-DD)'],
+            ['key' => '_caex_poblado',  'label' => 'Código Poblado CAEX (busca por municipalitiesName en catálogo CAEX)'],
         ];
     }
 
@@ -54,12 +61,27 @@ class PayloadBuilderService
      * @param array $mapeos  Array de mapeos desde ForwardingModel::obtenerMapeosDeProveedor()
      *                       Cada elemento: [field_path, field_type, is_required,
      *                                       default_value, internal_key, transform_rule]
-     * @return array         Array PHP estructurado listo para json_encode / ArrayToXml
+     * @return array         Array PHP estructurado listo para json_encode / arrayToXml
      * @throws Exception     Si un campo requerido no tiene valor
      */
     public static function build(array $pedido, array $mapeos): array
     {
         $salida = [];
+
+        // Inyectar claves virtuales calculadas en tiempo de ejecucion
+        $totalUnits = 0;
+        foreach ($pedido['productos'] ?? [] as $p) {
+            $totalUnits += max(0, (int)($p['cantidad'] ?? 0) - (int)($p['cantidad_devuelta'] ?? 0));
+        }
+        $pedido['_total_units']  = max(1, $totalUnits);
+        $pedido['_now_datetime'] = date('Y-m-d\TH:i:s');
+        $pedido['_today']        = date('Y-m-d');
+
+        // _caex_poblado: buscar codigo en la tabla caex_poblados por municipio del pedido
+        $pedido['_caex_poblado'] = self::buscarCodigoCaexPoblado(
+            $pedido['municipalitiesName'] ?? '',
+            $pedido['departmentName'] ?? ''
+        );
 
         // Separar mapeos simples de mapeos de arreglo
         $simples  = [];
@@ -79,12 +101,99 @@ class PayloadBuilderService
             self::setDotPath($salida, $m['field_path'], $valor);
         }
 
-        // 2. Resolver campos de arreglo (productos)
+        // 2. Resolver campos de arreglo (productos o repeticion por cantidad)
         if (!empty($arrayMap)) {
             $salida = self::resolverArreglos($salida, $pedido, $arrayMap);
         }
 
         return $salida;
+    }
+
+    // -------------------------------------------------------------------------
+    // SOAP / XML
+    // -------------------------------------------------------------------------
+
+    /**
+     * Construir un SOAP Envelope completo.
+     *
+     * El resultado es el string XML listo para enviar, incluyendo:
+     *   - Declaración XML
+     *   - soap:Envelope con namespaces estándar
+     *   - soap:Body con el tag raíz del método
+     *   - (Opcional) nodo <Autenticacion> o equivalente con las credenciales dentro del body
+     *
+     * @param array  $payload         Array PHP con el payload ya mapeado (de build())
+     * @param array  $soapConfig      Configuración del envelope:
+     *   - 'soap_envelope_tag'   (string)  Tag raíz del método, ej: 'GenerarGuia'
+     *   - 'soap_namespace'      (string)  xmlns del tag raíz, ej: 'http://www.caexlogistics.com/ServiceBus'
+     *   - 'soap_item_tag'       (string)  Tag para ítems de arrays numéricos, default 'item'
+     *   - 'soap_auth_in_body'   (bool)    Si las credenciales van dentro del body
+     *   - 'soap_auth_tag'       (string)  Tag del nodo de auth en el body, default 'Autenticacion'
+     *   - 'soap_auth_login_tag' (string)  Sub-tag del usuario, default 'Login'
+     *   - 'soap_auth_pass_tag'  (string)  Sub-tag del password, default 'Password'
+     * @param array  $credentials     ['userName' => ..., 'password' => ...]  (si soap_auth_in_body)
+     * @return string                 SOAP Envelope XML completo
+     */
+    public static function soapEnvelope(array $payload, array $soapConfig, array $credentials = []): string
+    {
+        $methodTag  = $soapConfig['soap_envelope_tag']   ?? 'Request';
+        $xmlns      = $soapConfig['soap_namespace']       ?? '';
+        $itemTag    = $soapConfig['soap_item_tag']        ?? 'item';
+        $authInBody = !empty($soapConfig['soap_auth_in_body']);
+        $authTag    = $soapConfig['soap_auth_tag']        ?? 'Autenticacion';
+        $loginTag   = $soapConfig['soap_auth_login_tag']  ?? 'Login';
+        $passTag    = $soapConfig['soap_auth_pass_tag']   ?? 'Password';
+
+        // Construir el XML del body usando SimpleXML
+        $xmlnsAttr = $xmlns ? ' xmlns="' . $xmlns . '"' : '';
+        $bodyXml   = new SimpleXMLElement('<' . $methodTag . $xmlnsAttr . '/>');
+
+        // Inyectar credenciales en el body si esta configurado
+        if ($authInBody && !empty($credentials)) {
+            $authNode = $bodyXml->addChild($authTag);
+            $authNode->addChild($loginTag,  htmlspecialchars($credentials['userName'] ?? '', ENT_XML1));
+            $authNode->addChild($passTag,   htmlspecialchars($credentials['password'] ?? '', ENT_XML1));
+        }
+
+        // Inyectar el payload mapeado
+        self::arrayToXmlRecursivo($payload, $bodyXml, $itemTag);
+
+        // Extraer el XML (sin declaracion XML del body interno, la ponemos en el envelope)
+        $dom = dom_import_simplexml($bodyXml)->ownerDocument;
+        $dom->formatOutput = true;
+        $bodyXmlStr = $dom->saveXML($dom->documentElement);
+
+        // Construir el envelope completo
+        $q = '?';
+        $envelope  = '<' . $q . 'xml version="1.0" encoding="utf-8"' . $q . '>' . "\n";
+        $envelope .= '<soap:Envelope'
+            . ' xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"'
+            . ' xmlns:xsd="http://www.w3.org/2001/XMLSchema"'
+            . ' xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' . "\n";
+        $envelope .= '  <soap:Body>' . "\n";
+        $envelope .= '    ' . trim($bodyXmlStr) . "\n";
+        $envelope .= '  </soap:Body>' . "\n";
+        $envelope .= '</soap:Envelope>';
+
+        return $envelope;
+    }
+
+    /**
+     * Convertir un array PHP a XML simple.
+     * Para SOAP, usar soapEnvelope() que envuelve este resultado correctamente.
+     *
+     * @param array  $data      Array a convertir
+     * @param string $rootTag   Etiqueta raíz del XML
+     * @param string $itemTag   Etiqueta para elementos de arrays numéricos (default 'item')
+     * @return string XML con declaración
+     */
+    public static function arrayToXml(array $data, string $rootTag = 'root', string $itemTag = 'item'): string
+    {
+        $xml = new SimpleXMLElement("<{$rootTag}/>");
+        self::arrayToXmlRecursivo($data, $xml, $itemTag);
+        $dom = dom_import_simplexml($xml)->ownerDocument;
+        $dom->formatOutput = true;
+        return $dom->saveXML();
     }
 
     // -------------------------------------------------------------------------
@@ -139,8 +248,26 @@ class PayloadBuilderService
         foreach ($grupos as $arrayName => $campos) {
             $itemsResultado = [];
 
+            // ── Caso especial: _total_units sin sub_path ──────────────────────
+            // Cuando internal_key = '_total_units' y no hay sub_path,
+            // genera N elementos VACIOS repetidos (ej: <Pieza/> x cantidad total).
+            // Permite el patron CAEX/SOAP de bultos sin contenido.
+            $esTotalUnits = count($campos) === 1
+                && ($campos[0]['mapping']['internal_key'] ?? '') === '_total_units'
+                && ($campos[0]['sub_path'] ?? '') === '';
+
+            if ($esTotalUnits) {
+                $n = (int)($pedido['_total_units'] ?? 1);
+                for ($i = 0; $i < $n; $i++) {
+                    $itemsResultado[] = [];
+                }
+                self::setDotPath($salida, $arrayName, $itemsResultado);
+                continue; // Siguiente grupo, no pasar por la logica de productos
+            }
+            // ─────────────────────────────────────────────────────────────────
+
             foreach ($productos as $prod) {
-                // Calcular cantidad neta (útil si se mapea como productos[].cantidad_neta)
+                // Calcular cantidad neta
                 $prod['cantidad_neta'] = max(0, (int)($prod['cantidad'] ?? 0) - (int)($prod['cantidad_devuelta'] ?? 0));
 
                 // Omitir ítems con cantidad neta 0
@@ -150,12 +277,11 @@ class PayloadBuilderService
 
                 $item = [];
                 foreach ($campos as $campo) {
-                    $subPath = $campo['sub_path'];
-                    $m       = $campo['mapping'];
+                    $subPath     = $campo['sub_path'];
+                    $m           = $campo['mapping'];
                     $internalKey = ltrim(str_replace('productos[].', '', $m['internal_key']), 'productos[].');
-                    // Soporte simple: buscar la clave en el producto
-                    $valor = $prod[$internalKey] ?? $m['default_value'] ?? null;
-                    $valor = self::castear($valor, $m['field_type'] ?? 'string', $m['transform_rule'] ?? null);
+                    $valor       = $prod[$internalKey] ?? $m['default_value'] ?? null;
+                    $valor       = self::castear($valor, $m['field_type'] ?? 'string', $m['transform_rule'] ?? null);
 
                     if ($subPath !== '') {
                         self::setDotPath($item, $subPath, $valor);
@@ -168,7 +294,7 @@ class PayloadBuilderService
 
             // Fallback de seguridad: si no hay productos, meter un ítem vacío
             if (empty($itemsResultado)) {
-                $itemsResultado[] = ['name' => 'Envío', 'quantity' => 1];
+                $itemsResultado[] = ['name' => 'Envio', 'quantity' => 1];
             }
 
             self::setDotPath($salida, $arrayName, $itemsResultado);
@@ -229,33 +355,92 @@ class PayloadBuilderService
     }
 
     /**
-     * Convertir un array PHP a XML simple (sin namespaces).
-     * Para SOAP el DynamicProvider envuelve este resultado en el Envelope.
+     * Recursivo: poblar un SimpleXMLElement desde un array PHP.
+     * Cuando la clave es numérica (array secuencial), usa $itemTag como nombre del nodo.
      *
-     * @param array  $data      Array a convertir
-     * @param string $rootTag   Etiqueta raíz del XML
-     * @return string XML
+     * @param array            $data
+     * @param SimpleXMLElement $xml
+     * @param string           $itemTag  Etiqueta para elementos de arrays numéricos
      */
-    public static function arrayToXml(array $data, string $rootTag = 'root'): string
-    {
-        $xml = new SimpleXMLElement("<{$rootTag}/>");
-        self::arrayToXmlRecursivo($data, $xml);
-        $dom = dom_import_simplexml($xml)->ownerDocument;
-        $dom->formatOutput = true;
-        return $dom->saveXML();
-    }
-
-    private static function arrayToXmlRecursivo(array $data, SimpleXMLElement &$xml): void
+    private static function arrayToXmlRecursivo(array $data, SimpleXMLElement &$xml, string $itemTag = 'item'): void
     {
         foreach ($data as $key => $val) {
-            // Llave numérica (arreglo secuencial): usar "item" como etiqueta
-            $tag = is_numeric($key) ? 'item' : preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string)$key);
+            // Llave numérica → usar $itemTag en lugar de 'item' genérico
+            $tag = is_numeric($key)
+                ? $itemTag
+                : preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string)$key);
+
             if (is_array($val)) {
                 $child = $xml->addChild($tag);
-                self::arrayToXmlRecursivo($val, $child);
+                self::arrayToXmlRecursivo($val, $child, $itemTag);
             } else {
                 $xml->addChild($tag, htmlspecialchars((string)$val, ENT_XML1));
             }
+        }
+    }
+
+    /**
+     * Buscar el código de poblado CAEX a partir del nombre del municipio del pedido.
+     * Usa búsqueda normalizada (sin acentos, minúsculas) contra la tabla caex_poblados.
+     * Si hay varios resultados, intenta afinar con el departamento.
+     *
+     * @param string $municipio  p.ej. "Guatemala" o "Mixco"
+     * @param string $depto      p.ej. "Guatemala"
+     * @return string            Código CAEX (ej. "1065") o vacío si no se encuentra
+     */
+    private static function buscarCodigoCaexPoblado(string $municipio, string $depto): string
+    {
+        if (empty($municipio)) return '';
+
+        try {
+            // Normalizar el término de búsqueda
+            $normalizado = mb_strtolower(trim($municipio), 'UTF-8');
+            $normalizado = strtr($normalizado, [
+                'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u',
+                'ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u',
+                'ñ'=>'n','ç'=>'c',
+            ]);
+
+            $db = (new Conexion())->conectar();
+
+            // Búsqueda exacta primero
+            $stmt = $db->prepare(
+                "SELECT codigo, nombre, nombre_normalizado FROM caex_poblados WHERE nombre_normalizado = :q LIMIT 5"
+            );
+            $stmt->execute([':q' => $normalizado]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Si no hay exacto, intentar LIKE (municipio contenido en nombre_normalizado)
+            if (empty($rows)) {
+                $stmt = $db->prepare(
+                    "SELECT codigo, nombre, nombre_normalizado FROM caex_poblados WHERE nombre_normalizado LIKE :q LIMIT 5"
+                );
+                $stmt->execute([':q' => '%' . $normalizado . '%']);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
+            if (empty($rows)) return '';
+
+            // Si hay un solo resultado, usarlo directamente
+            if (count($rows) === 1) return $rows[0]['codigo'];
+
+            // Si hay varios, intentar afinar con el departamento
+            if (!empty($depto)) {
+                $deptoNorm = mb_strtolower(trim($depto), 'UTF-8');
+                $deptoNorm = strtr($deptoNorm, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
+                foreach ($rows as $r) {
+                    if (strpos($r['nombre_normalizado'], $deptoNorm) !== false) {
+                        return $r['codigo'];
+                    }
+                }
+            }
+
+            // Usar el primer resultado
+            return $rows[0]['codigo'];
+
+        } catch (Exception $e) {
+            error_log('PayloadBuilderService::buscarCodigoCaexPoblado error: ' . $e->getMessage());
+            return '';
         }
     }
 }

@@ -84,9 +84,11 @@ $proveedores = ForwardingModel::obtenerProveedores();
                                             data-baseurl="<?= htmlspecialchars($p['base_url']) ?>"
                                             data-authep="<?= htmlspecialchars($p['auth_endpoint']) ?>"
                                             data-orderep="<?= htmlspecialchars($p['order_endpoint']) ?>"
+                                            data-payloadformat="<?= htmlspecialchars($p['payload_format'] ?? 'json') ?>"
                                             data-authmethod="<?= htmlspecialchars($p['auth_method']) ?>"
                                             data-username="<?= htmlspecialchars(json_decode($p['credentials'], true)['userName'] ?? '') ?>"
                                             data-webhooksecret="<?= htmlspecialchars(json_decode($p['credentials'], true)['webhook_secret'] ?? '') ?>"
+                                            data-defaultconfig="<?= htmlspecialchars($p['default_config'] ?? '{}') ?>"
                                             style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
                                         <i class="bi bi-pencil"></i>
                                     </button>
@@ -148,6 +150,14 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         <input type="text" class="form-control" id="provOrderEp" value="/api/Orders/OrderAndOrderDetail">
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label fw-semibold">Formato de Payload</label>
+                        <select class="form-select" id="provPayloadFormat" onchange="toggleSoapSection()">
+                            <option value="json" selected>JSON</option>
+                            <option value="xml">XML</option>
+                            <option value="soap">SOAP/XML</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">Método de Auth</label>
                         <select class="form-select" id="provAuthMethod">
                             <option value="bearer_jwt" selected>Bearer JWT</option>
@@ -177,6 +187,68 @@ $proveedores = ForwardingModel::obtenerProveedores();
                             </button>
                         </div>
                         <input type="hidden" id="provExistingWebhookSecret" value="">
+                    </div>
+
+                    <!-- ── Sección SOAP (solo visible cuando payload_format = soap) ── -->
+                    <div class="col-12" id="soapSection" style="display:none;">
+                        <div class="p-3 rounded-3" style="background:#f0f4ff;border:1px dashed #7c3aed;">
+                            <div class="d-flex align-items-center gap-2 mb-3">
+                                <i class="bi bi-code-slash text-purple" style="color:#7c3aed;"></i>
+                                <strong style="color:#4c1d95;">Configuración SOAP</strong>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">SOAP Action <small class="text-muted">(header SOAPAction)</small></label>
+                                    <input type="text" class="form-control form-control-sm" id="soapAction"
+                                           placeholder="http://ejemplo.com/ServiceBus/GenerarGuia">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Namespace del Body <small class="text-muted">(xmlns)</small></label>
+                                    <input type="text" class="form-control form-control-sm" id="soapNamespace"
+                                           placeholder="http://ejemplo.com/ServiceBus">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Tag Raíz del Método</label>
+                                    <input type="text" class="form-control form-control-sm" id="soapEnvelopeTag"
+                                           placeholder="GenerarGuia">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Tag de Ítem Repetido</label>
+                                    <input type="text" class="form-control form-control-sm" id="soapItemTag"
+                                           placeholder="Pieza">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Tags ID en Respuesta</label>
+                                    <input type="text" class="form-control form-control-sm" id="soapResponseIdTags"
+                                           placeholder="GuiaID,CodigoGuia,OrderId">
+                                    <div class="form-text">Separados por coma. El primero que se encuentre se usa.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Tag de Auth en Body</label>
+                                    <input type="text" class="form-control form-control-sm" id="soapAuthTag"
+                                           placeholder="Autenticacion">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Sub-tag Login</label>
+                                    <input type="text" class="form-control form-control-sm" id="soapAuthLoginTag"
+                                           placeholder="Login">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Sub-tag Password</label>
+                                    <input type="text" class="form-control form-control-sm" id="soapAuthPassTag"
+                                           placeholder="Password">
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check form-switch mt-1">
+                                        <input class="form-check-input" type="checkbox" id="soapAuthInBody" value="1">
+                                        <label class="form-check-label fw-semibold small" for="soapAuthInBody">
+                                            Credenciales dentro del body XML
+                                            <small class="text-muted ms-1">(patrón CAEX — sin Authorization header)</small>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -263,22 +335,47 @@ function testConnection() {
     });
 }
 
+function toggleSoapSection() {
+    const fmt = document.getElementById('provPayloadFormat').value;
+    document.getElementById('soapSection').style.display = (fmt === 'soap') ? 'block' : 'none';
+}
+
 function saveProvider() {
-    const id = document.getElementById('providerId').value;
+    const id     = document.getElementById('providerId').value;
     const action = id ? 'actualizar' : 'crear';
+    const fmt    = document.getElementById('provPayloadFormat').value;
+
+    // Construir soap_config solo si aplica
+    let soapConfig = null;
+    if (fmt === 'soap') {
+        soapConfig = {
+            soap_action:          document.getElementById('soapAction').value,
+            soap_namespace:       document.getElementById('soapNamespace').value,
+            soap_envelope_tag:    document.getElementById('soapEnvelopeTag').value,
+            soap_item_tag:        document.getElementById('soapItemTag').value,
+            soap_response_id_tags:document.getElementById('soapResponseIdTags').value,
+            soap_auth_tag:        document.getElementById('soapAuthTag').value,
+            soap_auth_login_tag:  document.getElementById('soapAuthLoginTag').value,
+            soap_auth_pass_tag:   document.getElementById('soapAuthPassTag').value,
+            soap_auth_in_body:    document.getElementById('soapAuthInBody').checked ? 1 : 0,
+        };
+    }
+
     const body = {
         action,
         id: id || undefined,
-        nombre: document.getElementById('provNombre').value,
-        slug: document.getElementById('provSlug').value,
-        base_url: document.getElementById('provBaseUrl').value,
-        auth_endpoint: document.getElementById('provAuthEp').value,
-        order_endpoint: document.getElementById('provOrderEp').value,
-        auth_method: document.getElementById('provAuthMethod').value,
-        userName: document.getElementById('provUserName').value,
-        password: document.getElementById('provPassword').value,
-        webhook_secret: document.getElementById('provWebhookSecret').value,
+        nombre:          document.getElementById('provNombre').value,
+        slug:            document.getElementById('provSlug').value,
+        base_url:        document.getElementById('provBaseUrl').value,
+        auth_endpoint:   document.getElementById('provAuthEp').value,
+        order_endpoint:  document.getElementById('provOrderEp').value,
+        payload_format:  fmt,
+        auth_method:     document.getElementById('provAuthMethod').value,
+        userName:        document.getElementById('provUserName').value,
+        password:        document.getElementById('provPassword').value,
+        webhook_secret:  document.getElementById('provWebhookSecret').value,
         existing_webhook_secret: document.getElementById('provExistingWebhookSecret').value,
+        soap_config:     soapConfig,
     };
 
     fetch(BASE + 'ajax/forwarding_providers.php', {
@@ -302,19 +399,36 @@ function saveProvider() {
 // Edit button handler
 document.querySelectorAll('.btn-edit-provider').forEach(btn => {
     btn.addEventListener('click', function() {
-        document.getElementById('providerId').value = this.dataset.id;
-        document.getElementById('provNombre').value = this.dataset.nombre;
-        document.getElementById('provSlug').value = this.dataset.slug;
+        document.getElementById('providerId').value  = this.dataset.id;
+        document.getElementById('provNombre').value  = this.dataset.nombre;
+        document.getElementById('provSlug').value    = this.dataset.slug;
         document.getElementById('provBaseUrl').value = this.dataset.baseurl;
-        document.getElementById('provAuthEp').value = this.dataset.authep;
+        document.getElementById('provAuthEp').value  = this.dataset.authep;
         document.getElementById('provOrderEp').value = this.dataset.orderep;
-        document.getElementById('provAuthMethod').value = this.dataset.authmethod;
-        document.getElementById('provUserName').value = this.dataset.username || '';
-        document.getElementById('provPassword').value = '';
-        document.getElementById('provWebhookSecret').value = this.dataset.webhooksecret;
+        document.getElementById('provPayloadFormat').value = this.dataset.payloadformat || 'json';
+        document.getElementById('provAuthMethod').value    = this.dataset.authmethod;
+        document.getElementById('provUserName').value      = this.dataset.username || '';
+        document.getElementById('provPassword').value      = '';
+        document.getElementById('provWebhookSecret').value         = this.dataset.webhooksecret;
         document.getElementById('provExistingWebhookSecret').value = this.dataset.webhooksecret;
         document.getElementById('modalProviderTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Proveedor';
         document.getElementById('testResultModal').style.display = 'none';
+
+        // Cargar configuración SOAP si existe
+        try {
+            const cfg = JSON.parse(this.dataset.defaultconfig || '{}');
+            document.getElementById('soapAction').value         = cfg.soap_action || '';
+            document.getElementById('soapNamespace').value      = cfg.soap_namespace || '';
+            document.getElementById('soapEnvelopeTag').value    = cfg.soap_envelope_tag || '';
+            document.getElementById('soapItemTag').value        = cfg.soap_item_tag || '';
+            document.getElementById('soapResponseIdTags').value = cfg.soap_response_id_tags || '';
+            document.getElementById('soapAuthTag').value        = cfg.soap_auth_tag || '';
+            document.getElementById('soapAuthLoginTag').value   = cfg.soap_auth_login_tag || '';
+            document.getElementById('soapAuthPassTag').value    = cfg.soap_auth_pass_tag || '';
+            document.getElementById('soapAuthInBody').checked   = !!cfg.soap_auth_in_body;
+        } catch(e) { /* sin config SOAP */ }
+
+        toggleSoapSection();
         new bootstrap.Modal(document.getElementById('modalProvider')).show();
     });
 });
@@ -405,19 +519,27 @@ document.querySelectorAll('.btn-test-provider').forEach(btn => {
 // Reset modal on open for "new"
 document.getElementById('modalProvider').addEventListener('show.bs.modal', function(e) {
     if (e.relatedTarget && !e.relatedTarget.classList.contains('btn-edit-provider')) {
-        document.getElementById('providerId').value = '';
-        document.getElementById('provNombre').value = '';
-        document.getElementById('provSlug').value = '';
-        document.getElementById('provBaseUrl').value = '';
-        document.getElementById('provAuthEp').value = '/api/AccountApi';
-        document.getElementById('provOrderEp').value = '/api/Orders/OrderAndOrderDetail';
-        document.getElementById('provAuthMethod').value = 'bearer_jwt';
-        document.getElementById('provUserName').value = '';
-        document.getElementById('provPassword').value = '';
-        document.getElementById('provWebhookSecret').value = '';
+        document.getElementById('providerId').value              = '';
+        document.getElementById('provNombre').value              = '';
+        document.getElementById('provSlug').value                = '';
+        document.getElementById('provBaseUrl').value             = '';
+        document.getElementById('provAuthEp').value              = '/api/AccountApi';
+        document.getElementById('provOrderEp').value             = '/api/Orders/OrderAndOrderDetail';
+        document.getElementById('provPayloadFormat').value       = 'json';
+        document.getElementById('provAuthMethod').value          = 'bearer_jwt';
+        document.getElementById('provUserName').value            = '';
+        document.getElementById('provPassword').value            = '';
+        document.getElementById('provWebhookSecret').value       = '';
         document.getElementById('provExistingWebhookSecret').value = '';
-        document.getElementById('modalProviderTitle').innerHTML = '<i class="bi bi-building me-2"></i>Nuevo Proveedor';
+        document.getElementById('modalProviderTitle').innerHTML  = '<i class="bi bi-building me-2"></i>Nuevo Proveedor';
         document.getElementById('testResultModal').style.display = 'none';
+        // Limpiar campos SOAP
+        ['soapAction','soapNamespace','soapEnvelopeTag','soapItemTag',
+         'soapResponseIdTags','soapAuthTag','soapAuthLoginTag','soapAuthPassTag'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        document.getElementById('soapAuthInBody').checked = false;
+        toggleSoapSection();
     }
 });
 
