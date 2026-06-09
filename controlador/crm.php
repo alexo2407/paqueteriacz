@@ -314,13 +314,25 @@ class CrmController {
             @mkdir($logsDir, 0755, true);
         }
 
+        $isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+
         if ($action === 'stop') {
-            // Detener escribiendo un stop file
+            if (!$isWindows) {
+                // Comando para Linux/Producción: Intentar detener usando systemd
+                $serviceName = str_replace('_', '-', $worker) . '.service';
+                exec("sudo /usr/bin/systemctl stop " . escapeshellarg($serviceName), $output, $returnCode);
+                if ($returnCode === 0) {
+                    // Borrar latido para reflejar inmediatamente el cambio de estado en la UI
+                    @unlink($logsDir . '/' . $worker . '.heartbeat');
+                    return ['success' => true, 'message' => "Servicio systemd '{$serviceName}' detenido con éxito."];
+                }
+            }
+
+            // Fallback (o en Windows): Detener escribiendo un stop file
             $stopFile = $logsDir . '/' . $worker . '.stop';
             if (file_put_contents($stopFile, 'stop') !== false) {
-                // Borrar latido inmediatamente para reflejar estado apagado
                 @unlink($logsDir . '/' . $worker . '.heartbeat');
-                return ['success' => true, 'message' => 'Comando de apagado enviado al worker.'];
+                return ['success' => true, 'message' => 'Comando de apagado enviado al worker (archivo stop).'];
             }
             return ['success' => false, 'message' => 'No se pudo crear el archivo de detención.'];
         }
@@ -344,19 +356,24 @@ class CrmController {
                 return ['success' => false, 'message' => 'Archivo ejecutable del worker no encontrado.'];
             }
 
-            $isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
-
             if ($isWindows) {
-                // Comando para Windows (XAMPP local) en segundo plano sin bloquear el hilo web de PHP
+                // Comando para Windows (XAMPP local) en segundo plano
                 $cmd = "start /B php " . escapeshellarg($scriptPath) . " --loop > NUL 2>&1";
                 pclose(popen($cmd, "r"));
+                return ['success' => true, 'message' => 'Worker iniciado en segundo plano (Windows).'];
             } else {
-                // Comando para Linux en segundo plano
+                // Comando para Linux/Producción: Intentar iniciar usando systemd
+                $serviceName = str_replace('_', '-', $worker) . '.service';
+                exec("sudo /usr/bin/systemctl start " . escapeshellarg($serviceName), $output, $returnCode);
+                if ($returnCode === 0) {
+                    return ['success' => true, 'message' => "Servicio systemd '{$serviceName}' iniciado con éxito."];
+                }
+
+                // Fallback: Levantarlo como proceso independiente desacoplado en background
                 $cmd = "php " . escapeshellarg($scriptPath) . " --loop > /dev/null 2>&1 &";
                 exec($cmd);
+                return ['success' => true, 'message' => 'Worker iniciado en segundo plano (Fallback independiente).'];
             }
-
-            return ['success' => true, 'message' => 'Worker iniciado en segundo plano.'];
         }
 
         return ['success' => false, 'message' => 'Acción no válida.'];
