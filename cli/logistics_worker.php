@@ -20,6 +20,7 @@ require_once __DIR__ . '/processors/GenerarGuiaProcessor.php';
 require_once __DIR__ . '/processors/ActualizarTrackingProcessor.php';
 require_once __DIR__ . '/processors/ValidarDireccionProcessor.php';
 require_once __DIR__ . '/processors/NotificarEstadoProcessor.php';
+require_once __DIR__ . '/processors/ForwardingEvalProcessor.php';
 
 // Configuración
 $pollInterval = 3; // Segundos entre polls
@@ -32,7 +33,8 @@ $processors = [
     'generar_guia' => new GenerarGuiaProcessor(),
     'actualizar_tracking' => new ActualizarTrackingProcessor(),
     'validar_direccion' => new ValidarDireccionProcessor(),
-    'notificar_estado' => new NotificarEstadoProcessor()
+    'notificar_estado' => new NotificarEstadoProcessor(),
+    'forwarding_eval' => new ForwardingEvalProcessor()
 ];
 
 /**

@@ -1722,6 +1722,20 @@ class PedidosController
                 }
             }
 
+            // ── ENCOLAR FORWARDING ASINCRÓNICO PARA PEDIDOS CREADOS ────────────
+            if (!empty($todosPedidosCreados) && defined('FORWARDING_ENABLED') && FORWARDING_ENABLED) {
+                try {
+                    require_once __DIR__ . '/../services/LogisticsQueueService.php';
+                    foreach ($todosPedidosCreados as $ped) {
+                        LogisticsQueueService::queue('forwarding_eval', $ped['id'], [
+                            'id_cliente' => $ped['id_cliente']
+                        ]);
+                    }
+                } catch (Throwable $queueEx) {
+                    error_log('[CSV Import] Error al encolar forwarding: ' . $queueEx->getMessage());
+                }
+            }
+
             // Exportar filas erróneas como CSV si existen
             $archivoErrores = null;
             if (!empty($filasErrorneas)) {

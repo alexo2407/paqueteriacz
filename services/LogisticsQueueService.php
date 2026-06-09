@@ -27,7 +27,8 @@ class LogisticsQueueService {
         'actualizar_tracking',
         'validar_direccion',
         'notificar_estado',
-        'forwarding_retry'
+        'forwarding_retry',
+        'forwarding_eval'
     ];
     
     /**
