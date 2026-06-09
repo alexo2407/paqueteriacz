@@ -123,6 +123,7 @@ try {
     require_once __DIR__ . '/../../config/config.php';
     require_once __DIR__ . '/../../modelo/conexion.php';
     require_once __DIR__ . '/../../modelo/forwarding.php';
+    require_once __DIR__ . '/../../modelo/auditoria.php';
 
     // ─── 1. Autenticación Bearer ───────────────────────────────────────────
     $authHeader = $_SERVER['HTTP_AUTHORIZATION']
@@ -281,6 +282,15 @@ try {
 
     // ─── 6. Procesar cada orden ────────────────────────────────────────────
     $db        = (new Conexion())->conectar();
+
+    // Obtener nombre del nuevo estado para auditoría
+    $nombreEstadoNuevo = 'Desconocido';
+    if ($idEstadoNuevo) {
+        $stmtNuevo = $db->prepare("SELECT nombre_estado FROM estados_pedidos WHERE id = :id LIMIT 1");
+        $stmtNuevo->execute([':id' => $idEstadoNuevo]);
+        $nombreEstadoNuevo = $stmtNuevo->fetchColumn() ?: 'Desconocido';
+    }
+
     $results   = [];
     $processed = 0;
     $failed    = 0;
@@ -294,7 +304,12 @@ try {
         }
 
         // Buscar pedido por numero_orden
-        $stmt = $db->prepare("SELECT id, id_estado FROM pedidos WHERE numero_orden = :numero_orden LIMIT 1");
+        $stmt = $db->prepare("
+            SELECT p.id, p.id_estado, p.fecha_entrega, p.fecha_liquidacion, ep.nombre_estado 
+            FROM pedidos p 
+            LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+            WHERE p.numero_orden = :numero_orden LIMIT 1
+        ");
         $stmt->execute([':numero_orden' => $orderNumber]);
         $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -326,6 +341,33 @@ try {
         $upd = $db->prepare($sql);
         $upd->execute($params);
         // El trigger se encarga de insertar en pedidos_historial_estados.
+
+        // Registrar en auditoría para que se vea en el historial del frontend
+        $datosAnteriores = [
+            'id_estado'         => $pedido['id_estado'],
+            'estado'            => $pedido['nombre_estado'],
+            'fecha_entrega'     => $pedido['fecha_entrega'],
+            'fecha_liquidacion' => $pedido['fecha_liquidacion'] ?? null,
+        ];
+        
+        $datosNuevos = [
+            'id_estado'     => $idEstadoNuevo,
+            'estado'        => $nombreEstadoNuevo,
+            'observaciones' => $observaciones
+        ];
+
+        if ($fechaEntrega) {
+            $datosNuevos['fecha_entrega'] = $fechaEntrega;
+        }
+
+        AuditoriaModel::registrar(
+            'pedidos',
+            $idPedido,
+            'actualizar',
+            null, // usuario null (sistema)
+            $datosAnteriores,
+            $datosNuevos
+        );
 
         $results[] = ['orderNumber' => $orderNumber, 'updated' => true];
         $processed++;
