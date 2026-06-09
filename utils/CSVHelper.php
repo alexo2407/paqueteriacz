@@ -53,6 +53,14 @@ class CSVHelper
         'id_proveedor'          => 'id_proveedor',
         'es_combo_(0/1)'        => 'es_combo',
         'es_combo'              => 'es_combo',
+        'teléfono'              => 'telefono',
+        'telefono'              => 'telefono',
+        'dirección'             => 'direccion',
+        'direccion'             => 'direccion',
+        'teléfono_(texto_libre)' => 'telefono',
+        'telefono_(texto_libre)' => 'telefono',
+        'dirección_(texto_libre)' => 'direccion',
+        'direccion_(texto_libre)' => 'direccion',
     ];
 
     /**
@@ -70,50 +78,97 @@ class CSVHelper
         }
         require_once $autoload;
 
-        $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filepath);
-        $reader->setReadDataOnly(true);
-        // Leer solo la primera hoja (hoja "Pedidos")
-        $reader->setLoadSheetsOnly(['Pedidos']);
+        // Capturar cualquier warning/notice de PhpSpreadsheet para que no
+        // corrompa la respuesta JSON del controlador.
+        ob_start();
         try {
-            $spreadsheet = $reader->load($filepath);
-        } catch (\Throwable $e) {
-            // Puede fallar si la hoja no existe; cargar la primera
-            $reader2 = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filepath);
-            $reader2->setReadDataOnly(true);
-            $spreadsheet = $reader2->load($filepath);
-        }
+            // Sin setReadDataOnly(true) para que PhpSpreadsheet conserve el tipo
+            // de dato de las celdas (necesario para detectar fechas).
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filepath);
+            $reader->setLoadSheetsOnly(['Pedidos']);
 
-        $sheet = $spreadsheet->getActiveSheet();
-        $data  = $sheet->toArray(null, true, true, false);
-
-        if (empty($data)) {
-            return ['headers' => [], 'rows' => []];
-        }
-
-        // Primera fila = encabezados
-        $headers = array_shift($data);
-        $headers = self::normalizeHeaders($headers);
-
-        // Filas de datos
-        $rows = [];
-        foreach ($data as $rawRow) {
-            $assoc = [];
-            foreach ($headers as $i => $hdr) {
-                $assoc[$hdr] = isset($rawRow[$i]) ? (string)$rawRow[$i] : '';
+            try {
+                $spreadsheet = $reader->load($filepath);
+            } catch (\Throwable $e) {
+                // La hoja 'Pedidos' no existe; cargar la primera
+                $reader2 = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filepath);
+                $spreadsheet = $reader2->load($filepath);
             }
-            // Omitir filas completamente vacías
-            $empty = true;
-            foreach ($assoc as $v) {
-                if ($v !== '' && $v !== null) { $empty = false; break; }
-            }
-            if (!$empty) {
-                $rows[] = $assoc;
-            }
-        }
 
-        return ['headers' => $headers, 'rows' => $rows];
+            $sheet      = $spreadsheet->getActiveSheet();
+            $highRow    = $sheet->getHighestRow();
+            $highCol    = $sheet->getHighestColumn();
+            $highColIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highCol);
+
+            ob_end_clean(); // Descartar cualquier salida generada hasta aquí
+
+            if ($highRow < 1) {
+                return ['headers' => [], 'rows' => []];
+            }
+
+            // ── Leer encabezados (fila 1) ─────────────────────────────────────
+            $rawHeaders = [];
+            for ($c = 1; $c <= $highColIdx; $c++) {
+                $coord = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . '1';
+                $rawHeaders[] = (string)$sheet->getCell($coord)->getValue();
+            }
+            $headers = self::normalizeHeaders($rawHeaders);
+
+            // Índices de columnas que deben interpretarse como fecha
+            $dateColNames = ['fecha_ingreso', 'fecha_entrega', 'fecha_ing', 'fecha_ent'];
+            $dateColIndices = [];
+            foreach ($headers as $idx => $name) {
+                if (in_array($name, $dateColNames, true)) {
+                    $dateColIndices[] = $idx;
+                }
+            }
+
+            // ── Leer filas de datos ───────────────────────────────────────────
+            $rows = [];
+            for ($r = 2; $r <= $highRow; $r++) {
+                $assoc = [];
+                for ($c = 1; $c <= $highColIdx; $c++) {
+                    $colName = $headers[$c - 1] ?? '';
+                    $coord   = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c) . $r;
+                    $cell    = $sheet->getCell($coord);
+                    $rawVal  = $cell->getValue();
+
+                    // Convertir número serial de Excel a fecha DD/MM/YYYY
+                    if (
+                        in_array($c - 1, $dateColIndices, true) &&
+                        is_numeric($rawVal) &&
+                        $rawVal > 0
+                    ) {
+                        try {
+                            $dt    = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$rawVal);
+                            $value = $dt->format('d/m/Y');
+                        } catch (\Throwable $dtEx) {
+                            $value = (string)$rawVal;
+                        }
+                    } else {
+                        $value = ($rawVal === null) ? '' : (string)$rawVal;
+                    }
+
+                    $assoc[$colName] = $value;
+                }
+
+                // Omitir filas completamente vacías
+                $empty = true;
+                foreach ($assoc as $v) {
+                    if ($v !== '' && $v !== null) { $empty = false; break; }
+                }
+                if (!$empty) {
+                    $rows[] = $assoc;
+                }
+            }
+
+            return ['headers' => $headers, 'rows' => $rows];
+
+        } catch (\Throwable $outerEx) {
+            ob_end_clean();
+            throw $outerEx;
+        }
     }
-
     /**
      * Detectar delimitador del CSV analizando la primera línea
      *

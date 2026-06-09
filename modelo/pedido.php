@@ -109,9 +109,10 @@ class PedidosModel
     public static function insertarPedidosLote(array $rows, $autoCreateProducts = true, $defaultValues = [])
     {
         $resultado = [
-            'inserted' => 0,
-            'errors' => [],
-            'productos_creados' => []
+            'inserted'         => 0,
+            'errors'           => [],
+            'productos_creados' => [],
+            'pedidos_creados'  => [], // [{id, numero_orden, id_proveedor, id_cliente}]
         ];
 
         if (empty($rows)) {
@@ -382,6 +383,12 @@ class PedidosModel
 
                     $db->commit();
                     $resultado['inserted']++;
+                    $resultado['pedidos_creados'][] = [
+                        'id'           => $pedidoId,
+                        'numero_orden' => $numeroOrden,
+                        'id_proveedor' => (int)($params[':id_proveedor'] ?? 0),
+                        'id_cliente'   => (int)($params[':id_cliente']   ?? 0),
+                    ];
 
                     // Registrar auditoría para esta fila importada
                     try {

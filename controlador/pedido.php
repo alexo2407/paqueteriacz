@@ -1516,6 +1516,12 @@ class PedidosController
             if (!empty($_POST['default_proveedor'])) $defaultValues['proveedor'] = (int)$_POST['default_proveedor'];
             if (!empty($_POST['default_moneda']))    $defaultValues['moneda']    = (int)$_POST['default_moneda'];
             if (!empty($_POST['default_vendedor']))  $defaultValues['vendedor']  = (int)$_POST['default_vendedor'];
+            // Checkbox es_combo: solo viene en POST cuando está marcado (value="1").
+            // Guardamos null = no forzar (respetar CSV o 0 por defecto del modelo).
+            $defaultValues['es_combo'] = isset($_POST['default_es_combo']) ? 1 : null;
+
+            // Cliente creador: asociar por defecto al usuario actual en sesión
+            $defaultValues['id_cliente'] = (int)($_SESSION['user_id'] ?? ($_SESSION['idUsuario'] ?? 0));
 
             // Productos inexistentes SIEMPRE rechazan la fila
             $autoCreateProducts = false;
@@ -1525,10 +1531,51 @@ class PedidosController
             // "Proveedor por defecto" en Opciones Avanzadas, esa intención se respeta).
             if (!empty($defaultValues)) {
                 foreach ($allRows as &$filaPreDefault) {
-                    if (!empty($defaultValues['estado'])    && empty($filaPreDefault['id_estado']))    $filaPreDefault['id_estado']    = $defaultValues['estado'];
-                    if (!empty($defaultValues['proveedor']) && empty($filaPreDefault['id_proveedor'])) $filaPreDefault['id_proveedor'] = $defaultValues['proveedor'];
-                    if (!empty($defaultValues['moneda'])    && empty($filaPreDefault['id_moneda']))    $filaPreDefault['id_moneda']    = $defaultValues['moneda'];
-                    if (!empty($defaultValues['vendedor'])  && empty($filaPreDefault['id_vendedor']))  $filaPreDefault['id_vendedor']  = $defaultValues['vendedor'];
+                    // Cliente: default de sesión si no hay id_cliente ni cliente en el CSV
+                    if (!empty($defaultValues['id_cliente']) && 
+                        empty($filaPreDefault['id_cliente']) && 
+                        empty($filaPreDefault['cliente'])) {
+                        $filaPreDefault['id_cliente'] = $defaultValues['id_cliente'];
+                    }
+
+                    // Estado: default si no hay id_estado, estado ni estado_nombre
+                    if (!empty($defaultValues['estado']) && 
+                        empty($filaPreDefault['id_estado']) && 
+                        empty($filaPreDefault['estado']) && 
+                        empty($filaPreDefault['estado_nombre'])) {
+                        $filaPreDefault['id_estado'] = $defaultValues['estado'];
+                    }
+
+                    // Proveedor: default si no hay id_proveedor ni proveedor_nombre
+                    if (!empty($defaultValues['proveedor']) && 
+                        empty($filaPreDefault['id_proveedor']) && 
+                        empty($filaPreDefault['proveedor_nombre'])) {
+                        $filaPreDefault['id_proveedor'] = $defaultValues['proveedor'];
+                    }
+
+                    // Moneda: default si no hay id_moneda, moneda ni moneda_codigo
+                    if (!empty($defaultValues['moneda']) && 
+                        (empty($filaPreDefault['id_moneda']) || (int)$filaPreDefault['id_moneda'] === 0) && 
+                        empty($filaPreDefault['moneda']) && 
+                        empty($filaPreDefault['moneda_codigo'])) {
+                        $filaPreDefault['id_moneda'] = $defaultValues['moneda'];
+                    }
+
+                    // Vendedor/repartidor: default si no hay id_vendedor ni vendedor_nombre
+                    if (!empty($defaultValues['vendedor']) &&
+                        empty($filaPreDefault['id_vendedor']) &&
+                        empty($filaPreDefault['vendedor_nombre'])) {
+                        $filaPreDefault['id_vendedor'] = $defaultValues['vendedor'];
+                    }
+
+                    // Es Combo: normalizar SIEMPRE a entero 0 o 1.
+                    // Si el CSV no trae el campo o viene como string vacío,
+                    // usar el valor del toggle (1) o 0 por defecto.
+                    if (!isset($filaPreDefault['es_combo']) || $filaPreDefault['es_combo'] === '') {
+                        $filaPreDefault['es_combo'] = ($defaultValues['es_combo'] === 1) ? 1 : 0;
+                    } else {
+                        $filaPreDefault['es_combo'] = (int)$filaPreDefault['es_combo'] ? 1 : 0;
+                    }
                 }
                 unset($filaPreDefault);
             }
@@ -1573,12 +1620,13 @@ class PedidosController
             }
 
             // PROCESAMIENTO POR CHUNKS
-            $totalFilas = count($allRows);
-            $totalExitosas = 0;
-            $todosErrores = [];
-            $filasErrorneas = [];
+            $totalFilas           = count($allRows);
+            $totalExitosas        = 0;
+            $todosErrores         = [];
+            $filasErrorneas       = [];
             $erroresFilasErrorneas = [];
             $todosProductosCreados = [];
+            $todosPedidosCreados   = []; // acumula [{id, numero_orden, id_proveedor, id_cliente}]
 
             for ($i = 0; $i < $totalFilas; $i += CHUNK_SIZE) {
                 $chunk = array_slice($allRows, $i, CHUNK_SIZE);
@@ -1603,6 +1651,16 @@ class PedidosController
                         if (!empty($defaultValues['vendedor']) && empty($fila['id_vendedor'])) {
                             $fila['id_vendedor'] = $defaultValues['vendedor'];
                         }
+                        if (!empty($defaultValues['id_cliente']) && empty($fila['id_cliente'])) {
+                            $fila['id_cliente'] = $defaultValues['id_cliente'];
+                        }
+                        // Es Combo: solo aplicar si el toggle está activo Y la fila no trae el campo
+                        // Es Combo: normalizar SIEMPRE a entero 0 o 1 en el chunk.
+                        if (!isset($fila['es_combo']) || $fila['es_combo'] === '') {
+                            $fila['es_combo'] = ($defaultValues['es_combo'] === 1) ? 1 : 0;
+                        } else {
+                            $fila['es_combo'] = (int)$fila['es_combo'] ? 1 : 0;
+                        }
 
                         $chunkValido[] = $fila;
                     } else {
@@ -1626,11 +1684,43 @@ class PedidosController
                     if (!empty($resultado['productos_creados'])) {
                         $todosProductosCreados = array_merge($todosProductosCreados, $resultado['productos_creados']);
                     }
+
+                    // Acumular pedidos creados para notificación final
+                    if (!empty($resultado['pedidos_creados'])) {
+                        $todosPedidosCreados = array_merge($todosPedidosCreados, $resultado['pedidos_creados']);
+                    }
                 }
             }
 
-            $tiempoFin = microtime(true);
+            $tiempoFin           = microtime(true);
             $tiempoProcesamiento = round($tiempoFin - $tiempoInicio, 3);
+
+            // ── NOTIFICACIONES AL PROVEEDOR Y ADMINS ──────────────────────────
+            // Se dispara un resumen por lote (no una notificación por pedido)
+            // para evitar spam de notificaciones cuando se importan muchos pedidos.
+            if (!empty($todosPedidosCreados)) {
+                try {
+                    // Determinar proveedor predominante:
+                    // 1) El proveedor por defecto de Opciones Avanzadas (si se configuró)
+                    // 2) O el primero encontrado en los pedidos creados
+                    $idProveedorNotif = !empty($defaultValues['proveedor'])
+                        ? (int)$defaultValues['proveedor']
+                        : (int)($todosPedidosCreados[0]['id_proveedor'] ?? 0);
+
+                    $idClienteNotif = !empty($defaultValues['id_cliente'])
+                        ? (int)$defaultValues['id_cliente']
+                        : (int)($todosPedidosCreados[0]['id_cliente'] ?? 0);
+
+                    LogisticaNotifHelper::notificarLote(
+                        $todosPedidosCreados,
+                        $idClienteNotif,
+                        $idProveedorNotif
+                    );
+                } catch (Throwable $notifEx) {
+                    // Fallo silencioso: la importación ya fue exitosa
+                    error_log('[CSV Import] Error al notificar lote: ' . $notifEx->getMessage());
+                }
+            }
 
             // Exportar filas erróneas como CSV si existen
             $archivoErrores = null;

@@ -120,6 +120,23 @@ endif;
                                             </select>
                                         </div>
 
+                                        <!-- Es Combo por defecto -->
+                                        <div class="col-12 mb-1">
+                                            <div class="border rounded-2 px-3 py-2 d-flex align-items-center gap-3" style="background:rgba(99,102,241,.06);">
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input" type="checkbox" role="switch"
+                                                           id="default_es_combo" name="default_es_combo" value="1">
+                                                    <label class="form-check-label fw-semibold" for="default_es_combo">
+                                                        Es Combo por defecto
+                                                    </label>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    Activa <code>es_combo&nbsp;=&nbsp;1</code> en filas que no traigan ese valor en el CSV.
+                                                </small>
+                                            </div>
+                                        </div>
+
                                         <!-- Nota: productos inexistentes generan error de validación y la fila es rechazada -->
                                     </div>
                                 </div>
@@ -350,6 +367,9 @@ endif;
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Valores por defecto (checkin) -->
+                <div id="previewDefaults" class="mb-3"></div>
+
                 <!-- Resumen de validación -->
                 <div id="previewSummary" class="mb-3"></div>
                 
@@ -867,6 +887,7 @@ $ESTADOS_BLOQUEADOS_CLIENTE = [3, 7];
 ?>
 <script>
 const RUTA_BASE          = '<?= RUTA_URL ?>';
+const SESSION_USER_NAME  = '<?= htmlspecialchars($_SESSION['nombre'] ?? '') ?>';
 const ESTADOS_OPCIONES   = <?= json_encode($estados, JSON_UNESCAPED_UNICODE) ?>;
 const ESTADOS_BLOQUEADOS_CLIENTE = <?= json_encode($ESTADOS_BLOQUEADOS_CLIENTE) ?>;
 const ESTADOS_TERMINALES_CLIENTE = <?= json_encode($ESTADOS_TERMINALES_CLIENTE) ?>;
@@ -1293,6 +1314,73 @@ document.addEventListener('DOMContentLoaded', function(){
     function mostrarPreview(data) {
         const resumen = data.resumen || {};
         
+        // Obtener nombres de los defaults seleccionados en el formulario
+        const defaultEstado    = $('#default_estado').val()    ? $('#default_estado option:selected').text().trim()    : null;
+        const defaultProveedor = $('#default_proveedor').val() ? $('#default_proveedor option:selected').text().trim() : null;
+        const defaultMoneda    = $('#default_moneda').val()    ? $('#default_moneda option:selected').text().trim()    : null;
+        const defaultVendedor  = $('#default_vendedor').val()  ? $('#default_vendedor option:selected').text().trim()  : null;
+        const defaultEsCombo   = document.getElementById('default_es_combo')?.checked ? true : false;
+
+        let defaultsHtml = '';
+        // El cliente creador es siempre el usuario logueado en la sesión
+        const defaultCliente = SESSION_USER_NAME;
+        
+        defaultsHtml = `
+            <div class="card border-info bg-light mb-3">
+                <div class="card-header bg-info text-white py-1 px-3 d-flex align-items-center" style="font-size: 0.85rem; font-weight: bold;">
+                    <i class="bi bi-gear-fill me-1"></i> Configuración de Importación Aplicada
+                </div>
+                <div class="card-body py-2 px-3" style="font-size: 0.82rem;">
+                    <div class="row">
+                        <div class="col-md-3 col-sm-6 mb-1">
+                            <strong>Asociar a Cliente:</strong> <span class="badge bg-dark text-wrap">${defaultCliente}</span>
+                        </div>
+        `;
+        if (defaultEstado) {
+            defaultsHtml += `
+                <div class="col-md-2 col-sm-6 mb-1">
+                    <strong>Estado:</strong> <span class="badge bg-primary text-wrap">${defaultEstado}</span>
+                </div>
+            `;
+        }
+        if (defaultProveedor) {
+            defaultsHtml += `
+                <div class="col-md-3 col-sm-6 mb-1">
+                    <strong>Proveedor:</strong> <span class="badge bg-success text-wrap">${defaultProveedor}</span>
+                </div>
+            `;
+        }
+        if (defaultMoneda) {
+            defaultsHtml += `
+                <div class="col-md-2 col-sm-6 mb-1">
+                    <strong>Moneda:</strong> <span class="badge bg-warning text-dark text-wrap">${defaultMoneda}</span>
+                </div>
+            `;
+        }
+        if (defaultVendedor) {
+            defaultsHtml += `
+                <div class="col-md-2 col-sm-6 mb-1">
+                    <strong>Vendedor/Repartidor:</strong> <span class="badge bg-secondary text-wrap">${defaultVendedor}</span>
+                </div>
+            `;
+        }
+        if (defaultEsCombo) {
+            defaultsHtml += `
+                <div class="col-md-2 col-sm-6 mb-1">
+                    <strong>Es Combo:</strong> <span class="badge text-wrap" style="background:#6366f1;">✔ Sí (forzado)</span>
+                </div>
+            `;
+        }
+        defaultsHtml += `
+                    </div>
+                </div>
+            </div>
+        `;
+        const previewDefaultsEl = document.getElementById('previewDefaults');
+        if (previewDefaultsEl) {
+            previewDefaultsEl.innerHTML = defaultsHtml;
+        }
+        
         // Resumen estadístico
         let summaryHtml = `
             <div class="alert alert-${resumen.puede_importar ? 'success' : 'danger'}">
@@ -1366,8 +1454,9 @@ document.addEventListener('DOMContentLoaded', function(){
             function renderCell(val, col) {
                 if (val === null || val === undefined || val === '') return '<span class="text-muted">—</span>';
                 if (typeof val === 'object') return '<code class="small">' + JSON.stringify(val) + '</code>';
-                // Resaltar valores booleanos
-                if (val === '1' || val === 1) return '<span class="badge bg-success">' + val + '</span>';
+                // Resaltar booleanos 0/1
+                if (val === '1' || val === 1) return '<span class="badge bg-success">1</span>';
+                if (val === '0' || val === 0) return '<span class="badge bg-secondary">0</span>';
                 return String(val);
             }
 
