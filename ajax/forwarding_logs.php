@@ -236,6 +236,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // ── Eliminar logs fallidos/cancelados ────────────────────────────────────
+    if ($action === 'delete_logs') {
+        $idProvider = isset($body['id_provider']) && (int)$body['id_provider'] > 0 ? (int)$body['id_provider'] : null;
+
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
+            // 1. Obtener los IDs de pedido de logs fallidos o cancelados
+            $sql = "SELECT DISTINCT id_pedido FROM forwarding_log WHERE status IN ('failed', 'cancelled')";
+            $params = [];
+            if ($idProvider !== null) {
+                $sql .= " AND id_provider = ?";
+                $params[] = $idProvider;
+            }
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $pedidos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // 2. Eliminar los logs
+            $deleteSql = "DELETE FROM forwarding_log WHERE status IN ('failed', 'cancelled')";
+            $deleteParams = [];
+            if ($idProvider !== null) {
+                $deleteSql .= " AND id_provider = ?";
+                $deleteParams[] = $idProvider;
+            }
+            $stmt = $db->prepare($deleteSql);
+            $stmt->execute($deleteParams);
+            $deletedLogsCount = $stmt->rowCount();
+
+            // 3. Eliminar de la cola de reintentos
+            if (!empty($pedidos)) {
+                $chunks = array_chunk($pedidos, 200);
+                foreach ($chunks as $chunk) {
+                    $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                    $stmt = $db->prepare("
+                        DELETE FROM logistics_queue 
+                        WHERE pedido_id IN ($placeholders)
+                          AND job_type IN ('forwarding_retry', 'forwarding_eval')
+                          AND status IN ('pending', 'failed')
+                    ");
+                    $stmt->execute($chunk);
+                }
+            }
+
+            $db->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Se eliminaron correctamente ' . $deletedLogsCount . ' registros de log fallidos/cancelados.'
+            ]);
+            exit;
+
+        } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            echo json_encode(['success' => false, 'message' => 'Error al eliminar logs: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
     echo json_encode(['success' => false, 'message' => 'Acción no reconocida']);
     exit;
 }

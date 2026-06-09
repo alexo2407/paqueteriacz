@@ -50,7 +50,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
             <!-- Filtros -->
             <div class="filter-card mb-4">
                 <div class="row g-2 align-items-end">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label form-label-sm fw-semibold mb-1">Proveedor</label>
                         <select class="form-select form-select-sm" id="filterProvider">
                             <option value="">Todos</option>
@@ -77,12 +77,15 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         <label class="form-label form-label-sm fw-semibold mb-1">Hasta</label>
                         <input type="date" class="form-control form-control-sm" id="filterHasta">
                     </div>
-                    <div class="col-md-3 d-flex gap-2">
+                    <div class="col-md-4 d-flex gap-2">
                         <button class="btn btn-sm btn-primary w-100" onclick="loadLogs()">
                             <i class="bi bi-funnel me-1"></i>Filtrar
                         </button>
-                        <button class="btn btn-sm btn-outline-danger w-100" onclick="cancelAllLogs()" title="Cancelar todos los logs fallidos/pendientes de la base de datos">
+                        <button class="btn btn-sm btn-outline-warning w-100" onclick="cancelAllLogs()" title="Cancelar todos los logs fallidos/pendientes de la base de datos">
                             <i class="bi bi-x-circle me-1"></i>Cancelar todo
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger w-100" onclick="deleteFailedLogs()" title="Eliminar permanentemente los logs fallidos y cancelados de la base de datos">
+                            <i class="bi bi-trash me-1"></i>Eliminar fallas
                         </button>
                     </div>
                 </div>
@@ -456,6 +459,57 @@ function cancelAllLogs() {
                         icon: 'error',
                         title: 'Error',
                         text: data.message || 'No se pudieron cancelar los envíos.'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+            });
+        }
+    });
+}
+
+function deleteFailedLogs() {
+    const provider = document.getElementById('filterProvider').value;
+    const providerName = provider ? document.getElementById('filterProvider').options[document.getElementById('filterProvider').selectedIndex].text : 'todos los proveedores';
+
+    Swal.fire({
+        title: '¿Eliminar registros fallidos/cancelados?',
+        text: `Esta acción ELIMINARÁ DEFINITIVAMENTE todos los logs con estado "Fallido" o "Cancelado" de la base de datos para ${providerName}. Esta operación no se puede deshacer.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar de la base de datos',
+        cancelButtonText: 'No, mantener'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.showLoading();
+
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete_logs', id_provider: provider ? parseInt(provider) : null })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminados con éxito',
+                        text: data.message,
+                        timer: 3000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        currentOffset = 0;
+                        loadLogs();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudieron eliminar los registros.'
                     });
                 }
             })
