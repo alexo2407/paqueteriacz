@@ -305,7 +305,7 @@ try {
 
         // Buscar pedido por numero_orden
         $stmt = $db->prepare("
-            SELECT p.id, p.id_estado, p.fecha_entrega, p.fecha_liquidacion, ep.nombre_estado 
+            SELECT p.id, p.id_estado, p.id_cliente, p.id_proveedor, p.numero_orden, p.fecha_entrega, p.fecha_liquidacion, ep.nombre_estado 
             FROM pedidos p 
             LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
             WHERE p.numero_orden = :numero_orden LIMIT 1
@@ -368,6 +368,70 @@ try {
             $datosAnteriores,
             $datosNuevos
         );
+
+        // [Webhook] Notificar cambio de estado a API externo
+        try {
+            require_once __DIR__ . '/../../modelo/webhook.php';
+            WebhookModel::dispararPorPedidoId((int)$idPedido, (int)$idEstadoNuevo, $observaciones ?? null);
+        } catch (Throwable $webEx) {
+            error_log("[Webhook] Error en webhook RutaEx para pedido {$idPedido}: " . $webEx->getMessage());
+        }
+
+        // ── Crear notificación logística ──────────────────────────────────
+        try {
+            require_once __DIR__ . '/../../modelo/logistica_notification.php';
+
+            $estadoAnteriorNombre = $pedido['nombre_estado'] ?? '';
+            $titulo  = "Pedido #{$pedido['numero_orden']} → {$nombreEstadoNuevo}";
+            $mensaje = $observaciones ?: '';
+            $payload = [
+                'estado_anterior' => $estadoAnteriorNombre,
+                'estado_nuevo'    => $nombreEstadoNuevo,
+                'numero_orden'    => $pedido['numero_orden'] ?? '',
+            ];
+
+            // Recopilar destinatarios únicos (cliente + proveedor + admins)
+            $destinatarios = [];
+
+            $idClientePedido   = (int)($pedido['id_cliente']   ?? 0);
+            $idProveedorPedido = (int)($pedido['id_proveedor'] ?? 0);
+
+            if ($idClientePedido > 0) {
+                $destinatarios[$idClientePedido] = true;
+            }
+            if ($idProveedorPedido > 0) {
+                $destinatarios[$idProveedorPedido] = true;
+            }
+
+            // Obtener IDs de todos los usuarios con rol admin
+            try {
+                $dbNotif = (new Conexion())->conectar();
+                $stmtAdmins = $dbNotif->prepare("
+                    SELECT DISTINCT u.id
+                    FROM usuarios u
+                    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id
+                    INNER JOIN roles r ON r.id = ur.id_rol
+                    WHERE r.nombre = :rolAdmin
+                ");
+                $stmtAdmins->execute([':rolAdmin' => defined('ROL_NOMBRE_ADMIN') ? ROL_NOMBRE_ADMIN : 'Administrador']);
+                foreach ($stmtAdmins->fetchAll(PDO::FETCH_COLUMN) as $adminId) {
+                    $destinatarios[(int)$adminId] = true;
+                }
+            } catch (Throwable $eAdmins) {
+                error_log("[LogisticaNotification] No se pudieron obtener admins: " . $eAdmins->getMessage());
+            }
+
+            // Crear una notificación por cada destinatario único
+            foreach (array_keys($destinatarios) as $uid) {
+                LogisticaNotificationModel::agregar(
+                    $uid, 'estado_cambiado',
+                    $titulo, $mensaje, $idPedido, $payload
+                );
+            }
+
+        } catch (Throwable $notifEx) {
+            error_log("[LogisticaNotification] Error al crear notif: " . $notifEx->getMessage());
+        }
 
         $results[] = ['orderNumber' => $orderNumber, 'updated' => true];
         $processed++;
