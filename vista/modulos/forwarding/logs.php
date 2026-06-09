@@ -77,9 +77,12 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         <label class="form-label form-label-sm fw-semibold mb-1">Hasta</label>
                         <input type="date" class="form-control form-control-sm" id="filterHasta">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-3 d-flex gap-2">
                         <button class="btn btn-sm btn-primary w-100" onclick="loadLogs()">
                             <i class="bi bi-funnel me-1"></i>Filtrar
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger w-100" onclick="cancelAllLogs()" title="Cancelar todos los logs fallidos/pendientes de la base de datos">
+                            <i class="bi bi-x-circle me-1"></i>Cancelar todo
                         </button>
                     </div>
                 </div>
@@ -402,6 +405,57 @@ function bulkCancel() {
                         icon: 'error',
                         title: 'Error al cancelar',
                         text: data.message || 'No se pudieron cancelar los logs seleccionados.'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+            });
+        }
+    });
+}
+
+function cancelAllLogs() {
+    const provider = document.getElementById('filterProvider').value;
+    const providerName = provider ? document.getElementById('filterProvider').options[document.getElementById('filterProvider').selectedIndex].text : 'todos los proveedores';
+
+    Swal.fire({
+        title: '¿Cancelar TODOS los envíos?',
+        text: `Esta acción cambiará el estado de TODOS los logs fallidos y pendientes para ${providerName} a "Cancelado" y detendrá permanentemente todos sus reintentos en segundo plano.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, cancelar TODOS',
+        cancelButtonText: 'No, mantener'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.showLoading();
+
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancel_all', id_provider: provider ? parseInt(provider) : null })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Cancelados',
+                        text: data.message,
+                        timer: 3000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        currentOffset = 0;
+                        loadLogs();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudieron cancelar los envíos.'
                     });
                 }
             })

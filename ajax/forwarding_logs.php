@@ -169,6 +169,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // ── Cancelar TODOS los envíos fallidos/pendientes ────────────────────────
+    if ($action === 'cancel_all') {
+        $idProvider = isset($body['id_provider']) && (int)$body['id_provider'] > 0 ? (int)$body['id_provider'] : null;
+
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
+            // 1. Obtener los IDs de pedido de logs fallidos o pendientes
+            $sql = "SELECT DISTINCT id_pedido FROM forwarding_log WHERE status IN ('failed', 'pending')";
+            $params = [];
+            if ($idProvider !== null) {
+                $sql .= " AND id_provider = ?";
+                $params[] = $idProvider;
+            }
+
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $pedidos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (empty($pedidos)) {
+                $db->rollBack();
+                echo json_encode(['success' => true, 'message' => 'No hay envíos fallidos o pendientes para cancelar.']);
+                exit;
+            }
+
+            // 2. Marcar los logs como cancelados
+            $updateSql = "UPDATE forwarding_log SET status = 'cancelled', error_message = 'Cancelado de forma masiva por el usuario. Reintentos automáticos detenidos.' WHERE status IN ('failed', 'pending')";
+            $updateParams = [];
+            if ($idProvider !== null) {
+                $updateSql .= " AND id_provider = ?";
+                $updateParams[] = $idProvider;
+            }
+            $stmt = $db->prepare($updateSql);
+            $stmt->execute($updateParams);
+
+            // 3. Eliminar de la cola de reintentos
+            require_once __DIR__ . '/../services/LogisticsQueueService.php';
+            $chunks = array_chunk($pedidos, 200);
+            foreach ($chunks as $chunk) {
+                $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+                $stmt = $db->prepare("
+                    DELETE FROM logistics_queue 
+                    WHERE pedido_id IN ($placeholders)
+                      AND job_type IN ('forwarding_retry', 'forwarding_eval')
+                      AND status IN ('pending', 'failed')
+                ");
+                $stmt->execute($chunk);
+            }
+
+            $db->commit();
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Todos los envíos fallidos/pendientes (' . count($pedidos) . ') fueron cancelados e intentos detenidos.'
+            ]);
+            exit;
+
+        } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            echo json_encode(['success' => false, 'message' => 'Error al cancelar todos los envíos: ' . $e->getMessage()]);
+            exit;
+        }
+    }
+
     echo json_encode(['success' => false, 'message' => 'Acción no reconocida']);
     exit;
 }
