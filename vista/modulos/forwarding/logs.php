@@ -96,9 +96,14 @@ $proveedores = ForwardingModel::obtenerProveedores();
                 <span class="fw-semibold text-secondary">
                     <i class="bi bi-check2-square me-1"></i> Seleccionados: <span id="selectedCount" class="badge bg-secondary">0</span>
                 </span>
-                <button class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1" onclick="bulkCancel()">
-                    <i class="bi bi-x-circle"></i> Cancelar seleccionados
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1" onclick="bulkCancel()">
+                        <i class="bi bi-x-circle"></i> Cancelar seleccionados
+                    </button>
+                    <button class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1" onclick="bulkDelete()">
+                        <i class="bi bi-trash"></i> Eliminar seleccionados
+                    </button>
+                </div>
             </div>
 
             <!-- Tabla de logs -->
@@ -233,7 +238,7 @@ function renderLogs(logs, total) {
     body.innerHTML = logs.map((l, i) => `
         <tr>
             <td class="text-center">
-                ${(l.status === 'failed' || l.status === 'pending') ? `
+                ${(l.status === 'failed' || l.status === 'pending' || l.status === 'cancelled') ? `
                 <input type="checkbox" class="form-check-input log-checkbox" value="${l.id}" onchange="updateBulkActionsVisible()">` : ''}
             </td>
             <td><small>${formatDate(l.created_at)}</small></td>
@@ -408,6 +413,62 @@ function bulkCancel() {
                         icon: 'error',
                         title: 'Error al cancelar',
                         text: data.message || 'No se pudieron cancelar los logs seleccionados.'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+            });
+        }
+    });
+}
+
+function bulkDelete() {
+    const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
+    const ids = Array.from(checkedBoxes).map(chk => parseInt(chk.value));
+    
+    if (ids.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'Atención', text: 'No has seleccionado ningún log apto.' });
+        return;
+    }
+
+    Swal.fire({
+        title: `¿Eliminar ${ids.length} registros seleccionados?`,
+        text: 'Esta acción ELIMINARÁ DEFINITIVAMENTE los logs seleccionados con estado "Fallido" o "Cancelado" de la base de datos y detendrá sus reintentos. Esta operación no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar seleccionados',
+        cancelButtonText: 'No, mantener'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.showLoading();
+
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete_logs', ids: ids })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminados con éxito',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        currentOffset = 0;
+                        loadLogs();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudieron eliminar los registros.'
                     });
                 }
             })

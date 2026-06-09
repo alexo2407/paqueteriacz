@@ -238,34 +238,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // ── Eliminar logs fallidos/cancelados ────────────────────────────────────
     if ($action === 'delete_logs') {
+        $logIds = isset($body['ids']) ? (array)$body['ids'] : [];
+        $logIds = array_filter(array_map('intval', $logIds));
+
         $idProvider = isset($body['id_provider']) && (int)$body['id_provider'] > 0 ? (int)$body['id_provider'] : null;
 
         try {
             $db = (new Conexion())->conectar();
             $db->beginTransaction();
 
-            // 1. Obtener los IDs de pedido de logs fallidos o cancelados
-            $sql = "SELECT DISTINCT id_pedido FROM forwarding_log WHERE status IN ('failed', 'cancelled')";
-            $params = [];
-            if ($idProvider !== null) {
-                $sql .= " AND id_provider = ?";
-                $params[] = $idProvider;
-            }
+            if (!empty($logIds)) {
+                // Deleting specific logs
+                $placeholders = implode(',', array_fill(0, count($logIds), '?'));
+                
+                // 1. Obtener los IDs de pedido de estos logs que estén en status 'failed' o 'cancelled'
+                $sql = "SELECT DISTINCT id_pedido FROM forwarding_log WHERE id IN ($placeholders) AND status IN ('failed', 'cancelled')";
+                $stmt = $db->prepare($sql);
+                $stmt->execute($logIds);
+                $pedidos = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            $stmt = $db->prepare($sql);
-            $stmt->execute($params);
-            $pedidos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                // 2. Eliminar los logs específicos
+                $deleteSql = "DELETE FROM forwarding_log WHERE id IN ($placeholders) AND status IN ('failed', 'cancelled')";
+                $stmt = $db->prepare($deleteSql);
+                $stmt->execute($logIds);
+                $deletedLogsCount = $stmt->rowCount();
+            } else {
+                // Existing behavior: Delete all failed/cancelled logs for a provider (or all)
+                // 1. Obtener los IDs de pedido de logs fallidos o cancelados
+                $sql = "SELECT DISTINCT id_pedido FROM forwarding_log WHERE status IN ('failed', 'cancelled')";
+                $params = [];
+                if ($idProvider !== null) {
+                    $sql .= " AND id_provider = ?";
+                    $params[] = $idProvider;
+                }
 
-            // 2. Eliminar los logs
-            $deleteSql = "DELETE FROM forwarding_log WHERE status IN ('failed', 'cancelled')";
-            $deleteParams = [];
-            if ($idProvider !== null) {
-                $deleteSql .= " AND id_provider = ?";
-                $deleteParams[] = $idProvider;
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $pedidos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                // 2. Eliminar los logs
+                $deleteSql = "DELETE FROM forwarding_log WHERE status IN ('failed', 'cancelled')";
+                $deleteParams = [];
+                if ($idProvider !== null) {
+                    $deleteSql .= " AND id_provider = ?";
+                    $deleteParams[] = $idProvider;
+                }
+                $stmt = $db->prepare($deleteSql);
+                $stmt->execute($deleteParams);
+                $deletedLogsCount = $stmt->rowCount();
             }
-            $stmt = $db->prepare($deleteSql);
-            $stmt->execute($deleteParams);
-            $deletedLogsCount = $stmt->rowCount();
 
             // 3. Eliminar de la cola de reintentos
             if (!empty($pedidos)) {
