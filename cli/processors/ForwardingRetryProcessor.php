@@ -32,7 +32,8 @@ class ForwardingRetryProcessor extends BaseProcessor {
         $idRegla = (int)$payload['id_rule'];
         
         try {
-            $resultado = ForwardingService::reintentarRegla($pedidoId, $idRegla);
+            // Reintentar indicando que viene de la cola para no re-encolar en caso de fallo
+            $resultado = ForwardingService::reintentarRegla($pedidoId, $idRegla, true);
             
             return [
                 'success' => !empty($resultado['success']),

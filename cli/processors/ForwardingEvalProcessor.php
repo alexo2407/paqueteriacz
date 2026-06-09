@@ -51,8 +51,8 @@ class ForwardingEvalProcessor extends BaseProcessor {
         }
         
         try {
-            // Invocar el servicio de forwarding
-            $resultados = ForwardingService::evaluarYReenviar($pedidoId, $idCliente);
+            // Invocar el servicio de forwarding (indicando que viene de la cola)
+            $resultados = ForwardingService::evaluarYReenviar($pedidoId, $idCliente, true);
             
             if ($resultados === null) {
                 $msg = "No se encontraron reglas de forwarding activas para el cliente {$idCliente}";

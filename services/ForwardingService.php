@@ -36,7 +36,7 @@ class ForwardingService
      * @param int $idCliente ID del cliente dueño del pedido
      * @return array|null Resultados del forwarding o null si no aplica
      */
-    public static function evaluarYReenviar($idPedido, $idCliente)
+    public static function evaluarYReenviar($idPedido, $idCliente, $fromQueue = false)
     {
         if (!$idCliente || $idCliente <= 0) return null;
 
@@ -54,7 +54,7 @@ class ForwardingService
         $resultados = [];
 
         foreach ($reglas as $regla) {
-            $resultado = self::ejecutarForwarding($pedido, $regla);
+            $resultado = self::ejecutarForwarding($pedido, $regla, $fromQueue);
             $resultados[] = $resultado;
         }
 
@@ -66,9 +66,10 @@ class ForwardingService
      *
      * @param array $pedido Datos del pedido
      * @param array $regla Regla con datos del proveedor (JOIN)
+     * @param bool $fromQueue Indica si se está ejecutando desde la cola de reintentos
      * @return array Resultado: ['provider' => slug, 'success' => bool, 'message' => string, ...]
      */
-    private static function ejecutarForwarding(array $pedido, array $regla)
+    private static function ejecutarForwarding(array $pedido, array $regla, $fromQueue = false)
     {
         $slug     = $regla['slug'];
         $logData = [
@@ -159,8 +160,11 @@ class ForwardingService
                 $logId = ForwardingModel::registrarLog($logData);
             }
 
-            // Fallback a cola si está habilitado
-            $retryQueued = self::encolarReintento($pedido['id'], $regla, $e->getMessage());
+            // Fallback a cola si está habilitado y no venimos ya de la cola
+            $retryQueued = false;
+            if (!$fromQueue) {
+                $retryQueued = self::encolarReintento($pedido['id'], $regla, $e->getMessage());
+            }
 
             return [
                 'provider'     => $slug,
@@ -297,7 +301,7 @@ class ForwardingService
      * @param int $idRegla
      * @return array Resultado
      */
-    public static function reintentarRegla($idPedido, $idRegla)
+    public static function reintentarRegla($idPedido, $idRegla, $fromQueue = false)
     {
         try {
             $db = (new Conexion())->conectar();
@@ -334,6 +338,6 @@ class ForwardingService
             ];
         }
 
-        return self::ejecutarForwarding($pedido, $regla);
+        return self::ejecutarForwarding($pedido, $regla, $fromQueue);
     }
 }
