@@ -145,11 +145,9 @@ class LogisProProvider extends BaseProvider
      */
     public function mapearCampos(array $pedido, array $productos, array $authData)
     {
-        // Resolver postalCode
-        $postalCode = $pedido['postalCode'] ?? $pedido['codigo_postal'] ?? '';
-        if (is_numeric($postalCode)) {
-            $postalCode = (int)$postalCode;
-        }
+        // Resolver postalCode (debe ser un entero para la API de LogisPro)
+        $postalCodeVal = $pedido['postalCode'] ?? $pedido['codigo_postal'] ?? 0;
+        $postalCode = (is_numeric($postalCodeVal) && (int)$postalCodeVal > 0) ? (int)$postalCodeVal : 0;
 
         // Fecha de entrega: si no existe, usar fecha actual + 3 días
         $fechaEntrega = $pedido['fecha_entrega'] ?? null;
