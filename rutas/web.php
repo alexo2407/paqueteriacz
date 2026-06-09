@@ -1333,6 +1333,17 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
         }
         exit;
     }
+    // Control de Workers
+    if ($accion === 'controlWorker') {
+        $worker = $_POST['worker'] ?? '';
+        $action = $_POST['action'] ?? '';
+        $resultado = $ctrl->controlWorker($worker, $action);
+        
+        header('Content-Type: application/json');
+        echo json_encode($resultado, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     // Acciones de Cola (Monitor)
     if ($accion === 'reintentarOutbox') {
         $id = isset($ruta[2]) ? (int)$ruta[2] : 0;

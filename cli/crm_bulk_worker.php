@@ -23,6 +23,15 @@ while (true) {
     }
     touch($heartbeatFile);
 
+    // Check for stop file
+    $stopFile = __DIR__ . '/../logs/crm_bulk_worker.stop';
+    if (file_exists($stopFile)) {
+        echo "\n[" . date('Y-m-d H:i:s') . "] Stop file detected, shutting down...\n";
+        @unlink($stopFile);
+        @unlink($heartbeatFile);
+        exit(0);
+    }
+
     try {
         processPendingJobs();
         sleep(2); // Esperar 2 segundos antes de verificar nuevos jobs

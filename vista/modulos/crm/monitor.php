@@ -37,15 +37,33 @@ include("vista/includes/header.php");
                             <?php endif; ?>
                         </small>
                     </div>
-                    <?php if ($status['status'] === 'running'): ?>
-                        <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle"></i> RUNNING</span>
-                    <?php else: ?>
-                        <span class="badge bg-danger rounded-pill"><i class="bi bi-x-circle"></i> STOPPED</span>
-                    <?php endif; ?>
+                    <div class="d-flex align-items-center gap-2">
+                        <?php if ($status['status'] === 'running'): ?>
+                            <span class="badge bg-success rounded-pill"><i class="bi bi-check-circle"></i> RUNNING</span>
+                            <button class="btn btn-sm btn-outline-danger btn-control-worker" data-worker="<?= $name ?>" data-action="stop" title="Detener Worker">
+                                <i class="bi bi-stop-fill"></i>
+                            </button>
+                        <?php else: ?>
+                            <span class="badge bg-danger rounded-pill"><i class="bi bi-x-circle"></i> STOPPED</span>
+                            <button class="btn btn-sm btn-outline-success btn-control-worker" data-worker="<?= $name ?>" data-action="start" title="Iniciar Worker">
+                                <i class="bi bi-play-fill"></i>
+                            </button>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
         <?php endforeach; ?>
+    </div>
+
+    <!-- Nota Informativa sobre Workers -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-light border shadow-sm mb-0 py-2 px-3" style="font-size: 0.82rem;">
+                <i class="bi bi-info-circle text-primary me-2"></i>
+                <strong>Nota sobre Entornos de Producción:</strong> Si los workers están gestionados por un demonio en producción (como Supervisor o Systemd), estos servicios reiniciarán automáticamente cualquier worker detenido. Los controles de inicio/detención web están diseñados para desarrollo local (XAMPP/Docker) o VPS manuales.
+            </div>
+        </div>
     </div>
 
     <!-- Estadísticas -->
@@ -467,6 +485,77 @@ function showResults(data) {
 // Cargar estadísticas al cargar la página
 document.addEventListener('DOMContentLoaded', function() {
     refreshCleanupStats();
+});
+
+// Control de Workers (Iniciar / Detener)
+document.querySelectorAll('.btn-control-worker').forEach(button => {
+    button.addEventListener('click', function() {
+        const worker = this.getAttribute('data-worker');
+        const action = this.getAttribute('data-action');
+        const actionText = action === 'start' ? 'iniciar' : 'detener';
+        
+        Swal.fire({
+            title: `¿Confirmas ${actionText} el worker?`,
+            text: `Se enviará la orden para ${actionText} el proceso de ${worker.replace(/_/g, ' ')}.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: action === 'start' ? '#198754' : '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Confirmar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Mostrar cargando
+                Swal.fire({
+                    title: 'Procesando...',
+                    html: 'Por favor espera un momento.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                const formData = new FormData();
+                formData.append('worker', worker);
+                formData.append('action', action);
+                
+                fetch('<?= RUTA_URL ?>crm/controlWorker', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            title: '¡Operación Exitosa!',
+                            text: data.message,
+                            icon: 'success',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            // Recargar monitor para ver el nuevo estado
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: data.message || 'No se pudo realizar la acción.',
+                            icon: 'error',
+                            confirmButtonColor: '#0d6efd'
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        title: 'Error de Conexión',
+                        text: 'Ocurrió un error al comunicarse con el servidor: ' + error.message,
+                        icon: 'error',
+                        confirmButtonColor: '#0d6efd'
+                    });
+                });
+            }
+        });
+    });
 });
 </script>
 

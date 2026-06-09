@@ -86,6 +86,15 @@ if ($mode === '--loop') {
         }
         touch($heartbeatFile);
 
+        // Check for stop file
+        $stopFile = __DIR__ . '/../logs/crm_worker.stop';
+        if (file_exists($stopFile)) {
+            echo "\n[" . date('Y-m-d H:i:s') . "] Stop file detected, shutting down...\n";
+            @unlink($stopFile);
+            @unlink($heartbeatFile);
+            exit(0);
+        }
+
         processIteration();
         
         // Procesar señales si está disponible

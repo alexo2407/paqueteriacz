@@ -301,6 +301,68 @@ class CrmController {
     }
 
     /**
+     * Controlar encendido y apagado de workers (iniciar / detener)
+     */
+    public function controlWorker($worker, $action) {
+        $validWorkers = ['logistics_worker', 'crm_worker', 'crm_bulk_worker'];
+        if (!in_array($worker, $validWorkers, true)) {
+            return ['success' => false, 'message' => 'Worker no válido.'];
+        }
+
+        $logsDir = __DIR__ . '/../logs';
+        if (!is_dir($logsDir)) {
+            @mkdir($logsDir, 0755, true);
+        }
+
+        if ($action === 'stop') {
+            // Detener escribiendo un stop file
+            $stopFile = $logsDir . '/' . $worker . '.stop';
+            if (file_put_contents($stopFile, 'stop') !== false) {
+                // Borrar latido inmediatamente para reflejar estado apagado
+                @unlink($logsDir . '/' . $worker . '.heartbeat');
+                return ['success' => true, 'message' => 'Comando de apagado enviado al worker.'];
+            }
+            return ['success' => false, 'message' => 'No se pudo crear el archivo de detención.'];
+        }
+
+        if ($action === 'start') {
+            // Verificar si ya está corriendo
+            $heartbeatFile = $logsDir . '/' . $worker . '.heartbeat';
+            if (file_exists($heartbeatFile)) {
+                $diff = time() - filemtime($heartbeatFile);
+                if ($diff < 120) {
+                    return ['success' => false, 'message' => 'El worker ya se encuentra en ejecución.'];
+                }
+            }
+
+            // Eliminar stop file por si acaso
+            @unlink($logsDir . '/' . $worker . '.stop');
+
+            // Ejecutar el script CLI en background
+            $scriptPath = realpath(__DIR__ . '/../cli/' . $worker . '.php');
+            if (!$scriptPath) {
+                return ['success' => false, 'message' => 'Archivo ejecutable del worker no encontrado.'];
+            }
+
+            $isWindows = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+
+            if ($isWindows) {
+                // Comando para Windows (XAMPP local) en segundo plano sin bloquear el hilo web de PHP
+                $cmd = "start /B php " . escapeshellarg($scriptPath) . " --loop > NUL 2>&1";
+                pclose(popen($cmd, "r"));
+            } else {
+                // Comando para Linux en segundo plano
+                $cmd = "php " . escapeshellarg($scriptPath) . " --loop > /dev/null 2>&1 &";
+                exec($cmd);
+            }
+
+            return ['success' => true, 'message' => 'Worker iniciado en segundo plano.'];
+        }
+
+        return ['success' => false, 'message' => 'Acción no válida.'];
+    }
+
+    /**
      * Reportes y estadísticas
      */
     public function reportes() {
