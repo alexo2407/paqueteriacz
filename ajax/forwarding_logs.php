@@ -137,7 +137,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $successCount = 0;
         $failCount = 0;
 
+        // Deduplicar por id_pedido y id_rule para evitar reenviar el mismo pedido múltiples veces
+        $uniqueRetries = [];
         foreach ($logsToRetry as $logRow) {
+            $key = $logRow['id_pedido'] . '_' . $logRow['id_rule'];
+            $uniqueRetries[$key] = $logRow;
+        }
+
+        foreach ($uniqueRetries as $logRow) {
             $idPedido = (int)$logRow['id_pedido'];
             $idRule   = (int)$logRow['id_rule'];
             
