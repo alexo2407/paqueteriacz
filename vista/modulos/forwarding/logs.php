@@ -14,6 +14,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
 .log-status.success { background: #d1fae5; color: #065f46; }
 .log-status.failed { background: #fee2e2; color: #991b1b; }
 .log-status.pending { background: #fef3c7; color: #92400e; }
+.log-status.cancelled { background: #e5e7eb; color: #4b5563; }
 .btn-retry { border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; }
 .btn-retry:disabled { opacity: .5; cursor: not-allowed; }
 .payload-box { background: #1e1e2e; color: #a6e3a1; border-radius: 10px; padding: 1rem; font-family: 'Fira Code', monospace; font-size: 0.78rem; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
@@ -65,6 +66,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
                             <option value="success">Exitoso</option>
                             <option value="failed">Fallido</option>
                             <option value="pending">Pendiente</option>
+                            <option value="cancelled">Cancelado</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -83,11 +85,24 @@ $proveedores = ForwardingModel::obtenerProveedores();
                 </div>
             </div>
 
+            <!-- Acciones Masivas -->
+            <div id="bulkActions" class="alert alert-light border justify-content-between align-items-center mb-3 p-2 px-3" style="display: none; border-radius: 10px;">
+                <span class="fw-semibold text-secondary">
+                    <i class="bi bi-check2-square me-1"></i> Seleccionados: <span id="selectedCount" class="badge bg-secondary">0</span>
+                </span>
+                <button class="btn btn-sm btn-danger d-inline-flex align-items-center gap-1" onclick="bulkCancel()">
+                    <i class="bi bi-x-circle"></i> Cancelar seleccionados
+                </button>
+            </div>
+
             <!-- Tabla de logs -->
             <div class="table-responsive">
                 <table id="tblLogs" class="table table-hover" style="width:100%">
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;">
+                                <input type="checkbox" class="form-check-input" id="chkSelectAll" onclick="toggleSelectAll(this)">
+                            </th>
                             <th>Fecha</th>
                             <th>Nº Orden</th>
                             <th>Proveedor</th>
@@ -99,7 +114,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         </tr>
                     </thead>
                     <tbody id="logsBody">
-                        <tr><td colspan="8" class="text-center text-muted py-4">
+                        <tr><td colspan="9" class="text-center text-muted py-4">
                             <i class="bi bi-arrow-repeat spin-icon me-2"></i>Cargando logs...
                         </td></tr>
                     </tbody>
@@ -182,7 +197,7 @@ function loadLogs() {
     params.set('limit', PAGE_SIZE);
     params.set('offset', currentOffset);
 
-    document.getElementById('logsBody').innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-arrow-repeat spin-icon me-2"></i>Cargando...</td></tr>';
+    document.getElementById('logsBody').innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-arrow-repeat spin-icon me-2"></i>Cargando...</td></tr>';
 
     fetch(BASE + 'ajax/forwarding_logs.php?' + params.toString(), { credentials: 'same-origin' })
     .then(r => r.json())
@@ -192,24 +207,33 @@ function loadLogs() {
         renderLogs(data.data, data.total);
     })
     .catch(err => {
-        document.getElementById('logsBody').innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Error: ${err.message}</td></tr>`;
+        document.getElementById('logsBody').innerHTML = `<tr><td colspan="9" class="text-center text-danger py-4">Error: ${err.message}</td></tr>`;
     });
 }
 
 function renderLogs(logs, total) {
     const body = document.getElementById('logsBody');
+    
+    // Reset control checkboxes
+    document.getElementById('chkSelectAll').checked = false;
+    updateBulkActionsVisible();
+
     if (!logs || logs.length === 0) {
-        body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-inbox display-6 opacity-25 d-block mb-2"></i>No hay logs</td></tr>';
+        body.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-inbox display-6 opacity-25 d-block mb-2"></i>No hay logs</td></tr>';
         document.getElementById('logsPagInfo').textContent = '0 registros';
         return;
     }
 
     body.innerHTML = logs.map((l, i) => `
         <tr>
+            <td class="text-center">
+                ${(l.status === 'failed' || l.status === 'pending') ? `
+                <input type="checkbox" class="form-check-input log-checkbox" value="${l.id}" onchange="updateBulkActionsVisible()">` : ''}
+            </td>
             <td><small>${formatDate(l.created_at)}</small></td>
             <td><span class="badge bg-light text-dark border">#${escHtml(l.numero_orden || '-')}</span></td>
             <td>${escHtml(l.provider_nombre || '-')}</td>
-            <td><span class="log-status ${l.status}">${capitalize(l.status)}</span></td>
+            <td><span class="log-status ${l.status}">${getStatusLabel(l.status)}</span></td>
             <td><code>${l.http_status || '-'}</code></td>
             <td><small>${escHtml(l.external_order_id || '-')}</small></td>
             <td class="text-center">${l.attempts}</td>
@@ -222,6 +246,10 @@ function renderLogs(logs, total) {
                     <button class="btn btn-sm btn-outline-warning btn-retry" id="btn-retry-${l.id}"
                             onclick="retryLog(${l.id}, this)" title="Reintentar">
                         <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger btn-retry" id="btn-cancel-${l.id}"
+                            onclick="cancelLog(${l.id}, this)" title="Cancelar e ignorar reintentos">
+                        <i class="bi bi-x-circle"></i>
                     </button>` : ''}
                     <a class="btn btn-sm btn-outline-secondary btn-retry" href="${BASE}pedidos/editar/${l.id_pedido}" title="Ir al pedido" target="_blank">
                         <i class="bi bi-box-arrow-up-right"></i>
@@ -248,6 +276,142 @@ function escHtml(s) { const d = document.createElement('div'); d.textContent = s
 function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
 function prettyJson(s) { if (!s) return '-'; try { return JSON.stringify(JSON.parse(s), null, 2); } catch { return s; } }
 
+function getStatusLabel(status) {
+    const map = {
+        'success': 'Exitoso',
+        'failed': 'Fallido',
+        'pending': 'Pendiente',
+        'cancelled': 'Cancelado'
+    };
+    return map[status] || status;
+}
+
+function cancelLog(logId, btn) {
+    Swal.fire({
+        title: '¿Cancelar envío?',
+        text: 'Esto cambiará el estado del log a "Cancelado" y detendrá todos los reintentos automáticos asociados a este pedido en segundo plano.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, cancelar',
+        cancelButtonText: 'No, mantener'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancel', id: logId })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Cancelado',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => loadLogs());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al cancelar',
+                        text: data.message || 'No se pudo cancelar el log.'
+                    });
+                }
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+            });
+        }
+    });
+}
+
+function toggleSelectAll(masterChk) {
+    const checkboxes = document.querySelectorAll('.log-checkbox');
+    checkboxes.forEach(chk => chk.checked = masterChk.checked);
+    updateBulkActionsVisible();
+}
+
+function updateBulkActionsVisible() {
+    const checkboxes = document.querySelectorAll('.log-checkbox:checked');
+    const bulkDiv = document.getElementById('bulkActions');
+    const countSpan = document.getElementById('selectedCount');
+    
+    if (checkboxes.length > 0) {
+        bulkDiv.style.display = 'flex';
+        countSpan.textContent = checkboxes.length;
+    } else {
+        bulkDiv.style.display = 'none';
+        const chkAll = document.getElementById('chkSelectAll');
+        if (chkAll) chkAll.checked = false;
+    }
+}
+
+function bulkCancel() {
+    const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
+    const ids = Array.from(checkedBoxes).map(chk => parseInt(chk.value));
+    
+    if (ids.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'Atención', text: 'No has seleccionado ningún log apto.' });
+        return;
+    }
+
+    Swal.fire({
+        title: `¿Cancelar ${ids.length} envíos?`,
+        text: 'Esto cambiará el estado de todos los logs seleccionados a "Cancelado" y detendrá sus reintentos automáticos asociados en segundo plano.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, cancelar todos',
+        cancelButtonText: 'No, mantener'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.showLoading();
+
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancel', ids: ids })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Cancelados',
+                        text: data.message,
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => loadLogs());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al cancelar',
+                        text: data.message || 'No se pudieron cancelar los logs seleccionados.'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+            });
+        }
+    });
+}
+
 // ── Reintento manual ─────────────────────────────────────────────────────
 let currentModalLogId = null;
 
@@ -256,7 +420,7 @@ function showDetail(idx) {
     currentModalLogId = l.id;
     document.getElementById('detailOrder').textContent    = '#' + (l.numero_orden || l.id_pedido);
     document.getElementById('detailProvider').textContent = l.provider_nombre || '-';
-    document.getElementById('detailStatus').innerHTML     = `<span class="log-status ${l.status}">${capitalize(l.status)}</span>`;
+    document.getElementById('detailStatus').innerHTML     = `<span class="log-status ${l.status}">${getStatusLabel(l.status)}</span>`;
 
     const errDiv = document.getElementById('detailError');
     if (l.error_message) { errDiv.style.display = 'block'; document.getElementById('detailErrorMsg').textContent = l.error_message; }

@@ -65,20 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Obtener el log original para conocer pedido y regla
-        $logs = ForwardingModel::obtenerLogs(['id' => $logId], 1, 0);
-
-        // Buscar directamente por ID en la BD
+        // Buscar directamente por ID en la BD para obtener regla y pedido
         try {
             $db   = (new Conexion())->conectar();
             $stmt = $db->prepare("
-                SELECT fl.*, r.id AS rule_id, r.config_override,
-                       p.nombre AS provider_nombre, p.slug, p.base_url,
-                       p.auth_endpoint, p.order_endpoint, p.auth_method,
-                       p.credentials, p.default_config AS provider_config
+                SELECT fl.id_pedido, fl.id_rule
                 FROM forwarding_log fl
-                INNER JOIN forwarding_rules r   ON r.id = fl.id_rule
-                INNER JOIN forwarding_providers p ON p.id = fl.id_provider
                 WHERE fl.id = :id
                 LIMIT 1
             ");
@@ -90,35 +82,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$logRow) {
-            echo json_encode(['success' => false, 'message' => "Log #$logId no encontrado o sin regla asociada"]);
+            echo json_encode(['success' => false, 'message' => "Log #$logId no encontrado"]);
             exit;
         }
 
         $idPedido = (int)$logRow['id_pedido'];
+        $idRule   = (int)$logRow['id_rule'];
 
         require_once __DIR__ . '/../services/ForwardingService.php';
 
-        // Usamos la misma lógica: evaluarYReenviar con el cliente del pedido
-        $pedido = ForwardingModel::obtenerPedidoParaForwarding($idPedido);
-        if (!$pedido) {
-            echo json_encode(['success' => false, 'message' => "Pedido #$idPedido no encontrado"]);
-            exit;
-        }
+        // Reintentar solo la regla específica de este log para evitar duplicidades
+        $resultado = ForwardingService::reintentarRegla($idPedido, $idRule);
+        $ok = !empty($resultado['success']);
 
-        $resultados = ForwardingService::evaluarYReenviar($idPedido, (int)$pedido['id_cliente']);
-
-        if (empty($resultados)) {
-            echo json_encode(['success' => false, 'message' => 'No se encontraron reglas activas para este pedido/cliente']);
-            exit;
-        }
-
-        $ok = collect_success($resultados);
         echo json_encode([
-            'success'    => $ok,
-            'message'    => $ok ? 'Reenvío exitoso' : 'El reenvío falló. Revisa el nuevo log.',
-            'resultados' => $resultados,
+            'success'   => $ok,
+            'message'   => $resultado['message'] ?? ($ok ? 'Reenvío exitoso' : 'El reenvío falló. Revisa el nuevo log.'),
+            'resultado' => $resultado,
         ]);
         exit;
+    }
+
+    // ── Cancelar envío y detener reintentos ────────────────────────────────
+    if ($action === 'cancel') {
+        $logIds = isset($body['ids']) ? (array)$body['ids'] : [];
+        if (empty($logIds) && !empty($body['id'])) {
+            $logIds = [(int)$body['id']];
+        }
+
+        if (empty($logIds)) {
+            echo json_encode(['success' => false, 'message' => 'No se proporcionaron IDs de log válidos']);
+            exit;
+        }
+
+        $logIds = array_filter(array_map('intval', $logIds));
+        if (empty($logIds)) {
+            echo json_encode(['success' => false, 'message' => 'IDs de log inválidos']);
+            exit;
+        }
+
+        try {
+            $db = (new Conexion())->conectar();
+            $db->beginTransaction();
+
+            // 1. Obtener los IDs de pedido de estos logs
+            $placeholders = implode(',', array_fill(0, count($logIds), '?'));
+            $stmt = $db->prepare("SELECT DISTINCT id_pedido FROM forwarding_log WHERE id IN ($placeholders)");
+            $stmt->execute($logIds);
+            $pedidos = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (empty($pedidos)) {
+                $db->rollBack();
+                echo json_encode(['success' => false, 'message' => 'No se encontraron los pedidos asociados']);
+                exit;
+            }
+
+            // 2. Marcar los logs como cancelados
+            $stmt = $db->prepare("
+                UPDATE forwarding_log 
+                SET status = 'cancelled', 
+                    error_message = 'Cancelado manualmente por el usuario. Reintentos automáticos detenidos.' 
+                WHERE id IN ($placeholders)
+            ");
+            $stmt->execute($logIds);
+
+            // 3. Cancelar trabajos de forwarding en cola para cada pedido
+            require_once __DIR__ . '/../services/LogisticsQueueService.php';
+            foreach ($pedidos as $pedidoId) {
+                LogisticsQueueService::cancelarTrabajosForwarding((int)$pedidoId);
+            }
+
+            $db->commit();
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Envíos marcados como cancelados e intentos en segundo plano detenidos.'
+            ]);
+            exit;
+
+        } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollBack();
+            }
+            echo json_encode(['success' => false, 'message' => 'Error al cancelar envíos: ' . $e->getMessage()]);
+            exit;
+        }
     }
 
     echo json_encode(['success' => false, 'message' => 'Acción no reconocida']);

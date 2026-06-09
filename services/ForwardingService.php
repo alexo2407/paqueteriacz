@@ -289,4 +289,51 @@ class ForwardingService
             ];
         }
     }
+
+    /**
+     * Reintentar el forwarding para una regla específica de un pedido.
+     *
+     * @param int $idPedido
+     * @param int $idRegla
+     * @return array Resultado
+     */
+    public static function reintentarRegla($idPedido, $idRegla)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT r.*, p.nombre AS provider_nombre, p.slug, p.base_url, 
+                       p.auth_endpoint, p.order_endpoint, p.auth_method, 
+                       p.credentials, p.default_config AS provider_config
+                FROM forwarding_rules r
+                INNER JOIN forwarding_providers p ON p.id = r.id_provider
+                WHERE r.id = :id_rule 
+                  AND p.activo = 1
+            ");
+            $stmt->execute([':id_rule' => $idRegla]);
+            $regla = $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error al obtener regla para reintento: ' . $e->getMessage()
+            ];
+        }
+
+        if (!$regla) {
+            return [
+                'success' => false,
+                'message' => "Regla #{$idRegla} no encontrada o proveedor inactivo"
+            ];
+        }
+
+        $pedido = ForwardingModel::obtenerPedidoParaForwarding($idPedido);
+        if (!$pedido) {
+            return [
+                'success' => false,
+                'message' => "Pedido #{$idPedido} no encontrado para forwarding"
+            ];
+        }
+
+        return self::ejecutarForwarding($pedido, $regla);
+    }
 }

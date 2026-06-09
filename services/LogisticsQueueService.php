@@ -423,6 +423,29 @@ class LogisticsQueueService {
             return false;
         }
     }
+
+    /**
+     * Cancela o elimina trabajos pendientes/fallidos de forwarding para un pedido.
+     * 
+     * @param int $pedidoId ID del pedido
+     * @return bool True si se eliminaron o no hubo errores
+     */
+    public static function cancelarTrabajosForwarding($pedidoId) {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                DELETE FROM logistics_queue 
+                WHERE pedido_id = :pedido_id 
+                  AND job_type IN ('forwarding_retry', 'forwarding_eval')
+                  AND status IN ('pending', 'failed')
+            ");
+            $stmt->execute([':pedido_id' => $pedidoId]);
+            return true;
+        } catch (Exception $e) {
+            error_log("Error cancelando trabajos de forwarding para pedido {$pedidoId}: " . $e->getMessage());
+            return false;
+        }
+    }
     
     /**
      * Limpia trabajos completados antiguos.
