@@ -16,15 +16,22 @@
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../utils/session.php';
 require_once __DIR__ . '/../modelo/usuario.php';
 require_once __DIR__ . '/../modelo/forwarding.php';
 require_once __DIR__ . '/../services/PayloadBuilderService.php';
 
 // -- Autenticación mínima: solo admin/supervisor puede gestionar mapeos --
-session_start();
-if (empty($_SESSION['usuario_id'])) {
+start_secure_session();
+if (empty($_SESSION['registrado'])) {
     http_response_code(401);
     echo json_encode(['success' => false, 'message' => 'No autenticado']);
+    exit;
+}
+$rolesNombres = $_SESSION['roles_nombres'] ?? [];
+if (!in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Acceso denegado']);
     exit;
 }
 
