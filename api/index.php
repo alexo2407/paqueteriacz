@@ -102,6 +102,13 @@ if (preg_match('/\/api\/pedidos\/historial$/', $path) && $method === 'GET') {
     exit;
 }
 
+// GET /api/pedidos/rastreo — Endpoint PÚBLICO de rastreo (sin JWT)
+if (preg_match('/\/api\/pedidos\/rastreo$/', $path) && $method === 'GET') {
+    require_once __DIR__ . '/pedidos/rastreo.php';
+    exit;
+}
+
+
 if (preg_match('/\/api\/pedidos\/reprogramar$/', $path) && $method === 'POST') {
     require_once __DIR__ . '/pedidos/reprogramar.php';
     exit;
