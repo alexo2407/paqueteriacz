@@ -105,7 +105,7 @@ class HLExpressProvider extends BaseProvider
 
         $destination = [
             'address'        => $destDir,
-            'address_line'   => $destDir,
+            'address_line'   => $pedido['comentario'] ?? '',
             'city_dane_code' => !empty($pedido['postalCode']) ? $pedido['postalCode'] : ($pedido['codigo_postal'] ?? '100075918'),
             'full_name'      => $destNombre,
             'phone_number'   => $destTel,
