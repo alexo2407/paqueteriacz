@@ -114,14 +114,13 @@ class HLExpressProvider extends BaseProvider
         ];
 
         // 4. Mapear contenidos (productos)
-        // Formato mixto: nombre del producto como string seguido de un objeto con name y quantity
+        // Enviamos el formato estructurado con nombre y cantidad
         $contains = [];
         foreach ($productos as $p) {
             $cantidad = max(0, (int)($p['cantidad'] ?? 0) - (int)($p['cantidad_devuelta'] ?? 0));
             if ($cantidad <= 0) continue;
 
             $nombreProd = $p['producto_nombre'] ?? 'Producto';
-            $contains[] = $nombreProd;
             $contains[] = [
                 'name'     => $nombreProd,
                 'quantity' => $cantidad
@@ -130,7 +129,6 @@ class HLExpressProvider extends BaseProvider
 
         // Si no hay productos (fallback de seguridad)
         if (empty($contains)) {
-            $contains[] = 'Envío';
             $contains[] = [
                 'name'     => 'Envío',
                 'quantity' => 1
