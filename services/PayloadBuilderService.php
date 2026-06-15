@@ -46,6 +46,7 @@ class PayloadBuilderService
             ['key' => 'productos[].cantidad',            'label' => 'Productos → Cantidad (bruta)'],
             ['key' => 'productos[].cantidad_neta',       'label' => 'Productos → Cantidad (neta, -devueltos)'],
             ['key' => 'productos[].precio_unitario_usd', 'label' => 'Productos → Precio Unitario USD'],
+            ['key' => 'productos[].nombre_con_cantidad', 'label' => 'Productos → Nombre formateado con cantidad (ej: 2x Producto)'],
             // Claves virtuales especiales
             ['key' => '_total_units',   'label' => 'Total de Unidades (suma cantidad_neta) — genera N elementos vacíos repetidos'],
             ['key' => '_now_datetime',  'label' => 'Fecha y Hora Actual (ISO 8601: 2024-01-15T10:30:00)'],
@@ -269,6 +270,8 @@ class PayloadBuilderService
             foreach ($productos as $prod) {
                 // Calcular cantidad neta
                 $prod['cantidad_neta'] = max(0, (int)($prod['cantidad'] ?? 0) - (int)($prod['cantidad_devuelta'] ?? 0));
+                // Campo virtual formateado (ej. "2x URO UP Forte")
+                $prod['nombre_con_cantidad'] = $prod['cantidad_neta'] . 'x ' . ($prod['producto_nombre'] ?? '');
 
                 // Omitir ítems con cantidad neta 0
                 if ($prod['cantidad_neta'] <= 0 && in_array('cantidad_neta', array_column($campos, 'sub_path'))) {

@@ -91,8 +91,8 @@ class HLExpressProvider extends BaseProvider
         $destTel    = $pedido['telefono'] ?? '';
 
         // Coordenadas
-        $lat = (float)($pedido['lat'] ?? 9.144614);
-        $lng = (float)($pedido['lng'] ?? -74.030012);
+        $lat = (float)($pedido['lat'] ?? 9.101254);
+        $lng = (float)($pedido['lng'] ?? -79.397980);
 
         // Si existen coordenadas en formato POINT (deserializar si es necesario)
         if (!empty($pedido['coordenadas'])) {
@@ -106,7 +106,7 @@ class HLExpressProvider extends BaseProvider
         $destination = [
             'address'        => $destDir,
             'address_line'   => $destDir,
-            'city_dane_code' => $pedido['codigo_postal'] ?? $pedido['postalCode'] ?? '100075923',
+            'city_dane_code' => !empty($pedido['postalCode']) ? $pedido['postalCode'] : ($pedido['codigo_postal'] ?? '100075918'),
             'full_name'      => $destNombre,
             'phone_number'   => $destTel,
             'lat'            => $lat,
@@ -114,14 +114,14 @@ class HLExpressProvider extends BaseProvider
         ];
 
         // 4. Mapear contenidos (productos)
+        // Formato mixto: nombre del producto como string seguido de un objeto con name y quantity
         $contains = [];
         foreach ($productos as $p) {
             $cantidad = max(0, (int)($p['cantidad'] ?? 0) - (int)($p['cantidad_devuelta'] ?? 0));
             if ($cantidad <= 0) continue;
 
             $nombreProd = $p['producto_nombre'] ?? 'Producto';
-            
-            // Enviamos el formato estructurado con nombre y cantidad
+            $contains[] = $nombreProd;
             $contains[] = [
                 'name'     => $nombreProd,
                 'quantity' => $cantidad
@@ -130,6 +130,7 @@ class HLExpressProvider extends BaseProvider
 
         // Si no hay productos (fallback de seguridad)
         if (empty($contains)) {
+            $contains[] = 'Envío';
             $contains[] = [
                 'name'     => 'Envío',
                 'quantity' => 1

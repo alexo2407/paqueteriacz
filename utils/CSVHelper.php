@@ -61,6 +61,10 @@ class CSVHelper
         'telefono_(texto_libre)' => 'telefono',
         'dirección_(texto_libre)' => 'direccion',
         'direccion_(texto_libre)' => 'direccion',
+        'postalcode'            => 'postalCode',
+        'postal_code'           => 'postalCode',
+        'postalcode_panama'     => 'postalCode',
+        'postal_code_panama'    => 'postalCode',
     ];
 
     /**

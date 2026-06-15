@@ -1,4 +1,5 @@
 <?php
+
 /**
  * GET /api/pedidos/rastreo?numero_orden=XXXXX
  *
@@ -190,7 +191,6 @@ try {
         'fecha_entrega' => $fechaEntrega,
         'timeline'      => $timeline,
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-
 } catch (Throwable $e) {
     error_log('[api/pedidos/rastreo] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
