@@ -268,12 +268,33 @@ class HLExpressProvider extends BaseProvider
 
     /**
      * Resolver una novedad/incidente de entrega.
+     *
+     * Payload esperado por HL Express (snake_case):
+     *  guide_number                    - Guía asignada por HL Express (ej. WCO2801, V4000021620)
+     *  instructions                    - Instrucciones de resolución (antes solve_description)
+     *  customer_destination_full_name  - Nombre del destinatario
+     *  customer_destination_phone_number
+     *  customer_destination_address
+     *  customer_destination_address_line (opcional)
+     *  customer_destination_city_code
+     *  is_return                       - true = devolver al remitente, false = reintentar entrega
      */
     public function solveReturn(array $payload)
     {
         $authData = $this->authenticate();
         $url = $this->baseUrl . '/shipments/solve-return';
-        $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        // Mapear campos internos → nombres exactos que espera la API de HL Express
+        $body = json_encode([
+            'guide_number'                       => $payload['guide_number']                       ?? $payload['tracking_number']        ?? '',
+            'instructions'                       => $payload['instructions']                       ?? $payload['solve_description']       ?? '',
+            'customer_destination_full_name'     => $payload['customer_destination_full_name']     ?? $payload['contact_name']            ?? '',
+            'customer_destination_phone_number'  => $payload['customer_destination_phone_number']  ?? $payload['contact_phone']           ?? '',
+            'customer_destination_address'       => $payload['customer_destination_address']       ?? $payload['contact_address']         ?? '',
+            'customer_destination_address_line'  => $payload['customer_destination_address_line']  ?? '',
+            'customer_destination_city_code'     => $payload['customer_destination_city_code']     ?? '',
+            'is_return'                          => (bool)($payload['is_return']                   ?? false),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $response = $this->httpRequest('POST', $url, [
             'Content-Type: application/json',
@@ -289,6 +310,11 @@ class HLExpressProvider extends BaseProvider
         if ($response['http_status'] !== 200 && $response['http_status'] !== 201) {
             $errorMsg = $data['message'] ?? $data['error'] ?? 'Error desconocido';
             if (is_array($errorMsg)) $errorMsg = implode('; ', $errorMsg);
+            // Mostrar errores de validación detallados si existen
+            if (!empty($data['errors']) && is_array($data['errors'])) {
+                $details = array_map(fn($e) => ($e['Key'] ?? '') . ': ' . ($e['Message'] ?? ''), $data['errors']);
+                $errorMsg = implode(' | ', $details);
+            }
             throw new Exception("HL Express solveReturn falló: " . $errorMsg, (int)$response['http_status']);
         }
 
