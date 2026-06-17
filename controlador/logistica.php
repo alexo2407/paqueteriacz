@@ -978,7 +978,13 @@ class LogisticaController {
             exit;
         }
         $model  = new PedidosModel();
-        $pedido = $model->obtenerPedidoPorNumero($numeroOrden);
+        // Normalizar: quitar el # inicial si lo tiene (los datos demo lo incluyen)
+        $buscar  = ltrim($numeroOrden, '#');
+        $pedido  = $model->obtenerPedidoPorNumero($buscar);
+        if (!$pedido) {
+            // Intentar también con # (por si la BD lo guarda con prefijo)
+            $pedido = $model->obtenerPedidoPorNumero('#' . $buscar);
+        }
         if (!$pedido) {
             header('Content-Type: application/json', true, 404);
             echo json_encode(['success' => false, 'message' => "Pedido '{$numeroOrden}' no encontrado."]);
@@ -1015,8 +1021,8 @@ class LogisticaController {
             $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
             $config = array_merge($defaultConfig, [
                 'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
-                'order_endpoint' => $providerData['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
-                'auth_method'    => $providerData['auth_method']    ?? 'bearer_jwt',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/shipments',
+                'auth_method'    => $providerData['auth_method']    ?? 'api_key',
             ]);
 
             $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
@@ -1243,8 +1249,10 @@ class LogisticaController {
 
             $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
 
-            $exitosos = 0;
-            $errores  = [];
+            $exitosos   = 0;
+            $errores    = [];
+            $resultados = []; // Por fila
+            $advertencias = [];
 
             foreach ($rows as $rowNum => $row) {
                 if ($rowNum === 1) continue; // Saltar encabezado
@@ -1255,6 +1263,13 @@ class LogisticaController {
                 if (empty($numeroOrden) || empty($accion)) continue;
                 if (!in_array($accion, ['reintentar', 'devolver'])) {
                     $errores[] = "Fila {$rowNum} ({$numeroOrden}): acción inválida '{$accion}'. Use 'reintentar' o 'devolver'.";
+                    $resultados[] = [
+                        'fila'   => $rowNum,
+                        'orden'  => $numeroOrden,
+                        'accion' => $accion,
+                        'estado' => 'error',
+                        'msg'    => "Acción inválida '{$accion}'. Use 'reintentar' o 'devolver'.",
+                    ];
                     continue;
                 }
 
@@ -1273,9 +1288,18 @@ class LogisticaController {
                 }
 
                 // Buscar pedido local por número de orden
-                $pedido = PedidosModel::obtenerPedidoPorNumeroOrden($numeroOrden);
+                $buscarOrden = ltrim($numeroOrden, '#');
+                $pedido = (new PedidosModel())->obtenerPedidoPorNumero($buscarOrden);
+                if (!$pedido) $pedido = (new PedidosModel())->obtenerPedidoPorNumero('#' . $buscarOrden);
                 if (!$pedido) {
                     $errores[] = "Fila {$rowNum} ({$numeroOrden}): pedido no encontrado en la plataforma.";
+                    $resultados[] = [
+                        'fila'   => $rowNum,
+                        'orden'  => $numeroOrden,
+                        'accion' => $accion,
+                        'estado' => 'error',
+                        'msg'    => 'Pedido no encontrado en la plataforma.',
+                    ];
                     continue;
                 }
 
@@ -1283,6 +1307,13 @@ class LogisticaController {
                 $log = ForwardingModel::obtenerLogForwardingExitoso($pedido['id'], 'hlexpress');
                 if (!$log) {
                     $errores[] = "Fila {$rowNum} ({$numeroOrden}): el pedido no fue enviado por HL Express.";
+                    $resultados[] = [
+                        'fila'   => $rowNum,
+                        'orden'  => $numeroOrden,
+                        'accion' => $accion,
+                        'estado' => 'warning',
+                        'msg'    => 'El pedido no fue enviado por HL Express (sin log de forwarding).',
+                    ];
                     continue;
                 }
 
@@ -1294,6 +1325,13 @@ class LogisticaController {
 
                 if (empty($trackingNumber)) {
                     $errores[] = "Fila {$rowNum} ({$numeroOrden}): no se pudo obtener el número de guía.";
+                    $resultados[] = [
+                        'fila'   => $rowNum,
+                        'orden'  => $numeroOrden,
+                        'accion' => $accion,
+                        'estado' => 'warning',
+                        'msg'    => 'No se pudo obtener el número de guía de HL Express.',
+                    ];
                     continue;
                 }
 
@@ -1323,17 +1361,33 @@ class LogisticaController {
                     LogisticaModel::actualizarEstado($pedido['id'], $nuevoEstado, $obs, $userId);
 
                     $exitosos++;
+                    $resultados[] = [
+                        'fila'   => $rowNum,
+                        'orden'  => $numeroOrden,
+                        'accion' => $accion,
+                        'estado' => 'ok',
+                        'msg'    => "Resuelta correctamente como '{$accion}'.",
+                    ];
                 } catch (Exception $apiError) {
                     $errores[] = "Fila {$rowNum} ({$numeroOrden}): {$apiError->getMessage()}";
+                    $resultados[] = [
+                        'fila'   => $rowNum,
+                        'orden'  => $numeroOrden,
+                        'accion' => $accion,
+                        'estado' => 'error',
+                        'msg'    => $apiError->getMessage(),
+                    ];
                 }
             }
 
             header('Content-Type: application/json');
             echo json_encode([
-                'success'  => true,
-                'exitosos' => $exitosos,
-                'errores'  => $errores,
-                'message'  => "{$exitosos} novedad(es) resuelta(s) correctamente." . (count($errores) ? " " . count($errores) . " con errores." : ""),
+                'success'      => true,
+                'exitosos'     => $exitosos,
+                'advertencias' => count($advertencias),
+                'errores'      => $errores,
+                'resultados'   => $resultados,
+                'message'      => "{$exitosos} novedad(es) resuelta(s) correctamente." . (count($errores) ? " " . count($errores) . " con errores." : ""),
             ], JSON_UNESCAPED_UNICODE);
             exit;
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Dashboard Logística (Cliente) - Redesign
  */
@@ -101,12 +102,25 @@ $estadoColores = [
     'VENDIDO'               => CLR_COMPLETADO,
 ];
 
-function getBadgeColor($estado, $map) {
+function getBadgeColor($estado, $map)
+{
     if (empty($estado)) return CLR_GRIS;
     $upper = strtoupper($estado);
     $norm = strtr($upper, [
-        'á'=>'A','é'=>'E','í'=>'I','ó'=>'O','ú'=>'U','ü'=>'U','ñ'=>'N',
-        'Á'=>'A','É'=>'E','Í'=>'I','Ó'=>'O','Ú'=>'U','Ü'=>'U','Ñ'=>'N',
+        'á' => 'A',
+        'é' => 'E',
+        'í' => 'I',
+        'ó' => 'O',
+        'ú' => 'U',
+        'ü' => 'U',
+        'ñ' => 'N',
+        'Á' => 'A',
+        'É' => 'E',
+        'Í' => 'I',
+        'Ó' => 'O',
+        'Ú' => 'U',
+        'Ü' => 'U',
+        'Ñ' => 'N',
     ]);
     foreach ($map as $key => $val) {
         if (strpos($norm, $key) !== false) return $val;
@@ -115,20 +129,21 @@ function getBadgeColor($estado, $map) {
 }
 
 // Función Helper para Renderizar Card de Notificación (estilo CRM)
-function renderNotificationCard($notif) {
+function renderNotificationCard($notif)
+{
     $time = date('d/m H:i', strtotime($notif['created_at']));
-    
+
     // Determinar cambios
     $cambios = [];
     $datosNuevos = $notif['datos_nuevos'] ?? [];
     $datosViejos = $notif['datos_anteriores'] ?? [];
-    
+
     if (isset($datosNuevos['id_estado']) && isset($datosViejos['id_estado'])) {
         if ($datosNuevos['id_estado'] != $datosViejos['id_estado']) {
             $cambios[] = "Estado actualizado";
         }
     }
-    
+
     $accion = $notif['accion'];
     if ($accion === 'crear') {
         $title = "Nuevo Pedido #" . htmlspecialchars($notif['numero_orden']);
@@ -141,12 +156,12 @@ function renderNotificationCard($notif) {
         $icon = '<i class="bi bi-arrow-repeat"></i>';
         $iconClass = 'bg-soft-info';
         $typeClass = 'type-update';
-        
+
         $detalles = empty($cambios) ? "Actualización de datos" : implode(", ", $cambios);
         $subtitle = "$detalles - " . htmlspecialchars($notif['destinatario']);
     }
 
-    ?>
+?>
     <div class="col-12">
         <div class="card notif-card <?= $typeClass ?> p-3 h-100">
             <div class="d-flex align-items-start">
@@ -164,7 +179,7 @@ function renderNotificationCard($notif) {
             </div>
         </div>
     </div>
-    <?php
+<?php
 }
 
 include "vista/includes/header.php";
@@ -178,15 +193,15 @@ include "vista/includes/header.php";
         margin-bottom: 2rem;
         margin-top: -1.5rem;
     }
-    
+
     #pills-tab {
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
         padding: 0.5rem !important;
         border-radius: 12px !important;
-        border: 1px solid rgba(0,0,0,0.08) !important;
+        border: 1px solid rgba(0, 0, 0, 0.08) !important;
         gap: 0.5rem;
     }
-    
+
     .nav-pills .nav-link {
         color: #495057;
         padding: 0.75rem 1.25rem;
@@ -194,12 +209,12 @@ include "vista/includes/header.php";
         border-radius: 8px;
         transition: all 0.3s;
     }
-    
+
     .nav-pills .nav-link:hover:not(.active) {
         background: rgba(255, 255, 255, 0.8);
         color: #0d6efd;
     }
-    
+
     .nav-pills .nav-link.active {
         background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
         color: white;
@@ -211,18 +226,25 @@ include "vista/includes/header.php";
     .notif-card {
         transition: all 0.2s;
         border: 1px solid #e9ecef;
-        border-left: 4px solid transparent; 
+        border-left: 4px solid transparent;
         border-radius: 8px;
         background: white;
         margin-bottom: 0.75rem;
     }
+
     .notif-card:hover {
         transform: translateY(-2px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+        box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
     }
-    .notif-card.type-lead { border-left-color: #198754; } 
-    .notif-card.type-update { border-left-color: #0dcaf0; }
-    
+
+    .notif-card.type-lead {
+        border-left-color: #198754;
+    }
+
+    .notif-card.type-update {
+        border-left-color: #0dcaf0;
+    }
+
     .notif-icon {
         width: 40px;
         height: 40px;
@@ -232,9 +254,22 @@ include "vista/includes/header.php";
         justify-content: center;
         font-size: 1.25rem;
     }
-    .bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
-    .bg-soft-success { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
-    .bg-soft-info { background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
+
+    .bg-soft-primary {
+        background-color: rgba(13, 110, 253, 0.1);
+        color: #0d6efd;
+    }
+
+    .bg-soft-success {
+        background-color: rgba(25, 135, 84, 0.1);
+        color: #198754;
+    }
+
+    .bg-soft-info {
+        background-color: rgba(13, 202, 240, 0.1);
+        color: #0dcaf0;
+    }
+
     .btn-detalle {
         border-radius: 50px;
         padding-left: 1.5rem;
@@ -259,22 +294,22 @@ include "vista/includes/header.php";
 </div>
 
 <div class="container mb-5">
-    
+
     <?php
     $activeTab = $_GET['tab'] ?? 'pedidos';
-    
+
     $showPedidos    = ($activeTab === 'pedidos')    ? 'active' : '';
     $showUpdates    = ($activeTab === 'updates')    ? 'active' : '';
     $showAll        = ($activeTab === 'all')        ? 'active' : '';
     $showLiq        = ($activeTab === 'liq')        ? 'active' : '';
     $showNovedades  = ($activeTab === 'novedades')  ? 'active' : '';
-    
+
     $panePedidos    = ($activeTab === 'pedidos')    ? 'show active' : '';
     $paneUpdates    = ($activeTab === 'updates')    ? 'show active' : '';
     $paneAll        = ($activeTab === 'all')        ? 'show active' : '';
     $paneLiq        = ($activeTab === 'liq')        ? 'show active' : '';
     $paneNovedades  = ($activeTab === 'novedades')  ? 'show active' : '';
-    
+
     // Usar el total de pedidos de la paginación, no solo los de la página actual
     $countActivos = $data['pagination']['total'] ?? count($pedidosActivos);
 
@@ -286,28 +321,28 @@ include "vista/includes/header.php";
     <ul class="nav nav-pills mb-4 bg-light p-2 rounded border" id="pills-tab" role="tablist">
         <!-- Tab: Pedidos Activos -->
         <li class="nav-item" role="presentation">
-            <button class="nav-link <?= $showPedidos ?> d-flex align-items-center gap-2" 
-                    id="pills-pedidos-tab" 
-                    data-bs-toggle="pill" 
-                    data-bs-target="#pills-pedidos" 
-                    type="button"
-                    onclick="history.pushState(null, '', '?tab=pedidos')">
+            <button class="nav-link <?= $showPedidos ?> d-flex align-items-center gap-2"
+                id="pills-pedidos-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#pills-pedidos"
+                type="button"
+                onclick="history.pushState(null, '', '?tab=pedidos')">
                 <i class="bi bi-box-seam-fill text-primary"></i>
                 <span>En Proceso</span>
-                <?php if($countActivos > 0): ?>
+                <?php if ($countActivos > 0): ?>
                     <span class="badge bg-primary rounded-pill"><?= $countActivos ?></span>
                 <?php endif; ?>
             </button>
         </li>
-        
+
         <!-- Tab: Actualizaciones -->
         <li class="nav-item" role="presentation">
-            <button class="nav-link <?= $showUpdates ?> d-flex align-items-center gap-2" 
-                    id="pills-updates-tab" 
-                    data-bs-toggle="pill" 
-                    data-bs-target="#pills-updates" 
-                    type="button"
-                    onclick="history.pushState(null, '', '?tab=updates')">
+            <button class="nav-link <?= $showUpdates ?> d-flex align-items-center gap-2"
+                id="pills-updates-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#pills-updates"
+                type="button"
+                onclick="history.pushState(null, '', '?tab=updates')">
                 <i class="bi bi-bell-fill text-info"></i>
                 <span>Actualizaciones</span>
             </button>
@@ -315,12 +350,12 @@ include "vista/includes/header.php";
 
         <!-- Tab: Historial -->
         <li class="nav-item" role="presentation">
-            <button class="nav-link <?= $showAll ?> d-flex align-items-center gap-2" 
-                    id="pills-all-tab" 
-                    data-bs-toggle="pill" 
-                    data-bs-target="#pills-all" 
-                    type="button"
-                    onclick="history.pushState(null, '', '?tab=all')">
+            <button class="nav-link <?= $showAll ?> d-flex align-items-center gap-2"
+                id="pills-all-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#pills-all"
+                type="button"
+                onclick="history.pushState(null, '', '?tab=all')">
                 <i class="bi bi-archive-fill"></i>
                 <span>Historial Completo</span>
             </button>
@@ -329,11 +364,11 @@ include "vista/includes/header.php";
         <!-- Tab: Liquidados -->
         <li class="nav-item" role="presentation">
             <button class="nav-link <?= $showLiq ?> d-flex align-items-center gap-2"
-                    id="pills-liq-tab"
-                    data-bs-toggle="pill"
-                    data-bs-target="#pills-liq"
-                    type="button"
-                    onclick="history.pushState(null, '', '?tab=liq')">
+                id="pills-liq-tab"
+                data-bs-toggle="pill"
+                data-bs-target="#pills-liq"
+                type="button"
+                onclick="history.pushState(null, '', '?tab=liq')">
                 <i class="bi bi-cash-coin text-success"></i>
                 <span>Liquidados</span>
                 <?php if ($liquidadosTotal > 0): ?>
@@ -344,27 +379,27 @@ include "vista/includes/header.php";
 
         <!-- Tab: Novedades HL Express -->
         <?php if (!empty($idsPedidosHLExpress)): ?>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link <?= $showNovedades ?> d-flex align-items-center gap-2"
+            <li class="nav-item" role="presentation">
+                <button class="nav-link <?= $showNovedades ?> d-flex align-items-center gap-2"
                     id="pills-novedades-tab"
                     data-bs-toggle="pill"
                     data-bs-target="#pills-novedades"
                     type="button"
                     onclick="history.pushState(null, '', '?tab=novedades'); cargarNovedadesTab();">
-                <i class="bi bi-exclamation-triangle-fill text-warning"></i>
-                <span>Novedades</span>
-                <span class="badge rounded-pill text-dark" id="badgeNovedadesCount"
-                      style="background:#ff8d33;">...</span>
-            </button>
-        </li>
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                    <span>Novedades</span>
+                    <span class="badge rounded-pill text-dark" id="badgeNovedadesCount"
+                        style="background:#ff8d33;">...</span>
+                </button>
+            </li>
         <?php endif; ?>
     </ul>
-    
+
     <div class="tab-content" id="pills-tabContent">
-        
+
         <!-- TAB: PEDIDOS ACTIVOS (GRID DE CARDS) -->
         <div class="tab-pane fade <?= $panePedidos ?>" id="pills-pedidos" role="tabpanel">
-            
+
             <!-- Barra de Filtros + Excel (Tab Pedidos Activos) -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
@@ -439,22 +474,22 @@ include "vista/includes/header.php";
                             </div>
                             <div class="col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=pedidos"
-                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    class="btn btn-outline-secondary btn-sm w-100">
                                     <i class="bi bi-x-circle me-1"></i> Limpiar
                                 </a>
                             </div>
                             <div class="col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=pedidos&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>"
-                                   class="btn btn-success btn-sm w-100">
+                                    class="btn btn-success btn-sm w-100">
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
                             <?php if (isCliente() || isSuperAdmin()): ?>
-                            <div class="col-sm-3 col-md-3">
-                                <button type="button" class="btn btn-warning btn-sm w-100" id="btnAbrirBulk" onclick="abrirModalBulk()">
-                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
-                                </button>
-                            </div>
+                                <div class="col-sm-3 col-md-3">
+                                    <button type="button" class="btn btn-warning btn-sm w-100" id="btnAbrirBulk" onclick="abrirModalBulk()">
+                                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
+                                    </button>
+                                </div>
                             <?php endif; ?>
                         </div>
 
@@ -470,72 +505,72 @@ include "vista/includes/header.php";
                 </div>
             <?php else: ?>
                 <div class="row" id="gridActivos">
-                <?php foreach ($pedidosActivos as $p): 
-                     $color = getBadgeColor($p['estado'], $estadoColores);
-                ?>
-                    <div class="col-md-6 col-lg-4 mb-4 card-item">
-                        <div class="card h-100 shadow-sm border-0 position-relative" style="transition: transform 0.2s;">
-                             <div class="card-body">
-                                 <div class="d-flex justify-content-between mb-3">
-                                     <div>
-                                         <span class="badge bg-light text-dark border">
-                                             #<?= htmlspecialchars($p['numero_orden']) ?>
-                                         </span>
-                                         <?php if (in_array($p['id'], $idsPedidosHLExpress)): ?>
-                                             <span class="badge bg-dark text-white border ms-1" title="Integrado con HL Express">
-                                                 <i class="bi bi-truck text-warning"></i>
-                                             </span>
-                                         <?php endif; ?>
-                                     </div>
-                                     <span class="badge" style="<?= $color ?>"><?= htmlspecialchars($p['estado']) ?></span>
-                                 </div>
-                                 
-                                 <h5 class="card-title fw-bold text-dark mb-1">
-                                     <?= htmlspecialchars($p['destinatario']) ?>
-                                 </h5>
-                                 <div class="d-flex align-items-center text-muted small mb-3">
-                                     <i class="bi bi-telephone me-1"></i> <?= htmlspecialchars($p['telefono']) ?>
-                                 </div>
+                    <?php foreach ($pedidosActivos as $p):
+                        $color = getBadgeColor($p['estado'], $estadoColores);
+                    ?>
+                        <div class="col-md-6 col-lg-4 mb-4 card-item">
+                            <div class="card h-100 shadow-sm border-0 position-relative" style="transition: transform 0.2s;">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between mb-3">
+                                        <div>
+                                            <span class="badge bg-light text-dark border">
+                                                #<?= htmlspecialchars($p['numero_orden']) ?>
+                                            </span>
+                                            <?php if (in_array($p['id'], $idsPedidosHLExpress)): ?>
+                                                <span class="badge bg-dark text-white border ms-1" title="Integrado con HL Express">
+                                                    <i class="bi bi-truck text-warning"></i>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <span class="badge" style="<?= $color ?>"><?= htmlspecialchars($p['estado']) ?></span>
+                                    </div>
 
-                                 <hr class="my-3 opacity-25">
+                                    <h5 class="card-title fw-bold text-dark mb-1">
+                                        <?= htmlspecialchars($p['destinatario']) ?>
+                                    </h5>
+                                    <div class="d-flex align-items-center text-muted small mb-3">
+                                        <i class="bi bi-telephone me-1"></i> <?= htmlspecialchars($p['telefono']) ?>
+                                    </div>
 
-                                 <div class="d-flex justify-content-between align-items-end">
-                                     <div>
-                                         <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">Total</small>
-                                         <span class="fw-bold fs-5 text-dark">
-                                             <?= htmlspecialchars($p['moneda'] ?? 'GTQ') ?> 
-                                             <?= number_format($p['precio_total_local'] ?? 0, 2) ?>
-                                         </span>
-                                     </div>
-                                     <a href="<?= RUTA_URL ?>logistica/ver/<?= $p['id'] ?>" class="btn btn-outline-primary rounded-circle" title="Ver Detalles">
-                                         <i class="bi bi-arrow-right"></i>
-                                     </a>
-                                 </div>
-                             </div>
-                             <div class="card-footer bg-light border-top-0 py-2">
-                                 <small class="text-muted">
-                                     <i class="bi bi-calendar-event me-1"></i> Ingreso: <?= date('d/m/Y', strtotime($p['fecha_ingreso'])) ?>
-                                 </small>
-                             </div>
+                                    <hr class="my-3 opacity-25">
+
+                                    <div class="d-flex justify-content-between align-items-end">
+                                        <div>
+                                            <small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">Total</small>
+                                            <span class="fw-bold fs-5 text-dark">
+                                                <?= htmlspecialchars($p['moneda'] ?? 'GTQ') ?>
+                                                <?= number_format($p['precio_total_local'] ?? 0, 2) ?>
+                                            </span>
+                                        </div>
+                                        <a href="<?= RUTA_URL ?>logistica/ver/<?= $p['id'] ?>" class="btn btn-outline-primary rounded-circle" title="Ver Detalles">
+                                            <i class="bi bi-arrow-right"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light border-top-0 py-2">
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar-event me-1"></i> Ingreso: <?= date('d/m/Y', strtotime($p['fecha_ingreso'])) ?>
+                                    </small>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                <?php endforeach; ?>
+                    <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-            
-            <?php 
+
+            <?php
             // Mostrar paginación solo si hay más de una página
-            if (!empty($data['pagination']) && $data['pagination']['total_pages'] > 1): 
+            if (!empty($data['pagination']) && $data['pagination']['total_pages'] > 1):
                 $pagination = $data['pagination'];
                 $currentPage = $pagination['current_page'];
                 $totalPages = $pagination['total_pages'];
                 $total = $pagination['total'];
                 $perPage = $pagination['per_page'];
-                
+
                 // Calcular rango de pedidos mostrados
                 $start = (($currentPage - 1) * $perPage) + 1;
                 $end = min($currentPage * $perPage, $total);
-                
+
                 // Construir URL base con todos los filtros activos
                 $baseUrl = RUTA_URL . 'logistica/dashboard?tab=pedidos&';
                 $params = [];
@@ -561,15 +596,21 @@ include "vista/includes/header.php";
                             </span>
                         <?php endif; ?>
                         <?php if (!empty($filtros['id_estado'])): ?>
-                            <?php $estNombre = ''; foreach ($estadosDisponibles as $e) { if ((int)$e['id'] === (int)$filtros['id_estado']) { $estNombre = $e['nombre_estado']; break; } } ?>
+                            <?php $estNombre = '';
+                            foreach ($estadosDisponibles as $e) {
+                                if ((int)$e['id'] === (int)$filtros['id_estado']) {
+                                    $estNombre = $e['nombre_estado'];
+                                    break;
+                                }
+                            } ?>
                             <?php if ($estNombre): ?>
-                            <span class="badge bg-light text-secondary border ms-1">
-                                <i class="bi bi-tag me-1"></i><?= htmlspecialchars($estNombre) ?>
-                            </span>
+                                <span class="badge bg-light text-secondary border ms-1">
+                                    <i class="bi bi-tag me-1"></i><?= htmlspecialchars($estNombre) ?>
+                                </span>
                             <?php endif; ?>
                         <?php endif; ?>
                     </div>
-                    
+
                     <nav aria-label="Paginación de pedidos">
                         <ul class="pagination pagination-sm mb-0">
                             <!-- Primera página -->
@@ -578,33 +619,33 @@ include "vista/includes/header.php";
                                     <i class="bi bi-chevron-double-left"></i>
                                 </a>
                             </li>
-                            
+
                             <!-- Página anterior -->
                             <li class="page-item <?= $currentPage == 1 ? 'disabled' : '' ?>">
                                 <a class="page-link" href="<?= $baseUrl ?>page=<?= max(1, $currentPage - 1) ?>" aria-label="Anterior">
                                     <i class="bi bi-chevron-left"></i>
                                 </a>
                             </li>
-                            
+
                             <?php
                             // Mostrar números de página (máximo 5)
                             $startPage = max(1, $currentPage - 2);
                             $endPage = min($totalPages, $currentPage + 2);
-                            
+
                             for ($i = $startPage; $i <= $endPage; $i++):
                             ?>
                                 <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
                                     <a class="page-link" href="<?= $baseUrl ?>page=<?= $i ?>"><?= $i ?></a>
                                 </li>
                             <?php endfor; ?>
-                            
+
                             <!-- Página siguiente -->
                             <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
                                 <a class="page-link" href="<?= $baseUrl ?>page=<?= min($totalPages, $currentPage + 1) ?>" aria-label="Siguiente">
                                     <i class="bi bi-chevron-right"></i>
                                 </a>
                             </li>
-                            
+
                             <!-- Última página -->
                             <li class="page-item <?= $currentPage == $totalPages ? 'disabled' : '' ?>">
                                 <a class="page-link" href="<?= $baseUrl ?>page=<?= $totalPages ?>" aria-label="Última">
@@ -626,7 +667,7 @@ include "vista/includes/header.php";
                         <p class="mt-3">No hay actualizaciones recientes.</p>
                     </div>
                 <?php else: ?>
-                    <?php 
+                    <?php
                     $uniqueNotifs = [];
                     foreach ($notificaciones as $notif) {
                         // Como vienen ordenadas por fecha DESC, la primera que encontremos es la más reciente
@@ -634,10 +675,10 @@ include "vista/includes/header.php";
                             $uniqueNotifs[$notif['pedido_id']] = $notif;
                         }
                     }
-                    
-                    foreach ($uniqueNotifs as $notif): 
+
+                    foreach ($uniqueNotifs as $notif):
                         renderNotificationCard($notif);
-                    endforeach; 
+                    endforeach;
                     ?>
                 <?php endif; ?>
             </div>
@@ -645,7 +686,7 @@ include "vista/includes/header.php";
 
         <!-- TAB: HISTORIAL COMPLETO -->
         <div class="tab-pane fade <?= $paneAll ?>" id="pills-all" role="tabpanel">
-            
+
             <!-- Barra de Filtros Avanzados + Excel (Tab Historial Completo) -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
@@ -717,22 +758,22 @@ include "vista/includes/header.php";
                             </div>
                             <div class="col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all"
-                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    class="btn btn-outline-secondary btn-sm w-100">
                                     <i class="bi bi-x-circle me-1"></i> Limpiar
                                 </a>
                             </div>
                             <div class="col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtrosHistorial['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtrosHistorial['fecha_hasta']) ?>&id_cliente=<?= (int)$filtrosHistorial['id_cliente'] ?>&id_estado=<?= (int)$filtrosHistorial['id_estado'] ?>&search=<?= urlencode($filtrosHistorial['search']) ?>"
-                                   class="btn btn-success btn-sm w-100">
+                                    class="btn btn-success btn-sm w-100">
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
                             <?php if (isCliente() || isSuperAdmin()): ?>
-                            <div class="col-sm-3 col-md-3">
-                                <button type="button" class="btn btn-warning btn-sm w-100" onclick="abrirModalBulk()">
-                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
-                                </button>
-                            </div>
+                                <div class="col-sm-3 col-md-3">
+                                    <button type="button" class="btn btn-warning btn-sm w-100" onclick="abrirModalBulk()">
+                                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
+                                    </button>
+                                </div>
                             <?php endif; ?>
                         </div>
 
@@ -754,9 +795,11 @@ include "vista/includes/header.php";
                     </thead>
                     <tbody>
                         <?php if (empty($historialCompleto)): ?>
-                            <tr><td colspan="6" class="text-center py-4">No se encontraron registros.</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-4">No se encontraron registros.</td>
+                            </tr>
                         <?php else: ?>
-                            <?php foreach ($historialCompleto as $p): 
+                            <?php foreach ($historialCompleto as $p):
                                 $color = getBadgeColor($p['estado'], $estadoColores);
                             ?>
                                 <tr>
@@ -783,12 +826,14 @@ include "vista/includes/header.php";
                                             <ul class="dropdown-menu dropdown-menu-end">
                                                 <li><a class="dropdown-item" href="<?= RUTA_URL ?>logistica/ver/<?= $p['id'] ?>"><i class="bi bi-eye me-2"></i>Ver Detalles</a></li>
                                                 <?php if (!in_array(strtoupper($p['estado']), ['ENTREGADO', 'CANCELADO', 'DEVOLUCION COMPLETA', 'LIQUIDADO'])): ?>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <a class="dropdown-item text-warning" href="#" onclick="event.preventDefault(); openStatusModal(<?= $p['id'] ?>, '<?= htmlspecialchars($p['numero_orden']) ?>')">
-                                                        <i class="bi bi-arrow-repeat me-2"></i>Cambiar Estado
-                                                    </a>
-                                                </li>
+                                                    <li>
+                                                        <hr class="dropdown-divider">
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item text-warning" href="#" onclick="event.preventDefault(); openStatusModal(<?= $p['id'] ?>, '<?= htmlspecialchars($p['numero_orden']) ?>')">
+                                                            <i class="bi bi-arrow-repeat me-2"></i>Cambiar Estado
+                                                        </a>
+                                                    </li>
                                                 <?php endif; ?>
                                             </ul>
                                         </div>
@@ -835,11 +880,17 @@ include "vista/includes/header.php";
                             </span>
                         <?php endif; ?>
                         <?php if (!empty($filtrosHistorial['id_estado'])): ?>
-                            <?php $estNombreH = ''; foreach ($estadosDisponibles as $e) { if ((int)$e['id'] === (int)$filtrosHistorial['id_estado']) { $estNombreH = $e['nombre_estado']; break; } } ?>
+                            <?php $estNombreH = '';
+                            foreach ($estadosDisponibles as $e) {
+                                if ((int)$e['id'] === (int)$filtrosHistorial['id_estado']) {
+                                    $estNombreH = $e['nombre_estado'];
+                                    break;
+                                }
+                            } ?>
                             <?php if ($estNombreH): ?>
-                            <span class="badge bg-light text-secondary border ms-1">
-                                <i class="bi bi-tag me-1"></i><?= htmlspecialchars($estNombreH) ?>
-                            </span>
+                                <span class="badge bg-light text-secondary border ms-1">
+                                    <i class="bi bi-tag me-1"></i><?= htmlspecialchars($estNombreH) ?>
+                                </span>
                             <?php endif; ?>
                         <?php endif; ?>
                     </div>
@@ -893,16 +944,16 @@ include "vista/includes/header.php";
                                     <i class="bi bi-calendar-event me-1"></i>Liq. Desde
                                 </label>
                                 <input type="date" name="liq_desde"
-                                       class="form-control form-control-sm"
-                                       value="<?= htmlspecialchars($filtrosLiq['liq_desde'] ?? '') ?>">
+                                    class="form-control form-control-sm"
+                                    value="<?= htmlspecialchars($filtrosLiq['liq_desde'] ?? '') ?>">
                             </div>
                             <div class="col-sm-6 col-md-4">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
                                     <i class="bi bi-calendar-check me-1"></i>Liq. Hasta
                                 </label>
                                 <input type="date" name="liq_hasta"
-                                       class="form-control form-control-sm"
-                                       value="<?= htmlspecialchars($filtrosLiq['liq_hasta'] ?? '') ?>">
+                                    class="form-control form-control-sm"
+                                    value="<?= htmlspecialchars($filtrosLiq['liq_hasta'] ?? '') ?>">
                             </div>
                             <div class="col-sm-12 col-md-4">
                                 <label class="form-label small fw-semibold mb-1 text-muted">
@@ -911,9 +962,9 @@ include "vista/includes/header.php";
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-white"><i class="bi bi-hash"></i></span>
                                     <input type="text" name="liq_search"
-                                           class="form-control"
-                                           placeholder="Orden o destinatario..."
-                                           value="<?= htmlspecialchars($filtrosLiq['search'] ?? '') ?>">
+                                        class="form-control"
+                                        placeholder="Orden o destinatario..."
+                                        value="<?= htmlspecialchars($filtrosLiq['search'] ?? '') ?>">
                                 </div>
                             </div>
                         </div>
@@ -927,13 +978,13 @@ include "vista/includes/header.php";
                             </div>
                             <div class="col-sm-4 col-md-4">
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=liq"
-                                   class="btn btn-outline-secondary btn-sm w-100">
+                                    class="btn btn-outline-secondary btn-sm w-100">
                                     <i class="bi bi-x-circle me-1"></i> Limpiar
                                 </a>
                             </div>
                             <div class="col-sm-4 col-md-4">
                                 <a href="<?= RUTA_URL ?>logistica/export_liquidados_excel?liq_desde=<?= urlencode($filtrosLiq['liq_desde'] ?? '') ?>&liq_hasta=<?= urlencode($filtrosLiq['liq_hasta'] ?? '') ?>&liq_search=<?= urlencode($filtrosLiq['search'] ?? '') ?>&id_cliente=<?= (int)($filtrosLiq['id_cliente'] ?? 0) ?>"
-                                   class="btn btn-success btn-sm w-100">
+                                    class="btn btn-success btn-sm w-100">
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
@@ -944,22 +995,22 @@ include "vista/includes/header.php";
             </div>
 
             <?php if ($liquidadosTotal > 0): ?>
-            <!-- Tarjeta resumen total período -->
-            <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #198754 !important;">
-                <div class="card-body d-flex justify-content-between align-items-center py-3">
-                    <div>
-                        <div class="text-muted small fw-bold text-uppercase"><i class="bi bi-cash-coin me-1 text-success"></i>Total Liquidado en el período</div>
-                        <div class="fs-3 fw-bold text-success">GTQ <?= number_format($liquidadosSuma, 2) ?></div>
-                    </div>
-                    <div class="text-end">
-                        <div class="text-muted small"><?= $liquidadosTotal ?> pedido<?= $liquidadosTotal > 1 ? 's' : '' ?></div>
-                        <div class="text-muted small">
-                            <?= date('d/m/Y', strtotime($filtrosLiq['liq_desde'])) ?>
-                            &ndash; <?= date('d/m/Y', strtotime($filtrosLiq['liq_hasta'])) ?>
+                <!-- Tarjeta resumen total período -->
+                <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #198754 !important;">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="text-muted small fw-bold text-uppercase"><i class="bi bi-cash-coin me-1 text-success"></i>Total Liquidado en el período</div>
+                            <div class="fs-3 fw-bold text-success">GTQ <?= number_format($liquidadosSuma, 2) ?></div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small"><?= $liquidadosTotal ?> pedido<?= $liquidadosTotal > 1 ? 's' : '' ?></div>
+                            <div class="text-muted small">
+                                <?= date('d/m/Y', strtotime($filtrosLiq['liq_desde'])) ?>
+                                &ndash; <?= date('d/m/Y', strtotime($filtrosLiq['liq_hasta'])) ?>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             <?php endif; ?>
 
             <!-- Tabla liquidados -->
@@ -977,43 +1028,45 @@ include "vista/includes/header.php";
                     </thead>
                     <tbody>
                         <?php if (empty($liquidados)): ?>
-                            <tr><td colspan="6" class="text-center py-5 text-muted">
-                                <i class="bi bi-cash-coin display-4 opacity-25 d-block mb-2"></i>
-                                No hay pedidos liquidados en este período.
-                            </td></tr>
-                        <?php else: ?>
-                            <?php foreach ($liquidados as $liq): ?>
                             <tr>
-                                <td><span class="badge bg-light text-dark border">#<?= htmlspecialchars($liq['numero_orden']) ?></span></td>
-                                <td>
-                                    <div><?= htmlspecialchars($liq['destinatario']) ?></div>
-                                    <small class="text-muted"><?= htmlspecialchars($liq['telefono'] ?? '') ?></small>
-                                </td>
-                                <td><?= date('d/m/Y', strtotime($liq['fecha_ingreso'])) ?></td>
-                                <td>
-                                    <span class="badge" style="background:#d1fae5;color:#065f46;">
-                                        <i class="bi bi-check-circle-fill me-1"></i>
-                                        <?= !empty($liq['fecha_liquidacion']) ? date('d/m/Y', strtotime($liq['fecha_liquidacion'])) : '–' ?>
-                                    </span>
-                                </td>
-                                <td class="text-end fw-bold"><?= htmlspecialchars($liq['moneda'] ?? 'GTQ') ?> <?= number_format($liq['precio_total_local'], 2) ?></td>
-                                <td class="text-end">
-                                    <a href="<?= RUTA_URL ?>logistica/ver/<?= $liq['id'] ?>" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-eye"></i> Ver
-                                    </a>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="bi bi-cash-coin display-4 opacity-25 d-block mb-2"></i>
+                                    No hay pedidos liquidados en este período.
                                 </td>
                             </tr>
+                        <?php else: ?>
+                            <?php foreach ($liquidados as $liq): ?>
+                                <tr>
+                                    <td><span class="badge bg-light text-dark border">#<?= htmlspecialchars($liq['numero_orden']) ?></span></td>
+                                    <td>
+                                        <div><?= htmlspecialchars($liq['destinatario']) ?></div>
+                                        <small class="text-muted"><?= htmlspecialchars($liq['telefono'] ?? '') ?></small>
+                                    </td>
+                                    <td><?= date('d/m/Y', strtotime($liq['fecha_ingreso'])) ?></td>
+                                    <td>
+                                        <span class="badge" style="background:#d1fae5;color:#065f46;">
+                                            <i class="bi bi-check-circle-fill me-1"></i>
+                                            <?= !empty($liq['fecha_liquidacion']) ? date('d/m/Y', strtotime($liq['fecha_liquidacion'])) : '–' ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-bold"><?= htmlspecialchars($liq['moneda'] ?? 'GTQ') ?> <?= number_format($liq['precio_total_local'], 2) ?></td>
+                                    <td class="text-end">
+                                        <a href="<?= RUTA_URL ?>logistica/ver/<?= $liq['id'] ?>" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Ver
+                                        </a>
+                                    </td>
+                                </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
                     <?php if ($liquidadosTotal > 0): ?>
-                    <tfoot class="table-light fw-bold">
-                        <tr>
-                            <td colspan="4" class="text-end">TOTAL DEL PERÍODO:</td>
-                            <td class="text-end text-success">GTQ <?= number_format($liquidadosSuma, 2) ?></td>
-                            <td></td>
-                        </tr>
-                    </tfoot>
+                        <tfoot class="table-light fw-bold">
+                            <tr>
+                                <td colspan="4" class="text-end">TOTAL DEL PERÍODO:</td>
+                                <td class="text-end text-success">GTQ <?= number_format($liquidadosSuma, 2) ?></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
                     <?php endif; ?>
                 </table>
             </div>
@@ -1076,91 +1129,91 @@ include "vista/includes/header.php";
 </div>
 
 <?php if (!empty($proveedoresMensajeriaBI)): ?>
-<!-- BI: Efectividad de Proveedores de Mensajería -->
-<div class="container mb-5">
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 py-3">
-            <i class="bi bi-truck text-primary fs-5"></i>
-            <div>
-                <h6 class="mb-0 fw-bold">Proveedor de Mensajería – Efectividad de Entrega</h6>
-                <small class="text-muted">Rendimiento por proveedor en el mes actual</small>
-            </div>
-        </div>
-        <div class="card-body">
-            <?php
-            // Mejor proveedor
-            $mejorBI = $proveedoresMensajeriaBI[0] ?? null;
-            if ($mejorBI): ?>
-            <div class="alert border-0 mb-4" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a !important;border-radius:10px;">
-                <div class="d-flex align-items-center gap-3">
-                    <span style="font-size:2rem;">🏆</span>
-                    <div>
-                        <strong class="text-success"><?= htmlspecialchars($mejorBI['proveedor_nombre']) ?></strong>
-                        <div class="small text-muted"><?= number_format($mejorBI['efectividad'], 1) ?>% de efectividad &middot; <?= $mejorBI['entregados'] ?> de <?= $mejorBI['total_pedidos'] ?> pedidos entregados</div>
-                    </div>
+    <!-- BI: Efectividad de Proveedores de Mensajería -->
+    <div class="container mb-5">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 py-3">
+                <i class="bi bi-truck text-primary fs-5"></i>
+                <div>
+                    <h6 class="mb-0 fw-bold">Proveedor de Mensajería – Efectividad de Entrega</h6>
+                    <small class="text-muted">Rendimiento por proveedor en el mes actual</small>
                 </div>
             </div>
-            <?php endif; ?>
-
-            <div class="row g-3">
-            <?php foreach ($proveedoresMensajeriaBI as $i => $prov):
-                $ef  = (float)$prov['efectividad'];
-                $ef_color = $ef >= 80 ? '#16a34a' : ($ef >= 50 ? '#d97706' : '#dc2626');
-                $bar_color = $ef >= 80 ? '#22c55e' : ($ef >= 50 ? '#f59e0b' : '#ef4444');
-                $stars = $ef >= 80 ? 3 : ($ef >= 50 ? 2 : 1);
-            ?>
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border shadow-sm" style="border-radius:12px; transition:transform .2s;" onmouseenter="this.style.transform='translateY(-3px)'" onmouseleave="this.style.transform=''">
-                    <div class="card-body p-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div class="card-body">
+                <?php
+                // Mejor proveedor
+                $mejorBI = $proveedoresMensajeriaBI[0] ?? null;
+                if ($mejorBI): ?>
+                    <div class="alert border-0 mb-4" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-left:4px solid #16a34a !important;border-radius:10px;">
+                        <div class="d-flex align-items-center gap-3">
+                            <span style="font-size:2rem;">🏆</span>
                             <div>
-                                <div class="fw-bold text-dark" style="font-size:.95rem;"><?= htmlspecialchars($prov['proveedor_nombre']) ?></div>
-                                <div class="text-warning" style="font-size:.85rem;"><?= str_repeat('★', $stars) . str_repeat('☆', 3 - $stars) ?></div>
+                                <strong class="text-success"><?= htmlspecialchars($mejorBI['proveedor_nombre']) ?></strong>
+                                <div class="small text-muted"><?= number_format($mejorBI['efectividad'], 1) ?>% de efectividad &middot; <?= $mejorBI['entregados'] ?> de <?= $mejorBI['total_pedidos'] ?> pedidos entregados</div>
                             </div>
-                            <span class="fw-bold fs-5" style="color:<?= $ef_color ?>"><?= number_format($ef, 1) ?>%</span>
-                        </div>
-                        <!-- Barra de progreso -->
-                        <div class="bg-light rounded mb-3" style="height:6px;">
-                            <div style="height:6px;border-radius:3px;width:<?= min(100, $ef) ?>%;background:<?= $bar_color ?>;transition:width .6s;"></div>
-                        </div>
-                        <!-- Métricas -->
-                        <div class="row text-center g-0">
-                            <div class="col">
-                                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Total</div>
-                                <div class="fw-bold"><?= (int)$prov['total_pedidos'] ?></div>
-                            </div>
-                            <div class="col">
-                                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Entregados</div>
-                                <div class="fw-bold text-success"><?= (int)$prov['entregados'] ?></div>
-                            </div>
-                            <div class="col">
-                                <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Devueltos</div>
-                                <div class="fw-bold text-danger"><?= (int)$prov['devueltos'] ?></div>
-                            </div>
-                        </div>
-                        <?php if ((int)$prov['en_proceso'] > 0): ?>
-                        <div class="text-center mt-2">
-                            <span class="badge bg-light text-secondary border">
-                                <i class="bi bi-hourglass-split me-1"></i><?= (int)$prov['en_proceso'] ?> en proceso
-                            </span>
-                        </div>
-                        <?php endif; ?>
-                        <!-- Etiqueta rendimiento -->
-                        <div class="mt-3 text-center">
-                            <?php if ($i === 0): ?>
-                            <span class="badge" style="background:#dcfce7;color:#16a34a;font-size:.75rem;">✓ Mejor rendimiento</span>
-                            <?php elseif ($ef < 50): ?>
-                            <span class="badge" style="background:#fff7ed;color:#d97706;font-size:.75rem;">⚠ Pendiente de mejora</span>
-                            <?php endif; ?>
                         </div>
                     </div>
+                <?php endif; ?>
+
+                <div class="row g-3">
+                    <?php foreach ($proveedoresMensajeriaBI as $i => $prov):
+                        $ef  = (float)$prov['efectividad'];
+                        $ef_color = $ef >= 80 ? '#16a34a' : ($ef >= 50 ? '#d97706' : '#dc2626');
+                        $bar_color = $ef >= 80 ? '#22c55e' : ($ef >= 50 ? '#f59e0b' : '#ef4444');
+                        $stars = $ef >= 80 ? 3 : ($ef >= 50 ? 2 : 1);
+                    ?>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card h-100 border shadow-sm" style="border-radius:12px; transition:transform .2s;" onmouseenter="this.style.transform='translateY(-3px)'" onmouseleave="this.style.transform=''">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <div class="fw-bold text-dark" style="font-size:.95rem;"><?= htmlspecialchars($prov['proveedor_nombre']) ?></div>
+                                            <div class="text-warning" style="font-size:.85rem;"><?= str_repeat('★', $stars) . str_repeat('☆', 3 - $stars) ?></div>
+                                        </div>
+                                        <span class="fw-bold fs-5" style="color:<?= $ef_color ?>"><?= number_format($ef, 1) ?>%</span>
+                                    </div>
+                                    <!-- Barra de progreso -->
+                                    <div class="bg-light rounded mb-3" style="height:6px;">
+                                        <div style="height:6px;border-radius:3px;width:<?= min(100, $ef) ?>%;background:<?= $bar_color ?>;transition:width .6s;"></div>
+                                    </div>
+                                    <!-- Métricas -->
+                                    <div class="row text-center g-0">
+                                        <div class="col">
+                                            <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Total</div>
+                                            <div class="fw-bold"><?= (int)$prov['total_pedidos'] ?></div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Entregados</div>
+                                            <div class="fw-bold text-success"><?= (int)$prov['entregados'] ?></div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="text-muted" style="font-size:.7rem;text-transform:uppercase;">Devueltos</div>
+                                            <div class="fw-bold text-danger"><?= (int)$prov['devueltos'] ?></div>
+                                        </div>
+                                    </div>
+                                    <?php if ((int)$prov['en_proceso'] > 0): ?>
+                                        <div class="text-center mt-2">
+                                            <span class="badge bg-light text-secondary border">
+                                                <i class="bi bi-hourglass-split me-1"></i><?= (int)$prov['en_proceso'] ?> en proceso
+                                            </span>
+                                        </div>
+                                    <?php endif; ?>
+                                    <!-- Etiqueta rendimiento -->
+                                    <div class="mt-3 text-center">
+                                        <?php if ($i === 0): ?>
+                                            <span class="badge" style="background:#dcfce7;color:#16a34a;font-size:.75rem;">✓ Mejor rendimiento</span>
+                                        <?php elseif ($ef < 50): ?>
+                                            <span class="badge" style="background:#fff7ed;color:#d97706;font-size:.75rem;">⚠ Pendiente de mejora</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
-            </div>
-            <?php endforeach; ?>
             </div>
         </div>
     </div>
-</div>
 <?php endif; ?>
 
 <?php include "vista/includes/footer.php"; ?>
@@ -1172,7 +1225,7 @@ include "vista/includes/header.php";
         searchInput.addEventListener('keyup', function() {
             const searchText = this.value.toLowerCase();
             const cards = document.querySelectorAll('#gridActivos .card-item');
-            
+
             cards.forEach(card => {
                 const text = card.textContent.toLowerCase();
                 card.style.display = text.includes(searchText) ? '' : 'none';
@@ -1185,13 +1238,13 @@ include "vista/includes/header.php";
     function openStatusModal(id, orden) {
         const form = document.querySelector('#cambiarEstadoModal form');
         form.action = '<?= RUTA_URL ?>logistica/cambiarEstado/' + id;
-        
+
         // Reset form
         form.reset();
-        
+
         const modalEl = document.getElementById('cambiarEstadoModal');
         const modal = new bootstrap.Modal(modalEl);
-        
+
         const estadoSelect = form.querySelector('select[name="estado"]');
         const fechaSection = document.getElementById('reprogramarFechaSection');
         const fechaInput = fechaSection.querySelector('input[name="fecha_entrega"]');
@@ -1236,588 +1289,682 @@ include "vista/includes/header.php";
         // Manejar el submit del formulario con AJAX
         form.onsubmit = function(e) {
             e.preventDefault();
-            
+
             const submitBtn = form.querySelector('button[type="submit"]');
             const originalBtnText = submitBtn.innerHTML;
-            
+
             const formData = new FormData(form);
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
 
             fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(async response => {
-                const text = await response.text();
-                try {
-                    return JSON.parse(text);
-                } catch (err) {
-                    console.error('Error parseando JSON. Respuesta del servidor:', text);
-                    throw new Error('La respuesta del servidor no es un JSON válido.');
-                }
-            })
-            .then(data => {
-                if (data.success) {
-                    modal.hide();
-                    
-                    if (typeof Swal !== 'undefined') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: '¡Actualizado!',
-                            text: data.message || 'El estado ha sido actualizado.',
-                            confirmButtonColor: '#0d6efd'
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else {
-                        alert(data.message || 'Actualizado correctamente');
-                        window.location.reload();
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
-                } else {
+                })
+                .then(async response => {
+                    const text = await response.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (err) {
+                        console.error('Error parseando JSON. Respuesta del servidor:', text);
+                        throw new Error('La respuesta del servidor no es un JSON válido.');
+                    }
+                })
+                .then(data => {
+                    if (data.success) {
+                        modal.hide();
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Actualizado!',
+                                text: data.message || 'El estado ha sido actualizado.',
+                                confirmButtonColor: '#0d6efd'
+                            }).then(() => {
+                                window.location.reload();
+                            });
+                        } else {
+                            alert(data.message || 'Actualizado correctamente');
+                            window.location.reload();
+                        }
+                    } else {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudo actualizar el estado.',
+                                confirmButtonColor: '#0d6efd'
+                            });
+                        } else {
+                            alert(data.message || 'Error al actualizar');
+                        }
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({
                             icon: 'error',
-                            title: 'Error',
-                            text: data.message || 'No se pudo actualizar el estado.',
+                            title: 'Error de Red',
+                            text: 'Hubo un error en la comunicación con el servidor.',
                             confirmButtonColor: '#0d6efd'
                         });
                     } else {
-                        alert(data.message || 'Error al actualizar');
+                        alert('Error en la comunicación con el servidor');
                     }
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalBtnText;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error de Red',
-                        text: 'Hubo un error en la comunicación con el servidor.',
-                        confirmButtonColor: '#0d6efd'
-                    });
-                } else {
-                    alert('Error en la comunicación con el servidor');
-                }
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalBtnText;
-            });
+                });
         };
     }
 </script>
 
 <?php if (isCliente() || isSuperAdmin()): ?>
-<!-- ===== MODAL: ACTUALIZACIÓN MASIVA ===== -->
-<div class="modal fade" id="modalBulkUpdate" tabindex="-1" aria-labelledby="modalBulkLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
+    <!-- ===== MODAL: ACTUALIZACIÓN MASIVA ===== -->
+    <div class="modal fade" id="modalBulkUpdate" tabindex="-1" aria-labelledby="modalBulkLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
 
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalBulkLabel">
-          <i class="bi bi-file-earmark-arrow-up text-warning me-2"></i>Actualización Masiva de Pedidos
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalBulkLabel">
+                        <i class="bi bi-file-earmark-arrow-up text-warning me-2"></i>Actualización Masiva de Pedidos
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
 
-      <div class="modal-body">
+                <div class="modal-body">
 
-        <!-- Indicador de pasos -->
-        <div class="d-flex align-items-center mb-4" id="bulkStepsIndicator">
-          <span class="badge rounded-pill bg-warning text-dark me-2" id="bulkStep1Badge">1</span>
-          <span class="fw-semibold me-3" id="bulkStep1Label">Subir archivo</span>
-          <div class="flex-grow-1 border-top mx-2"></div>
-          <span class="badge rounded-pill bg-secondary me-2" id="bulkStep2Badge">2</span>
-          <span class="text-muted me-3" id="bulkStep2Label">Vista previa</span>
-          <div class="flex-grow-1 border-top mx-2"></div>
-          <span class="badge rounded-pill bg-secondary me-2" id="bulkStep3Badge">3</span>
-          <span class="text-muted" id="bulkStep3Label">Confirmado</span>
-        </div>
+                    <!-- Indicador de pasos -->
+                    <div class="d-flex align-items-center mb-4" id="bulkStepsIndicator">
+                        <span class="badge rounded-pill bg-warning text-dark me-2" id="bulkStep1Badge">1</span>
+                        <span class="fw-semibold me-3" id="bulkStep1Label">Subir archivo</span>
+                        <div class="flex-grow-1 border-top mx-2"></div>
+                        <span class="badge rounded-pill bg-secondary me-2" id="bulkStep2Badge">2</span>
+                        <span class="text-muted me-3" id="bulkStep2Label">Vista previa</span>
+                        <div class="flex-grow-1 border-top mx-2"></div>
+                        <span class="badge rounded-pill bg-secondary me-2" id="bulkStep3Badge">3</span>
+                        <span class="text-muted" id="bulkStep3Label">Confirmado</span>
+                    </div>
 
-        <!-- PASO 1: Subir archivo -->
-        <div id="bulkPaso1">
-          <div class="alert alert-info">
-            <strong>Columnas reconocidas:</strong>
-            <code>id_pedido</code> o <code>numero_orden</code> (al menos uno), 
-            <code>comentario</code> y/o <code>estado</code> (al menos uno de los dos),
-            <code>motivo</code> (opcional),
-            <code>fecha_entrega</code> (opcional, requerida si estado = <em>Reprogramado</em>),
-            <code>fecha_liquidacion</code> (opcional, requerida si estado = <em>Entregado – liquidado</em>). Formato de fechas: <code>YYYY-MM-DD</code>.
-          </div>
+                    <!-- PASO 1: Subir archivo -->
+                    <div id="bulkPaso1">
+                        <div class="alert alert-info">
+                            <strong>Columnas reconocidas:</strong>
+                            <code>id_pedido</code> o <code>numero_orden</code> (al menos uno),
+                            <code>comentario</code> y/o <code>estado</code> (al menos uno de los dos),
+                            <code>motivo</code> (opcional),
+                            <code>fecha_entrega</code> (opcional, requerida si estado = <em>Reprogramado</em>),
+                            <code>fecha_liquidacion</code> (opcional, requerida si estado = <em>Entregado – liquidado</em>). Formato de fechas: <code>YYYY-MM-DD</code>.
+                        </div>
 
-          <!-- Plantillas de descarga -->
-          <div class="mb-3">
-            <p class="fw-bold mb-1"><i class="bi bi-download me-1"></i>Descargar plantilla de ejemplo:</p>
-            <div class="d-flex flex-wrap gap-2">
-              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('comentario')">
-                <i class="bi bi-file-earmark-text"></i> Solo comentario
-              </button>
-              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('estado')">
-                <i class="bi bi-file-earmark-text"></i> Solo estado
-              </button>
-              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('completa')">
-                <i class="bi bi-file-earmark-text"></i> Completa (todos los campos)
-              </button>
+                        <!-- Plantillas de descarga -->
+                        <div class="mb-3">
+                            <p class="fw-bold mb-1"><i class="bi bi-download me-1"></i>Descargar plantilla de ejemplo:</p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('comentario')">
+                                    <i class="bi bi-file-earmark-text"></i> Solo comentario
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('estado')">
+                                    <i class="bi bi-file-earmark-text"></i> Solo estado
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantilla('completa')">
+                                    <i class="bi bi-file-earmark-text"></i> Completa (todos los campos)
+                                </button>
+                            </div>
+                            <small class="text-muted">Las plantillas se descargan como <code>.csv</code> listas para editar en Excel.</small>
+                        </div>
+
+                        <!-- Plantilla pre-rellena con pedidos filtrados -->
+                        <div class="mb-3 p-3 border rounded bg-light">
+                            <p class="fw-bold mb-1 text-success">
+                                <i class="bi bi-table me-1"></i>Descargar mis pedidos filtrados como plantilla:
+                            </p>
+                            <p class="small text-muted mb-2">
+                                Descarga un CSV con los pedidos que tienes filtrados actualmente (<code>numero_orden</code>, <code>estado_actual</code>)
+                                y columnas vacías para que solo edites los estados/comentarios que necesites cambiar.
+                            </p>
+                            <button type="button" class="btn btn-success btn-sm" onclick="descargarPlantillaFiltrada()">
+                                <i class="bi bi-cloud-download me-1"></i> Descargar pedidos actuales
+                            </button>
+                        </div>
+
+                        <!-- Estados válidos del sistema -->
+                        <div class="mb-3">
+                            <p class="fw-bold mb-1 small"><i class="bi bi-info-circle me-1"></i>Nombres de estado aceptados (columna <code>estado</code>):</p>
+                            <div class="d-flex flex-wrap gap-1">
+                                <?php foreach ($estadosDisponibles as $est): ?>
+                                    <span class="badge bg-light text-dark border"><?= htmlspecialchars($est['nombre_estado']) ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                            <small class="text-muted">Escríbelos exactamente así (sin importar mayúsculas).</small>
+                        </div>
+
+
+                        <div class="mb-3">
+                            <label for="bulkFileInput" class="form-label fw-bold">Seleccionar archivo (.csv o .xlsx)</label>
+                            <input type="file" class="form-control" id="bulkFileInput" accept=".csv,.xlsx,.xls">
+                            <div class="form-text">Máximo 10,000 filas. El estado puede escribirse como nombre (ej. <em>EN RUTA</em>) o como id.</div>
+                        </div>
+                        <div id="bulkUploadError" class="alert alert-danger d-none"></div>
+                    </div>
+
+
+                    <!-- PASO 2: Vista previa -->
+                    <div id="bulkPaso2" class="d-none">
+                        <!-- Resumen -->
+                        <div class="row g-3 mb-4" id="bulkSummaryCards">
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#f0f0f0">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold text-dark" id="bulkTotalCount">0</div><small class="text-secondary">Total</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#d6f0e0">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold" style="color:#1a6e3c" id="bulkValidCount">0</div><small style="color:#1a6e3c">Válidas</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#fadadd">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold" style="color:#8b1a2a" id="bulkErrorCount">0</div><small style="color:#8b1a2a">Errores</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#fff4cc">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold" style="color:#7a5c00" id="bulkWarnCount">0</div><small style="color:#7a5c00">Advertencias</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Errores / advertencias -->
+                        <div id="bulkErrorList" class="mb-3"></div>
+                        <div id="bulkWarnList" class="mb-3"></div>
+
+                        <!-- Tabla preview -->
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover" id="bulkPreviewTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#Línea</th>
+                                        <th>ID Pedido</th>
+                                        <th># Orden</th>
+                                        <th>Nuevo Comentario</th>
+                                        <th>Motivo</th>
+                                        <th>Nuevo Estado ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bulkPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PASO 3: Resultado -->
+                    <div id="bulkPaso3" class="d-none">
+                        <div id="bulkResultContent"></div>
+                    </div>
+
+                </div><!-- /modal-body -->
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="bulkBtnCerrar">Cerrar</button>
+                    <button type="button" class="btn btn-warning" id="bulkBtnPreview" onclick="enviarPreview()">
+                        <i class="bi bi-eye"></i> Vista previa
+                    </button>
+                    <button type="button" class="btn btn-success d-none" id="bulkBtnConfirmar" onclick="confirmarBulk()" disabled>
+                        <i class="bi bi-check-circle"></i> Confirmar y aplicar
+                    </button>
+                </div>
+
             </div>
-            <small class="text-muted">Las plantillas se descargan como <code>.csv</code> listas para editar en Excel.</small>
-          </div>
-
-          <!-- Plantilla pre-rellena con pedidos filtrados -->
-          <div class="mb-3 p-3 border rounded bg-light">
-            <p class="fw-bold mb-1 text-success">
-              <i class="bi bi-table me-1"></i>Descargar mis pedidos filtrados como plantilla:
-            </p>
-            <p class="small text-muted mb-2">
-              Descarga un CSV con los pedidos que tienes filtrados actualmente (<code>numero_orden</code>, <code>estado_actual</code>) 
-              y columnas vacías para que solo edites los estados/comentarios que necesites cambiar.
-            </p>
-            <button type="button" class="btn btn-success btn-sm" onclick="descargarPlantillaFiltrada()">
-              <i class="bi bi-cloud-download me-1"></i> Descargar pedidos actuales
-            </button>
-          </div>
-
-          <!-- Estados válidos del sistema -->
-          <div class="mb-3">
-            <p class="fw-bold mb-1 small"><i class="bi bi-info-circle me-1"></i>Nombres de estado aceptados (columna <code>estado</code>):</p>
-            <div class="d-flex flex-wrap gap-1">
-              <?php foreach ($estadosDisponibles as $est): ?>
-                <span class="badge bg-light text-dark border"><?= htmlspecialchars($est['nombre_estado']) ?></span>
-              <?php endforeach; ?>
-            </div>
-            <small class="text-muted">Escríbelos exactamente así (sin importar mayúsculas).</small>
-          </div>
-
-
-          <div class="mb-3">
-            <label for="bulkFileInput" class="form-label fw-bold">Seleccionar archivo (.csv o .xlsx)</label>
-            <input type="file" class="form-control" id="bulkFileInput" accept=".csv,.xlsx,.xls">
-            <div class="form-text">Máximo 10,000 filas. El estado puede escribirse como nombre (ej. <em>EN RUTA</em>) o como id.</div>
-          </div>
-          <div id="bulkUploadError" class="alert alert-danger d-none"></div>
         </div>
-
-
-        <!-- PASO 2: Vista previa -->
-        <div id="bulkPaso2" class="d-none">
-          <!-- Resumen -->
-          <div class="row g-3 mb-4" id="bulkSummaryCards">
-            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#f0f0f0"><div class="card-body py-2"><div class="fs-4 fw-bold text-dark" id="bulkTotalCount">0</div><small class="text-secondary">Total</small></div></div></div>
-            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#d6f0e0"><div class="card-body py-2"><div class="fs-4 fw-bold" style="color:#1a6e3c" id="bulkValidCount">0</div><small style="color:#1a6e3c">Válidas</small></div></div></div>
-            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#fadadd"><div class="card-body py-2"><div class="fs-4 fw-bold" style="color:#8b1a2a" id="bulkErrorCount">0</div><small style="color:#8b1a2a">Errores</small></div></div></div>
-            <div class="col-6 col-md-3"><div class="card text-center border-0" style="background:#fff4cc"><div class="card-body py-2"><div class="fs-4 fw-bold" style="color:#7a5c00" id="bulkWarnCount">0</div><small style="color:#7a5c00">Advertencias</small></div></div></div>
-
-          </div>
-
-          <!-- Errores / advertencias -->
-          <div id="bulkErrorList" class="mb-3"></div>
-          <div id="bulkWarnList" class="mb-3"></div>
-
-          <!-- Tabla preview -->
-          <div class="table-responsive">
-            <table class="table table-sm table-bordered table-hover" id="bulkPreviewTable">
-              <thead class="table-dark">
-                <tr>
-                  <th>#Línea</th><th>ID Pedido</th><th># Orden</th>
-                  <th>Nuevo Comentario</th><th>Motivo</th><th>Nuevo Estado ID</th>
-                </tr>
-              </thead>
-              <tbody id="bulkPreviewBody"></tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- PASO 3: Resultado -->
-        <div id="bulkPaso3" class="d-none">
-          <div id="bulkResultContent"></div>
-        </div>
-
-      </div><!-- /modal-body -->
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="bulkBtnCerrar">Cerrar</button>
-        <button type="button" class="btn btn-warning" id="bulkBtnPreview" onclick="enviarPreview()">
-          <i class="bi bi-eye"></i> Vista previa
-        </button>
-        <button type="button" class="btn btn-success d-none" id="bulkBtnConfirmar" onclick="confirmarBulk()" disabled>
-          <i class="bi bi-check-circle"></i> Confirmar y aplicar
-        </button>
-      </div>
-
     </div>
-  </div>
-</div>
 
-<script>
-(function() {
-  let _bulkJobId = null;
+    <script>
+        (function() {
+            let _bulkJobId = null;
 
-  // Plantillas descargables — estados tomados de la BD en tiempo real
-  <?php
-    $__estados = array_column($estadosDisponibles, 'nombre_estado');
-    $__e0 = addslashes($__estados[0] ?? 'EN RUTA');
-    $__e1 = addslashes($__estados[1] ?? 'ENTREGADO');
-    $__e2 = addslashes($__estados[2] ?? $__estados[0] ?? 'CANCELADO');
-  ?>
-  const _plantillas = {
-    comentario: {
-      nombre: 'plantilla_comentario.csv',
-      contenido: [
-        'id_pedido,numero_orden,comentario,motivo',
-        '101,,Paquete entregado al vecino,Ausencia del destinatario',
-        ',280001234,En camino reprogramado,Dirección incorrecta',
-        '102,,Devuelto al remitente,No se encontró la dirección',
-      ].join('\r\n')
-    },
-    estado: {
-      nombre: 'plantilla_estado.csv',
-      contenido: [
-        'id_pedido,numero_orden,estado,motivo,fecha_entrega,fecha_liquidacion',
-        '101,,<?= $__e0 ?>,Salió a ruta hoy,,',
-        ',280001234,Reprogramado,Reagendado por cliente,2026-03-20,',
-        '102,,Entregado – liquidado,Cobro confirmado,,2026-03-03',
-        '103,,<?= $__e2 ?>,Solicitud del cliente,,',
-      ].join('\r\n')
-    },
-    completa: {
-      nombre: 'plantilla_completa.csv',
-      contenido: [
-        'id_pedido,numero_orden,comentario,estado,motivo,fecha_entrega,fecha_liquidacion',
-        '101,,Entregado con retraso,<?= $__e1 ?>,Tráfico en zona norte,,',
-        ',280001234,Cliente ausente al primer intento,Reprogramado,Se reprogramó para mañana,2026-03-20,',
-        '102,,,Entregado – liquidado,Cobro confirmado en efectivo,,2026-03-03',
-        '103,,,<?= $__e2 ?>,Solicitud del cliente por teléfono,,',
-        '104,,Dirección actualizada,,Cambió a Avenida 5 N°22,,',
-      ].join('\r\n')
-    }
-  };
+            // Plantillas descargables — estados tomados de la BD en tiempo real
+            <?php
+            $__estados = array_column($estadosDisponibles, 'nombre_estado');
+            $__e0 = addslashes($__estados[0] ?? 'EN RUTA');
+            $__e1 = addslashes($__estados[1] ?? 'ENTREGADO');
+            $__e2 = addslashes($__estados[2] ?? $__estados[0] ?? 'CANCELADO');
+            ?>
+            const _plantillas = {
+                comentario: {
+                    nombre: 'plantilla_comentario.csv',
+                    contenido: [
+                        'id_pedido,numero_orden,comentario,motivo',
+                        '101,,Paquete entregado al vecino,Ausencia del destinatario',
+                        ',280001234,En camino reprogramado,Dirección incorrecta',
+                        '102,,Devuelto al remitente,No se encontró la dirección',
+                    ].join('\r\n')
+                },
+                estado: {
+                    nombre: 'plantilla_estado.csv',
+                    contenido: [
+                        'id_pedido,numero_orden,estado,motivo,fecha_entrega,fecha_liquidacion',
+                        '101,,<?= $__e0 ?>,Salió a ruta hoy,,',
+                        ',280001234,Reprogramado,Reagendado por cliente,2026-03-20,',
+                        '102,,Entregado – liquidado,Cobro confirmado,,2026-03-03',
+                        '103,,<?= $__e2 ?>,Solicitud del cliente,,',
+                    ].join('\r\n')
+                },
+                completa: {
+                    nombre: 'plantilla_completa.csv',
+                    contenido: [
+                        'id_pedido,numero_orden,comentario,estado,motivo,fecha_entrega,fecha_liquidacion',
+                        '101,,Entregado con retraso,<?= $__e1 ?>,Tráfico en zona norte,,',
+                        ',280001234,Cliente ausente al primer intento,Reprogramado,Se reprogramó para mañana,2026-03-20,',
+                        '102,,,Entregado – liquidado,Cobro confirmado en efectivo,,2026-03-03',
+                        '103,,,<?= $__e2 ?>,Solicitud del cliente por teléfono,,',
+                        '104,,Dirección actualizada,,Cambió a Avenida 5 N°22,,',
+                    ].join('\r\n')
+                }
+            };
 
-  window.descargarPlantilla = function(tipo) {
-    const p = _plantillas[tipo];
-    if (!p) return;
-    const blob = new Blob(['\uFEFF' + p.contenido], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = p.nombre;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+            window.descargarPlantilla = function(tipo) {
+                const p = _plantillas[tipo];
+                if (!p) return;
+                const blob = new Blob(['\uFEFF' + p.contenido], {
+                    type: 'text/csv;charset=utf-8;'
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = p.nombre;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
 
-  /**
-   * Construye la URL del endpoint plantilla_csv tomando los filtros
-   * del formulario del tab activo (En Proceso o Historial Completo).
-   */
-  window.descargarPlantillaFiltrada = function() {
-    // Detectar tab activo
-    const pillAll     = document.getElementById('pills-all-tab');
-    const isHistorial = pillAll && pillAll.classList.contains('active');
-    const tab         = isHistorial ? 'all' : 'pedidos';
+            /**
+             * Construye la URL del endpoint plantilla_csv tomando los filtros
+             * del formulario del tab activo (En Proceso o Historial Completo).
+             */
+            window.descargarPlantillaFiltrada = function() {
+                // Detectar tab activo
+                const pillAll = document.getElementById('pills-all-tab');
+                const isHistorial = pillAll && pillAll.classList.contains('active');
+                const tab = isHistorial ? 'all' : 'pedidos';
 
-    // Leer filtros del formulario visible
-    const formId = isHistorial ? null : 'formFiltrosPedidos';
-    let params   = { tab };
+                // Leer filtros del formulario visible
+                const formId = isHistorial ? null : 'formFiltrosPedidos';
+                let params = {
+                    tab
+                };
 
-    if (formId) {
-      // Tab "En Proceso" — tiene id en el form
-      const form = document.getElementById(formId);
-      if (form) {
-        new FormData(form).forEach((v, k) => { if (k !== 'tab') params[k] = v; });
-      }
-    } else {
-      // Tab "Historial" — leer campos del segundo formulario (no tiene id)
-      const forms = document.querySelectorAll('#pills-all form');
-      if (forms.length) {
-        new FormData(forms[0]).forEach((v, k) => { if (k !== 'tab') params[k] = v; });
-      }
-    }
+                if (formId) {
+                    // Tab "En Proceso" — tiene id en el form
+                    const form = document.getElementById(formId);
+                    if (form) {
+                        new FormData(form).forEach((v, k) => {
+                            if (k !== 'tab') params[k] = v;
+                        });
+                    }
+                } else {
+                    // Tab "Historial" — leer campos del segundo formulario (no tiene id)
+                    const forms = document.querySelectorAll('#pills-all form');
+                    if (forms.length) {
+                        new FormData(forms[0]).forEach((v, k) => {
+                            if (k !== 'tab') params[k] = v;
+                        });
+                    }
+                }
 
-    // Construir query string
-    const qs  = Object.entries(params)
-      .filter(([, v]) => v !== '' && v !== '0')
-      .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
-      .join('&');
+                // Construir query string
+                const qs = Object.entries(params)
+                    .filter(([, v]) => v !== '' && v !== '0')
+                    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+                    .join('&');
 
-    window.location.href = '<?= RUTA_URL ?>logistica/plantilla_csv?' + qs;
-  };
+                window.location.href = '<?= RUTA_URL ?>logistica/plantilla_csv?' + qs;
+            };
 
-  // Exponer funciones al scope global
-  window.abrirModalBulk = function() {
+            // Exponer funciones al scope global
+            window.abrirModalBulk = function() {
 
-    _bulkJobId = null;
-    // Reset pasos
-    document.getElementById('bulkPaso1').classList.remove('d-none');
-    document.getElementById('bulkPaso2').classList.add('d-none');
-    document.getElementById('bulkPaso3').classList.add('d-none');
-    document.getElementById('bulkBtnPreview').classList.remove('d-none');
-    document.getElementById('bulkBtnConfirmar').classList.add('d-none');
-    document.getElementById('bulkFileInput').value = '';
-    document.getElementById('bulkUploadError').classList.add('d-none');
-    actualizarPasoIndicador(1);
-    const modal = new bootstrap.Modal(document.getElementById('modalBulkUpdate'));
-    modal.show();
-  };
+                _bulkJobId = null;
+                // Reset pasos
+                document.getElementById('bulkPaso1').classList.remove('d-none');
+                document.getElementById('bulkPaso2').classList.add('d-none');
+                document.getElementById('bulkPaso3').classList.add('d-none');
+                document.getElementById('bulkBtnPreview').classList.remove('d-none');
+                document.getElementById('bulkBtnConfirmar').classList.add('d-none');
+                document.getElementById('bulkFileInput').value = '';
+                document.getElementById('bulkUploadError').classList.add('d-none');
+                actualizarPasoIndicador(1);
+                const modal = new bootstrap.Modal(document.getElementById('modalBulkUpdate'));
+                modal.show();
+            };
 
-  window.enviarPreview = function() {
-    const fileInput = document.getElementById('bulkFileInput');
-    const errDiv    = document.getElementById('bulkUploadError');
-    errDiv.classList.add('d-none');
+            window.enviarPreview = function() {
+                const fileInput = document.getElementById('bulkFileInput');
+                const errDiv = document.getElementById('bulkUploadError');
+                errDiv.classList.add('d-none');
 
-    if (!fileInput.files.length) {
-      errDiv.textContent = 'Selecciona un archivo primero.';
-      errDiv.classList.remove('d-none');
-      return;
-    }
+                if (!fileInput.files.length) {
+                    errDiv.textContent = 'Selecciona un archivo primero.';
+                    errDiv.classList.remove('d-none');
+                    return;
+                }
 
-    const btn = document.getElementById('bulkBtnPreview');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+                const btn = document.getElementById('bulkBtnPreview');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
 
-    const fd = new FormData();
-    fd.append('archivo', fileInput.files[0]);
+                const fd = new FormData();
+                fd.append('archivo', fileInput.files[0]);
 
-    fetch('<?= RUTA_URL ?>logistica/bulk/preview', { method: 'POST', body: fd })
-      .then(r => r.json())
-      .then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
+                fetch('<?= RUTA_URL ?>logistica/bulk/preview', {
+                        method: 'POST',
+                        body: fd
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
 
-        if (!data.ok) {
-          errDiv.textContent = data.error || 'Error al procesar el archivo.';
-          errDiv.classList.remove('d-none');
-          return;
-        }
+                        if (!data.ok) {
+                            errDiv.textContent = data.error || 'Error al procesar el archivo.';
+                            errDiv.classList.remove('d-none');
+                            return;
+                        }
 
-        _bulkJobId = data.job_id;
-        renderPreview(data);
-      })
-      .catch(() => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
-        errDiv.textContent = 'Error de red. Intenta de nuevo.';
-        errDiv.classList.remove('d-none');
-      });
-  };
+                        _bulkJobId = data.job_id;
+                        renderPreview(data);
+                    })
+                    .catch(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
+                        errDiv.textContent = 'Error de red. Intenta de nuevo.';
+                        errDiv.classList.remove('d-none');
+                    });
+            };
 
-  function renderPreview(data) {
-    const s = data.summary || {};
-    document.getElementById('bulkTotalCount').textContent = s.total       || 0;
-    document.getElementById('bulkValidCount').textContent = s.validas     || 0;
-    document.getElementById('bulkErrorCount').textContent = s.errores     || 0;
-    document.getElementById('bulkWarnCount').textContent  = s.advertencias || 0;
+            function renderPreview(data) {
+                const s = data.summary || {};
+                document.getElementById('bulkTotalCount').textContent = s.total || 0;
+                document.getElementById('bulkValidCount').textContent = s.validas || 0;
+                document.getElementById('bulkErrorCount').textContent = s.errores || 0;
+                document.getElementById('bulkWarnCount').textContent = s.advertencias || 0;
 
-    // Lista de errores
-    const errList  = document.getElementById('bulkErrorList');
-    const warnList = document.getElementById('bulkWarnList');
-    errList.innerHTML  = '';
-    warnList.innerHTML = '';
+                // Lista de errores
+                const errList = document.getElementById('bulkErrorList');
+                const warnList = document.getElementById('bulkWarnList');
+                errList.innerHTML = '';
+                warnList.innerHTML = '';
 
-    if (data.errores && data.errores.length) {
-      errList.innerHTML = '<div class="alert alert-danger"><strong>Errores (' + data.errores.length + '):</strong><ul class="mb-0 mt-1">' +
-        data.errores.map(e => '<li>' + escHtml(e) + '</li>').join('') + '</ul></div>';
-    }
-    if (data.advertencias && data.advertencias.length) {
-      warnList.innerHTML = '<div class="alert alert-warning"><strong>Advertencias (' + data.advertencias.length + '):</strong><ul class="mb-0 mt-1">' +
-        data.advertencias.map(w => '<li>' + escHtml(w) + '</li>').join('') + '</ul></div>';
-    }
+                if (data.errores && data.errores.length) {
+                    errList.innerHTML = '<div class="alert alert-danger"><strong>Errores (' + data.errores.length + '):</strong><ul class="mb-0 mt-1">' +
+                        data.errores.map(e => '<li>' + escHtml(e) + '</li>').join('') + '</ul></div>';
+                }
+                if (data.advertencias && data.advertencias.length) {
+                    warnList.innerHTML = '<div class="alert alert-warning"><strong>Advertencias (' + data.advertencias.length + '):</strong><ul class="mb-0 mt-1">' +
+                        data.advertencias.map(w => '<li>' + escHtml(w) + '</li>').join('') + '</ul></div>';
+                }
 
-    // Tabla de muestra
-    const tbody = document.getElementById('bulkPreviewBody');
-    tbody.innerHTML = '';
-    (data.preview_rows || []).forEach(row => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + escHtml(row._line) + '</td>' +
-                     '<td>' + escHtml(row.id_pedido) + '</td>' +
-                     '<td>' + escHtml(row.numero_orden) + '</td>' +
-                     '<td>' + escHtml(row.nuevo_comentario || '—') + '</td>' +
-                     '<td>' + escHtml(row.motivo || '—') + '</td>' +
-                     '<td>' + escHtml(row.nuevo_id_estado !== null ? row.nuevo_id_estado : '—') + '</td>';
-      tbody.appendChild(tr);
-    });
+                // Tabla de muestra
+                const tbody = document.getElementById('bulkPreviewBody');
+                tbody.innerHTML = '';
+                (data.preview_rows || []).forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td>' + escHtml(row._line) + '</td>' +
+                        '<td>' + escHtml(row.id_pedido) + '</td>' +
+                        '<td>' + escHtml(row.numero_orden) + '</td>' +
+                        '<td>' + escHtml(row.nuevo_comentario || '—') + '</td>' +
+                        '<td>' + escHtml(row.motivo || '—') + '</td>' +
+                        '<td>' + escHtml(row.nuevo_id_estado !== null ? row.nuevo_id_estado : '—') + '</td>';
+                    tbody.appendChild(tr);
+                });
 
-    // Mostrar paso 2
-    document.getElementById('bulkPaso1').classList.add('d-none');
-    document.getElementById('bulkPaso2').classList.remove('d-none');
-    document.getElementById('bulkBtnPreview').classList.add('d-none');
+                // Mostrar paso 2
+                document.getElementById('bulkPaso1').classList.add('d-none');
+                document.getElementById('bulkPaso2').classList.remove('d-none');
+                document.getElementById('bulkBtnPreview').classList.add('d-none');
 
-    const btnConfirmar = document.getElementById('bulkBtnConfirmar');
-    btnConfirmar.classList.remove('d-none');
-    // Solo habilitar si no hay errores
-    btnConfirmar.disabled = (s.errores > 0);
-    if (s.errores > 0) {
-      btnConfirmar.title = 'Corrija los errores antes de confirmar.';
-    }
+                const btnConfirmar = document.getElementById('bulkBtnConfirmar');
+                btnConfirmar.classList.remove('d-none');
+                // Solo habilitar si no hay errores
+                btnConfirmar.disabled = (s.errores > 0);
+                if (s.errores > 0) {
+                    btnConfirmar.title = 'Corrija los errores antes de confirmar.';
+                }
 
-    actualizarPasoIndicador(2);
-  }
+                actualizarPasoIndicador(2);
+            }
 
-  window.confirmarBulk = function() {
-    if (!_bulkJobId) return;
-    const btn = document.getElementById('bulkBtnConfirmar');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aplicando...';
+            window.confirmarBulk = function() {
+                if (!_bulkJobId) return;
+                const btn = document.getElementById('bulkBtnConfirmar');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aplicando...';
 
-    fetch('<?= RUTA_URL ?>logistica/bulk/commit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ job_id: _bulkJobId })
-    })
-    .then(r => r.json())
-    .then(data => {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
+                fetch('<?= RUTA_URL ?>logistica/bulk/commit', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            job_id: _bulkJobId
+                        })
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
 
-      document.getElementById('bulkPaso2').classList.add('d-none');
-      document.getElementById('bulkBtnConfirmar').classList.add('d-none');
-      document.getElementById('bulkPaso3').classList.remove('d-none');
-      actualizarPasoIndicador(3);
+                        document.getElementById('bulkPaso2').classList.add('d-none');
+                        document.getElementById('bulkBtnConfirmar').classList.add('d-none');
+                        document.getElementById('bulkPaso3').classList.remove('d-none');
+                        actualizarPasoIndicador(3);
 
-      if (data.ok && data.summary) {
-        const s = data.summary;
-        document.getElementById('bulkResultContent').innerHTML =
-          '<div class="alert alert-success"><h5><i class="bi bi-check-circle-fill"></i> Operación completada</h5>' +
-          '<ul class="mb-0">' +
-          '<li><strong>Total procesadas:</strong> ' + s.total + '</li>' +
-          '<li><strong>Actualizadas:</strong> <span class="text-success">' + s.actualizados + '</span></li>' +
-          '<li><strong>Sin cambios (omitidas):</strong> ' + s.sin_cambios + '</li>' +
-          (s.fallidos > 0 ? '<li><strong>Fallidas:</strong> <span class="text-danger">' + s.fallidos + '</span></li>' : '') +
-          '</ul></div>' +
-          (s.failed_rows && s.failed_rows.length ? '<div class="alert alert-warning"><strong>Detalle de fallos:</strong><ul class="mb-0">' + s.failed_rows.map(r => '<li>' + escHtml(r) + '</li>').join('') + '</ul></div>' : '');
-      } else {
-        document.getElementById('bulkResultContent').innerHTML =
-          '<div class="alert alert-danger"><strong>Error:</strong> ' + escHtml(data.error || 'Error desconocido') + '</div>';
-      }
-    })
-    .catch(() => {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
-      document.getElementById('bulkResultContent').innerHTML =
-        '<div class="alert alert-danger">Error de red al aplicar los cambios.</div>';
-      document.getElementById('bulkPaso2').classList.add('d-none');
-      document.getElementById('bulkPaso3').classList.remove('d-none');
-    });
-  };
+                        if (data.ok && data.summary) {
+                            const s = data.summary;
+                            document.getElementById('bulkResultContent').innerHTML =
+                                '<div class="alert alert-success"><h5><i class="bi bi-check-circle-fill"></i> Operación completada</h5>' +
+                                '<ul class="mb-0">' +
+                                '<li><strong>Total procesadas:</strong> ' + s.total + '</li>' +
+                                '<li><strong>Actualizadas:</strong> <span class="text-success">' + s.actualizados + '</span></li>' +
+                                '<li><strong>Sin cambios (omitidas):</strong> ' + s.sin_cambios + '</li>' +
+                                (s.fallidos > 0 ? '<li><strong>Fallidas:</strong> <span class="text-danger">' + s.fallidos + '</span></li>' : '') +
+                                '</ul></div>' +
+                                (s.failed_rows && s.failed_rows.length ? '<div class="alert alert-warning"><strong>Detalle de fallos:</strong><ul class="mb-0">' + s.failed_rows.map(r => '<li>' + escHtml(r) + '</li>').join('') + '</ul></div>' : '');
+                        } else {
+                            document.getElementById('bulkResultContent').innerHTML =
+                                '<div class="alert alert-danger"><strong>Error:</strong> ' + escHtml(data.error || 'Error desconocido') + '</div>';
+                        }
+                    })
+                    .catch(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
+                        document.getElementById('bulkResultContent').innerHTML =
+                            '<div class="alert alert-danger">Error de red al aplicar los cambios.</div>';
+                        document.getElementById('bulkPaso2').classList.add('d-none');
+                        document.getElementById('bulkPaso3').classList.remove('d-none');
+                    });
+            };
 
-  function actualizarPasoIndicador(paso) {
-    [1, 2, 3].forEach(n => {
-      const badge = document.getElementById('bulkStep' + n + 'Badge');
-      const label = document.getElementById('bulkStep' + n + 'Label');
-      if (n < paso)  { badge.className = 'badge rounded-pill bg-success me-2'; label.className = 'text-muted me-3'; }
-      if (n === paso){ badge.className = 'badge rounded-pill bg-warning text-dark me-2'; label.className = 'fw-semibold me-3'; }
-      if (n > paso)  { badge.className = 'badge rounded-pill bg-secondary me-2'; label.className = 'text-muted me-3'; }
-    });
-  }
+            function actualizarPasoIndicador(paso) {
+                [1, 2, 3].forEach(n => {
+                    const badge = document.getElementById('bulkStep' + n + 'Badge');
+                    const label = document.getElementById('bulkStep' + n + 'Label');
+                    if (n < paso) {
+                        badge.className = 'badge rounded-pill bg-success me-2';
+                        label.className = 'text-muted me-3';
+                    }
+                    if (n === paso) {
+                        badge.className = 'badge rounded-pill bg-warning text-dark me-2';
+                        label.className = 'fw-semibold me-3';
+                    }
+                    if (n > paso) {
+                        badge.className = 'badge rounded-pill bg-secondary me-2';
+                        label.className = 'text-muted me-3';
+                    }
+                });
+            }
 
-  function escHtml(str) {
-    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
-})();
-</script>
+            function escHtml(str) {
+                return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+        })();
+    </script>
 <?php endif; ?>
 
 <?php if (!empty($idsPedidosHLExpress)): ?>
-<!-- ════════════════════════════════════════════════════════════════════
+    <!-- ════════════════════════════════════════════════════════════════════
      TAB PANE: NOVEDADES HL EXPRESS
 ════════════════════════════════════════════════════════════════════ -->
-<style>
-.novedad-row:hover { background: #fff8f0 !important; }
-.badge-no-resuelto { background: #ff8d33; color:#fff; }
-.badge-resuelto    { background: #198754; color:#fff; }
-#tabNovedadesBody td { vertical-align: middle; }
-</style>
-
-<script>
-// ── Tab Novedades HL Express ──────────────────────────────────────────
-(function() {
-
-    let _novedadesLoaded = false;
-    let _novedadesPage   = 1;
-    let _novedadesFilters = { is_solved: 'No' };
-    const _baseUrl = '<?= RUTA_URL ?>';
-
-    // Exponer para onclick en el botón de la tab
-    window.cargarNovedadesTab = function(resetPage) {
-        if (resetPage) { _novedadesPage = 1; _novedadesLoaded = false; }
-        if (_novedadesLoaded && !resetPage) return;
-        _fetchNovedades();
-    };
-
-    // Si la tab ya está activa al cargar (URL ?tab=novedades)
-    document.addEventListener('DOMContentLoaded', function() {
-        const tab = new URLSearchParams(window.location.search).get('tab');
-        if (tab === 'novedades') _fetchNovedades();
-
-        // Botones de filtro dentro de la tab
-        const btnFiltrar = document.getElementById('btnFiltrarNovedades');
-        if (btnFiltrar) {
-            btnFiltrar.addEventListener('click', function() {
-                _novedadesFilters = {
-                    is_solved:       document.getElementById('filtNovIsSolved').value,
-                    order_number:    document.getElementById('filtNovOrden').value.trim(),
-                    tracking_number: document.getElementById('filtNovTracking').value.trim(),
-                    start_date:      document.getElementById('filtNovDesde').value ? document.getElementById('filtNovDesde').value + ' 00:00:00' : '',
-                    end_date:        document.getElementById('filtNovHasta').value ? document.getElementById('filtNovHasta').value + ' 23:59:59' : '',
-                };
-                _novedadesPage = 1;
-                _fetchNovedades();
-            });
+    <style>
+        .novedad-row:hover {
+            background: #fff8f0 !important;
         }
-    });
 
-    function _fetchNovedades() {
-        const tbody  = document.getElementById('tabNovedadesBody');
-        const loader = document.getElementById('novedadesLoader');
-        const pager  = document.getElementById('novedadesPager');
-        if (!tbody) return;
+        .badge-no-resuelto {
+            background: #ff8d33;
+            color: #fff;
+        }
 
-        tbody.innerHTML = '';
-        if (loader) loader.classList.remove('d-none');
-        if (pager)  pager.innerHTML = '';
+        .badge-resuelto {
+            background: #198754;
+            color: #fff;
+        }
 
-        const params = new URLSearchParams();
-        params.set('page', _novedadesPage);
-        params.set('limit', 20);
-        Object.entries(_novedadesFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
+        #tabNovedadesBody td {
+            vertical-align: middle;
+        }
+    </style>
 
-        fetch(_baseUrl + 'logistica/listarNovedadesHLExpress?' + params.toString(), {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(r => r.json())
-        .then(res => {
-            if (loader) loader.classList.add('d-none');
-            _novedadesLoaded = true;
+    <script>
+        // ── Tab Novedades HL Express ──────────────────────────────────────────
+        (function() {
 
-            // Actualizar badge
-            const badge = document.getElementById('badgeNovedadesCount');
-            if (badge) badge.textContent = res.total ?? 0;
+            let _novedadesLoaded = false;
+            let _novedadesPage = 1;
+            let _novedadesFilters = {
+                is_solved: 'No'
+            };
+            let _isDemoMode = false;
+            const _baseUrl = '<?= RUTA_URL ?>';
 
-            if (!res.success) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>${escH(res.message || 'Error al cargar novedades')}</td></tr>`;
-                return;
-            }
+            // Exponer para onclick en el botón de la tab
+            window.cargarNovedadesTab = function(resetPage) {
+                if (resetPage) {
+                    _novedadesPage = 1;
+                    _novedadesLoaded = false;
+                }
+                if (_novedadesLoaded && !resetPage) return;
+                _fetchNovedades();
+            };
 
-            const data = res.data ?? [];
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5"><i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>Sin novedades activas en este momento.</td></tr>';
-                return;
-            }
+            // Si la tab ya está activa al cargar (URL ?tab=novedades)
+            document.addEventListener('DOMContentLoaded', function() {
+                const tab = new URLSearchParams(window.location.search).get('tab');
+                if (tab === 'novedades') _fetchNovedades();
 
-            data.forEach(inc => {
-                const ship = inc.shipment ?? {};
-                const dest = ship.shipment_destination ?? {};
-                const fecha = inc.created_at ? new Date(inc.created_at).toLocaleDateString('es-PA', { day:'2-digit', month:'2-digit', year:'numeric' }) : '-';
-                const isSolved = (inc.is_solved === 'Yes' || inc.is_solved === 'Yes_Applied');
-                const badgeCls = isSolved ? 'badge-resuelto' : 'badge-no-resuelto';
-                const badgeTxt = isSolved ? 'Resuelta' : 'Pendiente';
+                // Botones de filtro dentro de la tab
+                const btnFiltrar = document.getElementById('btnFiltrarNovedades');
+                if (btnFiltrar) {
+                    btnFiltrar.addEventListener('click', function() {
+                        _novedadesFilters = {
+                            is_solved: document.getElementById('filtNovIsSolved').value,
+                            order_number: document.getElementById('filtNovOrden').value.trim(),
+                            tracking_number: document.getElementById('filtNovTracking').value.trim(),
+                            start_date: document.getElementById('filtNovDesde').value ? document.getElementById('filtNovDesde').value + ' 00:00:00' : '',
+                            end_date: document.getElementById('filtNovHasta').value ? document.getElementById('filtNovHasta').value + ' 23:59:59' : '',
+                        };
+                        _novedadesPage = 1;
+                        _fetchNovedades();
+                    });
+                }
+            });
 
-                const tr = document.createElement('tr');
-                tr.className = 'novedad-row';
-                tr.innerHTML = `
+            function _fetchNovedades() {
+                const tbody = document.getElementById('tabNovedadesBody');
+                const loader = document.getElementById('novedadesLoader');
+                const pager = document.getElementById('novedadesPager');
+                if (!tbody) return;
+
+                tbody.innerHTML = '';
+                if (loader) loader.classList.remove('d-none');
+                if (pager) pager.innerHTML = '';
+
+                const params = new URLSearchParams();
+                params.set('page', _novedadesPage);
+                params.set('limit', 20);
+                Object.entries(_novedadesFilters).forEach(([k, v]) => {
+                    if (v) params.set(k, v);
+                });
+
+                fetch(_baseUrl + 'logistica/listarNovedadesHLExpress?' + params.toString(), {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (loader) loader.classList.add('d-none');
+                        _novedadesLoaded = true;
+
+                        // Actualizar badge
+                        const badge = document.getElementById('badgeNovedadesCount');
+                        if (badge) badge.textContent = res.total ?? 0;
+
+                        if (!res.success) {
+                            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>${escH(res.message || 'Error al cargar novedades')}</td></tr>`;
+                            return;
+                        }
+
+                        // Banner de modo demo
+                        const demoBanner = document.getElementById('novedadesDemoBanner');
+                        if (demoBanner) {
+                            if (res._demo) {
+                                _isDemoMode = true;
+                                const reason = res._demo_reason ? ` (${escH(res._demo_reason)})` : '';
+                                demoBanner.innerHTML = `<i class="bi bi-flask me-1"></i><strong>Modo demostración:</strong> La API de HL Express no retornó datos reales. Se muestran <strong>2 novedades simuladas</strong> con los pedidos actuales${reason} para que pueda probar el flujo completo.`;
+                                demoBanner.classList.remove('d-none');
+                            } else {
+                                _isDemoMode = false;
+                                demoBanner.classList.add('d-none');
+                            }
+                        }
+
+                        const data = res.data ?? [];
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5"><i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>Sin novedades activas en este momento.</td></tr>';
+                            return;
+                        }
+
+                        data.forEach(inc => {
+                            const ship = inc.shipment ?? {};
+                            const dest = ship.shipment_destination ?? {};
+                            const fecha = inc.created_at ? new Date(inc.created_at).toLocaleDateString('es-PA', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            }) : '-';
+                            const isSolved = (inc.is_solved === 'Yes' || inc.is_solved === 'Yes_Applied');
+                            const badgeCls = isSolved ? 'badge-resuelto' : 'badge-no-resuelto';
+                            const badgeTxt = isSolved ? 'Resuelta' : 'Pendiente';
+
+                            const tr = document.createElement('tr');
+                            tr.className = 'novedad-row';
+                            const destJson = JSON.stringify(dest);
+                            tr.innerHTML = `
                     <td class="small fw-semibold">${escH(ship.order_number ?? '-')}</td>
                     <td class="small">${escH(dest.full_name ?? '-')}<br><span class="text-muted">${escH(dest.phone_number ?? '')}</span></td>
                     <td class="small">${escH(dest.address ?? '-')}</td>
@@ -1825,84 +1972,96 @@ include "vista/includes/header.php";
                     <td><span class="badge ${badgeCls} small">${badgeTxt}</span></td>
                     <td class="small text-muted">${fecha}</td>
                     <td>
-                        <button type="button" class="btn btn-warning btn-sm px-2 py-1"
-                            onclick="abrirModalResolverNovedad(${escH(ship.id ?? '')}, ${escH(JSON.stringify(dest))}, ${escH(ship.order_number ?? '')})"
+                        <button type="button" class="btn btn-warning btn-sm px-2 py-1 btn-resolver-novedad"
+                            data-order="${escH(ship.order_number ?? '')}"
                             title="Resolver esta novedad">
                             <i class="bi bi-tools me-1"></i>Resolver
                         </button>
                     </td>
                 `;
-                tbody.appendChild(tr);
-            });
+                            // Guardar datos del destinatario como objeto en el botón
+                            const btn = tr.querySelector('.btn-resolver-novedad');
+                            btn._destData = dest;
+                            btn._shipId = ship.id ?? '';
+                            btn.addEventListener('click', function() {
+                                abrirModalResolverNovedad(this._shipId, this._destData, this.dataset.order);
+                            });
+                            tbody.appendChild(tr);
+                        });
 
-            // Paginador
-            _renderPager(res.current_page, res.last_page, res.total);
-        })
-        .catch(err => {
-            if (loader) loader.classList.add('d-none');
-            if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Error de red: ${escH(err.message)}</td></tr>`;
-        });
-    }
+                        // Paginador
+                        _renderPager(res.current_page, res.last_page, res.total);
+                    })
+                    .catch(err => {
+                        if (loader) loader.classList.add('d-none');
+                        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Error de red: ${escH(err.message)}</td></tr>`;
+                    });
+            }
 
-    function _renderPager(current, last, total) {
-        const pager = document.getElementById('novedadesPager');
-        if (!pager || last <= 1) { if (pager) pager.innerHTML = `<small class="text-muted">Total: ${total} novedad(es)</small>`; return; }
+            function _renderPager(current, last, total) {
+                const pager = document.getElementById('novedadesPager');
+                if (!pager || last <= 1) {
+                    if (pager) pager.innerHTML = `<small class="text-muted">Total: ${total} novedad(es)</small>`;
+                    return;
+                }
 
-        let html = `<small class="text-muted me-3">Total: ${total}</small>`;
-        html += `<nav><ul class="pagination pagination-sm mb-0">`;
+                let html = `<small class="text-muted me-3">Total: ${total}</small>`;
+                html += `<nav><ul class="pagination pagination-sm mb-0">`;
 
-        if (current > 1) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current - 1}); return false;">‹</a></li>`;
-        for (let p = Math.max(1, current-2); p <= Math.min(last, current+2); p++) {
-            html += `<li class="page-item ${p === current ? 'active' : ''}"><a class="page-link" href="#" onclick="_novPagina(${p}); return false;">${p}</a></li>`;
-        }
-        if (current < last) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current + 1}); return false;">›</a></li>`;
-        html += `</ul></nav>`;
-        pager.innerHTML = html;
-    }
+                if (current > 1) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current - 1}); return false;">‹</a></li>`;
+                for (let p = Math.max(1, current - 2); p <= Math.min(last, current + 2); p++) {
+                    html += `<li class="page-item ${p === current ? 'active' : ''}"><a class="page-link" href="#" onclick="_novPagina(${p}); return false;">${p}</a></li>`;
+                }
+                if (current < last) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current + 1}); return false;">›</a></li>`;
+                html += `</ul></nav>`;
+                pager.innerHTML = html;
+            }
 
-    window._novPagina = function(p) {
-        _novedadesPage = p;
-        _fetchNovedades();
-        document.getElementById('pills-novedades')?.scrollIntoView({ behavior: 'smooth' });
-    };
+            window._novPagina = function(p) {
+                _novedadesPage = p;
+                _fetchNovedades();
+                document.getElementById('pills-novedades')?.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            };
 
-    // Abrir modal de resolución individual desde la tabla
-    window.abrirModalResolverNovedad = function(shipmentId, dest, orderNumber) {
-        // Rellenar el modal existente con los datos del envío
-        const modalEl = document.getElementById('modalResolverNovedad_dashboard');
-        if (!modalEl) return;
-        document.getElementById('rnov_order_number').textContent = orderNumber || '';
-        document.getElementById('rnov_contact_name').value       = dest.full_name    ?? '';
-        document.getElementById('rnov_contact_phone').value      = dest.phone_number ?? '';
-        document.getElementById('rnov_contact_address').value    = '';
-        document.getElementById('rnov_solve_description').value  = '';
-        document.getElementById('rnov_direccion_actual').textContent = dest.address ?? '';
-        document.getElementById('rnov_shipment_id').value        = shipmentId ?? '';
-        document.getElementById('rnov_is_return').value          = 'false';
-        // Resetear UI
-        document.getElementById('secRnovCorreccion').style.display    = 'none';
-        document.getElementById('secRnovConfirmacion').style.display  = 'none';
-        new bootstrap.Modal(modalEl).show();
-    };
+            // Abrir modal de resolución individual desde la tabla
+            window.abrirModalResolverNovedad = function(shipmentId, dest, orderNumber) {
+                // Rellenar el modal existente con los datos del envío
+                const modalEl = document.getElementById('modalResolverNovedad_dashboard');
+                if (!modalEl) return;
+                document.getElementById('rnov_order_number').textContent = orderNumber || '';
+                document.getElementById('rnov_contact_name').value = dest.full_name ?? '';
+                document.getElementById('rnov_contact_phone').value = dest.phone_number ?? '';
+                document.getElementById('rnov_contact_address').value = '';
+                document.getElementById('rnov_solve_description').value = '';
+                document.getElementById('rnov_direccion_actual').textContent = dest.address ?? '';
+                document.getElementById('rnov_shipment_id').value = shipmentId ?? '';
+                document.getElementById('rnov_is_return').value = 'false';
+                // Resetear UI
+                document.getElementById('secRnovCorreccion').style.display = 'none';
+                document.getElementById('secRnovConfirmacion').style.display = 'none';
+                new bootstrap.Modal(modalEl).show();
+            };
 
-    function escH(str) {
-        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+            function escH(str) {
+                return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
 
-})();
-</script>
+        })();
+    </script>
 
-<!-- Tab pane novedades (insertado fuera del main tab-content para evitar romper layout) -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Insertar el tab pane dentro del contenedor correcto
-    const tabContent = document.getElementById('pills-tabContent');
-    if (!tabContent) return;
-    const pane = document.createElement('div');
-    pane.className = 'tab-pane fade <?= $paneNovedades ?>';
-    pane.id = 'pills-novedades';
-    pane.setAttribute('role', 'tabpanel');
-    pane.innerHTML = `
+    <!-- Tab pane novedades (insertado fuera del main tab-content para evitar romper layout) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Insertar el tab pane dentro del contenedor correcto
+            const tabContent = document.getElementById('pills-tabContent');
+            if (!tabContent) return;
+            const pane = document.createElement('div');
+            pane.className = 'tab-pane fade <?= $paneNovedades ?>';
+            pane.id = 'pills-novedades';
+            pane.setAttribute('role', 'tabpanel');
+            pane.innerHTML = `
         <div class="card border-0 shadow-sm mb-3">
             <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
@@ -1962,6 +2121,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </div>
+            <!-- Banner demo (oculto por defecto) -->
+            <div id="novedadesDemoBanner" class="d-none alert alert-warning border-0 py-2 px-3 m-3 rounded-2 small">
+            </div>
             <!-- Loader -->
             <div id="novedadesLoader" class="text-center py-4">
                 <div class="spinner-border text-warning" style="width:2rem;height:2rem;"></div>
@@ -1988,296 +2150,408 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="card-footer bg-white d-flex align-items-center justify-content-end gap-3 flex-wrap" id="novedadesPager"></div>
         </div>
     `;
-    tabContent.appendChild(pane);
+            tabContent.appendChild(pane);
 
-    // Si ya estaba activa la tab, cargar
-    <?php if ($activeTab === 'novedades'): ?>
-    cargarNovedadesTab();
-    <?php endif; ?>
-});
-</script>
+            // Si ya estaba activa la tab, cargar
+            <?php if ($activeTab === 'novedades'): ?>
+                cargarNovedadesTab();
+            <?php endif; ?>
+        });
+    </script>
 
-<!-- ───────────────────────────────────────────────────────────────────
+    <!-- ───────────────────────────────────────────────────────────────────
      MODAL: Resolver Novedad Individual (desde dashboard)
 ─────────────────────────────────────────────────────────────────── -->
-<div class="modal fade" id="modalResolverNovedad_dashboard" tabindex="-1" aria-labelledby="rnovLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 shadow position-relative">
-            <form id="formRnovDashboard" method="POST">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title" id="rnovLabel">
-                        <i class="bi bi-patch-exclamation-fill text-warning me-2"></i>
-                        Resolver Novedad — Orden <span id="rnov_order_number"></span>
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body position-relative" style="min-height:220px;">
-                    <input type="hidden" id="rnov_shipment_id" name="shipment_id">
-                    <input type="hidden" id="rnov_is_return" name="is_return" value="false">
+    <div class="modal fade" id="modalResolverNovedad_dashboard" tabindex="-1" aria-labelledby="rnovLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow position-relative">
+                <form id="formRnovDashboard" method="POST">
+                    <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title" id="rnovLabel">
+                            <i class="bi bi-patch-exclamation-fill text-warning me-2"></i>
+                            Resolver Novedad — Orden <span id="rnov_order_number"></span>
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body position-relative" style="min-height:220px;">
+                        <input type="hidden" id="rnov_shipment_id" name="shipment_id">
+                        <input type="hidden" id="rnov_is_return" name="is_return" value="false">
 
-                    <div class="card bg-light border-0 mb-3 text-center">
-                        <div class="card-body p-3">
-                            <p class="fw-bold mb-3 text-dark" style="line-height:1.4;">
-                                Si ya validó la información con el cliente, ¿quiere que volvamos a ofrecer el pedido? de lo contrario, será devuelto al remitente
-                            </p>
-                            <div class="d-flex justify-content-center gap-3">
-                                <button type="button" class="btn btn-success px-4 fw-bold" id="btnRnovYes">
-                                    <i class="bi bi-check2"></i> Yes
-                                </button>
-                                <button type="button" class="btn btn-danger px-4 fw-bold" id="btnRnovNo">
-                                    <i class="bi bi-exclamation-triangle"></i> NO
+                        <div class="card bg-light border-0 mb-3 text-center">
+                            <div class="card-body p-3">
+                                <p class="fw-bold mb-3 text-dark" style="line-height:1.4;">
+                                    Si ya validó la información con el cliente, ¿quiere que volvamos a ofrecer el pedido? de lo contrario, será devuelto al remitente
+                                </p>
+                                <div class="d-flex justify-content-center gap-3">
+                                    <button type="button" class="btn btn-success px-4 fw-bold" id="btnRnovYes">
+                                        <i class="bi bi-check2"></i> Yes
+                                    </button>
+                                    <button type="button" class="btn btn-danger px-4 fw-bold" id="btnRnovNo">
+                                        <i class="bi bi-exclamation-triangle"></i> NO
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Formulario corrección -->
+                        <div id="secRnovCorreccion" style="display:none;">
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Solución</label>
+                                <input type="text" id="rnov_solve_description" name="solve_description" class="form-control form-control-sm" placeholder="Descripción de la solución" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Nombre</label>
+                                <input type="text" id="rnov_contact_name" name="contact_name" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Celular</label>
+                                <input type="text" id="rnov_contact_phone" name="contact_phone" class="form-control form-control-sm" required>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold text-primary text-uppercase mb-1">Direccion</label>
+                                <div class="p-2 bg-light border rounded text-muted small mb-1" id="rnov_direccion_actual"></div>
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Specify Address</label>
+                                <input type="text" id="rnov_contact_address" name="contact_address" class="form-control form-control-sm" placeholder="Nueva dirección de entrega" required>
+                            </div>
+                            <div class="text-end mt-3">
+                                <button type="button" class="btn btn-sm btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-sm btn-dark" id="btnRnovSubmit">
+                                    <i class="bi bi-check-circle me-1 text-success"></i>Enviar Solución
                                 </button>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Formulario corrección -->
-                    <div id="secRnovCorreccion" style="display:none;">
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Solución</label>
-                            <input type="text" id="rnov_solve_description" name="solve_description" class="form-control form-control-sm" placeholder="Descripción de la solución" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Nombre</label>
-                            <input type="text" id="rnov_contact_name" name="contact_name" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Celular</label>
-                            <input type="text" id="rnov_contact_phone" name="contact_phone" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold text-primary text-uppercase mb-1">Direccion</label>
-                            <div class="p-2 bg-light border rounded text-muted small mb-1" id="rnov_direccion_actual"></div>
-                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Specify Address</label>
-                            <input type="text" id="rnov_contact_address" name="contact_address" class="form-control form-control-sm" placeholder="Nueva dirección de entrega" required>
-                        </div>
-                        <div class="text-end mt-3">
-                            <button type="button" class="btn btn-sm btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-sm btn-dark" id="btnRnovSubmit">
-                                <i class="bi bi-check-circle me-1 text-success"></i>Enviar Solución
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Confirmación retorno -->
-                    <div id="secRnovConfirmacion" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="display:none !important; z-index:1050; border-radius:.3rem;">
-                        <div class="text-center px-4 w-100">
-                            <span class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger rounded-circle mb-3" style="width:70px;height:70px;">
-                                <i class="bi bi-question-lg fs-1"></i>
-                            </span>
-                            <p class="text-secondary fw-semibold mb-4" style="line-height:1.4;">
-                                The order will be returned to the sender, are you sure you want to return it to the sender?
-                            </p>
-                            <div class="d-flex flex-column gap-2" style="max-width:280px;margin:0 auto;">
-                                <button type="button" id="btnRnovConfirmSi" class="btn btn-warning text-white fw-bold py-2" style="background:#ff8d33;border-color:#ff8d33;">Yes</button>
-                                <button type="button" id="btnRnovConfirmNo" class="btn btn-outline-warning fw-bold py-2" style="color:#ff8d33;border-color:#ff8d33;">No</button>
+                        <!-- Confirmación retorno — réplica del flujo HL Express -->
+                        <div id="secRnovConfirmacion"
+                             class="position-absolute top-0 start-0 w-100 h-100 bg-white align-items-center justify-content-center"
+                             style="display:none; z-index:1050; border-radius:.3rem;">
+                            <div class="w-100 px-3">
+                                <!-- Título idéntico a HL Express -->
+                                <div class="text-center fw-bold mb-3" style="font-size:1.05rem; color:#333;">
+                                    Reprogramar entrega
+                                </div>
+                                <!-- Figura de pregunta -->
+                                <div class="text-center mb-3">
+                                    <span style="font-size:4rem; line-height:1;">🤔</span>
+                                </div>
+                                <!-- Texto de confirmación (igual a HL Express, traducido) -->
+                                <p class="text-center text-secondary mb-4" style="line-height:1.5; font-size:.93rem;">
+                                    El pedido será devuelto al remitente, ¿está seguro de que desea devolverlo al remitente?
+                                </p>
+                                <!-- Botones: Yes (naranja lleno) | No (naranja contorno) — mismo estilo HL Express -->
+                                <div class="d-flex gap-2">
+                                    <button type="button" id="btnRnovConfirmSi"
+                                            class="btn fw-bold py-2 flex-fill text-white"
+                                            style="background:#ff8d33; border-color:#ff8d33;">
+                                        Yes
+                                    </button>
+                                    <button type="button" id="btnRnovConfirmNo"
+                                            class="btn fw-bold py-2 flex-fill"
+                                            style="color:#ff8d33; border-color:#ff8d33; background:transparent; border:2px solid #ff8d33;">
+                                        No
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- ───────────────────────────────────────────────────────────────────
+    <!-- ───────────────────────────────────────────────────────────────────
      MODAL: Resolver Novedades Masivo (Excel)
 ─────────────────────────────────────────────────────────────────── -->
-<div class="modal fade" id="modalResolverMasivoNovedades" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Resolver Novedades Masivo</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info small py-2 mb-3">
-                    <i class="bi bi-info-circle-fill me-1"></i>
-                    <strong>Instrucciones:</strong> Descargue el Excel de novedades, complete las columnas
-                    <code>accion</code> (<code>reintentar</code> o <code>devolver</code>),
-                    <code>nueva_solucion</code>, <code>nuevo_nombre</code>, <code>nuevo_telefono</code>
-                    y <code>nueva_direccion</code>, luego súbalo aquí.
+    <div class="modal fade" id="modalResolverMasivoNovedades" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Resolver Novedades Masivo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Archivo Excel</label>
-                    <input type="file" class="form-control" id="inputNovedadesMasivoFile"
-                           accept=".xlsx,.xls,.csv">
+                <div class="modal-body">
+                    <div class="alert alert-info small py-2 mb-3">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        <strong>Instrucciones:</strong> Descargue el Excel de novedades, complete las columnas
+                        <code>accion</code> (<code>reintentar</code> o <code>devolver</code>),
+                        <code>nueva_solucion</code>, <code>nuevo_nombre</code>, <code>nuevo_telefono</code>
+                        y <code>nueva_direccion</code>, luego súbalo aquí.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Archivo Excel</label>
+                        <input type="file" class="form-control" id="inputNovedadesMasivoFile"
+                            accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div id="rnovMasivoResultado" class="d-none"></div>
                 </div>
-                <div id="rnovMasivoResultado" class="d-none"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-primary" id="btnProcesarNovedadesMasivo">
-                    <i class="bi bi-gear-fill me-1"></i>Procesar
-                </button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="btnProcesarNovedadesMasivo">
+                        <i class="bi bi-gear-fill me-1"></i>Procesar
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<script>
-(function() {
-    // ── Modal Resolver Individual (dashboard) ──────────────────────────
-    const modalRnov       = document.getElementById('modalResolverNovedad_dashboard');
-    const formRnov        = document.getElementById('formRnovDashboard');
-    const btnYes          = document.getElementById('btnRnovYes');
-    const btnNo           = document.getElementById('btnRnovNo');
-    const secCorreccion   = document.getElementById('secRnovCorreccion');
-    const secConfirmacion = document.getElementById('secRnovConfirmacion');
-    const inputIsReturn   = document.getElementById('rnov_is_return');
-    const btnConfirmSi    = document.getElementById('btnRnovConfirmSi');
-    const btnConfirmNo    = document.getElementById('btnRnovConfirmNo');
-    const btnSubmit       = document.getElementById('btnRnovSubmit');
-    const _baseUrl        = '<?= RUTA_URL ?>';
+    <script>
+        (function() {
+            // ── Modal Resolver Individual (dashboard) ──────────────────────────
+            const modalRnov = document.getElementById('modalResolverNovedad_dashboard');
+            const formRnov = document.getElementById('formRnovDashboard');
+            const btnYes = document.getElementById('btnRnovYes');
+            const btnNo = document.getElementById('btnRnovNo');
+            const secCorreccion = document.getElementById('secRnovCorreccion');
+            const secConfirmacion = document.getElementById('secRnovConfirmacion');
+            const inputIsReturn = document.getElementById('rnov_is_return');
+            const btnConfirmSi = document.getElementById('btnRnovConfirmSi');
+            const btnConfirmNo = document.getElementById('btnRnovConfirmNo');
+            const btnSubmit = document.getElementById('btnRnovSubmit');
+            const _baseUrl = '<?= RUTA_URL ?>';
 
-    function resetRnovUI() {
-        if (secCorreccion)   secCorreccion.style.display   = 'none';
-        if (secConfirmacion) secConfirmacion.style.display  = 'none';
-        const inputs = secCorreccion?.querySelectorAll('input, textarea') ?? [];
-        inputs.forEach(i => { i.required = false; i.disabled = true; });
-    }
-
-    if (btnYes) {
-        btnYes.addEventListener('click', function() {
-            inputIsReturn.value = 'false';
-            secCorreccion.style.display   = 'block';
-            secConfirmacion.style.display = 'none';
-            const inputs = secCorreccion.querySelectorAll('input[required], textarea[required], input, textarea');
-            inputs.forEach(i => { i.required = true; i.disabled = false; });
-            secCorreccion.querySelector('input')?.focus();
-        });
-    }
-
-    if (btnNo) {
-        btnNo.addEventListener('click', function() {
-            secConfirmacion.style.display = 'flex';
-            const inputs = secCorreccion?.querySelectorAll('input, textarea') ?? [];
-            inputs.forEach(i => { i.required = false; i.disabled = true; });
-        });
-    }
-
-    if (btnConfirmSi) {
-        btnConfirmSi.addEventListener('click', function() {
-            inputIsReturn.value = 'true';
-            btnConfirmSi.disabled = true;
-            btnConfirmSi.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
-            _submitRnovForm();
-        });
-    }
-
-    if (btnConfirmNo) {
-        btnConfirmNo.addEventListener('click', function() {
-            secConfirmacion.style.display = 'none';
-        });
-    }
-
-    if (formRnov) {
-        formRnov.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...'; }
-            _submitRnovForm();
-        });
-    }
-
-    function _submitRnovForm() {
-        // Buscar el pedido por order_number para construir la URL del endpoint
-        const orderNumber = document.getElementById('rnov_order_number')?.textContent.trim();
-        const formData = new FormData(formRnov);
-
-        // Necesitamos el ID del pedido — lo buscamos por número de orden via fetch local
-        fetch(_baseUrl + 'logistica/buscarPedidoPorOrden?numero_orden=' + encodeURIComponent(orderNumber), {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(r => r.json())
-        .then(pedRes => {
-            if (!pedRes.success || !pedRes.id) throw new Error('Pedido no encontrado localmente: ' + orderNumber);
-            return fetch(_baseUrl + 'logistica/resolverNovedad/' + pedRes.id, {
-                method: 'POST', body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            });
-        })
-        .then(r => r.json())
-        .then(data => {
-            const bsMod = bootstrap.Modal.getInstance(modalRnov);
-            if (bsMod) bsMod.hide();
-            if (data.success) {
-                Swal?.fire({ icon:'success', title:'¡Resuelta!', text: data.message, confirmButtonColor:'#0d6efd' })
-                    .then(() => cargarNovedadesTab(true));
-            } else {
-                Swal?.fire({ icon:'error', title:'Error', text: data.message || 'No se pudo resolver.', confirmButtonColor:'#0d6efd' });
-            }
-            _restoreRnovBtns();
-        })
-        .catch(err => {
-            Swal?.fire({ icon:'error', title:'Error', text: err.message });
-            _restoreRnovBtns();
-        });
-    }
-
-    function _restoreRnovBtns() {
-        if (btnSubmit)     { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Enviar Solución'; }
-        if (btnConfirmSi)  { btnConfirmSi.disabled = false; btnConfirmSi.innerHTML = 'Yes'; }
-    }
-
-    // ── Modal Resolver Masivo (Excel) ────────────────────────────────────
-    const btnProcesar = document.getElementById('btnProcesarNovedadesMasivo');
-    if (btnProcesar) {
-        btnProcesar.addEventListener('click', function() {
-            const fileInput = document.getElementById('inputNovedadesMasivoFile');
-            const resultado = document.getElementById('rnovMasivoResultado');
-
-            if (!fileInput?.files?.length) {
-                resultado.className = 'alert alert-warning small';
-                resultado.textContent = 'Por favor seleccione un archivo Excel.';
-                return;
+            function resetRnovUI() {
+                if (secCorreccion) secCorreccion.style.display = 'none';
+                if (secConfirmacion) secConfirmacion.style.display = 'none';
+                const inputs = secCorreccion?.querySelectorAll('input, textarea') ?? [];
+                inputs.forEach(i => {
+                    i.required = false;
+                    i.disabled = true;
+                });
             }
 
-            btnProcesar.disabled = true;
-            btnProcesar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
-            resultado.className = 'd-none';
+            if (btnYes) {
+                btnYes.addEventListener('click', function() {
+                    inputIsReturn.value = 'false';
+                    secCorreccion.style.display = 'block';
+                    secConfirmacion.style.display = 'none';
+                    const inputs = secCorreccion.querySelectorAll('input[required], textarea[required], input, textarea');
+                    inputs.forEach(i => {
+                        i.required = true;
+                        i.disabled = false;
+                    });
+                    secCorreccion.querySelector('input')?.focus();
+                });
+            }
 
-            const fd = new FormData();
-            fd.append('archivo', fileInput.files[0]);
+            if (btnNo) {
+                btnNo.addEventListener('click', function() {
+                    secConfirmacion.style.display = 'flex';
+                    const inputs = secCorreccion?.querySelectorAll('input, textarea') ?? [];
+                    inputs.forEach(i => {
+                        i.required = false;
+                        i.disabled = true;
+                    });
+                });
+            }
 
-            fetch(_baseUrl + 'logistica/resolverNovedadesMasivo', {
-                method: 'POST', body: fd,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(r => r.json())
-            .then(data => {
-                btnProcesar.disabled = false;
-                btnProcesar.innerHTML = '<i class="bi bi-gear-fill me-1"></i>Procesar';
+            if (btnConfirmSi) {
+                btnConfirmSi.addEventListener('click', function() {
+                    inputIsReturn.value = 'true';
+                    btnConfirmSi.disabled = true;
+                    btnConfirmSi.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+                    _submitRnovForm();
+                });
+            }
 
-                if (!data.success) {
-                    resultado.className = 'alert alert-danger small';
-                    resultado.innerHTML = '<strong>Error:</strong> ' + escH(data.message);
+            if (btnConfirmNo) {
+                btnConfirmNo.addEventListener('click', function() {
+                    secConfirmacion.style.display = 'none';
+                });
+            }
+
+            if (formRnov) {
+                formRnov.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    if (btnSubmit) {
+                        btnSubmit.disabled = true;
+                        btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+                    }
+                    _submitRnovForm();
+                });
+            }
+
+            function _submitRnovForm() {
+                // Buscar el pedido por order_number para construir la URL del endpoint
+                const orderNumber = document.getElementById('rnov_order_number')?.textContent.trim();
+                const formData = new FormData(formRnov);
+                const isReturn = document.getElementById('rnov_is_return')?.value === 'true';
+
+                // ── MODO DEMO: no llamar a la API real ──────────────────────
+                if (_isDemoMode) {
+                    const bsMod = bootstrap.Modal.getInstance(modalRnov);
+                    if (bsMod) bsMod.hide();
+                    const accion = isReturn ? 'devolución' : 'reintento de entrega';
+                    Swal?.fire({
+                        icon: 'success',
+                        title: '✅ Demo: Novedad Resuelta',
+                        html: `<p class="mb-1">La novedad del pedido <strong>${escH(orderNumber)}</strong> fue marcada como resuelta.</p>
+                               <p class="text-muted small mb-0">Acción: <strong>${accion}</strong> (simulación — no se llamó a la API real de HL Express).</p>`,
+                        confirmButtonColor: '#0d6efd',
+                        confirmButtonText: 'Entendido'
+                    }).then(() => cargarNovedadesTab(true));
+                    _restoreRnovBtns();
                     return;
                 }
+                // ────────────────────────────────────────────────────────────
 
-                let html = `<div class="alert alert-success small mb-2"><i class="bi bi-check-circle me-1"></i><strong>${data.exitosos}</strong> novedad(es) resuelta(s) correctamente.</div>`;
-                if (data.errores?.length) {
-                    html += `<div class="alert alert-warning small mb-0"><strong>${data.errores.length} error(es):</strong><ul class="mb-0 ps-3 mt-1">`;
-                    data.errores.forEach(e => { html += `<li>${escH(e)}</li>`; });
-                    html += `</ul></div>`;
+                // Necesitamos el ID del pedido — lo buscamos por número de orden via fetch local
+                fetch(_baseUrl + 'logistica/buscarPedidoPorOrden?numero_orden=' + encodeURIComponent(orderNumber), {
+
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(pedRes => {
+                        if (!pedRes.success || !pedRes.id) throw new Error('Pedido no encontrado localmente: ' + orderNumber);
+                        return fetch(_baseUrl + 'logistica/resolverNovedad/' + pedRes.id, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                    })
+                    .then(r => r.json())
+                    .then(data => {
+                        const bsMod = bootstrap.Modal.getInstance(modalRnov);
+                        if (bsMod) bsMod.hide();
+                        if (data.success) {
+                            Swal?.fire({
+                                    icon: 'success',
+                                    title: '¡Resuelta!',
+                                    text: data.message,
+                                    confirmButtonColor: '#0d6efd'
+                                })
+                                .then(() => cargarNovedadesTab(true));
+                        } else {
+                            Swal?.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: data.message || 'No se pudo resolver.',
+                                confirmButtonColor: '#0d6efd'
+                            });
+                        }
+                        _restoreRnovBtns();
+                    })
+                    .catch(err => {
+                        Swal?.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: err.message
+                        });
+                        _restoreRnovBtns();
+                    });
+            }
+
+            function _restoreRnovBtns() {
+                if (btnSubmit) {
+                    btnSubmit.disabled = false;
+                    btnSubmit.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Enviar Solución';
                 }
-                resultado.className = '';
-                resultado.innerHTML = html;
+                if (btnConfirmSi) {
+                    btnConfirmSi.disabled = false;
+                    btnConfirmSi.innerHTML = 'Yes';
+                }
+            }
 
-                // Refrescar la tab de novedades
-                cargarNovedadesTab(true);
-            })
-            .catch(err => {
-                btnProcesar.disabled = false;
-                btnProcesar.innerHTML = '<i class="bi bi-gear-fill me-1"></i>Procesar';
-                resultado.className = 'alert alert-danger small';
-                resultado.textContent = 'Error de red: ' + err.message;
-            });
-        });
-    }
+            // ── Modal Resolver Masivo (Excel) ────────────────────────────────────
+            const btnProcesar = document.getElementById('btnProcesarNovedadesMasivo');
+            if (btnProcesar) {
+                btnProcesar.addEventListener('click', function() {
+                    const fileInput = document.getElementById('inputNovedadesMasivoFile');
+                    const resultado = document.getElementById('rnovMasivoResultado');
 
-    function escH(str) {
-        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-})();
-</script>
+                    if (!fileInput?.files?.length) {
+                        resultado.className = 'alert alert-warning small';
+                        resultado.textContent = 'Por favor seleccione un archivo Excel.';
+                        return;
+                    }
+
+                    btnProcesar.disabled = true;
+                    btnProcesar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+                    resultado.className = 'd-none';
+
+                    const fd = new FormData();
+                    fd.append('archivo', fileInput.files[0]);
+
+                    fetch(_baseUrl + 'logistica/resolverNovedadesMasivo', {
+                            method: 'POST',
+                            body: fd,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(r => r.json())
+                        .then(data => {
+                            btnProcesar.disabled = false;
+                            btnProcesar.innerHTML = '<i class="bi bi-gear-fill me-1"></i>Procesar';
+
+                            if (!data.success) {
+                                resultado.className = 'alert alert-danger small mt-2';
+                                resultado.innerHTML = '<i class="bi bi-x-circle me-1"></i><strong>Error:</strong> ' + escH(data.message);
+                                return;
+                            }
+
+                            const ok   = data.exitosos ?? 0;
+                            const errs = (data.errores ?? []).length;
+                            const rows = data.resultados ?? [];
+
+                            let html = `<div class="d-flex gap-2 flex-wrap mb-2">`;
+                            if (ok > 0)   html += `<span class="badge bg-success px-2 py-1 small"><i class="bi bi-check-circle me-1"></i>${ok} resuelta(s)</span>`;
+                            if (errs > 0) html += `<span class="badge bg-danger px-2 py-1 small"><i class="bi bi-x-circle me-1"></i>${errs} con error</span>`;
+                            if (ok === 0 && errs === 0) html += `<span class="badge bg-secondary px-2 py-1 small">Sin filas procesables (complete la columna "accion")</span>`;
+                            html += `</div>`;
+
+                            if (rows.length > 0) {
+                                html += `<div class="table-responsive border rounded" style="max-height:200px;overflow-y:auto;">
+                                    <table class="table table-sm table-bordered mb-0" style="font-size:.78rem;">
+                                        <thead class="table-dark sticky-top">
+                                            <tr>
+                                                <th class="text-center" style="width:40px">Fila</th>
+                                                <th>Orden</th>
+                                                <th style="width:80px">Acción</th>
+                                                <th>Resultado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
+                                rows.forEach(r => {
+                                    const icon = r.estado === 'ok'
+                                        ? '<i class="bi bi-check-circle-fill text-success"></i>'
+                                        : r.estado === 'warning'
+                                            ? '<i class="bi bi-exclamation-triangle-fill text-warning"></i>'
+                                            : '<i class="bi bi-x-circle-fill text-danger"></i>';
+                                    const rowClass = r.estado === 'ok' ? '' : r.estado === 'warning' ? 'table-warning' : 'table-danger';
+                                    const badgeCls = r.accion === 'devolver' ? 'bg-danger' : 'bg-primary';
+                                    html += `<tr class="${rowClass}">
+                                        <td class="text-center fw-bold">${r.fila}</td>
+                                        <td class="fw-semibold small">${escH(r.orden)}</td>
+                                        <td><span class="badge ${badgeCls} small">${escH(r.accion || '—')}</span></td>
+                                        <td class="small">${icon} ${escH(r.msg)}</td>
+                                    </tr>`;
+                                });
+                                html += `</tbody></table></div>`;
+                            }
+
+                            resultado.className = 'mt-2';
+                            resultado.innerHTML = html;
+
+
+                            // Refrescar la tab de novedades
+                            cargarNovedadesTab(true);
+                        })
+                        .catch(err => {
+                            btnProcesar.disabled = false;
+                            btnProcesar.innerHTML = '<i class="bi bi-gear-fill me-1"></i>Procesar';
+                            resultado.className = 'alert alert-danger small';
+                            resultado.textContent = 'Error de red: ' + err.message;
+                        });
+                });
+            }
+
+            function escH(str) {
+                return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+        })();
+    </script>
 <?php endif; ?>
