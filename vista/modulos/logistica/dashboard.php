@@ -36,11 +36,22 @@ $estadosDisponibles      = $data['estados']    ?? [];
 $clientesLista           = $data['clientes']   ?? [];
 $proveedoresMensajeriaBI = $data['proveedoresMensajeriaBI'] ?? [];
 
-// Query HL Express orders for indicators
+// Verificar si el proveedor HL Express está activo (para mostrar el tab Novedades siempre)
+$tieneHLExpress = false;
 $idsPedidosHLExpress = [];
 try {
     require_once __DIR__ . '/../../../modelo/conexion.php';
     $dbTmp = (new Conexion())->conectar();
+
+    // 1. ¿Existe el proveedor HL Express activo? → controla la visibilidad del TAB
+    $stmtHl = $dbTmp->prepare("
+        SELECT COUNT(*) FROM forwarding_providers
+        WHERE slug = 'hlexpress' AND is_active = 1
+    ");
+    $stmtHl->execute();
+    $tieneHLExpress = (bool)$stmtHl->fetchColumn();
+
+    // 2. ¿Cuáles pedidos de la página actual tienen envío HL Express exitoso? → iconos en cards
     $idsPedidos = array_unique(array_merge(
         array_column($pedidosActivos ?: [], 'id'),
         array_column($historialCompleto ?: [], 'id')
@@ -378,7 +389,7 @@ include "vista/includes/header.php";
         </li>
 
         <!-- Tab: Novedades HL Express -->
-        <?php if (!empty($idsPedidosHLExpress)): ?>
+        <?php if ($tieneHLExpress): ?>
             <li class="nav-item" role="presentation">
                 <button class="nav-link <?= $showNovedades ?> d-flex align-items-center gap-2"
                     id="pills-novedades-tab"
@@ -1825,7 +1836,7 @@ include "vista/includes/header.php";
     </script>
 <?php endif; ?>
 
-<?php if (!empty($idsPedidosHLExpress)): ?>
+<?php if ($tieneHLExpress): ?>
     <!-- ════════════════════════════════════════════════════════════════════
      TAB PANE: NOVEDADES HL EXPRESS
 ════════════════════════════════════════════════════════════════════ -->
