@@ -3141,8 +3141,8 @@ class PedidosModel
             }
 
             if (!empty($filtros['numero_orden'])) {
-                $where[] = 'p.numero_orden LIKE :numero_orden';
-                $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
+                $where[] = 'p.numero_orden = :numero_orden';
+                $params[':numero_orden'] = trim($filtros['numero_orden']);
             }
 
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
@@ -3246,8 +3246,8 @@ class PedidosModel
                 $params[':fecha_hasta'] = $filtros['fecha_hasta'] . ' 23:59:59';
             }
             if (!empty($filtros['numero_orden'])) {
-                $where[] = 'p.numero_orden LIKE :numero_orden';
-                $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
+                $where[] = 'p.numero_orden = :numero_orden';
+                $params[':numero_orden'] = trim($filtros['numero_orden']);
             }
 
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
