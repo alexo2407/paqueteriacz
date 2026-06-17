@@ -1390,6 +1390,117 @@ if (isset($ruta[0]) && $ruta[0] === 'crm' && $_SERVER['REQUEST_METHOD'] === 'POS
 
 
 // -----------------------
+// Endpoints HL Express: Novedades masivas
+// -----------------------
+
+// GET logistica/buscarPedidoPorOrden?numero_orden=... — buscar pedido local por orden
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'buscarPedidoPorOrden' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos.']);
+        exit;
+    }
+    $ctrl = new LogisticaController();
+    $ctrl->buscarPedidoPorOrden();
+    exit;
+}
+
+// GET  logistica/listarNovedadesHLExpress — lista paginada con filtros
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'listarNovedadesHLExpress' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos.']);
+        exit;
+    }
+    $ctrl = new LogisticaController();
+    $ctrl->listarNovedadesHLExpress();
+    exit;
+}
+
+// GET  logistica/exportarNovedadesExcel — descarga Excel
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'exportarNovedadesExcel' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        http_response_code(403); echo 'Sin permiso.'; exit;
+    }
+    $ctrl = new LogisticaController();
+    $ctrl->exportarNovedadesExcel();
+    exit;
+}
+
+// POST logistica/resolverNovedadesMasivo — sube Excel y aplica resoluciones
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'resolverNovedadesMasivo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos.']);
+        exit;
+    }
+    $ctrl = new LogisticaController();
+    $ctrl->resolverNovedadesMasivo();
+    exit;
+}
+
+// -----------------------
+// Endpoints específicos para Novedades de HL Express
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'consultarIncidenciasHLExpress') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+    $ctrl = new LogisticaController();
+    $ctrl->consultarIncidenciasHLExpress($id);
+    exit;
+}
+
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'resolverNovedad' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+    $ctrl = new LogisticaController();
+    $ctrl->resolverNovedad($id);
+    exit;
+}
+
+// -----------------------
 // Manejo de Logística (POST a ?enlace=logistica/<accion>)
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] === 'POST') {

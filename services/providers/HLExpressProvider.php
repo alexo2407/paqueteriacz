@@ -147,4 +147,93 @@ class HLExpressProvider extends BaseProvider
             'order_number'               => (string)$pedido['numero_orden'],
         ];
     }
+
+    /**
+     * Consultar novedades/incidentes para una guía específica (por tracking number).
+     * Para uso en la vista de detalle de pedido.
+     */
+    public function getIncidents($trackingNumber)
+    {
+        return $this->getIncidentsFiltered(['tracking_number' => $trackingNumber, 'limit' => 50])['data'] ?? [];
+    }
+
+    /**
+     * Consultar novedades con filtros avanzados y paginación.
+     * Retorna la respuesta paginada completa: data, total, current_page, last_page, per_page.
+     *
+     * Filtros disponibles:
+     *  - limit         int     Resultados por página
+     *  - page          int     Número de página
+     *  - start_date    string  Fecha inicio (YYYY-MM-DD HH:mm:ss)
+     *  - end_date      string  Fecha fin
+     *  - status_id     int     5 = Novedad, 17 = Novedad (En bodega)
+     *  - tracking_number string  Número de seguimiento parcial
+     *  - order_number  string  Número de orden
+     *  - is_solved     string  Yes_Applied | Yes | No
+     */
+    public function getIncidentsFiltered(array $filters = [])
+    {
+        $authData = $this->authenticate();
+
+        $params = array_filter($filters, fn($v) => $v !== null && $v !== '');
+        if (!isset($params['limit'])) {
+            $params['limit'] = 20;
+        }
+
+        $url = $this->baseUrl . '/shipments/incidents/filtered?' . http_build_query($params);
+
+        $response = $this->httpRequest('GET', $url, [
+            'Accept: application/json',
+            'X-API-KEY: ' . $authData['token'],
+        ], null, 30);
+
+        if ($response['error']) {
+            throw new Exception("Error de conexión con HL Express (getIncidentsFiltered): " . $response['error']);
+        }
+
+        $data = $response['decoded'] ?? [];
+        if ($response['http_status'] !== 200) {
+            $errorMsg = $data['message'] ?? $data['error'] ?? 'Error desconocido';
+            throw new Exception("HL Express getIncidentsFiltered falló: " . $errorMsg, (int)$response['http_status']);
+        }
+
+        // Retorna la estructura paginada completa
+        return [
+            'data'         => $data['data']         ?? [],
+            'total'        => $data['total']         ?? 0,
+            'current_page' => $data['current_page']  ?? 1,
+            'last_page'    => $data['last_page']     ?? 1,
+            'per_page'     => $data['per_page']      ?? 20,
+        ];
+    }
+
+    /**
+     * Resolver una novedad/incidente de entrega.
+     */
+    public function solveReturn(array $payload)
+    {
+        $authData = $this->authenticate();
+        $url = $this->baseUrl . '/shipments/solve-return';
+        $body = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $response = $this->httpRequest('POST', $url, [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'X-API-KEY: ' . $authData['token'],
+        ], $body, 30);
+
+        if ($response['error']) {
+            throw new Exception("Error de conexión con HL Express (solveReturn): " . $response['error']);
+        }
+
+        $data = $response['decoded'] ?? [];
+        if ($response['http_status'] !== 200 && $response['http_status'] !== 201) {
+            $errorMsg = $data['message'] ?? $data['error'] ?? 'Error desconocido';
+            if (is_array($errorMsg)) $errorMsg = implode('; ', $errorMsg);
+            throw new Exception("HL Express solveReturn falló: " . $errorMsg, (int)$response['http_status']);
+        }
+
+        return $data;
+    }
 }
+

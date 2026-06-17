@@ -35,6 +35,32 @@ $estadosDisponibles      = $data['estados']    ?? [];
 $clientesLista           = $data['clientes']   ?? [];
 $proveedoresMensajeriaBI = $data['proveedoresMensajeriaBI'] ?? [];
 
+// Query HL Express orders for indicators
+$idsPedidosHLExpress = [];
+try {
+    require_once __DIR__ . '/../../../modelo/conexion.php';
+    $dbTmp = (new Conexion())->conectar();
+    $idsPedidos = array_unique(array_merge(
+        array_column($pedidosActivos ?: [], 'id'),
+        array_column($historialCompleto ?: [], 'id')
+    ));
+    if (!empty($idsPedidos)) {
+        $placeholders = implode(',', array_fill(0, count($idsPedidos), '?'));
+        $stmt = $dbTmp->prepare("
+            SELECT DISTINCT fl.id_pedido 
+            FROM forwarding_log fl
+            INNER JOIN forwarding_providers p ON p.id = fl.id_provider
+            WHERE fl.status = 'success' 
+              AND p.slug = 'hlexpress' 
+              AND fl.id_pedido IN ($placeholders)
+        ");
+        $stmt->execute($idsPedidos);
+        $idsPedidosHLExpress = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    }
+} catch (Exception $e) {
+    error_log("Error in dashboard HL Express check: " . $e->getMessage());
+}
+
 // Colores semánticos por categoría funcional (hex + texto)
 // ORDEN IMPORTA: claves específicas primero (evita match prematuro)
 define('CLR_LOGISTICA',  'background:#3498db;color:#fff');  // Azul      — Logística Interna (1,11,12,13)
@@ -237,18 +263,23 @@ include "vista/includes/header.php";
     <?php
     $activeTab = $_GET['tab'] ?? 'pedidos';
     
-    $showPedidos = ($activeTab === 'pedidos') ? 'active' : '';
-    $showUpdates = ($activeTab === 'updates') ? 'active' : '';
-    $showAll     = ($activeTab === 'all')     ? 'active' : '';
-    $showLiq     = ($activeTab === 'liq')     ? 'active' : '';
+    $showPedidos    = ($activeTab === 'pedidos')    ? 'active' : '';
+    $showUpdates    = ($activeTab === 'updates')    ? 'active' : '';
+    $showAll        = ($activeTab === 'all')        ? 'active' : '';
+    $showLiq        = ($activeTab === 'liq')        ? 'active' : '';
+    $showNovedades  = ($activeTab === 'novedades')  ? 'active' : '';
     
-    $panePedidos = ($activeTab === 'pedidos') ? 'show active' : '';
-    $paneUpdates = ($activeTab === 'updates') ? 'show active' : '';
-    $paneAll     = ($activeTab === 'all')     ? 'show active' : '';
-    $paneLiq     = ($activeTab === 'liq')     ? 'show active' : '';
+    $panePedidos    = ($activeTab === 'pedidos')    ? 'show active' : '';
+    $paneUpdates    = ($activeTab === 'updates')    ? 'show active' : '';
+    $paneAll        = ($activeTab === 'all')        ? 'show active' : '';
+    $paneLiq        = ($activeTab === 'liq')        ? 'show active' : '';
+    $paneNovedades  = ($activeTab === 'novedades')  ? 'show active' : '';
     
     // Usar el total de pedidos de la paginación, no solo los de la página actual
     $countActivos = $data['pagination']['total'] ?? count($pedidosActivos);
+
+    // Contar pedidos HL Express activos (para badge de novedades — se actualiza via AJAX)
+    $countHLExpressActivos = count($idsPedidosHLExpress);
     ?>
 
     <!-- Tabs -->
@@ -310,6 +341,23 @@ include "vista/includes/header.php";
                 <?php endif; ?>
             </button>
         </li>
+
+        <!-- Tab: Novedades HL Express -->
+        <?php if (!empty($idsPedidosHLExpress)): ?>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link <?= $showNovedades ?> d-flex align-items-center gap-2"
+                    id="pills-novedades-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#pills-novedades"
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=novedades'); cargarNovedadesTab();">
+                <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                <span>Novedades</span>
+                <span class="badge rounded-pill text-dark" id="badgeNovedadesCount"
+                      style="background:#ff8d33;">...</span>
+            </button>
+        </li>
+        <?php endif; ?>
     </ul>
     
     <div class="tab-content" id="pills-tabContent">
@@ -429,9 +477,16 @@ include "vista/includes/header.php";
                         <div class="card h-100 shadow-sm border-0 position-relative" style="transition: transform 0.2s;">
                              <div class="card-body">
                                  <div class="d-flex justify-content-between mb-3">
-                                     <span class="badge bg-light text-dark border">
-                                         #<?= htmlspecialchars($p['numero_orden']) ?>
-                                     </span>
+                                     <div>
+                                         <span class="badge bg-light text-dark border">
+                                             #<?= htmlspecialchars($p['numero_orden']) ?>
+                                         </span>
+                                         <?php if (in_array($p['id'], $idsPedidosHLExpress)): ?>
+                                             <span class="badge bg-dark text-white border ms-1" title="Integrado con HL Express">
+                                                 <i class="bi bi-truck text-warning"></i>
+                                             </span>
+                                         <?php endif; ?>
+                                     </div>
                                      <span class="badge" style="<?= $color ?>"><?= htmlspecialchars($p['estado']) ?></span>
                                  </div>
                                  
@@ -705,7 +760,14 @@ include "vista/includes/header.php";
                                 $color = getBadgeColor($p['estado'], $estadoColores);
                             ?>
                                 <tr>
-                                    <td><?= htmlspecialchars($p['numero_orden']) ?></td>
+                                    <td>
+                                        <?= htmlspecialchars($p['numero_orden']) ?>
+                                        <?php if (in_array($p['id'], $idsPedidosHLExpress)): ?>
+                                            <span class="badge bg-dark text-white border ms-1" title="Integrado con HL Express" style="font-size: 0.7rem; padding: 0.2rem 0.3rem;">
+                                                <i class="bi bi-truck text-warning"></i>
+                                            </span>
+                                        <?php endif; ?>
+                                    </td>
                                     <td>
                                         <div><?= htmlspecialchars($p['destinatario']) ?></div>
                                         <small class="text-muted"><?= htmlspecialchars($p['direccion']) ?></small>
@@ -1654,6 +1716,568 @@ include "vista/includes/header.php";
   function escHtml(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+})();
+</script>
+<?php endif; ?>
+
+<?php if (!empty($idsPedidosHLExpress)): ?>
+<!-- ════════════════════════════════════════════════════════════════════
+     TAB PANE: NOVEDADES HL EXPRESS
+════════════════════════════════════════════════════════════════════ -->
+<style>
+.novedad-row:hover { background: #fff8f0 !important; }
+.badge-no-resuelto { background: #ff8d33; color:#fff; }
+.badge-resuelto    { background: #198754; color:#fff; }
+#tabNovedadesBody td { vertical-align: middle; }
+</style>
+
+<script>
+// ── Tab Novedades HL Express ──────────────────────────────────────────
+(function() {
+
+    let _novedadesLoaded = false;
+    let _novedadesPage   = 1;
+    let _novedadesFilters = { is_solved: 'No' };
+    const _baseUrl = '<?= RUTA_URL ?>';
+
+    // Exponer para onclick en el botón de la tab
+    window.cargarNovedadesTab = function(resetPage) {
+        if (resetPage) { _novedadesPage = 1; _novedadesLoaded = false; }
+        if (_novedadesLoaded && !resetPage) return;
+        _fetchNovedades();
+    };
+
+    // Si la tab ya está activa al cargar (URL ?tab=novedades)
+    document.addEventListener('DOMContentLoaded', function() {
+        const tab = new URLSearchParams(window.location.search).get('tab');
+        if (tab === 'novedades') _fetchNovedades();
+
+        // Botones de filtro dentro de la tab
+        const btnFiltrar = document.getElementById('btnFiltrarNovedades');
+        if (btnFiltrar) {
+            btnFiltrar.addEventListener('click', function() {
+                _novedadesFilters = {
+                    is_solved:       document.getElementById('filtNovIsSolved').value,
+                    order_number:    document.getElementById('filtNovOrden').value.trim(),
+                    tracking_number: document.getElementById('filtNovTracking').value.trim(),
+                    start_date:      document.getElementById('filtNovDesde').value ? document.getElementById('filtNovDesde').value + ' 00:00:00' : '',
+                    end_date:        document.getElementById('filtNovHasta').value ? document.getElementById('filtNovHasta').value + ' 23:59:59' : '',
+                };
+                _novedadesPage = 1;
+                _fetchNovedades();
+            });
+        }
+    });
+
+    function _fetchNovedades() {
+        const tbody  = document.getElementById('tabNovedadesBody');
+        const loader = document.getElementById('novedadesLoader');
+        const pager  = document.getElementById('novedadesPager');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        if (loader) loader.classList.remove('d-none');
+        if (pager)  pager.innerHTML = '';
+
+        const params = new URLSearchParams();
+        params.set('page', _novedadesPage);
+        params.set('limit', 20);
+        Object.entries(_novedadesFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
+
+        fetch(_baseUrl + 'logistica/listarNovedadesHLExpress?' + params.toString(), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (loader) loader.classList.add('d-none');
+            _novedadesLoaded = true;
+
+            // Actualizar badge
+            const badge = document.getElementById('badgeNovedadesCount');
+            if (badge) badge.textContent = res.total ?? 0;
+
+            if (!res.success) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>${escH(res.message || 'Error al cargar novedades')}</td></tr>`;
+                return;
+            }
+
+            const data = res.data ?? [];
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-5"><i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>Sin novedades activas en este momento.</td></tr>';
+                return;
+            }
+
+            data.forEach(inc => {
+                const ship = inc.shipment ?? {};
+                const dest = ship.shipment_destination ?? {};
+                const fecha = inc.created_at ? new Date(inc.created_at).toLocaleDateString('es-PA', { day:'2-digit', month:'2-digit', year:'numeric' }) : '-';
+                const isSolved = (inc.is_solved === 'Yes' || inc.is_solved === 'Yes_Applied');
+                const badgeCls = isSolved ? 'badge-resuelto' : 'badge-no-resuelto';
+                const badgeTxt = isSolved ? 'Resuelta' : 'Pendiente';
+
+                const tr = document.createElement('tr');
+                tr.className = 'novedad-row';
+                tr.innerHTML = `
+                    <td class="small fw-semibold">${escH(ship.order_number ?? '-')}</td>
+                    <td class="small">${escH(dest.full_name ?? '-')}<br><span class="text-muted">${escH(dest.phone_number ?? '')}</span></td>
+                    <td class="small">${escH(dest.address ?? '-')}</td>
+                    <td class="small">${escH(inc.incident_type?.name ?? ship.tracking_number ?? '-')}</td>
+                    <td><span class="badge ${badgeCls} small">${badgeTxt}</span></td>
+                    <td class="small text-muted">${fecha}</td>
+                    <td>
+                        <button type="button" class="btn btn-warning btn-sm px-2 py-1"
+                            onclick="abrirModalResolverNovedad(${escH(ship.id ?? '')}, ${escH(JSON.stringify(dest))}, ${escH(ship.order_number ?? '')})"
+                            title="Resolver esta novedad">
+                            <i class="bi bi-tools me-1"></i>Resolver
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Paginador
+            _renderPager(res.current_page, res.last_page, res.total);
+        })
+        .catch(err => {
+            if (loader) loader.classList.add('d-none');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Error de red: ${escH(err.message)}</td></tr>`;
+        });
+    }
+
+    function _renderPager(current, last, total) {
+        const pager = document.getElementById('novedadesPager');
+        if (!pager || last <= 1) { if (pager) pager.innerHTML = `<small class="text-muted">Total: ${total} novedad(es)</small>`; return; }
+
+        let html = `<small class="text-muted me-3">Total: ${total}</small>`;
+        html += `<nav><ul class="pagination pagination-sm mb-0">`;
+
+        if (current > 1) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current - 1}); return false;">‹</a></li>`;
+        for (let p = Math.max(1, current-2); p <= Math.min(last, current+2); p++) {
+            html += `<li class="page-item ${p === current ? 'active' : ''}"><a class="page-link" href="#" onclick="_novPagina(${p}); return false;">${p}</a></li>`;
+        }
+        if (current < last) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current + 1}); return false;">›</a></li>`;
+        html += `</ul></nav>`;
+        pager.innerHTML = html;
+    }
+
+    window._novPagina = function(p) {
+        _novedadesPage = p;
+        _fetchNovedades();
+        document.getElementById('pills-novedades')?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // Abrir modal de resolución individual desde la tabla
+    window.abrirModalResolverNovedad = function(shipmentId, dest, orderNumber) {
+        // Rellenar el modal existente con los datos del envío
+        const modalEl = document.getElementById('modalResolverNovedad_dashboard');
+        if (!modalEl) return;
+        document.getElementById('rnov_order_number').textContent = orderNumber || '';
+        document.getElementById('rnov_contact_name').value       = dest.full_name    ?? '';
+        document.getElementById('rnov_contact_phone').value      = dest.phone_number ?? '';
+        document.getElementById('rnov_contact_address').value    = '';
+        document.getElementById('rnov_solve_description').value  = '';
+        document.getElementById('rnov_direccion_actual').textContent = dest.address ?? '';
+        document.getElementById('rnov_shipment_id').value        = shipmentId ?? '';
+        document.getElementById('rnov_is_return').value          = 'false';
+        // Resetear UI
+        document.getElementById('secRnovCorreccion').style.display    = 'none';
+        document.getElementById('secRnovConfirmacion').style.display  = 'none';
+        new bootstrap.Modal(modalEl).show();
+    };
+
+    function escH(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+})();
+</script>
+
+<!-- Tab pane novedades (insertado fuera del main tab-content para evitar romper layout) -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Insertar el tab pane dentro del contenedor correcto
+    const tabContent = document.getElementById('pills-tabContent');
+    if (!tabContent) return;
+    const pane = document.createElement('div');
+    pane.className = 'tab-pane fade <?= $paneNovedades ?>';
+    pane.id = 'pills-novedades';
+    pane.setAttribute('role', 'tabpanel');
+    pane.innerHTML = `
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                    <span class="fw-bold text-dark">Novedades HL Express</span>
+                    <span class="badge rounded-pill text-dark" id="badgeNovedadesCount" style="background:#ff8d33;">...</span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="<?= RUTA_URL ?>logistica/exportarNovedadesExcel"
+                       class="btn btn-success btn-sm"
+                       title="Descargar Excel con todas las novedades pendientes">
+                        <i class="bi bi-file-earmark-excel me-1"></i>Descargar Excel
+                    </a>
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                            data-bs-toggle="modal" data-bs-target="#modalResolverMasivoNovedades"
+                            title="Subir Excel completado para resolver masivamente">
+                        <i class="bi bi-upload me-1"></i>Resolver Masivo (Excel)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                            onclick="cargarNovedadesTab(true)" title="Refrescar">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Filtros -->
+            <div class="card-body border-bottom bg-light py-2">
+                <div class="row g-2 align-items-end">
+                    <div class="col-sm-4 col-md-3">
+                        <label class="form-label small fw-semibold mb-1">Estado</label>
+                        <select id="filtNovIsSolved" class="form-select form-select-sm">
+                            <option value="No" selected>Pendientes</option>
+                            <option value="Yes">Resueltas</option>
+                            <option value="Yes_Applied">Aplicadas</option>
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-4 col-md-3">
+                        <label class="form-label small fw-semibold mb-1">Número de Orden</label>
+                        <input type="text" id="filtNovOrden" class="form-control form-control-sm" placeholder="Ej. ORD-001">
+                    </div>
+                    <div class="col-sm-4 col-md-3">
+                        <label class="form-label small fw-semibold mb-1">Guía (Tracking)</label>
+                        <input type="text" id="filtNovTracking" class="form-control form-control-sm" placeholder="WPA...">
+                    </div>
+                    <div class="col-sm-3 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Desde</label>
+                        <input type="date" id="filtNovDesde" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-sm-3 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Hasta</label>
+                        <input type="date" id="filtNovHasta" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-sm-2 col-md-auto">
+                        <button id="btnFiltrarNovedades" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-search me-1"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Loader -->
+            <div id="novedadesLoader" class="text-center py-4">
+                <div class="spinner-border text-warning" style="width:2rem;height:2rem;"></div>
+                <p class="mt-2 text-muted small">Consultando novedades en HL Express...</p>
+            </div>
+            <!-- Tabla -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="min-width:700px;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="small">Orden</th>
+                            <th class="small">Destinatario</th>
+                            <th class="small">Dirección</th>
+                            <th class="small">Tipo Novedad</th>
+                            <th class="small">Estado</th>
+                            <th class="small">Fecha</th>
+                            <th class="small">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabNovedadesBody"></tbody>
+                </table>
+            </div>
+            <!-- Paginador -->
+            <div class="card-footer bg-white d-flex align-items-center justify-content-end gap-3 flex-wrap" id="novedadesPager"></div>
+        </div>
+    `;
+    tabContent.appendChild(pane);
+
+    // Si ya estaba activa la tab, cargar
+    <?php if ($activeTab === 'novedades'): ?>
+    cargarNovedadesTab();
+    <?php endif; ?>
+});
+</script>
+
+<!-- ───────────────────────────────────────────────────────────────────
+     MODAL: Resolver Novedad Individual (desde dashboard)
+─────────────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalResolverNovedad_dashboard" tabindex="-1" aria-labelledby="rnovLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow position-relative">
+            <form id="formRnovDashboard" method="POST">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="rnovLabel">
+                        <i class="bi bi-patch-exclamation-fill text-warning me-2"></i>
+                        Resolver Novedad — Orden <span id="rnov_order_number"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body position-relative" style="min-height:220px;">
+                    <input type="hidden" id="rnov_shipment_id" name="shipment_id">
+                    <input type="hidden" id="rnov_is_return" name="is_return" value="false">
+
+                    <div class="card bg-light border-0 mb-3 text-center">
+                        <div class="card-body p-3">
+                            <p class="fw-bold mb-3 text-dark" style="line-height:1.4;">
+                                Si ya validó la información con el cliente, ¿quiere que volvamos a ofrecer el pedido? de lo contrario, será devuelto al remitente
+                            </p>
+                            <div class="d-flex justify-content-center gap-3">
+                                <button type="button" class="btn btn-success px-4 fw-bold" id="btnRnovYes">
+                                    <i class="bi bi-check2"></i> Yes
+                                </button>
+                                <button type="button" class="btn btn-danger px-4 fw-bold" id="btnRnovNo">
+                                    <i class="bi bi-exclamation-triangle"></i> NO
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario corrección -->
+                    <div id="secRnovCorreccion" style="display:none;">
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Solución</label>
+                            <input type="text" id="rnov_solve_description" name="solve_description" class="form-control form-control-sm" placeholder="Descripción de la solución" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Nombre</label>
+                            <input type="text" id="rnov_contact_name" name="contact_name" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Celular</label>
+                            <input type="text" id="rnov_contact_phone" name="contact_phone" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold text-primary text-uppercase mb-1">Direccion</label>
+                            <div class="p-2 bg-light border rounded text-muted small mb-1" id="rnov_direccion_actual"></div>
+                            <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Specify Address</label>
+                            <input type="text" id="rnov_contact_address" name="contact_address" class="form-control form-control-sm" placeholder="Nueva dirección de entrega" required>
+                        </div>
+                        <div class="text-end mt-3">
+                            <button type="button" class="btn btn-sm btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-sm btn-dark" id="btnRnovSubmit">
+                                <i class="bi bi-check-circle me-1 text-success"></i>Enviar Solución
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Confirmación retorno -->
+                    <div id="secRnovConfirmacion" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="display:none !important; z-index:1050; border-radius:.3rem;">
+                        <div class="text-center px-4 w-100">
+                            <span class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger rounded-circle mb-3" style="width:70px;height:70px;">
+                                <i class="bi bi-question-lg fs-1"></i>
+                            </span>
+                            <p class="text-secondary fw-semibold mb-4" style="line-height:1.4;">
+                                The order will be returned to the sender, are you sure you want to return it to the sender?
+                            </p>
+                            <div class="d-flex flex-column gap-2" style="max-width:280px;margin:0 auto;">
+                                <button type="button" id="btnRnovConfirmSi" class="btn btn-warning text-white fw-bold py-2" style="background:#ff8d33;border-color:#ff8d33;">Yes</button>
+                                <button type="button" id="btnRnovConfirmNo" class="btn btn-outline-warning fw-bold py-2" style="color:#ff8d33;border-color:#ff8d33;">No</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ───────────────────────────────────────────────────────────────────
+     MODAL: Resolver Novedades Masivo (Excel)
+─────────────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalResolverMasivoNovedades" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Resolver Novedades Masivo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small py-2 mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    <strong>Instrucciones:</strong> Descargue el Excel de novedades, complete las columnas
+                    <code>accion</code> (<code>reintentar</code> o <code>devolver</code>),
+                    <code>nueva_solucion</code>, <code>nuevo_nombre</code>, <code>nuevo_telefono</code>
+                    y <code>nueva_direccion</code>, luego súbalo aquí.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Archivo Excel</label>
+                    <input type="file" class="form-control" id="inputNovedadesMasivoFile"
+                           accept=".xlsx,.xls,.csv">
+                </div>
+                <div id="rnovMasivoResultado" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btnProcesarNovedadesMasivo">
+                    <i class="bi bi-gear-fill me-1"></i>Procesar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ── Modal Resolver Individual (dashboard) ──────────────────────────
+    const modalRnov       = document.getElementById('modalResolverNovedad_dashboard');
+    const formRnov        = document.getElementById('formRnovDashboard');
+    const btnYes          = document.getElementById('btnRnovYes');
+    const btnNo           = document.getElementById('btnRnovNo');
+    const secCorreccion   = document.getElementById('secRnovCorreccion');
+    const secConfirmacion = document.getElementById('secRnovConfirmacion');
+    const inputIsReturn   = document.getElementById('rnov_is_return');
+    const btnConfirmSi    = document.getElementById('btnRnovConfirmSi');
+    const btnConfirmNo    = document.getElementById('btnRnovConfirmNo');
+    const btnSubmit       = document.getElementById('btnRnovSubmit');
+    const _baseUrl        = '<?= RUTA_URL ?>';
+
+    function resetRnovUI() {
+        if (secCorreccion)   secCorreccion.style.display   = 'none';
+        if (secConfirmacion) secConfirmacion.style.display  = 'none';
+        const inputs = secCorreccion?.querySelectorAll('input, textarea') ?? [];
+        inputs.forEach(i => { i.required = false; i.disabled = true; });
+    }
+
+    if (btnYes) {
+        btnYes.addEventListener('click', function() {
+            inputIsReturn.value = 'false';
+            secCorreccion.style.display   = 'block';
+            secConfirmacion.style.display = 'none';
+            const inputs = secCorreccion.querySelectorAll('input[required], textarea[required], input, textarea');
+            inputs.forEach(i => { i.required = true; i.disabled = false; });
+            secCorreccion.querySelector('input')?.focus();
+        });
+    }
+
+    if (btnNo) {
+        btnNo.addEventListener('click', function() {
+            secConfirmacion.style.display = 'flex';
+            const inputs = secCorreccion?.querySelectorAll('input, textarea') ?? [];
+            inputs.forEach(i => { i.required = false; i.disabled = true; });
+        });
+    }
+
+    if (btnConfirmSi) {
+        btnConfirmSi.addEventListener('click', function() {
+            inputIsReturn.value = 'true';
+            btnConfirmSi.disabled = true;
+            btnConfirmSi.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+            _submitRnovForm();
+        });
+    }
+
+    if (btnConfirmNo) {
+        btnConfirmNo.addEventListener('click', function() {
+            secConfirmacion.style.display = 'none';
+        });
+    }
+
+    if (formRnov) {
+        formRnov.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...'; }
+            _submitRnovForm();
+        });
+    }
+
+    function _submitRnovForm() {
+        // Buscar el pedido por order_number para construir la URL del endpoint
+        const orderNumber = document.getElementById('rnov_order_number')?.textContent.trim();
+        const formData = new FormData(formRnov);
+
+        // Necesitamos el ID del pedido — lo buscamos por número de orden via fetch local
+        fetch(_baseUrl + 'logistica/buscarPedidoPorOrden?numero_orden=' + encodeURIComponent(orderNumber), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(r => r.json())
+        .then(pedRes => {
+            if (!pedRes.success || !pedRes.id) throw new Error('Pedido no encontrado localmente: ' + orderNumber);
+            return fetch(_baseUrl + 'logistica/resolverNovedad/' + pedRes.id, {
+                method: 'POST', body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+        })
+        .then(r => r.json())
+        .then(data => {
+            const bsMod = bootstrap.Modal.getInstance(modalRnov);
+            if (bsMod) bsMod.hide();
+            if (data.success) {
+                Swal?.fire({ icon:'success', title:'¡Resuelta!', text: data.message, confirmButtonColor:'#0d6efd' })
+                    .then(() => cargarNovedadesTab(true));
+            } else {
+                Swal?.fire({ icon:'error', title:'Error', text: data.message || 'No se pudo resolver.', confirmButtonColor:'#0d6efd' });
+            }
+            _restoreRnovBtns();
+        })
+        .catch(err => {
+            Swal?.fire({ icon:'error', title:'Error', text: err.message });
+            _restoreRnovBtns();
+        });
+    }
+
+    function _restoreRnovBtns() {
+        if (btnSubmit)     { btnSubmit.disabled = false; btnSubmit.innerHTML = '<i class="bi bi-check-circle me-1 text-success"></i>Enviar Solución'; }
+        if (btnConfirmSi)  { btnConfirmSi.disabled = false; btnConfirmSi.innerHTML = 'Yes'; }
+    }
+
+    // ── Modal Resolver Masivo (Excel) ────────────────────────────────────
+    const btnProcesar = document.getElementById('btnProcesarNovedadesMasivo');
+    if (btnProcesar) {
+        btnProcesar.addEventListener('click', function() {
+            const fileInput = document.getElementById('inputNovedadesMasivoFile');
+            const resultado = document.getElementById('rnovMasivoResultado');
+
+            if (!fileInput?.files?.length) {
+                resultado.className = 'alert alert-warning small';
+                resultado.textContent = 'Por favor seleccione un archivo Excel.';
+                return;
+            }
+
+            btnProcesar.disabled = true;
+            btnProcesar.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+            resultado.className = 'd-none';
+
+            const fd = new FormData();
+            fd.append('archivo', fileInput.files[0]);
+
+            fetch(_baseUrl + 'logistica/resolverNovedadesMasivo', {
+                method: 'POST', body: fd,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                btnProcesar.disabled = false;
+                btnProcesar.innerHTML = '<i class="bi bi-gear-fill me-1"></i>Procesar';
+
+                if (!data.success) {
+                    resultado.className = 'alert alert-danger small';
+                    resultado.innerHTML = '<strong>Error:</strong> ' + escH(data.message);
+                    return;
+                }
+
+                let html = `<div class="alert alert-success small mb-2"><i class="bi bi-check-circle me-1"></i><strong>${data.exitosos}</strong> novedad(es) resuelta(s) correctamente.</div>`;
+                if (data.errores?.length) {
+                    html += `<div class="alert alert-warning small mb-0"><strong>${data.errores.length} error(es):</strong><ul class="mb-0 ps-3 mt-1">`;
+                    data.errores.forEach(e => { html += `<li>${escH(e)}</li>`; });
+                    html += `</ul></div>`;
+                }
+                resultado.className = '';
+                resultado.innerHTML = html;
+
+                // Refrescar la tab de novedades
+                cargarNovedadesTab(true);
+            })
+            .catch(err => {
+                btnProcesar.disabled = false;
+                btnProcesar.innerHTML = '<i class="bi bi-gear-fill me-1"></i>Procesar';
+                resultado.className = 'alert alert-danger small';
+                resultado.textContent = 'Error de red: ' + err.message;
+            });
+        });
+    }
+
+    function escH(str) {
+        return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
 })();
 </script>
 <?php endif; ?>

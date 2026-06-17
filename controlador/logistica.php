@@ -959,4 +959,628 @@ class LogisticaController {
             ],
         ];
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HL Express: Listar, Exportar y Resolver Novedades (bulk)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Buscar un pedido local por número de orden.
+     * GET logistica/buscarPedidoPorOrden?numero_orden=ORD-001
+     * Retorna: { success, id, numero_orden }
+     */
+    public function buscarPedidoPorOrden() {
+        require_once "modelo/pedido.php";
+        $numeroOrden = trim($_GET['numero_orden'] ?? '');
+        if (empty($numeroOrden)) {
+            header('Content-Type: application/json', true, 400);
+            echo json_encode(['success' => false, 'message' => 'Parámetro numero_orden requerido.']);
+            exit;
+        }
+        $model  = new PedidosModel();
+        $pedido = $model->obtenerPedidoPorNumero($numeroOrden);
+        if (!$pedido) {
+            header('Content-Type: application/json', true, 404);
+            echo json_encode(['success' => false, 'message' => "Pedido '{$numeroOrden}' no encontrado."]);
+            exit;
+        }
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'id' => (int)$pedido['id'], 'numero_orden' => $pedido['numero_orden']]);
+        exit;
+    }
+
+    /**
+     * Listar todas las novedades activas de HL Express (paginado).
+     * GET logistica/listarNovedadesHLExpress
+     * Params: page, limit, is_solved, order_number, tracking_number, start_date, end_date, status_id
+     */
+    public function listarNovedadesHLExpress() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        require_once "modelo/forwarding.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+
+        try {
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) {
+                throw new Exception("Proveedor HL Express no configurado en la plataforma.");
+            }
+
+            $credentials   = json_decode($providerData['credentials']    ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'auth_method'    => $providerData['auth_method']    ?? 'bearer_jwt',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+
+            $filters = [];
+            $filters['page']     = max(1, (int)($_GET['page']     ?? 1));
+            $filters['limit']    = min(50, max(10, (int)($_GET['limit'] ?? 20)));
+            if (!empty($_GET['is_solved']))       $filters['is_solved']       = $_GET['is_solved'];
+            if (!empty($_GET['order_number']))    $filters['order_number']    = trim($_GET['order_number']);
+            if (!empty($_GET['tracking_number'])) $filters['tracking_number'] = trim($_GET['tracking_number']);
+            if (!empty($_GET['start_date']))      $filters['start_date']      = trim($_GET['start_date']);
+            if (!empty($_GET['end_date']))        $filters['end_date']        = trim($_GET['end_date']);
+            if (!empty($_GET['status_id']))       $filters['status_id']       = (int)$_GET['status_id'];
+
+            // Por defecto solo mostramos no resueltas
+            if (!isset($filters['is_solved'])) {
+                $filters['is_solved'] = 'No';
+            }
+
+            $result = $hlExpress->getIncidentsFiltered($filters);
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true] + $result);
+            exit;
+
+        } catch (Exception $e) {
+            error_log("LogisticaController::listarNovedadesHLExpress error: " . $e->getMessage());
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * Exportar novedades activas de HL Express a Excel.
+     * GET logistica/exportarNovedadesExcel
+     */
+    public function exportarNovedadesExcel() {
+        require_once "modelo/forwarding.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+        require_once __DIR__ . '/../vendor/autoload.php';
+
+        try {
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) throw new Exception("Proveedor HL Express no configurado.");
+
+            $credentials   = json_decode($providerData['credentials']    ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'auth_method'    => $providerData['auth_method']    ?? 'bearer_jwt',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+
+            // Obtener TODAS las páginas de novedades sin resolver
+            $allIncidents = [];
+            $page = 1;
+            do {
+                $result = $hlExpress->getIncidentsFiltered([
+                    'is_solved' => 'No',
+                    'page'      => $page,
+                    'limit'     => 50,
+                ]);
+                $allIncidents = array_merge($allIncidents, $result['data'] ?? []);
+                $lastPage = $result['last_page'] ?? 1;
+                $page++;
+            } while ($page <= $lastPage && $page <= 20); // máximo 20 páginas / 1000 registros
+
+            // Crear spreadsheet
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Novedades HL Express');
+
+            $boldStyle = [
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFC000']],
+            ];
+            $infoStyle = [
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '2E75B6']],
+            ];
+
+            $headers = [
+                'A1' => 'numero_orden',
+                'B1' => 'tracking_number',
+                'C1' => 'destinatario',
+                'D1' => 'telefono',
+                'E1' => 'direccion',
+                'F1' => 'tipo_novedad_id',
+                'G1' => 'is_solved',
+                'H1' => 'fecha_novedad',
+                // Columnas a rellenar por el usuario:
+                'I1' => 'accion',
+                'J1' => 'nueva_solucion',
+                'K1' => 'nuevo_nombre',
+                'L1' => 'nuevo_telefono',
+                'M1' => 'nueva_direccion',
+            ];
+
+            foreach ($headers as $cell => $label) {
+                $sheet->setCellValue($cell, $label);
+                $col = substr($cell, 0, 1);
+                // Columnas a rellenar (I-M) en azul, info (A-H) en naranja
+                $sheet->getStyle($cell)->applyFromArray(ord($col) >= ord('I') ? $infoStyle : $boldStyle);
+            }
+
+            // Añadir comentario en celda I1 explicando valores válidos
+            $comment = $sheet->getComment('I1');
+            $comment->getText()->createTextRun('Valores válidos: reintentar | devolver');
+
+            $row = 2;
+            foreach ($allIncidents as $inc) {
+                $shipment = $inc['shipment'] ?? [];
+                $dest     = $shipment['shipment_destination'] ?? [];
+
+                $sheet->setCellValue("A{$row}", $shipment['order_number']    ?? '');
+                $sheet->setCellValue("B{$row}", $shipment['tracking_number'] ?? '');
+                $sheet->setCellValue("C{$row}", $dest['full_name']           ?? '');
+                $sheet->setCellValue("D{$row}", $dest['phone_number']        ?? '');
+                $sheet->setCellValue("E{$row}", $dest['address']             ?? '');
+                $sheet->setCellValue("F{$row}", $inc['incident_type']['name'] ?? ($inc['status'] ?? ''));
+                $sheet->setCellValue("G{$row}", $inc['is_solved']            ?? 'No');
+                $sheet->setCellValue("H{$row}", $inc['created_at']           ?? '');
+                // I–M quedan vacías para que el usuario las llene
+                $sheet->setCellValue("I{$row}", ''); // accion
+                $sheet->setCellValue("J{$row}", ''); // nueva_solucion
+                $sheet->setCellValue("K{$row}", $dest['full_name']    ?? ''); // nuevo_nombre (pre-rellenado)
+                $sheet->setCellValue("L{$row}", $dest['phone_number'] ?? ''); // nuevo_telefono (pre-rellenado)
+                $sheet->setCellValue("M{$row}", $dest['address']      ?? ''); // nueva_direccion (pre-rellenado)
+
+                $row++;
+            }
+
+            // Auto-size columnas
+            foreach (range('A', 'M') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+            $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(40);
+            $sheet->getColumnDimension('J')->setAutoSize(false)->setWidth(35);
+            $sheet->getColumnDimension('M')->setAutoSize(false)->setWidth(40);
+
+            $timestamp = date('Ymd_Hi');
+            $filename  = "novedades_hlexpress_{$timestamp}.xlsx";
+
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header("Content-Disposition: attachment; filename=\"{$filename}\"");
+            header('Cache-Control: max-age=0');
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
+            exit;
+
+        } catch (Exception $e) {
+            error_log("LogisticaController::exportarNovedadesExcel error: " . $e->getMessage());
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * Resolver novedades de HL Express de forma masiva desde un Excel subido.
+     * POST logistica/resolverNovedadesMasivo
+     */
+    public function resolverNovedadesMasivo() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        require_once "modelo/forwarding.php";
+        require_once "modelo/logistica.php";
+        require_once "modelo/pedido.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+        require_once __DIR__ . '/../vendor/autoload.php';
+
+        if (empty($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
+            header('Content-Type: application/json', true, 400);
+            echo json_encode(['success' => false, 'message' => 'No se recibió ningún archivo.']);
+            exit;
+        }
+
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+
+        try {
+            // Cargar el Excel
+            $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($_FILES['archivo']['tmp_name']);
+            $reader->setReadDataOnly(true);
+            $spreadsheet = $reader->load($_FILES['archivo']['tmp_name']);
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows  = $sheet->toArray(null, true, true, true);
+
+            // Detectar encabezados en fila 1
+            $headers = array_map('strtolower', array_map('trim', $rows[1] ?? []));
+            $colMap  = array_flip($headers); // nombre_columna => letra_columna
+
+            $required = ['numero_orden', 'accion'];
+            foreach ($required as $req) {
+                if (!isset($colMap[$req])) {
+                    header('Content-Type: application/json', true, 400);
+                    echo json_encode(['success' => false, 'message' => "Columna requerida no encontrada: {$req}"]);
+                    exit;
+                }
+            }
+
+            // Obtener proveedor HL Express
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) throw new Exception("Proveedor HL Express no configurado.");
+
+            $credentials   = json_decode($providerData['credentials']    ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'auth_method'    => $providerData['auth_method']    ?? 'bearer_jwt',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+
+            $exitosos = 0;
+            $errores  = [];
+
+            foreach ($rows as $rowNum => $row) {
+                if ($rowNum === 1) continue; // Saltar encabezado
+
+                $numeroOrden = trim($row[$colMap['numero_orden']] ?? '');
+                $accion      = strtolower(trim($row[$colMap['accion']] ?? ''));
+
+                if (empty($numeroOrden) || empty($accion)) continue;
+                if (!in_array($accion, ['reintentar', 'devolver'])) {
+                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): acción inválida '{$accion}'. Use 'reintentar' o 'devolver'.";
+                    continue;
+                }
+
+                $isReturn = ($accion === 'devolver');
+
+                // Obtener campos de corrección
+                $nuevaSolucion  = trim($row[$colMap['nueva_solucion']  ?? ''] ?? '');
+                $nuevoNombre    = trim($row[$colMap['nuevo_nombre']    ?? ''] ?? '');
+                $nuevoTelefono  = trim($row[$colMap['nuevo_telefono']  ?? ''] ?? '');
+                $nuevaDireccion = trim($row[$colMap['nueva_direccion'] ?? ''] ?? '');
+
+                // Validar campos para reintentar
+                if (!$isReturn && (empty($nuevaSolucion) || empty($nuevoNombre) || empty($nuevoTelefono) || empty($nuevaDireccion))) {
+                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): para 'reintentar' se requieren nueva_solucion, nuevo_nombre, nuevo_telefono y nueva_direccion.";
+                    continue;
+                }
+
+                // Buscar pedido local por número de orden
+                $pedido = PedidosModel::obtenerPedidoPorNumeroOrden($numeroOrden);
+                if (!$pedido) {
+                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): pedido no encontrado en la plataforma.";
+                    continue;
+                }
+
+                // Obtener tracking number
+                $log = ForwardingModel::obtenerLogForwardingExitoso($pedido['id'], 'hlexpress');
+                if (!$log) {
+                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): el pedido no fue enviado por HL Express.";
+                    continue;
+                }
+
+                $trackingNumber = $log['external_order_id'] ?? null;
+                if (empty($trackingNumber)) {
+                    $decoded = json_decode($log['response_payload'] ?? '{}', true);
+                    $trackingNumber = $decoded['id'] ?? $decoded['tracking_number'] ?? null;
+                }
+
+                if (empty($trackingNumber)) {
+                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): no se pudo obtener el número de guía.";
+                    continue;
+                }
+
+                // Aplicar fallback para devolución
+                if ($isReturn) {
+                    if (empty($nuevoNombre))    $nuevoNombre    = $pedido['destinatario'] ?? 'Destinatario';
+                    if (empty($nuevoTelefono))  $nuevoTelefono  = $pedido['telefono']     ?? '00000000';
+                    if (empty($nuevaDireccion)) $nuevaDireccion = $pedido['direccion']    ?? 'Dirección';
+                    if (empty($nuevaSolucion))  $nuevaSolucion  = 'Retorno al remitente solicitado por operador (bulk).';
+                }
+
+                try {
+                    $payloadAPI = [
+                        'tracking_number'   => $trackingNumber,
+                        'is_return'         => $isReturn,
+                        'contact_name'      => $nuevoNombre,
+                        'contact_phone'     => $nuevoTelefono,
+                        'contact_address'   => $nuevaDireccion,
+                        'solve_description' => $nuevaSolucion,
+                    ];
+
+                    $hlExpress->solveReturn($payloadAPI);
+
+                    // Actualizar estado local
+                    $nuevoEstado = $isReturn ? 'Devuelto' : 'Reprogramado';
+                    $obs = "Resolución Masiva HL Express - {$accion}: {$nuevaSolucion}";
+                    LogisticaModel::actualizarEstado($pedido['id'], $nuevoEstado, $obs, $userId);
+
+                    $exitosos++;
+                } catch (Exception $apiError) {
+                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): {$apiError->getMessage()}";
+                }
+            }
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'  => true,
+                'exitosos' => $exitosos,
+                'errores'  => $errores,
+                'message'  => "{$exitosos} novedad(es) resuelta(s) correctamente." . (count($errores) ? " " . count($errores) . " con errores." : ""),
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        } catch (Exception $e) {
+            error_log("LogisticaController::resolverNovedadesMasivo error: " . $e->getMessage());
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * Consultar incidencias de un pedido enviado por HL Express.
+     * GET logistica/consultarIncidenciasHLExpress/<id>
+     */
+    public function consultarIncidenciasHLExpress($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        require_once "modelo/forwarding.php";
+        require_once "modelo/pedido.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+
+        $id = (int)$id;
+        $pedido = PedidosModel::obtenerPedidoPorId($id);
+        if (!$pedido) {
+            header('Content-Type: application/json', true, 404);
+            echo json_encode(['success' => false, 'message' => 'Pedido no encontrado.']);
+            exit;
+        }
+
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isAdmin = isSuperAdmin();
+
+        $hasAccess = false;
+        if ($isAdmin) {
+            $hasAccess = true;
+        } else {
+            $isProveedor = isCliente();
+            $hasAccess = $isProveedor
+                ? ($pedido['id_proveedor'] == $userId)
+                : ($pedido['id_cliente']   == $userId);
+        }
+
+        if (!$hasAccess) {
+            header('Content-Type: application/json', true, 403);
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para ver este pedido.']);
+            exit;
+        }
+
+        // Obtener el log de forwarding exitoso para hlexpress
+        $log = ForwardingModel::obtenerLogForwardingExitoso($id, 'hlexpress');
+        if (!$log) {
+            header('Content-Type: application/json', true, 404);
+            echo json_encode(['success' => false, 'message' => 'El pedido no ha sido enviado por HL Express.']);
+            exit;
+        }
+
+        $trackingNumber = $log['external_order_id'] ?? null;
+        if (empty($trackingNumber)) {
+            $responseDecoded = json_decode($log['response_payload'] ?? '{}', true);
+            $trackingNumber = $responseDecoded['id'] ?? $responseDecoded['external_order_id'] ?? $responseDecoded['tracking_number'] ?? null;
+        }
+
+        if (empty($trackingNumber)) {
+            header('Content-Type: application/json', true, 400);
+            echo json_encode(['success' => false, 'message' => 'No se pudo obtener el número de guía de HL Express.']);
+            exit;
+        }
+
+        try {
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) {
+                throw new Exception("Proveedor HL Express no configurado en la plataforma.");
+            }
+
+            require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+
+            $credentials = json_decode($providerData['credentials'] ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'auth_method'    => $providerData['auth_method']    ?? 'bearer_jwt',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+            $incidents = $hlExpress->getIncidents($trackingNumber);
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'data' => $incidents]);
+            exit;
+        } catch (Exception $e) {
+            error_log("LogisticaController::consultarIncidenciasHLExpress error: " . $e->getMessage());
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
+     * Resolver novedad de un pedido enviado por HL Express.
+     * POST logistica/resolverNovedad/<id>
+     */
+    public function resolverNovedad($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        require_once "modelo/forwarding.php";
+        require_once "modelo/pedido.php";
+        require_once "modelo/logistica.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+
+        $id = (int)$id;
+        $pedido = PedidosModel::obtenerPedidoPorId($id);
+        if (!$pedido) {
+            header('Content-Type: application/json', true, 404);
+            echo json_encode(['success' => false, 'message' => 'Pedido no encontrado.']);
+            exit;
+        }
+
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isAdmin = isSuperAdmin();
+
+        $hasAccess = false;
+        if ($isAdmin) {
+            $hasAccess = true;
+        } else {
+            $isProveedor = isCliente();
+            $hasAccess = $isProveedor
+                ? ($pedido['id_proveedor'] == $userId)
+                : ($pedido['id_cliente']   == $userId);
+        }
+
+        if (!$hasAccess) {
+            header('Content-Type: application/json', true, 403);
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para acceder a este pedido.']);
+            exit;
+        }
+
+        // Obtener el log de forwarding exitoso para hlexpress
+        $log = ForwardingModel::obtenerLogForwardingExitoso($id, 'hlexpress');
+        if (!$log) {
+            header('Content-Type: application/json', true, 404);
+            echo json_encode(['success' => false, 'message' => 'El pedido no ha sido enviado por HL Express.']);
+            exit;
+        }
+
+        $trackingNumber = $log['external_order_id'] ?? null;
+        if (empty($trackingNumber)) {
+            $responseDecoded = json_decode($log['response_payload'] ?? '{}', true);
+            $trackingNumber = $responseDecoded['id'] ?? $responseDecoded['external_order_id'] ?? $responseDecoded['tracking_number'] ?? null;
+        }
+
+        if (empty($trackingNumber)) {
+            header('Content-Type: application/json', true, 400);
+            echo json_encode(['success' => false, 'message' => 'No se pudo obtener el número de guía de HL Express.']);
+            exit;
+        }
+
+        // Validar parámetros del body POST/JSON
+        $rawInput = file_get_contents('php://input');
+        $inputDecoded = json_decode($rawInput, true) ?: [];
+
+        $isReturn         = isset($_POST['is_return']) ? (filter_var($_POST['is_return'], FILTER_VALIDATE_BOOLEAN)) : (isset($inputDecoded['is_return']) ? filter_var($inputDecoded['is_return'], FILTER_VALIDATE_BOOLEAN) : false);
+        $contactName      = trim($_POST['contact_name'] ?? $inputDecoded['contact_name'] ?? '');
+        $contactPhone     = trim($_POST['contact_phone'] ?? $inputDecoded['contact_phone'] ?? '');
+        $contactAddress   = trim($_POST['contact_address'] ?? $inputDecoded['contact_address'] ?? '');
+        $solveDescription = trim($_POST['solve_description'] ?? $inputDecoded['solve_description'] ?? '');
+
+        // Validaciones
+        if (!$isReturn) {
+            if (empty($contactName) || empty($contactPhone) || empty($contactAddress) || empty($solveDescription)) {
+                header('Content-Type: application/json', true, 400);
+                echo json_encode(['success' => false, 'message' => 'Todos los campos del formulario son obligatorios para reprogramar.']);
+                exit;
+            }
+        } else {
+            // Si es devolución/retorno, usar valores de fallback si vienen vacíos
+            if (empty($contactName)) $contactName = $pedido['destinatario'] ?? 'Destinatario';
+            if (empty($contactPhone)) $contactPhone = $pedido['telefono'] ?? '00000000';
+            if (empty($contactAddress)) $contactAddress = $pedido['direccion'] ?? 'Dirección';
+            if (empty($solveDescription)) $solveDescription = 'Retorno al remitente solicitado por el operador.';
+        }
+
+        try {
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) {
+                throw new Exception("Proveedor HL Express no configurado en la plataforma.");
+            }
+
+            require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+
+            $credentials = json_decode($providerData['credentials'] ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'auth_method'    => $providerData['auth_method']    ?? 'bearer_jwt',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+
+            // Armar el payload para la API externa
+            $payloadAPI = [
+                'tracking_number'   => $trackingNumber,
+                'is_return'         => $isReturn,
+                'contact_name'      => $contactName,
+                'contact_phone'     => $contactPhone,
+                'contact_address'   => $contactAddress,
+                'solve_description' => $solveDescription
+            ];
+
+            // Llamada real solveReturn de la API de HL Express
+            $responseAPI = $hlExpress->solveReturn($payloadAPI);
+
+            // Si es exitoso, actualizar el estado del pedido local
+            $nuevoEstadoNombre = $isReturn ? 'Devuelto' : 'Reprogramado';
+            $observacionesLocal = "Resolución de Novedad HL Express - Nombre: {$contactName}, Tel: {$contactPhone}, Dirección: {$contactAddress}. Instrucción: {$solveDescription}";
+
+            $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+
+            // Cambiar el estado del pedido
+            $localSuccess = LogisticaModel::actualizarEstado($id, $nuevoEstadoNombre, $observacionesLocal, $userId);
+
+            if (!$localSuccess) {
+                throw new Exception("Novedad resuelta en HL Express, pero no se pudo actualizar el estado local del pedido.");
+            }
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'message' => 'Novedad resuelta y estado del pedido actualizado correctamente.',
+                'api_response' => $responseAPI
+            ]);
+            exit;
+        } catch (Exception $e) {
+            error_log("LogisticaController::resolverNovedad error: " . $e->getMessage());
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
 }
