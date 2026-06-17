@@ -46,7 +46,7 @@ try {
     // 1. ¿Existe el proveedor HL Express activo? → controla la visibilidad del TAB
     $stmtHl = $dbTmp->prepare("
         SELECT COUNT(*) FROM forwarding_providers
-        WHERE slug = 'hlexpress' AND is_active = 1
+        WHERE slug = 'hlexpress' AND activo = 1
     ");
     $stmtHl->execute();
     $tieneHLExpress = (bool)$stmtHl->fetchColumn();
