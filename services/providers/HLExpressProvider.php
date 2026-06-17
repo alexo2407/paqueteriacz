@@ -191,20 +191,79 @@ class HLExpressProvider extends BaseProvider
             throw new Exception("Error de conexión con HL Express (getIncidentsFiltered): " . $response['error']);
         }
 
-        $data = $response['decoded'] ?? [];
+        $raw = $response['decoded'] ?? [];
         if ($response['http_status'] !== 200) {
-            $errorMsg = $data['message'] ?? $data['error'] ?? 'Error desconocido';
+            $errorMsg = is_array($raw) ? ($raw['message'] ?? $raw['error'] ?? 'Error desconocido') : 'Error desconocido';
             throw new Exception("HL Express getIncidentsFiltered falló: " . $errorMsg, (int)$response['http_status']);
         }
 
-        // Retorna la estructura paginada completa
+        // La API de HL Express devuelve un array plano en lugar de un objeto paginado.
+        // Normalizamos a la estructura paginada que espera el controlador/dashboard.
+        if (is_array($raw) && isset($raw[0])) {
+            // Array plano — cada elemento ES el envío con novedad
+            $items = $raw;
+        } elseif (is_array($raw) && isset($raw['data'])) {
+            // Si algún día cambia a objeto paginado real
+            $items = $raw['data'];
+        } else {
+            $items = [];
+        }
+
+        // Normalizar cada item al formato que espera el JS del dashboard:
+        // El JS accede a inc.shipment.order_number, inc.shipment.tracking_number,
+        // inc.shipment.shipment_destination, inc.shipment.id,
+        // inc.incident_type.name, inc.created_at, inc.is_solved
+        $isSolvedFilter = $params['is_solved'] ?? 'No';
+        $normalized = array_map(function (array $item) use ($isSolvedFilter) {
+            return [
+                // Campos de la novedad
+                'id'         => $item['id']         ?? null,
+                'created_at' => $item['created_at']  ?? null,
+                'is_solved'  => $isSolvedFilter,
+                'incident_type' => [
+                    'name' => $this->resolverNombreNovedad((int)($item['shipment_status_id'] ?? 0)),
+                ],
+                // Sub-objeto shipment con los campos que renderiza el JS
+                'shipment' => [
+                    'id'                   => $item['id']              ?? null,
+                    'order_number'         => $item['order_number']    ?? '',
+                    'tracking_number'      => $item['tracking_number'] ?? '',
+                    'shipment_destination' => $item['shipment_destination'] ?? [],
+                ],
+            ];
+        }, $items);
+
+        $total   = count($normalized);
+        $perPage = max(1, (int)($params['limit'] ?? 20));
+
         return [
-            'data'         => $data['data']         ?? [],
-            'total'        => $data['total']         ?? 0,
-            'current_page' => $data['current_page']  ?? 1,
-            'last_page'    => $data['last_page']     ?? 1,
-            'per_page'     => $data['per_page']      ?? 20,
+            'data'         => $normalized,
+            'total'        => $total,
+            'current_page' => 1,
+            'last_page'    => max(1, (int)ceil($total / $perPage)),
+            'per_page'     => $perPage,
         ];
+    }
+
+    /**
+     * Resuelve el nombre legible de una novedad a partir del shipment_status_id de HL Express.
+     */
+    private function resolverNombreNovedad(int $statusId): string
+    {
+        $map = [
+            1  => 'En bodega',
+            2  => 'En ruta',
+            3  => 'Entregado',
+            4  => 'No entregado',
+            5  => 'Novedad',
+            6  => 'Cancelado',
+            7  => 'Devuelto',
+            8  => 'En tránsito',
+            9  => 'Recolectado',
+            10 => 'Pendiente recolección',
+            17 => 'Novedad – En bodega',
+        ];
+        return $map[$statusId] ?? "Estado #{$statusId}";
     }
 
     /**
