@@ -20,6 +20,10 @@ $pedido = $datos['pedido'];
 $historialCambios = $datos['historial'] ?? [];
 $estadosDisponibles = $datos['estados'] ?? [];
 
+require_once "modelo/forwarding.php";
+$forwardingHL = ForwardingModel::obtenerLogForwardingExitoso($pedido['id'], 'hlexpress');
+$esHLExpress = ($forwardingHL !== null);
+
 // Crear un mapa de ID => Nombre para registros antiguos
 $mapaEstados = [];
 foreach ($estadosDisponibles as $e) {
@@ -135,7 +139,13 @@ include("vista/includes/header.php");
             <p class="text-muted mb-0">Gestiona y revisa el historial de este pedido.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-           <span class="badge fs-6 px-3 py-2 align-self-center" style="<?= $badgeColor ?>"><?= htmlspecialchars($pedido['nombre_estado'] ?? 'Desconocido') ?></span>
+            <span class="badge fs-6 px-3 py-2 align-self-center" style="<?= $badgeColor ?>"><?= htmlspecialchars($pedido['nombre_estado'] ?? 'Desconocido') ?></span>
+
+            <?php if ($esHLExpress): ?>
+                <span class="badge bg-dark text-white fs-6 px-3 py-2 align-self-center">
+                    <i class="bi bi-truck me-1 text-warning"></i> HL Express
+                </span>
+            <?php endif; ?>
 
            <?php if ($hasCoords): ?>
                <button type="button" class="btn btn-success align-self-center" data-bs-toggle="modal" data-bs-target="#mapaModal">
@@ -652,6 +662,50 @@ include("vista/includes/header.php");
                     <?php endif; ?>
                 </div>
             </div>
+
+            <?php if ($esHLExpress): ?>
+            <!-- TARJETA DEDICADA: NOVEDADES HL EXPRESS -->
+            <div class="card shadow border-0 mb-4" id="cardNovedadesHLExpress">
+                <div class="card-header bg-dark text-white py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 fw-bold">
+                        <i class="bi bi-truck me-2 text-warning"></i>HL Express
+                    </h6>
+                    <button type="button" class="btn btn-sm btn-outline-light rounded-circle" id="btnRefreshNovedades" title="Actualizar novedades" onclick="cargarNovedadesHLExpress()">
+                        <i class="bi bi-arrow-clockwise" id="iconRefreshNovedades"></i>
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div id="loadingNovedades" class="p-4 text-center">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <span class="ms-2 small text-muted">Consultando novedades...</span>
+                    </div>
+                    
+                    <div id="errorNovedades" class="p-4 text-center text-danger d-none">
+                        <i class="bi bi-exclamation-triangle-fill fs-2 mb-2 d-block"></i>
+                        <span id="errorNovedadesMsg" class="small d-block">Error al obtener novedades.</span>
+                    </div>
+
+                    <div id="sinNovedades" class="p-4 text-center text-muted d-none">
+                        <i class="bi bi-shield-check fs-1 mb-2 d-block text-success"></i>
+                        <span class="fw-bold fs-6">Sin novedades activas</span>
+                        <p class="small mb-0 text-muted">El envío no reporta incidentes actualmente.</p>
+                    </div>
+
+                    <div id="listaNovedades" class="d-none">
+                        <ul class="list-group list-group-flush" id="containerNovedades" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Se llena dinámicamente con JS -->
+                        </ul>
+                        <div class="p-3 bg-light border-top text-center">
+                            <button type="button" class="btn btn-sm btn-primary w-100" data-bs-toggle="modal" data-bs-target="#resolverNovedadModal">
+                                <i class="bi bi-chat-right-text me-1"></i> Resolver Novedad
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
 
         <!-- Fila Inferior: Historial de Estados -->
@@ -867,6 +921,110 @@ include("vista/includes/header.php");
     </div>
 </div>
 
+<?php if ($esHLExpress): ?>
+<!-- Modal Resolver Novedad HL Express -->
+<!-- Modal Resolver Novedad HL Express -->
+<div class="modal fade" id="resolverNovedadModal" tabindex="-1" aria-labelledby="resolverNovedadLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow position-relative">
+            <form id="formResolverNovedad" action="<?= RUTA_URL ?>logistica/resolverNovedad/<?= $pedido['id'] ?>" method="POST">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="resolverNovedadLabel">
+                        <i class="bi bi-patch-exclamation-fill text-warning me-2"></i>Resolver Novedad (HL Express)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body position-relative" style="min-height: 250px;">
+                    <!-- Alerta informativa -->
+                    <div class="alert alert-info py-2 px-3 small mb-3">
+                        <i class="bi bi-info-circle-fill me-1 text-primary"></i>
+                        Esta acción enviará la resolución directamente a la API de HL Express y actualizará el estado local del pedido.
+                    </div>
+
+                    <!-- Pregunta principal y botones de opción grandes -->
+                    <div class="card bg-light border-0 mb-4 text-center">
+                        <div class="card-body p-3">
+                            <p class="fw-bold mb-3 text-dark fs-6" style="line-height: 1.4;">
+                                Si ya validó la información con el cliente, ¿quiere que volvamos a ofrecer el pedido? de lo contrario, será devuelto al remitente
+                            </p>
+                            <div class="d-flex justify-content-center gap-3">
+                                <button type="button" id="btnHLExpressYes" class="btn btn-success px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm">
+                                    <i class="bi bi-check2"></i> Yes
+                                </button>
+                                <button type="button" id="btnHLExpressNo" class="btn btn-danger px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm">
+                                    <i class="bi bi-exclamation-triangle"></i> NO
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hidden input for is_return -->
+                    <input type="hidden" name="is_return" id="inputIsReturn" value="false">
+                    <button type="submit" id="hiddenSubmitBtn" style="display: none;"></button>
+
+                    <!-- Sección de Corrección (Visible al dar CLICK en Yes) -->
+                    <div id="seccionCamposCorreccion" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary mb-1 small text-uppercase">Solución</label>
+                            <input type="text" name="solve_description" class="form-control form-control-sm" placeholder="Escriba la solución/comentario para el reintento" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary mb-1 small text-uppercase">Nombre</label>
+                            <input type="text" name="contact_name" class="form-control form-control-sm" value="<?= htmlspecialchars($pedido['destinatario']) ?>" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary mb-1 small text-uppercase">Celular</label>
+                            <input type="text" name="contact_phone" class="form-control form-control-sm" value="<?= htmlspecialchars($pedido['telefono']) ?>" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-primary mb-1 small text-uppercase">Direccion</label>
+                            <div class="p-2 bg-light rounded text-muted border mb-2 fs-7" style="font-size: 0.85rem; line-height: 1.3;">
+                                <?= htmlspecialchars($pedido['direccion']) ?>
+                            </div>
+                            <label class="form-label fw-bold text-secondary mb-1 small text-uppercase">Specify Address</label>
+                            <input type="text" name="contact_address" class="form-control form-control-sm" placeholder="Ingrese la dirección de entrega corregida" required>
+                        </div>
+
+                        <div class="mt-4 text-end">
+                            <button type="button" class="btn btn-sm btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-sm btn-dark" id="btnSubmitResolverNovedad">
+                                <i class="bi bi-check-circle me-1 text-success"></i>Enviar Solución
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sección Emergente de Alerta de Confirmación de Retorno (Visible al dar CLICK en NO) -->
+                    <div id="confirmacionRetornoOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="display: none; z-index: 1050; border-radius: 0.3rem;">
+                        <div class="w-100 px-4 text-center">
+                            <div class="mb-3">
+                                <span class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger rounded-circle" style="width: 70px; height: 70px;">
+                                    <i class="bi bi-question-lg fs-1"></i>
+                                </span>
+                            </div>
+                            <p class="text-secondary fw-semibold mb-4 fs-6" style="max-width: 380px; margin: 0 auto; line-height: 1.4;">
+                                The order will be returned to the sender, are you sure you want to return it to the sender?
+                            </p>
+                            <div class="d-flex flex-column gap-2 mb-3" style="max-width: 300px; margin: 0 auto;">
+                                <button type="button" id="btnConfirmReturnYes" class="btn btn-warning text-white fw-bold py-2 w-100" style="background-color: #ff8d33; border-color: #ff8d33;">
+                                    Yes
+                                </button>
+                                <button type="button" id="btnConfirmReturnNo" class="btn btn-outline-warning fw-bold py-2 w-100" style="color: #ff8d33; border-color: #ff8d33;">
+                                    No
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 
 
 <script>
@@ -985,7 +1143,270 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.innerHTML = originalBtnText;
         });
     });
+
+    <?php if ($esHLExpress): ?>
+    // Elementos de la UI de HL Express
+    const btnHLExpressYes = document.getElementById('btnHLExpressYes');
+    const btnHLExpressNo = document.getElementById('btnHLExpressNo');
+    const seccionCorreccion = document.getElementById('seccionCamposCorreccion');
+    const confirmacionRetorno = document.getElementById('confirmacionRetornoOverlay');
+    const inputIsReturn = document.getElementById('inputIsReturn');
+    const hiddenSubmitBtn = document.getElementById('hiddenSubmitBtn');
+
+    // Botones de la alerta de confirmación
+    const btnConfirmReturnYes = document.getElementById('btnConfirmReturnYes');
+    const btnConfirmReturnNo = document.getElementById('btnConfirmReturnNo');
+
+    if (btnHLExpressYes && seccionCorreccion && confirmacionRetorno) {
+        const inputs = seccionCorreccion.querySelectorAll('input, textarea');
+
+        // Mostrar formulario de reprogramación (Yes)
+        btnHLExpressYes.addEventListener('click', function() {
+            inputIsReturn.value = 'false';
+            confirmacionRetorno.style.display = 'none';
+            seccionCorreccion.style.display = 'block';
+
+            // Activar validaciones y habilitar campos
+            inputs.forEach(input => {
+                input.required = true;
+                input.disabled = false;
+            });
+            
+            // Foco en el primer campo
+            const solveInput = seccionCorreccion.querySelector('input[name="solve_description"]');
+            if (solveInput) solveInput.focus();
+        });
+
+        // Mostrar alerta de confirmación de retorno (No)
+        btnHLExpressNo.addEventListener('click', function() {
+            confirmacionRetorno.style.display = 'flex';
+            
+            // Desactivar campos de corrección para que no afecten validación
+            inputs.forEach(input => {
+                input.required = false;
+                input.disabled = true;
+            });
+        });
+
+        // Confirmar retorno a remitente (Yes en la confirmación)
+        if (btnConfirmReturnYes) {
+            btnConfirmReturnYes.addEventListener('click', function() {
+                inputIsReturn.value = 'true';
+                
+                // Desactivar campos de corrección
+                inputs.forEach(input => {
+                    input.required = false;
+                    input.disabled = true;
+                });
+
+                // Cambiar texto de botón de carga
+                btnConfirmReturnYes.disabled = true;
+                btnConfirmReturnYes.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando devolución...';
+                
+                // Enviar formulario usando el botón oculto
+                if (hiddenSubmitBtn) {
+                    hiddenSubmitBtn.click();
+                }
+            });
+        }
+
+        // Cancelar confirmación de retorno (No en la confirmación)
+        if (btnConfirmReturnNo) {
+            btnConfirmReturnNo.addEventListener('click', function() {
+                confirmacionRetorno.style.display = 'none';
+            });
+        }
+    }
+
+    // Submit Resolver Novedad
+    const formResolver = document.getElementById('formResolverNovedad');
+    if (formResolver) {
+        formResolver.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Encontrar botón de submit activo para deshabilitarlo e indicar carga
+            const submitBtn = document.getElementById('btnSubmitResolverNovedad');
+            const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
+            }
+
+            const formData = new FormData(formResolver);
+
+            fetch(formResolver.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(async response => {
+                const text = await response.text();
+                try {
+                    return JSON.parse(text);
+                } catch (err) {
+                    console.error('Error parseando JSON. Respuesta del servidor:', text);
+                    throw new Error('La respuesta del servidor no es un JSON válido.');
+                }
+            })
+            .then(data => {
+                if (data.success) {
+                    // Cerrar modal
+                    const modalEl = document.getElementById('resolverNovedadModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Resolución Procesada!',
+                            text: data.message || 'Novedad resuelta y estado del pedido actualizado.',
+                            confirmButtonColor: '#0d6efd'
+                        }).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        alert(data.message || 'Novedad resuelta y estado del pedido actualizado.');
+                        window.location.reload();
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error al Resolver',
+                            text: data.message || 'No se pudo registrar la solución del incidente.',
+                            confirmButtonColor: '#0d6efd'
+                        });
+                    } else {
+                        alert(data.message || 'No se pudo registrar la solución del incidente.');
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                    // Restaurar botón de confirmación de retorno por si fue el canal
+                    if (btnConfirmReturnYes) {
+                        btnConfirmReturnYes.disabled = false;
+                        btnConfirmReturnYes.innerHTML = 'Yes';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error en fetch:', error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de Red',
+                        text: error.message || 'Ocurrió un error al intentar enviar la resolución.',
+                        confirmButtonColor: '#0d6efd'
+                    });
+                } else {
+                    alert(error.message || 'Ocurrió un error al intentar enviar la resolución.');
+                }
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
+                if (btnConfirmReturnYes) {
+                    btnConfirmReturnYes.disabled = false;
+                    btnConfirmReturnYes.innerHTML = 'Yes';
+                }
+            });
+        });
+    }
+
+    cargarNovedadesHLExpress();
+    <?php endif; ?>
 });
 </script>
+
+<?php if ($esHLExpress): ?>
+<script>
+function cargarNovedadesHLExpress() {
+    const btn = document.getElementById('btnRefreshNovedades');
+    const icon = document.getElementById('iconRefreshNovedades');
+    const loading = document.getElementById('loadingNovedades');
+    const error = document.getElementById('errorNovedades');
+    const sinNovedades = document.getElementById('sinNovedades');
+    const listaNovedades = document.getElementById('listaNovedades');
+    const container = document.getElementById('containerNovedades');
+
+    // Animación de rotación al botón
+    if (icon) icon.classList.add('bi-spin');
+    if (btn) btn.disabled = true;
+
+    // Mostrar spinner, ocultar el resto
+    loading.classList.remove('d-none');
+    error.classList.add('d-none');
+    sinNovedades.classList.add('d-none');
+    listaNovedades.classList.add('d-none');
+    container.innerHTML = '';
+
+    fetch('<?= RUTA_URL ?>logistica/consultarIncidenciasHLExpress/<?= $pedido['id'] ?>', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.message || 'Error del servidor') });
+        }
+        return response.json();
+    })
+    .then(res => {
+        if (res.success && res.data && res.data.length > 0) {
+            // Renderizar la lista
+            res.data.forEach(inc => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item p-3 border-bottom';
+                
+                // Formatear fecha
+                const dateStr = inc.created_at ? new Date(inc.created_at).toLocaleDateString('es-ES', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                }) : 'Fecha no disponible';
+
+                li.innerHTML = `
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="badge bg-warning text-dark small fw-bold">${inc.incident_type ? inc.incident_type.name : 'Incidente'}</span>
+                        <small class="text-muted">${dateStr}</small>
+                    </div>
+                    <p class="mb-1 text-dark small fw-semibold">${inc.description || 'Sin descripción'}</p>
+                    <div class="small text-muted">
+                        <strong>Estatus:</strong> ${inc.status || 'Pendiente'}
+                    </div>
+                `;
+                container.appendChild(li);
+            });
+            listaNovedades.classList.remove('d-none');
+        } else {
+            sinNovedades.classList.remove('d-none');
+        }
+    })
+    .catch(err => {
+        console.error('Error cargando novedades:', err);
+        const errorMsg = document.getElementById('errorNovedadesMsg');
+        if (errorMsg) errorMsg.textContent = err.message || 'Error al obtener novedades de la transportadora.';
+        error.classList.remove('d-none');
+    })
+    .finally(() => {
+        loading.classList.add('d-none');
+        if (icon) icon.classList.remove('bi-spin');
+        if (btn) btn.disabled = false;
+    });
+}
+</script>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.bi-spin {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+</style>
+<?php endif; ?>
 
 <?php include("vista/includes/footer.php"); ?>

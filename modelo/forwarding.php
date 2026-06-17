@@ -727,4 +727,37 @@ class ForwardingModel
             return [];
         }
     }
+
+    /**
+     * Obtener el último log de forwarding exitoso para un pedido y un proveedor específico.
+     * @param int $idPedido
+     * @param string $slugProvider
+     * @return array|null
+     */
+    public static function obtenerLogForwardingExitoso($idPedido, $slugProvider)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT fl.*, p.slug, p.nombre AS provider_nombre
+                FROM forwarding_log fl
+                INNER JOIN forwarding_providers p ON p.id = fl.id_provider
+                WHERE fl.id_pedido = :id_pedido 
+                  AND fl.status = 'success' 
+                  AND p.slug = :slug
+                ORDER BY fl.created_at DESC
+                LIMIT 1
+            ");
+            $stmt->execute([
+                ':id_pedido' => $idPedido,
+                ':slug'      => $slugProvider
+            ]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::obtenerLogForwardingExitoso error: " . $e->getMessage());
+            return null;
+        }
+    }
 }
+
