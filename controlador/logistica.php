@@ -1502,8 +1502,10 @@ class LogisticaController {
         // El guide_number para solve-return es el order_number (ej. WCO2801)
         // que viene en el response_payload del forwarding log.
         $responseDecoded = json_decode($log['response_payload'] ?? '{}', true) ?: [];
-        $guideNumber = $responseDecoded['order_number']
-            ?? $responseDecoded['tracking_number']
+        // tracking_number (ej. V4000021620) es el identificador que acepta
+        // el endpoint solve-return de HL Express como guide_number.
+        $guideNumber = $responseDecoded['tracking_number']
+            ?? $responseDecoded['external_order_id']
             ?? $log['external_order_id']
             ?? null;
 
