@@ -151,7 +151,7 @@ try {
                 </div>
             </div>
         </div>
-    </div>
+    </div><!-- /.row KPIs -->
 
     <div class="row g-4">
         <!-- Quick Links -->
@@ -195,11 +195,10 @@ try {
                                 <small class="text-muted">Configurar integraciones dinámicas</small>
                             </div>
                         </a>
-
-                </div>
-            </div>
-        </div>
-
+                    </div><!-- /.d-flex quick links -->
+                </div><!-- /.card-body -->
+            </div><!-- /.card -->
+        </div><!-- /.col-md-4 -->
         <!-- Recent Outbound Logs -->
         <div class="col-md-8">
             <div class="card fwd-card mb-4">
