@@ -1869,7 +1869,7 @@ include "vista/includes/header.php";
             let _novedadesFilters = {
                 is_solved: 'No'
             };
-            let _isDemoMode = false;
+            window._isDemoMode = false;
             const _baseUrl = '<?= RUTA_URL ?>';
 
             // Exponer para onclick en el botón de la tab
@@ -1944,12 +1944,12 @@ include "vista/includes/header.php";
                         const demoBanner = document.getElementById('novedadesDemoBanner');
                         if (demoBanner) {
                             if (res._demo) {
-                                _isDemoMode = true;
+                                window._isDemoMode = true;
                                 const reason = res._demo_reason ? ` (${escH(res._demo_reason)})` : '';
                                 demoBanner.innerHTML = `<i class="bi bi-flask me-1"></i><strong>Modo demostración:</strong> La API de HL Express no retornó datos reales. Se muestran <strong>2 novedades simuladas</strong> con los pedidos actuales${reason} para que pueda probar el flujo completo.`;
                                 demoBanner.classList.remove('d-none');
                             } else {
-                                _isDemoMode = false;
+                                window._isDemoMode = false;
                                 demoBanner.classList.add('d-none');
                             }
                         }
@@ -2388,7 +2388,7 @@ include "vista/includes/header.php";
                 const isReturn = document.getElementById('rnov_is_return')?.value === 'true';
 
                 // ── MODO DEMO: no llamar a la API real ──────────────────────
-                if (_isDemoMode) {
+                if (window._isDemoMode) {
                     const bsMod = bootstrap.Modal.getInstance(modalRnov);
                     if (bsMod) bsMod.hide();
                     const accion = isReturn ? 'devolución' : 'reintento de entrega';
