@@ -985,6 +985,54 @@ class LogisticaController {
             // Intentar también con # (por si la BD lo guarda con prefijo)
             $pedido = $model->obtenerPedidoPorNumero('#' . $buscar);
         }
+
+        // Si no se encontró por numero_orden directo, intentar cruzando con forwarding_log.
+        // HL Express puede devolver el order_number con un prefijo propio (ej. "WCO2801")
+        // que no coincide con el numero_orden interno ("2801").
+        // Buscamos el pedido cuyo response_payload de forwarding contenga ese order_number,
+        // o bien cuyo numero_orden esté contenido al final del valor buscado.
+        if (!$pedido) {
+            try {
+                $db = (new Conexion())->conectar();
+
+                // Estrategia 1: buscar en forwarding_log por order_number dentro del response_payload JSON
+                $stmt = $db->prepare(
+                    "SELECT p.id, p.numero_orden
+                     FROM forwarding_log fl
+                     JOIN pedidos p ON p.id = fl.id_pedido
+                     WHERE fl.status = 'success'
+                       AND JSON_UNQUOTE(JSON_EXTRACT(fl.response_payload, '$.order_number')) = :on
+                     LIMIT 1"
+                );
+                $stmt->execute([':on' => $buscar]);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($row) {
+                    $pedido = $model->obtenerPedidoPorNumero($row['numero_orden']);
+                }
+
+                // Estrategia 2: si el order_number de HL Express termina en el numero_orden interno
+                // (ej. "WCO2801" termina en "2801")
+                if (!$pedido) {
+                    $stmt2 = $db->prepare(
+                        "SELECT p.id, p.numero_orden
+                         FROM pedidos p
+                         JOIN forwarding_log fl ON fl.id_pedido = p.id
+                         WHERE fl.status = 'success'
+                           AND :on LIKE CONCAT('%', p.numero_orden)
+                         LIMIT 1"
+                    );
+                    $stmt2->execute([':on' => $buscar]);
+                    $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+                    if ($row2) {
+                        $pedido = $model->obtenerPedidoPorNumero($row2['numero_orden']);
+                    }
+                }
+            } catch (Exception $e) {
+                error_log('[buscarPedidoPorOrden] Fallback forwarding_log error: ' . $e->getMessage());
+            }
+        }
+
         if (!$pedido) {
             header('Content-Type: application/json', true, 404);
             echo json_encode(['success' => false, 'message' => "Pedido '{$numeroOrden}' no encontrado."]);
@@ -994,6 +1042,7 @@ class LogisticaController {
         echo json_encode(['success' => true, 'id' => (int)$pedido['id'], 'numero_orden' => $pedido['numero_orden']]);
         exit;
     }
+
 
     /**
      * Listar todas las novedades activas de HL Express (paginado).
