@@ -1580,9 +1580,15 @@ class LogisticaController {
             $hasAccess = true;
         } else {
             $isProveedor = isCliente();
-            $hasAccess = $isProveedor
-                ? ($pedido['id_proveedor'] == $userId)
-                : ($pedido['id_cliente']   == $userId);
+            if ($isProveedor) {
+                // Los usuarios con rol Proveedor pueden resolver cualquier novedad de HL Express
+                // ya que el tab Novedades muestra TODOS los pedidos de HL Express sin filtrar
+                // por propietario. La seguridad real la aplica la API de HL Express.
+                $hasAccess = true;
+            } else {
+                // Clientes: solo sus propios pedidos
+                $hasAccess = ($pedido['id_cliente'] == $userId);
+            }
         }
 
         if (!$hasAccess) {
