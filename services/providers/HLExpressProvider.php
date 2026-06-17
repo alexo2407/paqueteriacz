@@ -33,15 +33,11 @@ class HLExpressProvider extends BaseProvider
         $payload = $this->mapearCampos($pedido, $productos, $authData);
         $body    = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-        error_log('[HLExpress::solveReturn] payload: ' . $body);
-
         $response = $this->httpRequest('POST', $url, [
             'Content-Type: application/json',
             'Accept: application/json',
             'X-API-KEY: ' . $authData['token'],
         ], $body, 30);
-
-        error_log('[HLExpress::solveReturn] HTTP ' . ($response['http_status'] ?? '?') . ' resp: ' . json_encode($response['decoded'] ?? null));
 
         if ($response['error']) {
             throw new Exception("Error de conexión con HL Express (createOrder): " . $response['error']);
@@ -300,11 +296,15 @@ class HLExpressProvider extends BaseProvider
             'is_return'                          => (bool)($payload['is_return']                   ?? false),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
+        error_log('[HLExpress::solveReturn] payload enviado: ' . $body);
+
         $response = $this->httpRequest('POST', $url, [
             'Content-Type: application/json',
             'Accept: application/json',
             'X-API-KEY: ' . $authData['token'],
         ], $body, 30);
+
+        error_log('[HLExpress::solveReturn] HTTP ' . ($response['http_status'] ?? '?') . ' resp: ' . json_encode($response['decoded'] ?? null));
 
         if ($response['error']) {
             throw new Exception("Error de conexión con HL Express (solveReturn): " . $response['error']);

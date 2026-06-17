@@ -1605,17 +1605,23 @@ class LogisticaController {
             exit;
         }
 
-        $trackingNumber = $log['external_order_id'] ?? null;
-        if (empty($trackingNumber)) {
-            $responseDecoded = json_decode($log['response_payload'] ?? '{}', true);
-            $trackingNumber = $responseDecoded['id'] ?? $responseDecoded['external_order_id'] ?? $responseDecoded['tracking_number'] ?? null;
-        }
+        // El external_order_id es el UUID interno de HL Express.
+        // El guide_number para solve-return es el tracking_number (ej. V4000021620)
+        // que viene en el response_payload del forwarding log.
+        $responseDecoded = json_decode($log['response_payload'] ?? '{}', true) ?: [];
+        $guideNumber = $responseDecoded['tracking_number']
+            ?? $responseDecoded['external_order_id']
+            ?? $log['external_order_id']
+            ?? null;
 
-        if (empty($trackingNumber)) {
+        if (empty($guideNumber)) {
             header('Content-Type: application/json', true, 400);
             echo json_encode(['success' => false, 'message' => 'No se pudo obtener el número de guía de HL Express.']);
             exit;
         }
+
+        // city_code del pedido (código postal usado como city_code en HL Express)
+        $cityCode = $pedido['codigo_postal'] ?? '';
 
         // Validar parámetros del body POST/JSON
         $rawInput = file_get_contents('php://input');
