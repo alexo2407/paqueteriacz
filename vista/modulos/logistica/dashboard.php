@@ -2413,7 +2413,7 @@ include "vista/includes/header.php";
                         const pdfUrl = s.guide_link ? hlBaseUrl + s.guide_link : null;
                         const tracking = s.tracking_number ?? s.order_number ?? '-';
                         const trackingHtml = pdfUrl
-                            ? `<a href="${escE(pdfUrl)}" target="_blank" title="Ver guía PDF" class="fw-semibold text-primary text-decoration-none"><i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>${escE(tracking)}</a>`
+                            ? `<button type="button" class="btn btn-link p-0 fw-semibold text-primary text-decoration-none" onclick="window.abrirGuiaPDF('${escE(pdfUrl)}','${escE(tracking)}')"><i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>${escE(tracking)}</button>`
                             : `<span class="fw-semibold">${escE(tracking)}</span>`;
 
                         const cod = s.is_cod ? `<span class="badge bg-success-subtle text-success small">$${Number(s.total_cod||0).toLocaleString()}</span>` : '<span class="text-muted small">—</span>';
@@ -2592,8 +2592,45 @@ include "vista/includes/header.php";
             <!-- Paginador -->
             <div class="card-footer bg-white d-flex align-items-center justify-content-end gap-3 flex-wrap" id="enviosPager"></div>
         </div>
+
+        <!-- Modal Guía PDF -->
+        <div class="modal fade" id="modalGuiaPDF" tabindex="-1" aria-labelledby="modalGuiaPDFLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-dark text-white py-2">
+                        <h6 class="modal-title mb-0" id="modalGuiaPDFLabel">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>
+                            <span id="modalGuiaPDFTracking">Guía</span>
+                        </h6>
+                        <div class="d-flex gap-2 ms-auto">
+                            <a id="modalGuiaPDFLink" href="#" target="_blank" class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Abrir en nueva pestaña
+                            </a>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                    </div>
+                    <div class="modal-body p-0" style="height:82vh;">
+                        <iframe id="modalGuiaPDFFrame" src="" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
     `;
             tabContent.appendChild(pane);
+
+            // Función global para abrir el modal del PDF
+            window.abrirGuiaPDF = function(url, tracking) {
+                document.getElementById('modalGuiaPDFTracking').textContent = tracking || 'Guía';
+                document.getElementById('modalGuiaPDFLink').href = url;
+                document.getElementById('modalGuiaPDFFrame').src = url;
+                const modal = new bootstrap.Modal(document.getElementById('modalGuiaPDF'));
+                modal.show();
+                // Limpiar iframe al cerrar para no dejar carga activa
+                document.getElementById('modalGuiaPDF').addEventListener('hidden.bs.modal', function onHide() {
+                    document.getElementById('modalGuiaPDFFrame').src = '';
+                    this.removeEventListener('hidden.bs.modal', onHide);
+                });
+            };
 
             // Pre-rellenar fechas inline (sin depender del IIFE)
             const _todayE = (function() {
