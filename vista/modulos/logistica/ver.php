@@ -950,10 +950,10 @@ include("vista/includes/header.php");
                             </p>
                             <div class="d-flex justify-content-center gap-3">
                                 <button type="button" id="btnHLExpressYes" class="btn btn-success px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm">
-                                    <i class="bi bi-check2"></i> Yes
+                                    <i class="bi bi-check2"></i> Sí, reintentar
                                 </button>
                                 <button type="button" id="btnHLExpressNo" class="btn btn-danger px-4 py-2 fw-bold d-flex align-items-center gap-2 shadow-sm">
-                                    <i class="bi bi-exclamation-triangle"></i> NO
+                                    <i class="bi bi-exclamation-triangle"></i> No, devolver
                                 </button>
                             </div>
                         </div>
@@ -985,7 +985,7 @@ include("vista/includes/header.php");
                             <div class="p-2 bg-light rounded text-muted border mb-2 fs-7" style="font-size: 0.85rem; line-height: 1.3;">
                                 <?= htmlspecialchars($pedido['direccion']) ?>
                             </div>
-                            <label class="form-label fw-bold text-secondary mb-1 small text-uppercase">Specify Address</label>
+                            <label class="form-label fw-bold text-secondary mb-1 small text-uppercase">Nueva Dirección</label>
                             <input type="text" name="contact_address" class="form-control form-control-sm" placeholder="Ingrese la dirección de entrega corregida" required>
                         </div>
 
@@ -1006,14 +1006,14 @@ include("vista/includes/header.php");
                                 </span>
                             </div>
                             <p class="text-secondary fw-semibold mb-4 fs-6" style="max-width: 380px; margin: 0 auto; line-height: 1.4;">
-                                The order will be returned to the sender, are you sure you want to return it to the sender?
+                                El pedido será devuelto al remitente. ¿Está seguro de que desea proceder con la devolución?
                             </p>
                             <div class="d-flex flex-column gap-2 mb-3" style="max-width: 300px; margin: 0 auto;">
                                 <button type="button" id="btnConfirmReturnYes" class="btn btn-warning text-white fw-bold py-2 w-100" style="background-color: #ff8d33; border-color: #ff8d33;">
-                                    Yes
+                                    Sí, devolver al remitente
                                 </button>
                                 <button type="button" id="btnConfirmReturnNo" class="btn btn-outline-warning fw-bold py-2 w-100" style="color: #ff8d33; border-color: #ff8d33;">
-                                    No
+                                    No, cancelar
                                 </button>
                             </div>
                         </div>
@@ -1288,7 +1288,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Restaurar botón de confirmación de retorno por si fue el canal
                     if (btnConfirmReturnYes) {
                         btnConfirmReturnYes.disabled = false;
-                        btnConfirmReturnYes.innerHTML = 'Yes';
+                        btnConfirmReturnYes.innerHTML = 'Sí, devolver al remitente';
                     }
                 }
             })
@@ -1310,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (btnConfirmReturnYes) {
                     btnConfirmReturnYes.disabled = false;
-                    btnConfirmReturnYes.innerHTML = 'Yes';
+                    btnConfirmReturnYes.innerHTML = 'Sí, devolver al remitente';
                 }
             });
         });
