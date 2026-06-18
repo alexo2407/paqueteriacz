@@ -1191,23 +1191,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Sí en el overlay → volver a reintentar (mostrar formulario de corrección)
+        // Sí en el overlay → exactamente igual que el botón principal "Sí, reintentar"
         if (btnConfirmReturnYes) {
             btnConfirmReturnYes.addEventListener('click', function() {
-                // Ocultar overlay y mostrar el formulario de reintentar
+                // Ocultar el overlay primero
                 confirmacionRetorno.style.display = 'none';
-                inputIsReturn.value = 'false';
-                seccionCorreccion.style.display = 'block';
-
-                // Activar validaciones y habilitar campos
-                inputs.forEach(input => {
-                    input.required = true;
-                    input.disabled = false;
-                });
-
-                // Foco en el primer campo
-                const solveInput = seccionCorreccion.querySelector('input[name="solve_description"]');
-                if (solveInput) solveInput.focus();
+                // Reutilizar la misma lógica del botón principal
+                btnHLExpressYes.click();
             });
         }
 
@@ -1224,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Spinner en el botón NO
                 btnConfirmReturnNo.disabled = true;
-                btnConfirmReturnNo.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+                btnConfirmReturnNo.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando devolución...';
 
                 // Enviar formulario
                 if (hiddenSubmitBtn) {
@@ -1233,12 +1223,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Cancelar confirmación de retorno (No en la confirmación)
-        if (btnConfirmReturnNo) {
-            btnConfirmReturnNo.addEventListener('click', function() {
-                confirmacionRetorno.style.display = 'none';
-            });
-        }
     }
 
     // Submit Resolver Novedad
