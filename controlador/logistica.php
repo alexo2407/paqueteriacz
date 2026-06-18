@@ -1271,6 +1271,187 @@ class LogisticaController {
             $sheet->getColumnDimension('J')->setAutoSize(false)->setWidth(35);
             $sheet->getColumnDimension('M')->setAutoSize(false)->setWidth(40);
 
+            // Fijar la primera fila como encabezado
+            $sheet->freezePane('A2');
+
+            // ── Hoja 2: Instrucciones de uso ─────────────────────────────────────
+            $instrSheet = $spreadsheet->createSheet();
+            $instrSheet->setTitle('Instrucciones');
+            $spreadsheet->setActiveSheetIndex(0); // volver al índice 0 después
+
+            // Estilos para la hoja de instrucciones
+            $titleStyle = [
+                'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                           'startColor' => ['rgb' => '1F4E79']],
+                'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER],
+            ];
+            $sectionStyle = [
+                'font' => ['bold' => true, 'size' => 11, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                           'startColor' => ['rgb' => '2E75B6']],
+            ];
+            $colHeaderStyle = [
+                'font' => ['bold' => true],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                           'startColor' => ['rgb' => 'D6E4F0']],
+                'borders' => ['bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                                           'color' => ['rgb' => '2E75B6']]],
+            ];
+            $infoRowStyle = [
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                           'startColor' => ['rgb' => 'FFF2CC']],
+            ];
+            $editRowStyle = [
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                           'startColor' => ['rgb' => 'DDEEFF']],
+            ];
+            $warnStyle = [
+                'font' => ['bold' => true, 'color' => ['rgb' => 'C00000']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                           'startColor' => ['rgb' => 'FFE0E0']],
+            ];
+
+            // Título principal
+            $instrSheet->mergeCells('A1:D1');
+            $instrSheet->setCellValue('A1', '📋  INSTRUCCIONES DE USO — Novedades HL Express');
+            $instrSheet->getStyle('A1')->applyFromArray($titleStyle);
+            $instrSheet->getRowDimension(1)->setRowHeight(28);
+
+            // Subtítulo
+            $instrSheet->mergeCells('A2:D2');
+            $instrSheet->setCellValue('A2', 'Complete las columnas azules (I–M) en la hoja "Novedades HL Express" y suba el archivo para procesar las resoluciones.');
+            $instrSheet->getStyle('A2')->getFont()->setItalic(true)->setSize(10);
+            $instrSheet->getRowDimension(2)->setRowHeight(18);
+
+            // ── Sección 1: Descripción de columnas informativas ──
+            $instrSheet->mergeCells('A4:D4');
+            $instrSheet->setCellValue('A4', 'COLUMNAS INFORMATIVAS (no editar — fondo naranja)');
+            $instrSheet->getStyle('A4')->applyFromArray($sectionStyle);
+
+            $instrSheet->setCellValue('A5', 'Columna');
+            $instrSheet->setCellValue('B5', 'Nombre');
+            $instrSheet->setCellValue('C5', 'Descripción');
+            $instrSheet->setCellValue('D5', 'Ejemplo');
+            $instrSheet->getStyle('A5:D5')->applyFromArray($colHeaderStyle);
+
+            $infoColumns = [
+                ['A', 'numero_orden',    'Número de orden interno del sistema.',                    'ORD-20726'],
+                ['B', 'tracking_number', 'Número de tracking de HL Express (WPA.../WCO...).',       'WPA2000827970'],
+                ['C', 'destinatario',    'Nombre completo del destinatario del envío.',             'Juan Pérez'],
+                ['D', 'telefono',        'Teléfono de contacto del destinatario.',                  '50612345678'],
+                ['E', 'direccion',       'Dirección de entrega original registrada en el sistema.', 'Calle 5, El Dorado, Panamá'],
+                ['F', 'tipo_novedad_id', 'Nombre o ID del tipo de novedad registrada.',             'Novedad'],
+                ['G', 'is_solved',       'Indica si la novedad ya fue resuelta (No = pendiente).',  'No'],
+                ['H', 'fecha_novedad',   'Fecha y hora en que se registró la novedad en HL Express.','2026-06-17T14:30:00Z'],
+            ];
+
+            $r = 6;
+            foreach ($infoColumns as [$col, $name, $desc, $ex]) {
+                $instrSheet->setCellValue("A{$r}", $col);
+                $instrSheet->setCellValue("B{$r}", $name);
+                $instrSheet->setCellValue("C{$r}", $desc);
+                $instrSheet->setCellValue("D{$r}", $ex);
+                $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray($infoRowStyle);
+                $r++;
+            }
+
+            // ── Sección 2: Columnas a rellenar ──
+            $r++;
+            $instrSheet->mergeCells("A{$r}:D{$r}");
+            $instrSheet->setCellValue("A{$r}", 'COLUMNAS A COMPLETAR (fondo azul — obligatorias para procesar)');
+            $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray($sectionStyle);
+            $r++;
+
+            $instrSheet->setCellValue("A{$r}", 'Columna');
+            $instrSheet->setCellValue("B{$r}", 'Nombre');
+            $instrSheet->setCellValue("C{$r}", 'Descripción');
+            $instrSheet->setCellValue("D{$r}", 'Valores válidos / Ejemplo');
+            $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray($colHeaderStyle);
+            $r++;
+
+            $editColumns = [
+                ['I', 'accion',         '⚠️ OBLIGATORIO. Define si se reintenta la entrega o se devuelve al remitente.',
+                                        'reintentar   ó   devolver'],
+                ['J', 'nueva_solucion', 'Instrucciones u observaciones para el operador de HL Express (cómo entregar, nuevo punto, etc.).',
+                                        'Llamar al cliente antes de ir. Dejar con vecino si no contesta.'],
+                ['K', 'nuevo_nombre',   'Nombre del destinatario actualizado (opcional si no cambió).',
+                                        'Ana González'],
+                ['L', 'nuevo_telefono', 'Teléfono de contacto actualizado (opcional si no cambió).',
+                                        '50698765432'],
+                ['M', 'nueva_direccion','Dirección de entrega actualizada (opcional si no cambió).',
+                                        'Calle 8 Nte, Casa 12, Panamá Centro'],
+            ];
+
+            foreach ($editColumns as [$col, $name, $desc, $ex]) {
+                $instrSheet->setCellValue("A{$r}", $col);
+                $instrSheet->setCellValue("B{$r}", $name);
+                $instrSheet->setCellValue("C{$r}", $desc);
+                $instrSheet->setCellValue("D{$r}", $ex);
+                $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray($editRowStyle);
+                $r++;
+            }
+
+            // ── Sección 3: Reglas de la columna "accion" ──
+            $r++;
+            $instrSheet->mergeCells("A{$r}:D{$r}");
+            $instrSheet->setCellValue("A{$r}", 'VALORES VÁLIDOS PARA LA COLUMNA "accion"');
+            $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray($sectionStyle);
+            $r++;
+
+            $instrSheet->setCellValue("A{$r}", 'reintentar');
+            $instrSheet->setCellValue("B{$r}", 'HL Express volverá a intentar la entrega con la información actualizada (nombre, teléfono, dirección, instrucciones).');
+            $instrSheet->mergeCells("B{$r}:D{$r}");
+            $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray(['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2EFDA']]]);
+            $instrSheet->getStyle("A{$r}")->getFont()->setBold(true);
+            $r++;
+
+            $instrSheet->setCellValue("A{$r}", 'devolver');
+            $instrSheet->setCellValue("B{$r}", 'El paquete será devuelto al remitente. No se necesitan datos adicionales (nombre/teléfono/dirección).');
+            $instrSheet->mergeCells("B{$r}:D{$r}");
+            $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray(['fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FCE4D6']]]);
+            $instrSheet->getStyle("A{$r}")->getFont()->setBold(true);
+            $r++;
+
+            // ── Sección 4: Advertencias ──
+            $r++;
+            $instrSheet->mergeCells("A{$r}:D{$r}");
+            $instrSheet->setCellValue("A{$r}", '⚠️  IMPORTANTE — Antes de subir el archivo');
+            $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray($warnStyle);
+            $r++;
+
+            $warns = [
+                '• No elimine ni reordene columnas. El sistema las procesa por posición.',
+                '• No cambie los valores de las columnas A–H (información de lectura).',
+                '• La columna "accion" (I) debe contener exactamente: reintentar  o  devolver (en minúsculas).',
+                '• Si deja "accion" en blanco, esa fila será ignorada al procesar.',
+                '• Los campos nuevo_nombre, nuevo_telefono y nueva_direccion vienen pre-rellenados; solo modifíquelos si hay cambios.',
+                '• El archivo se procesa en lote: todas las filas con "accion" completada serán enviadas a HL Express.',
+            ];
+            foreach ($warns as $w) {
+                $instrSheet->mergeCells("A{$r}:D{$r}");
+                $instrSheet->setCellValue("A{$r}", $w);
+                $instrSheet->getStyle("A{$r}")->getFont()->setSize(9);
+                $r++;
+            }
+
+            // Auto-size instrSheet
+            $instrSheet->getColumnDimension('A')->setWidth(12);
+            $instrSheet->getColumnDimension('B')->setWidth(22);
+            $instrSheet->getColumnDimension('C')->setWidth(70);
+            $instrSheet->getColumnDimension('D')->setWidth(45);
+            foreach (range(1, $r) as $rowIdx) {
+                $instrSheet->getRowDimension($rowIdx)->setRowHeight(16);
+            }
+            $instrSheet->getRowDimension(1)->setRowHeight(28);
+            $instrSheet->getStyle("C1:D{$r}")->getAlignment()
+                ->setWrapText(true)
+                ->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+
+            // Asegurar que la primera hoja quede activa al abrir
+            $spreadsheet->setActiveSheetIndex(0);
+            // ── Fin hoja instrucciones ────────────────────────────────────────────
+
             $timestamp = date('Ymd_Hi');
             $filename  = "novedades_hlexpress_{$timestamp}.xlsx";
 
