@@ -1003,7 +1003,7 @@ include("vista/includes/header.php");
                             <div class="card bg-light border-0 mb-0 text-center">
                                 <div class="card-body p-3">
                                     <p class="fw-bold mb-3 text-dark fs-6" style="line-height: 1.4;">
-                                        El pedido será devuelto al remitente. ¿Está seguro de que desea proceder con la devolución?
+                                        ¿Desea volver a intentar la entrega o confirmar la devolución al remitente?
                                     </p>
                                     <div class="d-flex justify-content-center gap-3">
                                         <button type="button" id="btnConfirmReturnYes"
@@ -1191,22 +1191,42 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Confirmar retorno a remitente (Yes en la confirmación)
+        // Sí en el overlay → volver a reintentar (mostrar formulario de corrección)
         if (btnConfirmReturnYes) {
             btnConfirmReturnYes.addEventListener('click', function() {
+                // Ocultar overlay y mostrar el formulario de reintentar
+                confirmacionRetorno.style.display = 'none';
+                inputIsReturn.value = 'false';
+                seccionCorreccion.style.display = 'block';
+
+                // Activar validaciones y habilitar campos
+                inputs.forEach(input => {
+                    input.required = true;
+                    input.disabled = false;
+                });
+
+                // Foco en el primer campo
+                const solveInput = seccionCorreccion.querySelector('input[name="solve_description"]');
+                if (solveInput) solveInput.focus();
+            });
+        }
+
+        // NO en el overlay → confirmar devolución y enviar
+        if (btnConfirmReturnNo) {
+            btnConfirmReturnNo.addEventListener('click', function() {
                 inputIsReturn.value = 'true';
-                
+
                 // Desactivar campos de corrección
                 inputs.forEach(input => {
                     input.required = false;
                     input.disabled = true;
                 });
 
-                // Cambiar texto de botón de carga
-                btnConfirmReturnYes.disabled = true;
-                btnConfirmReturnYes.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando devolución...';
-                
-                // Enviar formulario usando el botón oculto
+                // Spinner en el botón NO
+                btnConfirmReturnNo.disabled = true;
+                btnConfirmReturnNo.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+
+                // Enviar formulario
                 if (hiddenSubmitBtn) {
                     hiddenSubmitBtn.click();
                 }
