@@ -1106,6 +1106,61 @@ class LogisticaController {
     }
 
     /**
+     * Listar envíos de HL Express con filtros y paginación real.
+     * GET logistica/listarEnviosHLExpress
+     * Params: page, limit, status_id, tracking_number, order_number, start_date, end_date
+     */
+    public function listarEnviosHLExpress() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        require_once "modelo/forwarding.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+
+        try {
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) {
+                throw new Exception("Proveedor HL Express no configurado en la plataforma.");
+            }
+
+            $credentials   = json_decode($providerData['credentials']    ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/shipments',
+                'auth_method'    => $providerData['auth_method']    ?? 'api_key',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+
+            $filters = [];
+            $filters['page']  = max(1, (int)($_GET['page']  ?? 1));
+            $filters['limit'] = min(50, max(10, (int)($_GET['limit'] ?? 20)));
+            if (!empty($_GET['status_id']))       $filters['status_id']       = (int)$_GET['status_id'];
+            if (!empty($_GET['tracking_number'])) $filters['tracking_number'] = trim($_GET['tracking_number']);
+            if (!empty($_GET['order_number']))    $filters['order_number']    = trim($_GET['order_number']);
+            if (!empty($_GET['start_date']))      $filters['start_date']      = trim($_GET['start_date']);
+            if (!empty($_GET['end_date']))        $filters['end_date']        = trim($_GET['end_date']);
+
+            $result = $hlExpress->getShipmentsFiltered($filters);
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true] + $result);
+            exit;
+
+        } catch (Exception $e) {
+            error_log("LogisticaController::listarEnviosHLExpress error: " . $e->getMessage());
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
      * Exportar novedades activas de HL Express a Excel.
      * GET logistica/exportarNovedadesExcel
      */

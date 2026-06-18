@@ -324,5 +324,75 @@ class HLExpressProvider extends BaseProvider
 
         return $data;
     }
+
+    /**
+     * Consultar envíos con filtros y paginación real.
+     * GET {baseUrl}/shipments/filtered
+     *
+     * Filtros disponibles:
+     *  - limit           int     Resultados por página
+     *  - page            int     Número de página
+     *  - start_date      string  Fecha inicio (YYYY-MM-DD HH:mm:ss)
+     *  - end_date        string  Fecha fin
+     *  - status_id       int     ID del estado del envío (1-25)
+     *  - tracking_number string  Número de seguimiento (parcial)
+     *  - order_number    string  Número de orden
+     *
+     * Retorna: { data[], total, current_page, last_page, per_page }
+     */
+    public function getShipmentsFiltered(array $filters = [])
+    {
+        $authData = $this->authenticate();
+
+        $params = array_filter($filters, fn($v) => $v !== null && $v !== '');
+        if (!isset($params['limit'])) {
+            $params['limit'] = 20;
+        }
+        if (!isset($params['page'])) {
+            $params['page'] = 1;
+        }
+
+        $url = $this->baseUrl . '/shipments/filtered?' . http_build_query($params);
+
+        $response = $this->httpRequest('GET', $url, [
+            'Accept: application/json',
+            'X-API-KEY: ' . $authData['token'],
+        ], null, 30);
+
+        if ($response['error']) {
+            throw new Exception("Error de conexión con HL Express (getShipmentsFiltered): " . $response['error']);
+        }
+
+        $raw = $response['decoded'] ?? [];
+        if ($response['http_status'] !== 200) {
+            $errorMsg = is_array($raw)
+                ? ($raw['message'] ?? $raw['error'] ?? 'Error desconocido')
+                : 'Error desconocido';
+            throw new Exception("HL Express getShipmentsFiltered falló: " . $errorMsg, (int)$response['http_status']);
+        }
+
+        // La API devuelve paginación real: { data[], total, current_page, last_page, per_page }
+        if (isset($raw['data']) && is_array($raw['data'])) {
+            return [
+                'data'         => $raw['data'],
+                'total'        => (int)($raw['total']        ?? count($raw['data'])),
+                'current_page' => (int)($raw['current_page'] ?? 1),
+                'last_page'    => (int)($raw['last_page']    ?? 1),
+                'per_page'     => (int)($raw['per_page']     ?? $params['limit']),
+            ];
+        }
+
+        // Fallback: array plano
+        $items = is_array($raw) ? $raw : [];
+        $total = count($items);
+        $perPage = (int)($params['limit'] ?? 20);
+        return [
+            'data'         => $items,
+            'total'        => $total,
+            'current_page' => 1,
+            'last_page'    => max(1, (int)ceil($total / $perPage)),
+            'per_page'     => $perPage,
+        ];
+    }
 }
 

@@ -403,6 +403,18 @@ include "vista/includes/header.php";
                         style="background:#ff8d33;">...</span>
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link <?= ($activeTab === 'envios') ? 'active' : '' ?> d-flex align-items-center gap-2"
+                    id="pills-envios-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#pills-envios"
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=envios'); cargarEnviosTab();">
+                    <i class="bi bi-box-seam text-primary"></i>
+                    <span>Envíos HL</span>
+                    <span class="badge rounded-pill bg-primary text-white" id="badgeEnviosCount">...</span>
+                </button>
+            </li>
         <?php endif; ?>
     </ul>
 
@@ -1866,8 +1878,22 @@ include "vista/includes/header.php";
 
             let _novedadesLoaded = false;
             let _novedadesPage = 1;
+
+            // Helper: primer día del mes actual (YYYY-MM-01)
+            function _primerDiaMes() {
+                const hoy = new Date();
+                return hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-01';
+            }
+            // Helper: hoy (YYYY-MM-DD)
+            function _hoy() {
+                const hoy = new Date();
+                return hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+            }
+
             let _novedadesFilters = {
-                is_solved: 'No'
+                is_solved:  'No',
+                start_date: _primerDiaMes() + ' 00:00:00',
+                end_date:   _hoy()          + ' 23:59:59',
             };
             window._isDemoMode = false;
             const _baseUrl = '<?= RUTA_URL ?>';
@@ -1882,26 +1908,45 @@ include "vista/includes/header.php";
                 _fetchNovedades();
             };
 
+            // Exponer para los botones del pane (que se insertan dinámicamente fuera del IIFE)
+            window.aplicarFiltrosNovedades = function() {
+                _novedadesFilters = {
+                    is_solved:       document.getElementById('filtNovIsSolved')?.value ?? 'No',
+                    order_number:    (document.getElementById('filtNovOrden')?.value ?? '').trim(),
+                    tracking_number: (document.getElementById('filtNovTracking')?.value ?? '').trim(),
+                    start_date:      document.getElementById('filtNovDesde')?.value
+                                        ? document.getElementById('filtNovDesde').value + ' 00:00:00' : '',
+                    end_date:        document.getElementById('filtNovHasta')?.value
+                                        ? document.getElementById('filtNovHasta').value  + ' 23:59:59' : '',
+                    status_id:       document.getElementById('filtNovStatusId')?.value ?? '',
+                };
+                _novedadesPage = 1;
+                _fetchNovedades();
+            };
+
+            window.limpiarFiltrosNovedades = function() {
+                // Resetear al mes en curso
+                const desde = document.getElementById('filtNovDesde');
+                const hasta = document.getElementById('filtNovHasta');
+                if (desde) desde.value = _primerDiaMes();
+                if (hasta) hasta.value = _hoy();
+                ['filtNovIsSolved', 'filtNovStatusId', 'filtNovOrden', 'filtNovTracking'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = (id === 'filtNovIsSolved') ? 'No' : '';
+                });
+                _novedadesFilters = {
+                    is_solved:  'No',
+                    start_date: _primerDiaMes() + ' 00:00:00',
+                    end_date:   _hoy()          + ' 23:59:59',
+                };
+                _novedadesPage = 1;
+                _fetchNovedades();
+            };
+
             // Si la tab ya está activa al cargar (URL ?tab=novedades)
             document.addEventListener('DOMContentLoaded', function() {
                 const tab = new URLSearchParams(window.location.search).get('tab');
                 if (tab === 'novedades') _fetchNovedades();
-
-                // Botones de filtro dentro de la tab
-                const btnFiltrar = document.getElementById('btnFiltrarNovedades');
-                if (btnFiltrar) {
-                    btnFiltrar.addEventListener('click', function() {
-                        _novedadesFilters = {
-                            is_solved: document.getElementById('filtNovIsSolved').value,
-                            order_number: document.getElementById('filtNovOrden').value.trim(),
-                            tracking_number: document.getElementById('filtNovTracking').value.trim(),
-                            start_date: document.getElementById('filtNovDesde').value ? document.getElementById('filtNovDesde').value + ' 00:00:00' : '',
-                            end_date: document.getElementById('filtNovHasta').value ? document.getElementById('filtNovHasta').value + ' 23:59:59' : '',
-                        };
-                        _novedadesPage = 1;
-                        _fetchNovedades();
-                    });
-                }
             });
 
             function _fetchNovedades() {
@@ -1931,9 +1976,11 @@ include "vista/includes/header.php";
                         if (loader) loader.classList.add('d-none');
                         _novedadesLoaded = true;
 
-                        // Actualizar badge
-                        const badge = document.getElementById('badgeNovedadesCount');
-                        if (badge) badge.textContent = res.total ?? 0;
+                        // Actualizar badges (tab button + pane header)
+                        const badge  = document.getElementById('badgeNovedadesCount');
+                        const badge2 = document.getElementById('badgeNovedadesPaneCount');
+                        if (badge)  badge.textContent  = res.total ?? 0;
+                        if (badge2) badge2.textContent = res.total ?? 0;
 
                         if (!res.success) {
                             tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>${escH(res.message || 'Error al cargar novedades')}</td></tr>`;
@@ -2011,20 +2058,28 @@ include "vista/includes/header.php";
 
             function _renderPager(current, last, total) {
                 const pager = document.getElementById('novedadesPager');
-                if (!pager || last <= 1) {
-                    if (pager) pager.innerHTML = `<small class="text-muted">Total: ${total} novedad(es)</small>`;
-                    return;
+                if (!pager) return;
+
+                // Siempre mostrar contador de total
+                let html = `<small class="text-muted me-3"><i class="bi bi-exclamation-triangle-fill text-warning me-1"></i><strong>${total}</strong> novedad(es) encontrada(s)</small>`;
+
+                if (last > 1) {
+                    html += `<nav aria-label="Paginación novedades"><ul class="pagination pagination-sm mb-0">`;
+                    // Primera
+                    html += `<li class="page-item ${current === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="_novPagina(1); return false;"><i class="bi bi-chevron-double-left"></i></a></li>`;
+                    // Anterior
+                    html += `<li class="page-item ${current === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="_novPagina(${current - 1}); return false;"><i class="bi bi-chevron-left"></i></a></li>`;
+                    // Páginas numeradas
+                    for (let p = Math.max(1, current - 2); p <= Math.min(last, current + 2); p++) {
+                        html += `<li class="page-item ${p === current ? 'active' : ''}"><a class="page-link" href="#" onclick="_novPagina(${p}); return false;">${p}</a></li>`;
+                    }
+                    // Siguiente
+                    html += `<li class="page-item ${current === last ? 'disabled' : ''}"><a class="page-link" href="#" onclick="_novPagina(${current + 1}); return false;"><i class="bi bi-chevron-right"></i></a></li>`;
+                    // Última
+                    html += `<li class="page-item ${current === last ? 'disabled' : ''}"><a class="page-link" href="#" onclick="_novPagina(${last}); return false;"><i class="bi bi-chevron-double-right"></i></a></li>`;
+                    html += `</ul></nav>`;
                 }
 
-                let html = `<small class="text-muted me-3">Total: ${total}</small>`;
-                html += `<nav><ul class="pagination pagination-sm mb-0">`;
-
-                if (current > 1) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current - 1}); return false;">‹</a></li>`;
-                for (let p = Math.max(1, current - 2); p <= Math.min(last, current + 2); p++) {
-                    html += `<li class="page-item ${p === current ? 'active' : ''}"><a class="page-link" href="#" onclick="_novPagina(${p}); return false;">${p}</a></li>`;
-                }
-                if (current < last) html += `<li class="page-item"><a class="page-link" href="#" onclick="_novPagina(${current + 1}); return false;">›</a></li>`;
-                html += `</ul></nav>`;
                 pager.innerHTML = html;
             }
 
@@ -2078,7 +2133,7 @@ include "vista/includes/header.php";
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
                     <span class="fw-bold text-dark">Novedades HL Express</span>
-                    <span class="badge rounded-pill text-dark" id="badgeNovedadesCount" style="background:#ff8d33;">...</span>
+                    <span class="badge rounded-pill text-dark" id="badgeNovedadesPaneCount" style="background:#ff8d33;">...</span>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
                     <a href="<?= RUTA_URL ?>logistica/exportarNovedadesExcel"
@@ -2100,8 +2155,8 @@ include "vista/includes/header.php";
             <!-- Filtros -->
             <div class="card-body border-bottom bg-light py-2">
                 <div class="row g-2 align-items-end">
-                    <div class="col-sm-4 col-md-3">
-                        <label class="form-label small fw-semibold mb-1">Estado</label>
+                    <div class="col-sm-6 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Estado resolución</label>
                         <select id="filtNovIsSolved" class="form-select form-select-sm">
                             <option value="No" selected>Pendientes</option>
                             <option value="Yes">Resueltas</option>
@@ -2109,25 +2164,41 @@ include "vista/includes/header.php";
                             <option value="">Todas</option>
                         </select>
                     </div>
-                    <div class="col-sm-4 col-md-3">
+                    <div class="col-sm-6 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Tipo de Novedad</label>
+                        <select id="filtNovStatusId" class="form-select form-select-sm">
+                            <option value="">Todos los tipos</option>
+                            <option value="5">Novedad</option>
+                            <option value="17">Novedad – En bodega</option>
+                            <option value="4">No entregado</option>
+                            <option value="7">Devuelto</option>
+                            <option value="6">Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6 col-md-2">
                         <label class="form-label small fw-semibold mb-1">Número de Orden</label>
                         <input type="text" id="filtNovOrden" class="form-control form-control-sm" placeholder="Ej. ORD-001">
                     </div>
-                    <div class="col-sm-4 col-md-3">
+                    <div class="col-sm-6 col-md-2">
                         <label class="form-label small fw-semibold mb-1">Guía (Tracking)</label>
                         <input type="text" id="filtNovTracking" class="form-control form-control-sm" placeholder="WPA...">
                     </div>
-                    <div class="col-sm-3 col-md-2">
+                    <div class="col-sm-4 col-md-2">
                         <label class="form-label small fw-semibold mb-1">Desde</label>
                         <input type="date" id="filtNovDesde" class="form-control form-control-sm">
                     </div>
-                    <div class="col-sm-3 col-md-2">
+                    <div class="col-sm-4 col-md-1">
                         <label class="form-label small fw-semibold mb-1">Hasta</label>
                         <input type="date" id="filtNovHasta" class="form-control form-control-sm">
                     </div>
-                    <div class="col-sm-2 col-md-auto">
+                    <div class="col-sm-4 col-md-auto">
                         <button id="btnFiltrarNovedades" class="btn btn-primary btn-sm w-100">
                             <i class="bi bi-search me-1"></i>Filtrar
+                        </button>
+                    </div>
+                    <div class="col-sm-4 col-md-auto">
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="btnLimpiarNovedades">
+                            <i class="bi bi-x-circle me-1"></i>Limpiar
                         </button>
                     </div>
                 </div>
@@ -2163,9 +2234,381 @@ include "vista/includes/header.php";
     `;
             tabContent.appendChild(pane);
 
-            // Si ya estaba activa la tab, cargar
+            // Pre-rellenar inputs: Desde = 1° del mes, Hasta = hoy
+            const _todayStr = (function() {
+                const d = new Date();
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            })();
+            const _firstDayStr = (function() {
+                const d = new Date();
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01';
+            })();
+            const _elDesde = document.getElementById('filtNovDesde');
+            const _elHasta = document.getElementById('filtNovHasta');
+            if (_elDesde) _elDesde.value = _firstDayStr;
+            if (_elHasta) _elHasta.value = _todayStr;
+
+            // Adjuntar listeners AHORA que el pane ya existe en el DOM
+            // (Las funciones llamadas están expuestas globalmente desde el IIFE)
+            document.getElementById('btnFiltrarNovedades')
+                ?.addEventListener('click', () => window.aplicarFiltrosNovedades());
+
+            document.getElementById('btnLimpiarNovedades')
+                ?.addEventListener('click', () => window.limpiarFiltrosNovedades());
+
+            // Si ya estaba activa la tab, cargar los datos
             <?php if ($activeTab === 'novedades'): ?>
                 cargarNovedadesTab();
+            <?php endif; ?>
+        });
+    </script>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+     TAB: ENVÍOS HL EXPRESS (/shipments/filtered)
+    ════════════════════════════════════════════════════════════════════ -->
+    <style>
+        .envio-row:hover { background: #f0f4ff !important; }
+        #tabEnviosBody td { vertical-align: middle; }
+        .badge-envio-entregado   { background:#198754; color:#fff; }
+        .badge-envio-en-ruta     { background:#0d6efd; color:#fff; }
+        .badge-envio-bodega      { background:#6c757d; color:#fff; }
+        .badge-envio-novedad     { background:#ff8d33; color:#fff; }
+        .badge-envio-cancelado   { background:#dc3545; color:#fff; }
+        .badge-envio-devolucion  { background:#6f42c1; color:#fff; }
+        .badge-envio-default     { background:#adb5bd; color:#000; }
+    </style>
+
+    <script>
+        // ── Tab Envíos HL Express ──────────────────────────────────────────────
+        (function() {
+
+            let _enviosLoaded = false;
+            let _enviosPage   = 1;
+
+            function _primerDiaMesE() {
+                const d = new Date();
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-01';
+            }
+            function _hoyE() {
+                const d = new Date();
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            }
+
+            let _enviosFilters = {
+                start_date: _primerDiaMesE() + ' 00:00:00',
+                end_date:   _hoyE()          + ' 23:59:59',
+            };
+
+            const _baseUrl = '<?= RUTA_URL ?>';
+
+            // Mapa de estados HL Express
+            const _hlStatusMap = {
+                1:'Guía Generada', 2:'Bodega Origen', 3:'En Ruta', 4:'Entregado',
+                5:'Novedad', 6:'Cancelado', 8:'En Camino', 9:'Devolución Proveedor',
+                10:'Recolección', 11:'Recogido Transportadora', 12:'En Tránsito',
+                13:'Bodega Destino', 14:'Siniestro', 15:'Incautado',
+                16:'En Proceso Devolución', 17:'Novedad (En bodega)',
+                18:'Recibido Punto Venta', 19:'Tránsito Dev. Proveedor',
+                20:'Novedad Devolución', 21:'Devolución en Bodega',
+                22:'Devolución en Ruta', 23:'Guía Indemnizada', 25:'Abandono',
+            };
+
+            function _statusBadge(id) {
+                const name = _hlStatusMap[id] ?? ('Estado #' + id);
+                let cls = 'badge-envio-default';
+                if ([4].includes(id))           cls = 'badge-envio-entregado';
+                else if ([3,8,12].includes(id)) cls = 'badge-envio-en-ruta';
+                else if ([2,13,18].includes(id))cls = 'badge-envio-bodega';
+                else if ([5,17,20].includes(id))cls = 'badge-envio-novedad';
+                else if ([6,14,15,25].includes(id)) cls = 'badge-envio-cancelado';
+                else if ([9,16,19,21,22,23].includes(id)) cls = 'badge-envio-devolucion';
+                return `<span class="badge ${cls} small">${escE(name)}</span>`;
+            }
+
+            window.cargarEnviosTab = function(resetPage) {
+                if (resetPage) { _enviosPage = 1; _enviosLoaded = false; }
+                if (_enviosLoaded && !resetPage) return;
+                _fetchEnvios();
+            };
+
+            window.aplicarFiltrosEnvios = function() {
+                _enviosFilters = {
+                    status_id:       document.getElementById('filtEnvStatusId')?.value ?? '',
+                    tracking_number: (document.getElementById('filtEnvTracking')?.value ?? '').trim(),
+                    order_number:    (document.getElementById('filtEnvOrden')?.value ?? '').trim(),
+                    start_date:      document.getElementById('filtEnvDesde')?.value
+                                        ? document.getElementById('filtEnvDesde').value + ' 00:00:00' : '',
+                    end_date:        document.getElementById('filtEnvHasta')?.value
+                                        ? document.getElementById('filtEnvHasta').value + ' 23:59:59' : '',
+                };
+                _enviosPage = 1;
+                _fetchEnvios();
+            };
+
+            window.limpiarFiltrosEnvios = function() {
+                const desde = document.getElementById('filtEnvDesde');
+                const hasta = document.getElementById('filtEnvHasta');
+                if (desde) desde.value = _primerDiaMesE();
+                if (hasta) hasta.value = _hoyE();
+                ['filtEnvStatusId','filtEnvTracking','filtEnvOrden'].forEach(id => {
+                    const el = document.getElementById(id); if (el) el.value = '';
+                });
+                _enviosFilters = {
+                    start_date: _primerDiaMesE() + ' 00:00:00',
+                    end_date:   _hoyE()          + ' 23:59:59',
+                };
+                _enviosPage = 1;
+                _fetchEnvios();
+            };
+
+            document.addEventListener('DOMContentLoaded', function() {
+                if (new URLSearchParams(window.location.search).get('tab') === 'envios') _fetchEnvios();
+            });
+
+            function _fetchEnvios() {
+                const tbody  = document.getElementById('tabEnviosBody');
+                const loader = document.getElementById('enviosLoader');
+                const pager  = document.getElementById('enviosPager');
+                if (!tbody) return;
+
+                tbody.innerHTML = '';
+                if (loader) loader.classList.remove('d-none');
+                if (pager)  pager.innerHTML  = '';
+
+                const params = new URLSearchParams();
+                params.set('page',  _enviosPage);
+                params.set('limit', 20);
+                Object.entries(_enviosFilters).forEach(([k,v]) => { if (v) params.set(k, v); });
+
+                fetch(_baseUrl + 'logistica/listarEnviosHLExpress?' + params.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (loader) loader.classList.add('d-none');
+                    _enviosLoaded = true;
+
+                    // Actualizar badge
+                    const b1 = document.getElementById('badgeEnviosCount');
+                    const b2 = document.getElementById('badgeEnviosPaneCount');
+                    if (b1) b1.textContent = res.total ?? 0;
+                    if (b2) b2.textContent = res.total ?? 0;
+
+                    if (!res.success) {
+                        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>${escE(res.message || 'Error al cargar envíos')}</td></tr>`;
+                        return;
+                    }
+
+                    const data = res.data ?? [];
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-5"><i class="bi bi-box-seam fs-2 d-block mb-2 text-primary"></i>Sin envíos en este rango de fechas.</td></tr>';
+                        return;
+                    }
+
+                    const hlBaseUrl = 'https://shippmentapi.hlexpresspanama.com/';
+
+                    data.forEach(s => {
+                        const dest  = s.shipment_destination ?? {};
+                        const fecha = s.created_at ? new Date(s.created_at).toLocaleDateString('es-PA',{day:'2-digit',month:'2-digit',year:'numeric'}) : '-';
+                        const pdfUrl = s.guide_link ? hlBaseUrl + s.guide_link : null;
+                        const tracking = s.tracking_number ?? s.order_number ?? '-';
+                        const trackingHtml = pdfUrl
+                            ? `<a href="${escE(pdfUrl)}" target="_blank" title="Ver guía PDF" class="fw-semibold text-primary text-decoration-none"><i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>${escE(tracking)}</a>`
+                            : `<span class="fw-semibold">${escE(tracking)}</span>`;
+
+                        const cod = s.is_cod ? `<span class="badge bg-success-subtle text-success small">$${Number(s.total_cod||0).toLocaleString()}</span>` : '<span class="text-muted small">—</span>';
+                        const precio = `<small>$${Number(s.shipment_price||0).toLocaleString()}</small>`;
+
+                        const tr = document.createElement('tr');
+                        tr.className = 'envio-row';
+                        tr.innerHTML = `
+                            <td class="small">${trackingHtml}</td>
+                            <td class="small fw-semibold">${escE(s.order_number ?? '-')}</td>
+                            <td class="small">${escE(dest.full_name ?? '-')}<br><span class="text-muted">${escE(dest.phone_number ?? '')}</span></td>
+                            <td class="small">${escE(dest.address ?? '-')}</td>
+                            <td>${_statusBadge(s.shipment_status_id ?? 0)}</td>
+                            <td>${cod}</td>
+                            <td>${precio}</td>
+                            <td class="small text-muted">${fecha}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    _renderEnviosPager(res.current_page, res.last_page, res.total);
+                })
+                .catch(err => {
+                    if (loader) loader.classList.add('d-none');
+                    if (tbody) tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Error de red: ${escE(err.message)}</td></tr>`;
+                });
+            }
+
+            function _renderEnviosPager(current, last, total) {
+                const pager = document.getElementById('enviosPager');
+                if (!pager) return;
+                let html = `<small class="text-muted me-3"><i class="bi bi-box-seam text-primary me-1"></i><strong>${total}</strong> envío(s) encontrado(s)</small>`;
+                if (last > 1) {
+                    html += `<nav><ul class="pagination pagination-sm mb-0">`;
+                    html += `<li class="page-item ${current===1?'disabled':''}"><a class="page-link" href="#" onclick="_envPagina(1);return false;"><i class="bi bi-chevron-double-left"></i></a></li>`;
+                    html += `<li class="page-item ${current===1?'disabled':''}"><a class="page-link" href="#" onclick="_envPagina(${current-1});return false;"><i class="bi bi-chevron-left"></i></a></li>`;
+                    for (let p=Math.max(1,current-2); p<=Math.min(last,current+2); p++) {
+                        html += `<li class="page-item ${p===current?'active':''}"><a class="page-link" href="#" onclick="_envPagina(${p});return false;">${p}</a></li>`;
+                    }
+                    html += `<li class="page-item ${current===last?'disabled':''}"><a class="page-link" href="#" onclick="_envPagina(${current+1});return false;"><i class="bi bi-chevron-right"></i></a></li>`;
+                    html += `<li class="page-item ${current===last?'disabled':''}"><a class="page-link" href="#" onclick="_envPagina(${last});return false;"><i class="bi bi-chevron-double-right"></i></a></li>`;
+                    html += `</ul></nav>`;
+                }
+                pager.innerHTML = html;
+            }
+
+            window._envPagina = function(p) {
+                _enviosPage = p;
+                _fetchEnvios();
+                document.getElementById('pills-envios')?.scrollIntoView({behavior:'smooth'});
+            };
+
+            function escE(str) {
+                return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+            }
+
+        })();
+    </script>
+
+    <script>
+        // ── Insertar pane #pills-envios en el DOM ─────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabContent = document.getElementById('pills-tabContent');
+            if (!tabContent) return;
+
+            const pane = document.createElement('div');
+            pane.className = 'tab-pane fade <?= ($activeTab === "envios") ? "show active" : "" ?>';
+            pane.id = 'pills-envios';
+            pane.setAttribute('role', 'tabpanel');
+            pane.innerHTML = `
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-box-seam text-primary fs-5"></i>
+                    <span class="fw-bold text-dark">Envíos HL Express</span>
+                    <span class="badge rounded-pill bg-primary text-white" id="badgeEnviosPaneCount">...</span>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cargarEnviosTab(true)" title="Refrescar">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- Filtros -->
+            <div class="card-body border-bottom bg-light py-2">
+                <div class="row g-2 align-items-end">
+                    <div class="col-sm-6 col-md-3">
+                        <label class="form-label small fw-semibold mb-1">Estado</label>
+                        <select id="filtEnvStatusId" class="form-select form-select-sm">
+                            <option value="">Todos los estados</option>
+                            <option value="1">Guía Generada</option>
+                            <option value="2">Bodega Origen</option>
+                            <option value="3">En Ruta</option>
+                            <option value="4">Entregado</option>
+                            <option value="5">Novedad</option>
+                            <option value="6">Cancelado</option>
+                            <option value="8">En Camino</option>
+                            <option value="9">Devolución Proveedor</option>
+                            <option value="10">Recolección</option>
+                            <option value="11">Recogido Transportadora</option>
+                            <option value="12">En Tránsito</option>
+                            <option value="13">Bodega Destino</option>
+                            <option value="14">Siniestro</option>
+                            <option value="15">Incautado</option>
+                            <option value="16">En Proceso de Devolución</option>
+                            <option value="17">Novedad (En bodega)</option>
+                            <option value="18">Recibido Punto de Venta</option>
+                            <option value="19">Tránsito a Dev. Proveedor</option>
+                            <option value="20">Novedad Devolución</option>
+                            <option value="21">Devolución en Bodega</option>
+                            <option value="22">Devolución en Ruta</option>
+                            <option value="23">Guía Indemnizada</option>
+                            <option value="25">Abandono</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Tracking</label>
+                        <input type="text" id="filtEnvTracking" class="form-control form-control-sm" placeholder="WPA... / WCO...">
+                    </div>
+                    <div class="col-sm-6 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Número de Orden</label>
+                        <input type="text" id="filtEnvOrden" class="form-control form-control-sm" placeholder="Ej. ORD-001">
+                    </div>
+                    <div class="col-sm-6 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Desde</label>
+                        <input type="date" id="filtEnvDesde" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-sm-6 col-md-2">
+                        <label class="form-label small fw-semibold mb-1">Hasta</label>
+                        <input type="date" id="filtEnvHasta" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-sm-6 col-md-auto">
+                        <button id="btnFiltrarEnvios" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-search me-1"></i>Filtrar
+                        </button>
+                    </div>
+                    <div class="col-sm-6 col-md-auto">
+                        <button type="button" id="btnLimpiarEnvios" class="btn btn-outline-secondary btn-sm w-100">
+                            <i class="bi bi-x-circle me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Loader -->
+            <div id="enviosLoader" class="text-center py-4">
+                <div class="spinner-border text-primary" style="width:2rem;height:2rem;"></div>
+                <p class="mt-2 text-muted small">Consultando envíos en HL Express...</p>
+            </div>
+            <!-- Tabla -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="min-width:800px;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="small">Tracking / Guía</th>
+                            <th class="small">Orden</th>
+                            <th class="small">Destinatario</th>
+                            <th class="small">Dirección</th>
+                            <th class="small">Estado</th>
+                            <th class="small">COD</th>
+                            <th class="small">Precio</th>
+                            <th class="small">Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabEnviosBody"></tbody>
+                </table>
+            </div>
+            <!-- Paginador -->
+            <div class="card-footer bg-white d-flex align-items-center justify-content-end gap-3 flex-wrap" id="enviosPager"></div>
+        </div>
+    `;
+            tabContent.appendChild(pane);
+
+            // Pre-rellenar fechas inline (sin depender del IIFE)
+            const _todayE = (function() {
+                const d = new Date();
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+            })();
+            const _firstE = (function() {
+                const d = new Date();
+                return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
+            })();
+            const eDesde = document.getElementById('filtEnvDesde');
+            const eHasta = document.getElementById('filtEnvHasta');
+            if (eDesde) eDesde.value = _firstE;
+            if (eHasta) eHasta.value = _todayE;
+
+            // Listeners (funciones expuestas por el IIFE)
+            document.getElementById('btnFiltrarEnvios')
+                ?.addEventListener('click', () => window.aplicarFiltrosEnvios());
+            document.getElementById('btnLimpiarEnvios')
+                ?.addEventListener('click', () => window.limpiarFiltrosEnvios());
+
+            // Auto-carga si el tab ya está activo
+            <?php if ($activeTab === 'envios'): ?>
+                cargarEnviosTab();
             <?php endif; ?>
         });
     </script>

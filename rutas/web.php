@@ -1427,6 +1427,23 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] =
     exit;
 }
 
+// GET  logistica/listarEnviosHLExpress — consulta envíos paginada con filtros
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'listarEnviosHLExpress' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos.']);
+        exit;
+    }
+    $ctrl = new LogisticaController();
+    $ctrl->listarEnviosHLExpress();
+    exit;
+}
+
 // GET  logistica/exportarNovedadesExcel — descarga Excel
 if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'exportarNovedadesExcel' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     require_once __DIR__ . '/../controlador/logistica.php';
