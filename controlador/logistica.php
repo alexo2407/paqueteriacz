@@ -1957,6 +1957,9 @@ class LogisticaController {
             exit;
         }
 
+        // Capturar cualquier output espurio (warnings/notices de PHP) para que no rompan el JSON
+        ob_start();
+
         require_once "modelo/forwarding.php";
         require_once "modelo/pedido.php";
         require_once __DIR__ . '/../utils/permissions.php';
@@ -2033,13 +2036,15 @@ class LogisticaController {
             ]);
 
             $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
-            $incidents = $hlExpress->getIncidents($trackingNumber);
+            $incidents = $hlExpress->getIncidents($guideNumber);
 
+            if (ob_get_length()) ob_clean();
             header('Content-Type: application/json');
             echo json_encode(['success' => true, 'data' => $incidents]);
             exit;
         } catch (Exception $e) {
             error_log("LogisticaController::consultarIncidenciasHLExpress error: " . $e->getMessage());
+            if (ob_get_length()) ob_clean();
             header('Content-Type: application/json', true, 500);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
             exit;
