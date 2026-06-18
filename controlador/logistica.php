@@ -2205,8 +2205,20 @@ class LogisticaController {
             exit;
         } catch (Exception $e) {
             error_log("LogisticaController::resolverNovedad error: " . $e->getMessage());
-            header('Content-Type: application/json', true, 500);
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            $errMsg = $e->getMessage();
+
+            // Error específico de HL Express: el envío no tiene novedad activa
+            if (stripos($errMsg, 'novedad') !== false || stripos($errMsg, 'debe de estar') !== false) {
+                $errMsg = 'Este envío no tiene una novedad activa en HL Express. Solo se puede resolver una novedad cuando el sistema de HL Express la haya registrado.';
+                header('Content-Type: application/json', true, 422);
+            } elseif (stripos($errMsg, 'already a solution') !== false) {
+                $errMsg = 'Este envío ya cuenta con una solución registrada en HL Express. No es posible resolver la misma novedad dos veces.';
+                header('Content-Type: application/json', true, 422);
+            } else {
+                header('Content-Type: application/json', true, 500);
+            }
+
+            echo json_encode(['success' => false, 'message' => $errMsg]);
             exit;
         }
     }
