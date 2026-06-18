@@ -1543,6 +1543,26 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] =
     exit;
 }
 
+// POST logistica/resolverNovedadLocal/<id> — actualiza solo el estado local sin llamar a HL Express
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'resolverNovedadLocal' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+    $ctrl = new LogisticaController();
+    $ctrl->resolverNovedadLocal($id);
+    exit;
+}
+
 // -----------------------
 // Manejo de Logística (POST a ?enlace=logistica/<accion>)
 // -----------------------

@@ -1277,6 +1277,65 @@ document.addEventListener('DOMContentLoaded', function() {
                         alert(data.message || 'Novedad resuelta y estado del pedido actualizado.');
                         window.location.reload();
                     }
+
+                } else if (data.hl_no_novedad) {
+                    // HL Express no tiene novedad activa → ofrecer actualizar solo localmente
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalBtnText;
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: '⚠️ HL Express no tiene novedad activa',
+                            html: `<p class="mb-2">${data.message}</p>
+                                   <p class="text-muted small mb-0">El cambio de estado quedará registrado en el historial con la nota <strong>"Solo local"</strong>.</p>`,
+                            showCancelButton: true,
+                            confirmButtonText: 'Sí, actualizar solo localmente',
+                            cancelButtonText: 'Cancelar',
+                            confirmButtonColor: '#f0ad4e',
+                            cancelButtonColor: '#6c757d',
+                            reverseButtons: true,
+                        }).then(result => {
+                            if (!result.isConfirmed) return;
+
+                            // Reenviar al endpoint local con los mismos datos
+                            const localUrl = formResolver.action.replace('/resolverNovedad/', '/resolverNovedadLocal/');
+                            const formData2 = new FormData(formResolver);
+
+                            fetch(localUrl, {
+                                method: 'POST',
+                                body: formData2,
+                                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                            })
+                            .then(r => r.json())
+                            .then(d2 => {
+                                if (d2.success) {
+                                    const modalEl = document.getElementById('resolverNovedadModal');
+                                    const modal = bootstrap.Modal.getInstance(modalEl);
+                                    if (modal) modal.hide();
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Estado actualizado',
+                                        text: d2.message,
+                                        confirmButtonColor: '#0d6efd'
+                                    }).then(() => window.location.reload());
+                                } else {
+                                    Swal.fire({ icon: 'error', title: 'Error', text: d2.message, confirmButtonColor: '#0d6efd' });
+                                }
+                            })
+                            .catch(err => {
+                                Swal.fire({ icon: 'error', title: 'Error de Red', text: err.message, confirmButtonColor: '#0d6efd' });
+                            });
+                        });
+                    } else {
+                        if (confirm('HL Express no tiene novedad activa.\n\n' + data.message + '\n\n¿Deseas actualizar el estado solo localmente?')) {
+                            const localUrl = formResolver.action.replace('/resolverNovedad/', '/resolverNovedadLocal/');
+                            fetch(localUrl, { method: 'POST', body: new FormData(formResolver), headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                                .then(r => r.json()).then(d2 => { alert(d2.message); if (d2.success) window.location.reload(); });
+                        }
+                    }
+
                 } else {
                     if (typeof Swal !== 'undefined') {
                         Swal.fire({

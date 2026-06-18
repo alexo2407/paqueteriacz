@@ -2208,17 +2208,115 @@ class LogisticaController {
             $errMsg = $e->getMessage();
 
             // Error específico de HL Express: el envío no tiene novedad activa
+            // En este caso ofrecemos al frontend la opción de actualizar solo localmente.
             if (stripos($errMsg, 'novedad') !== false || stripos($errMsg, 'debe de estar') !== false) {
-                $errMsg = 'Este envío no tiene una novedad activa en HL Express. Solo se puede resolver una novedad cuando el sistema de HL Express la haya registrado.';
                 header('Content-Type: application/json', true, 422);
+                echo json_encode([
+                    'success'       => false,
+                    'hl_no_novedad' => true,
+                    'message'       => 'HL Express indica que este envío no tiene una novedad activa actualmente. Puedes actualizar el estado localmente de todas formas.',
+                    // Devolvemos los datos del formulario para que el frontend pueda reenviarlos
+                    'payload'       => [
+                        'is_return'       => $isReturn,
+                        'contact_name'    => $contactName    ?? '',
+                        'contact_phone'   => $contactPhone   ?? '',
+                        'contact_address' => $contactAddress ?? '',
+                        'solve_description' => $solveDescription ?? '',
+                    ],
+                ]);
+                exit;
             } elseif (stripos($errMsg, 'already a solution') !== false) {
-                $errMsg = 'Este envío ya cuenta con una solución registrada en HL Express. No es posible resolver la misma novedad dos veces.';
                 header('Content-Type: application/json', true, 422);
+                echo json_encode(['success' => false, 'message' => 'Este envío ya cuenta con una solución registrada en HL Express. No es posible resolver la misma novedad dos veces.']);
+                exit;
             } else {
                 header('Content-Type: application/json', true, 500);
             }
 
             echo json_encode(['success' => false, 'message' => $errMsg]);
+            exit;
+        }
+    }
+
+    /**
+     * Actualizar el estado del pedido localmente SIN llamar a HL Express.
+     * Se usa cuando HL Express no tiene novedad activa pero el operador
+     * quiere forzar el cambio de estado internamente (con advertencia explícita).
+     *
+     * POST logistica/resolverNovedadLocal/<id>
+     */
+    public function resolverNovedadLocal($id) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        require_once "modelo/pedido.php";
+        require_once "modelo/logistica.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+
+        $id     = (int)$id;
+        $pedido = PedidosModel::obtenerPedidoPorId($id);
+        if (!$pedido) {
+            header('Content-Type: application/json', true, 404);
+            echo json_encode(['success' => false, 'message' => 'Pedido no encontrado.']);
+            exit;
+        }
+
+        $userId  = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isAdmin = isSuperAdmin();
+
+        // Misma lógica de acceso que resolverNovedad
+        $hasAccess = false;
+        if ($isAdmin) {
+            $hasAccess = true;
+        } else {
+            $isProveedor = isCliente();
+            $hasAccess   = $isProveedor ? true : ($pedido['id_cliente'] == $userId);
+        }
+
+        if (!$hasAccess) {
+            header('Content-Type: application/json', true, 403);
+            echo json_encode(['success' => false, 'message' => 'No tienes permisos para acceder a este pedido.']);
+            exit;
+        }
+
+        // Leer parámetros del body (POST o JSON)
+        $rawInput     = file_get_contents('php://input');
+        $inputDecoded = json_decode($rawInput, true) ?: [];
+
+        $isReturn         = isset($_POST['is_return'])         ? filter_var($_POST['is_return'],         FILTER_VALIDATE_BOOLEAN) : (isset($inputDecoded['is_return'])         ? filter_var($inputDecoded['is_return'],         FILTER_VALIDATE_BOOLEAN) : false);
+        $contactName      = trim($_POST['contact_name']      ?? $inputDecoded['contact_name']      ?? '');
+        $contactPhone     = trim($_POST['contact_phone']     ?? $inputDecoded['contact_phone']     ?? '');
+        $contactAddress   = trim($_POST['contact_address']   ?? $inputDecoded['contact_address']   ?? '');
+        $solveDescription = trim($_POST['solve_description'] ?? $inputDecoded['solve_description'] ?? '');
+
+        $nuevoEstadoNombre  = $isReturn ? 'Devuelto' : 'Reprogramado';
+        $observacionesLocal = "[Solo local - HL Express sin novedad activa] "
+            . ($isReturn ? "Devolución" : "Reintento")
+            . ($contactName      ? " - Nombre: {$contactName}"           : '')
+            . ($contactPhone     ? ", Tel: {$contactPhone}"               : '')
+            . ($contactAddress   ? ", Dir: {$contactAddress}"             : '')
+            . ($solveDescription ? ". Instrucción: {$solveDescription}"   : '');
+
+        try {
+            $localSuccess = LogisticaModel::actualizarEstado($id, $nuevoEstadoNombre, $observacionesLocal, $userId);
+
+            if (!$localSuccess) {
+                throw new Exception("No se pudo actualizar el estado local del pedido.");
+            }
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'message' => "Estado actualizado localmente a \"{$nuevoEstadoNombre}\". HL Express NO fue notificado.",
+            ]);
+            exit;
+        } catch (Exception $e) {
+            error_log("LogisticaController::resolverNovedadLocal error: " . $e->getMessage());
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
             exit;
         }
     }
