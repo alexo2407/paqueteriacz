@@ -999,22 +999,25 @@ include("vista/includes/header.php");
 
                     <!-- Sección Emergente de Alerta de Confirmación de Retorno (Visible al dar CLICK en NO) -->
                     <div id="confirmacionRetornoOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="display: none; z-index: 1050; border-radius: 0.3rem;">
-                        <div class="w-100 px-4 text-center">
-                            <div class="mb-3">
-                                <span class="d-inline-flex align-items-center justify-content-center bg-danger bg-opacity-10 text-danger rounded-circle" style="width: 70px; height: 70px;">
-                                    <i class="bi bi-question-lg fs-1"></i>
-                                </span>
-                            </div>
-                            <p class="text-secondary fw-semibold mb-4 fs-6" style="max-width: 380px; margin: 0 auto; line-height: 1.4;">
-                                El pedido será devuelto al remitente. ¿Está seguro de que desea proceder con la devolución?
-                            </p>
-                            <div class="d-flex flex-column gap-2 mb-3" style="max-width: 300px; margin: 0 auto;">
-                                <button type="button" id="btnConfirmReturnYes" class="btn btn-warning text-white fw-bold py-2 w-100" style="background-color: #ff8d33; border-color: #ff8d33;">
-                                    Sí, devolver al remitente
-                                </button>
-                                <button type="button" id="btnConfirmReturnNo" class="btn btn-outline-warning fw-bold py-2 w-100" style="color: #ff8d33; border-color: #ff8d33;">
-                                    No, cancelar
-                                </button>
+                        <div class="w-100 px-3">
+                            <div class="card bg-light border-0 mb-0 text-center">
+                                <div class="card-body p-3">
+                                    <p class="fw-bold mb-3 text-dark fs-6" style="line-height: 1.4;">
+                                        El pedido será devuelto al remitente. ¿Está seguro de que desea proceder con la devolución?
+                                    </p>
+                                    <div class="d-flex justify-content-center gap-3">
+                                        <button type="button" id="btnConfirmReturnYes"
+                                            class="btn fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                                            style="background-color:#198754;color:#fff;min-width:120px;min-height:64px;font-size:1.1rem;border-radius:0.4rem;">
+                                            <i class="bi bi-check2 fs-4"></i> Sí
+                                        </button>
+                                        <button type="button" id="btnConfirmReturnNo"
+                                            class="btn fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
+                                            style="background-color:#dc3545;color:#fff;min-width:120px;min-height:64px;font-size:1.1rem;border-radius:0.4rem;">
+                                            <i class="bi bi-exclamation-triangle fs-4"></i> NO
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1288,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Restaurar botón de confirmación de retorno por si fue el canal
                     if (btnConfirmReturnYes) {
                         btnConfirmReturnYes.disabled = false;
-                        btnConfirmReturnYes.innerHTML = 'Sí, devolver al remitente';
+                        btnConfirmReturnYes.innerHTML = '<i class="bi bi-check2 fs-4"></i> Sí';
                     }
                 }
             })
