@@ -998,7 +998,7 @@ include("vista/includes/header.php");
                     </div>
 
                     <!-- Sección Emergente de Alerta de Confirmación de Retorno (Visible al dar CLICK en NO) -->
-                    <div id="confirmacionRetornoOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="display: none; z-index: 1050; border-radius: 0.3rem;">
+                    <div id="confirmacionRetornoOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-white align-items-center justify-content-center" style="display: none; z-index: 1050; border-radius: 0.3rem;">
                         <div class="w-100 px-3">
                             <div class="card bg-light border-0 mb-0 text-center">
                                 <div class="card-body p-3">
