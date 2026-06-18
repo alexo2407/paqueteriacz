@@ -1444,6 +1444,17 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] =
     exit;
 }
 
+// GET  logistica/proxyGuiaPDF?path=storage/guides/... — sirve PDF de HL Express por proxy
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'proxyGuiaPDF' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    start_secure_session();
+    if (empty($_SESSION['registrado'])) { http_response_code(403); echo 'No autenticado.'; exit; }
+    $ctrl = new LogisticaController();
+    $ctrl->proxyGuiaPDF();
+    exit;
+}
+
 // GET  logistica/exportarEnviosExcel — descarga Excel con los envíos filtrados
 if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'exportarEnviosExcel' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     require_once __DIR__ . '/../controlador/logistica.php';

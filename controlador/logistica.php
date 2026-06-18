@@ -1474,6 +1474,84 @@ class LogisticaController {
     }
 
     /**
+     * Proxy seguro para servir el PDF de guía de HL Express.
+     * GET logistica/proxyGuiaPDF?url=<ruta_relativa>
+     *
+     * El iframe no puede cargar PDFs de dominios externos con X-Frame-Options.
+     * Este proxy descarga el PDF en el backend (con la API Key) y lo sirve
+     * desde nuestro propio dominio para que el iframe funcione sin restricciones.
+     */
+    public function proxyGuiaPDF() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            http_response_code(405); exit;
+        }
+
+        $rawPath = trim($_GET['path'] ?? '');
+        if (empty($rawPath)) {
+            http_response_code(400);
+            echo 'Parámetro path requerido.';
+            exit;
+        }
+
+        // Validar que la ruta sea exactamente storage/guides/<uuid>.pdf (sin traversal)
+        if (!preg_match('#^storage/guides/[a-f0-9\-]+\.pdf$#i', $rawPath)) {
+            http_response_code(400);
+            echo 'Ruta de guía no válida.';
+            exit;
+        }
+
+        require_once "modelo/forwarding.php";
+        require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+
+        try {
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) throw new Exception('Proveedor no configurado.');
+
+            $credentials = json_decode($providerData['credentials'] ?? '{}', true) ?: [];
+            $apiKey = $credentials['password'] ?? $credentials['apiKey'] ?? '';
+            $baseUrl = rtrim($providerData['base_url'] ?? 'https://shippmentapi.hlexpresspanama.com', '/');
+
+            $pdfUrl = $baseUrl . '/' . $rawPath;
+
+            $ch = curl_init($pdfUrl);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_TIMEOUT        => 30,
+                CURLOPT_HTTPHEADER     => [
+                    'Accept: application/pdf',
+                    'X-API-KEY: ' . $apiKey,
+                ],
+            ]);
+
+            $pdfData   = curl_exec($ch);
+            $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            if ($curlError) throw new Exception('Error de conexión: ' . $curlError);
+            if ($httpCode !== 200) throw new Exception("HL Express devolvió HTTP {$httpCode}.");
+
+            // Servir el PDF desde nuestro dominio (el iframe lo cargará sin restricciones)
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="guia.pdf"');
+            header('Content-Length: ' . strlen($pdfData));
+            header('Cache-Control: private, max-age=300');
+            // NO enviar X-Frame-Options para permitir la carga en iframe
+            header_remove('X-Frame-Options');
+            echo $pdfData;
+            exit;
+
+        } catch (Exception $e) {
+            error_log('proxyGuiaPDF error: ' . $e->getMessage());
+            http_response_code(502);
+            echo 'No se pudo obtener el PDF: ' . $e->getMessage();
+            exit;
+        }
+    }
+
+    /**
      * Exportar envíos filtrados de HL Express a Excel.
      * GET logistica/exportarEnviosExcel
      * Params: status_id, tracking_number, order_number, start_date, end_date

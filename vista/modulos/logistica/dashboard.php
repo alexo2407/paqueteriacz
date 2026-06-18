@@ -2621,8 +2621,15 @@ include "vista/includes/header.php";
             // Función global para abrir el modal del PDF
             window.abrirGuiaPDF = function(url, tracking) {
                 document.getElementById('modalGuiaPDFTracking').textContent = tracking || 'Guía';
+                // El botón "nueva pestaña" usa la URL externa directa
                 document.getElementById('modalGuiaPDFLink').href = url;
-                document.getElementById('modalGuiaPDFFrame').src = url;
+                // El iframe usa el proxy para evitar X-Frame-Options del servidor externo
+                // Extraer solo la parte storage/guides/uuid.pdf
+                const pathMatch = url.match(/storage\/guides\/[a-f0-9\-]+\.pdf/i);
+                const proxyUrl = pathMatch
+                    ? _baseUrl + 'logistica/proxyGuiaPDF?path=' + encodeURIComponent(pathMatch[0])
+                    : url;
+                document.getElementById('modalGuiaPDFFrame').src = proxyUrl;
                 const modal = new bootstrap.Modal(document.getElementById('modalGuiaPDF'));
                 modal.show();
                 // Limpiar iframe al cerrar para no dejar carga activa
