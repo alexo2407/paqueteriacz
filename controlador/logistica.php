@@ -1474,6 +1474,190 @@ class LogisticaController {
     }
 
     /**
+     * Exportar envíos filtrados de HL Express a Excel.
+     * GET logistica/exportarEnviosExcel
+     * Params: status_id, tracking_number, order_number, start_date, end_date
+     */
+    public function exportarEnviosExcel() {
+        require_once "modelo/forwarding.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+        require_once __DIR__ . '/../vendor/autoload.php';
+
+        try {
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) throw new Exception("Proveedor HL Express no configurado.");
+
+            $credentials   = json_decode($providerData['credentials']    ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/shipments',
+                'auth_method'    => $providerData['auth_method']    ?? 'api_key',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+
+            // Construir filtros desde GET
+            $filters = [];
+            if (!empty($_GET['status_id']))       $filters['status_id']       = (int)$_GET['status_id'];
+            if (!empty($_GET['tracking_number'])) $filters['tracking_number'] = trim($_GET['tracking_number']);
+            if (!empty($_GET['order_number']))    $filters['order_number']    = trim($_GET['order_number']);
+            if (!empty($_GET['start_date']))      $filters['start_date']      = trim($_GET['start_date']);
+            if (!empty($_GET['end_date']))        $filters['end_date']        = trim($_GET['end_date']);
+            $filters['limit'] = 50;
+
+            // Mapa de estados HL Express
+            $statusNames = [
+                1=>'Guía Generada', 2=>'Bodega Origen', 3=>'En Ruta', 4=>'Entregado',
+                5=>'Novedad', 6=>'Cancelado', 8=>'En Camino', 9=>'Devolución Proveedor',
+                10=>'Recolección', 11=>'Recogido Transportadora', 12=>'En Tránsito',
+                13=>'Bodega Destino', 14=>'Siniestro', 15=>'Incautado',
+                16=>'En Proceso Devolución', 17=>'Novedad (En bodega)',
+                18=>'Recibido Punto Venta', 19=>'Tránsito Dev. Proveedor',
+                20=>'Novedad Devolución', 21=>'Devolución en Bodega',
+                22=>'Devolución en Ruta', 23=>'Guía Indemnizada', 25=>'Abandono',
+            ];
+
+            // Obtener TODAS las páginas con los filtros activos
+            $allShipments = [];
+            $page = 1;
+            do {
+                $filters['page'] = $page;
+                $result = $hlExpress->getShipmentsFiltered($filters);
+                $allShipments = array_merge($allShipments, $result['data'] ?? []);
+                $lastPage = $result['last_page'] ?? 1;
+                $page++;
+            } while ($page <= $lastPage && $page <= 20); // máx 20 páginas / 1000 registros
+
+            // ── Crear Spreadsheet ─────────────────────────────────────────────
+            $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Envíos HL Express');
+
+            $headerStyle = [
+                'font' => ['bold' => true, 'color' => ['rgb' => '000000']],
+                'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                           'startColor' => ['rgb' => 'BDD7EE']],
+                'borders' => ['bottom' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM,
+                                           'color' => ['rgb' => '2E75B6']]],
+                'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+            ];
+
+            $headers = [
+                'A1' => 'Tracking / Guía',
+                'B1' => 'Número de Orden',
+                'C1' => 'Destinatario',
+                'D1' => 'Teléfono',
+                'E1' => 'Dirección',
+                'F1' => 'Ciudad',
+                'G1' => 'Estado',
+                'H1' => 'COD (¿Sí?)',
+                'I1' => 'Total COD',
+                'J1' => 'Precio Envío',
+                'K1' => 'Link Guía PDF',
+                'L1' => 'Fecha Creación',
+            ];
+
+            foreach ($headers as $cell => $label) {
+                $sheet->setCellValue($cell, $label);
+                $sheet->getStyle($cell)->applyFromArray($headerStyle);
+            }
+
+            $hlBaseUrl = 'https://shippmentapi.hlexpresspanama.com/';
+            $row = 2;
+            foreach ($allShipments as $s) {
+                $dest   = $s['shipment_destination'] ?? [];
+                $city   = $dest['city']['name'] ?? ($s['city']['name'] ?? '');
+                $estado = $statusNames[$s['shipment_status_id'] ?? 0] ?? ('Estado #' . ($s['shipment_status_id'] ?? '?'));
+                $pdfUrl = !empty($s['guide_link']) ? $hlBaseUrl . $s['guide_link'] : '';
+                $fecha  = !empty($s['created_at'])
+                    ? (new \DateTime($s['created_at']))->setTimezone(new \DateTimeZone('America/Panama'))->format('d/m/Y H:i')
+                    : '';
+
+                $sheet->setCellValue("A{$row}", $s['tracking_number'] ?? '');
+                $sheet->setCellValue("B{$row}", $s['order_number']    ?? '');
+                $sheet->setCellValue("C{$row}", $dest['full_name']    ?? '');
+                $sheet->setCellValue("D{$row}", $dest['phone_number'] ?? '');
+                $sheet->setCellValue("E{$row}", $dest['address']      ?? '');
+                $sheet->setCellValue("F{$row}", $city);
+                $sheet->setCellValue("G{$row}", $estado);
+                $sheet->setCellValue("H{$row}", ($s['is_cod'] ?? false) ? 'Sí' : 'No');
+                $sheet->setCellValue("I{$row}", $s['total_cod']       ?? 0);
+                $sheet->setCellValue("J{$row}", $s['shipment_price']  ?? 0);
+                if ($pdfUrl) {
+                    $sheet->getCell("K{$row}")->getHyperlink()->setUrl($pdfUrl);
+                    $sheet->setCellValue("K{$row}", 'Ver PDF');
+                    $sheet->getStyle("K{$row}")->getFont()->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('FF0563C1'))->setUnderline(true);
+                }
+                $sheet->setCellValue("L{$row}", $fecha);
+
+                // Fila alternada
+                if ($row % 2 === 0) {
+                    $sheet->getStyle("A{$row}:L{$row}")->getFill()
+                        ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                        ->getStartColor()->setRGB('F2F9FF');
+                }
+
+                // Formato numérico para COD y precio
+                $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle("J{$row}")->getNumberFormat()->setFormatCode('#,##0.00');
+
+                $row++;
+            }
+
+            // Auto-size columnas
+            foreach (range('A', 'L') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+            $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(45);
+            $sheet->getColumnDimension('G')->setAutoSize(false)->setWidth(22);
+
+            // Freeze encabezado y auto-filtro
+            $sheet->freezePane('A2');
+            $sheet->setAutoFilter("A1:L" . max(1, $row - 1));
+
+            // Fila de totales
+            if ($row > 2) {
+                $totalRow = $row;
+                $sheet->setCellValue("H{$totalRow}", 'TOTAL:');
+                $sheet->setCellValue("I{$totalRow}", "=SUM(I2:I" . ($row - 1) . ")");
+                $sheet->setCellValue("J{$totalRow}", "=SUM(J2:J" . ($row - 1) . ")");
+                $sheet->getStyle("H{$totalRow}:J{$totalRow}")->getFont()->setBold(true);
+                $sheet->getStyle("I{$totalRow}:J{$totalRow}")->getNumberFormat()->setFormatCode('#,##0.00');
+                $sheet->getStyle("H{$totalRow}:J{$totalRow}")->getFill()
+                    ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                    ->getStartColor()->setRGB('BDD7EE');
+            }
+
+            // ── Metadatos del filtro ──────────────────────────────────────────
+            $spreadsheet->getProperties()
+                ->setTitle('Envíos HL Express')
+                ->setSubject('Exportación de envíos')
+                ->setDescription('Generado el ' . date('Y-m-d H:i'));
+
+            $timestamp = date('Ymd_Hi');
+            $filename  = "envios_hlexpress_{$timestamp}.xlsx";
+
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header("Content-Disposition: attachment; filename=\"{$filename}\"");
+            header('Cache-Control: max-age=0');
+
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+            $writer->save('php://output');
+            exit;
+
+        } catch (Exception $e) {
+            error_log("LogisticaController::exportarEnviosExcel error: " . $e->getMessage());
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
      * Resolver novedades de HL Express de forma masiva desde un Excel subido.
      * POST logistica/resolverNovedadesMasivo
      */

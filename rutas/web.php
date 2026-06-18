@@ -1444,6 +1444,21 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] =
     exit;
 }
 
+// GET  logistica/exportarEnviosExcel — descarga Excel con los envíos filtrados
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'exportarEnviosExcel' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        http_response_code(403); echo 'Sin permiso.'; exit;
+    }
+    $ctrl = new LogisticaController();
+    $ctrl->exportarEnviosExcel();
+    exit;
+}
+
 // GET  logistica/exportarNovedadesExcel — descarga Excel
 if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'exportarNovedadesExcel' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     require_once __DIR__ . '/../controlador/logistica.php';

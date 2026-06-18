@@ -2466,6 +2466,12 @@ include "vista/includes/header.php";
                 document.getElementById('pills-envios')?.scrollIntoView({behavior:'smooth'});
             };
 
+            window.descargarEnviosExcel = function() {
+                const params = new URLSearchParams();
+                Object.entries(_enviosFilters).forEach(([k, v]) => { if (v) params.set(k, v); });
+                window.location.href = _baseUrl + 'logistica/exportarEnviosExcel?' + params.toString();
+            };
+
             function escE(str) {
                 return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
             }
@@ -2492,6 +2498,9 @@ include "vista/includes/header.php";
                     <span class="badge rounded-pill bg-primary text-white" id="badgeEnviosPaneCount">...</span>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-success btn-sm" onclick="window.descargarEnviosExcel()" title="Descargar Excel con los filtros actuales">
+                        <i class="bi bi-file-earmark-excel-fill me-1"></i>Excel
+                    </button>
                     <button type="button" class="btn btn-outline-secondary btn-sm" onclick="cargarEnviosTab(true)" title="Refrescar">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
