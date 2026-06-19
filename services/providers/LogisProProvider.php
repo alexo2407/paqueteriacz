@@ -179,9 +179,10 @@ class LogisProProvider extends BaseProvider
 
         $rawBarrio = $pedido['_raw_id_barrio'] ?? null;
         $location =
-            !empty($pedido['Location'])                  ? $pedido['Location']
-            : (!empty($pedido['barrio'])                 ? $pedido['barrio']
-            : (($rawBarrio && !is_numeric($rawBarrio))  ? $rawBarrio : ''));
+            !empty($pedido['Location'])                   ? $pedido['Location']
+            : (!empty($pedido['barrio'])                  ? $pedido['barrio']
+            : (!empty($pedido['barrio_nombre'])           ? $pedido['barrio_nombre']
+            : (($rawBarrio && !is_numeric($rawBarrio))   ? $rawBarrio : '')));
         // ─────────────────────────────────────────────────────────────────────
 
         // Construir order con todos los campos requeridos por LogisPro.

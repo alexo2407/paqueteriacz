@@ -580,9 +580,11 @@ class ForwardingModel
                        p.id_municipio  AS _raw_id_municipio,
                        p.id_barrio     AS _raw_id_barrio,
                        p.id_departamento AS _raw_id_departamento,
-                       IFNULL(dep.nombre, '') AS departamento
+                       IFNULL(dep.nombre, '') AS departamento,
+                       IFNULL(bar.nombre, '') AS barrio_nombre
                 FROM pedidos p
                 LEFT JOIN departamentos dep ON dep.id = p.id_departamento
+                LEFT JOIN barrios bar ON bar.id = p.id_barrio
                 WHERE p.id = :id
             ");
             $stmt->execute([':id' => $idPedido]);
