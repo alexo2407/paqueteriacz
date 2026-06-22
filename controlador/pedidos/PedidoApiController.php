@@ -727,6 +727,34 @@ class PedidoApiController
         return null;
     }
 
+    /**
+     * Resolver el nombre del barrio desde id_barrio si Location no viene explícito.
+     * LogisPro necesita el nombre en texto, no el ID numérico.
+     */
+    private function resolverLocation(array $data): ?string
+    {
+        // 1. Si viene Location explícito en el request, usarlo
+        $location = $data['Location'] ?? $data['location'] ?? null;
+        if (!empty($location)) return $location;
+
+        // 2. Fallback: campo 'barrio' como texto libre (no un ID numérico)
+        if (!empty($data['barrio']) && !is_numeric($data['barrio'])) return $data['barrio'];
+
+        // 3. Fallback: resolver nombre del barrio desde id_barrio en la BD
+        //    Es el caso más común: la interfaz envía id_barrio (int) pero no el nombre.
+        $barrioId = $data['id_barrio'] ?? null;
+        if ($barrioId && is_numeric($barrioId) && (int)$barrioId > 0) {
+            try {
+                $barrio = BarrioModel::obtenerPorId((int)$barrioId);
+                if ($barrio && !empty($barrio['nombre'])) return $barrio['nombre'];
+            } catch (Exception $e) {
+                error_log('PedidoApiController::resolverLocation error: ' . $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
     private function construirPayload(array $data, float $latitud, float $longitud, ?float $precioLocal, ?float $precioUsd, ?int $monedaId): array
     {
         $vendedorId = isset($data['id_vendedor']) && is_numeric($data['id_vendedor']) ? (int)$data['id_vendedor'] : null;
@@ -813,8 +841,10 @@ class PedidoApiController
             'municipalitiesName' => $data['municipalitiesName'] ?? $data['municipalityName'] ?? null,
             'postalCode'         => $data['postalCode']         ?? null,
             'departmentName'     => $data['departmentName']     ?? null,
-            'Location'           => $data['Location']           ?? $data['location'] ?? null,
-            'betweenStreets'     => $data['betweenStreets']     ?? null,
+            // Location = barrio/colonia para LogisPro. Se resuelve automáticamente
+            // desde id_barrio si no viene explícito en el request.
+            'Location'           => $this->resolverLocation($data),
+            'betweenStreets'     => $data['betweenStreets']     ?? $data['entre_calles'] ?? null,
             // Flag de control de productos — se pasa al modelo para que respete la regla
             'requiere_productos' => isset($data['requiere_productos']) ? (int)$data['requiere_productos'] : 1,
         ];
@@ -918,8 +948,10 @@ class PedidoApiController
             'municipalitiesName' => $pedido['municipalitiesName'] ?? $pedido['municipalityName'] ?? null,
             'postalCode'         => $pedido['postalCode']         ?? null,
             'departmentName'     => $pedido['departmentName']     ?? null,
-            'Location'           => $pedido['Location']           ?? $pedido['location'] ?? null,
-            'betweenStreets'     => $pedido['betweenStreets']     ?? null,
+            // Location = barrio/colonia para LogisPro. Se resuelve automáticamente
+            // desde id_barrio si no viene explícito en el request.
+            'Location'           => $this->resolverLocation($pedido),
+            'betweenStreets'     => $pedido['betweenStreets']     ?? $pedido['entre_calles'] ?? null,
         ];
     }
 
