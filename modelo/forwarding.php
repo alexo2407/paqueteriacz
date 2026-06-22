@@ -576,7 +576,7 @@ class ForwardingModel
                        p.comentario, p.postalCode, p.codigo_postal, p.precio_total_local,
                        p.fecha_entrega, p.id_cliente,
                        p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets,
-                       p.municipio, p.barrio, p.zona,
+                       p.zona,
                        p.id_municipio  AS _raw_id_municipio,
                        p.id_barrio     AS _raw_id_barrio,
                        p.id_departamento AS _raw_id_departamento,
