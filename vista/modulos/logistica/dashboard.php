@@ -36,20 +36,39 @@ $estadosDisponibles      = $data['estados']    ?? [];
 $clientesLista           = $data['clientes']   ?? [];
 $proveedoresMensajeriaBI = $data['proveedoresMensajeriaBI'] ?? [];
 
-// Verificar si el proveedor HL Express está activo (para mostrar el tab Novedades siempre)
+// Verificar si el proveedor HL Express está activo Y el usuario actual tiene una regla activa con él
 $tieneHLExpress = false;
 $idsPedidosHLExpress = [];
 try {
     require_once __DIR__ . '/../../../modelo/conexion.php';
-    $dbTmp = (new Conexion())->conectar();
+    require_once __DIR__ . '/../../../utils/permissions.php';
+    $dbTmp  = (new Conexion())->conectar();
+    $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
 
-    // 1. ¿Existe el proveedor HL Express activo? → controla la visibilidad del TAB
-    $stmtHl = $dbTmp->prepare("
-        SELECT COUNT(*) FROM forwarding_providers
-        WHERE slug = 'hlexpress' AND activo = 1
-    ");
-    $stmtHl->execute();
-    $tieneHLExpress = (bool)$stmtHl->fetchColumn();
+    // 1. ¿Existe el proveedor HL Express activo Y el usuario actual tiene una regla activa?
+    //    - Super admin: solo checar que el proveedor exista
+    //    - Proveedor/Cliente: debe tener una regla en forwarding_rules activa con hlexpress
+    if (isSuperAdmin()) {
+        $stmtHl = $dbTmp->prepare("
+            SELECT COUNT(*) FROM forwarding_providers
+            WHERE slug = 'hlexpress' AND activo = 1
+        ");
+        $stmtHl->execute();
+        $tieneHLExpress = (bool)$stmtHl->fetchColumn();
+    } else {
+        // Solo mostrar si el usuario tiene una regla activa con HL Express
+        $stmtHl = $dbTmp->prepare("
+            SELECT COUNT(*)
+            FROM forwarding_rules r
+            INNER JOIN forwarding_providers p ON p.id = r.id_provider
+            WHERE p.slug = 'hlexpress'
+              AND p.activo = 1
+              AND r.activo = 1
+              AND r.id_cliente = :id_cliente
+        ");
+        $stmtHl->execute([':id_cliente' => (int)$userId]);
+        $tieneHLExpress = (bool)$stmtHl->fetchColumn();
+    }
 
     // 2. ¿Cuáles pedidos de la página actual tienen envío HL Express exitoso? → iconos en cards
     $idsPedidos = array_unique(array_merge(
@@ -72,6 +91,7 @@ try {
 } catch (Exception $e) {
     error_log("Error in dashboard HL Express check: " . $e->getMessage());
 }
+
 
 // Colores semánticos por categoría funcional (hex + texto)
 // ORDEN IMPORTA: claves específicas primero (evita match prematuro)
