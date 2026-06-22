@@ -181,20 +181,42 @@ class ForwardingModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("
-                SELECT r.*, p.nombre AS provider_nombre, p.slug, p.base_url, 
-                       p.auth_endpoint, p.order_endpoint, p.auth_method, 
-                       p.credentials, p.default_config AS provider_config
-                FROM forwarding_rules r
-                INNER JOIN forwarding_providers p ON p.id = r.id_provider
-                WHERE r.id_cliente = :id_cliente 
-                  AND r.activo = 1 
-                  AND p.activo = 1
-            ");
-            $stmt->execute([':id_cliente' => $idCliente]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Intento 1: query completa con default_config
+            // (puede fallar si la columna no existe aún en el schema del servidor)
+            try {
+                $stmt = $db->prepare("
+                    SELECT r.*, p.nombre AS provider_nombre, p.slug, p.base_url,
+                           p.auth_endpoint, p.order_endpoint, p.auth_method,
+                           p.credentials, p.default_config AS provider_config
+                    FROM forwarding_rules r
+                    INNER JOIN forwarding_providers p ON p.id = r.id_provider
+                    WHERE r.id_cliente = :id_cliente
+                      AND r.activo = 1
+                      AND p.activo = 1
+                ");
+                $stmt->execute([':id_cliente' => $idCliente]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $pdoEx) {
+                // Fallback: la columna default_config puede no existir en todos los entornos.
+                // Se loguea el error real y se reintenta sin esa columna.
+                error_log("ForwardingModel::obtenerReglasActivasPorCliente: query principal falló ("
+                    . $pdoEx->getMessage() . "). Usando fallback sin default_config para id_cliente={$idCliente}.");
+                $stmt = $db->prepare("
+                    SELECT r.*, p.nombre AS provider_nombre, p.slug, p.base_url,
+                           p.auth_endpoint, p.order_endpoint, p.auth_method,
+                           p.credentials, NULL AS provider_config
+                    FROM forwarding_rules r
+                    INNER JOIN forwarding_providers p ON p.id = r.id_provider
+                    WHERE r.id_cliente = :id_cliente
+                      AND r.activo = 1
+                      AND p.activo = 1
+                ");
+                $stmt->execute([':id_cliente' => $idCliente]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
         } catch (Exception $e) {
-            error_log("ForwardingModel::obtenerReglasActivasPorCliente error: " . $e->getMessage());
+            error_log("ForwardingModel::obtenerReglasActivasPorCliente error fatal para id_cliente={$idCliente}: " . $e->getMessage());
             return [];
         }
     }
@@ -571,30 +593,59 @@ class ForwardingModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("
-                SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
-                       p.comentario, p.postalCode, p.codigo_postal, p.precio_total_local,
-                       p.fecha_entrega, p.id_cliente,
-                       p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets,
-                       p.zona,
-                       p.id_municipio  AS _raw_id_municipio,
-                       p.id_barrio     AS _raw_id_barrio,
-                       p.id_departamento AS _raw_id_departamento,
-                       IFNULL(dep.nombre, '') AS departamento,
-                       IFNULL(bar.nombre, '') AS barrio_nombre
-                FROM pedidos p
-                LEFT JOIN departamentos dep ON dep.id = p.id_departamento
-                LEFT JOIN barrios bar ON bar.id = p.id_barrio
-                WHERE p.id = :id
-            ");
-            $stmt->execute([':id' => $idPedido]);
-            $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Intento 1: query completa con JOIN a barrios y columnas extendidas
+            try {
+                $stmt = $db->prepare("
+                    SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
+                           p.comentario, p.postalCode, p.codigo_postal, p.precio_total_local,
+                           p.fecha_entrega, p.id_cliente,
+                           p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets,
+                           p.zona,
+                           p.id_municipio    AS _raw_id_municipio,
+                           p.id_barrio       AS _raw_id_barrio,
+                           p.id_departamento AS _raw_id_departamento,
+                           IFNULL(dep.nombre, '') AS departamento,
+                           IFNULL(bar.nombre, '') AS barrio_nombre
+                    FROM pedidos p
+                    LEFT JOIN departamentos dep ON dep.id = p.id_departamento
+                    LEFT JOIN barrios bar ON bar.id = p.id_barrio
+                    WHERE p.id = :id
+                ");
+                $stmt->execute([':id' => $idPedido]);
+                $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+            } catch (PDOException $pdoEx) {
+                // Fallback: alguna columna o tabla puede no existir en el schema actual.
+                error_log("ForwardingModel::obtenerPedidoParaForwarding: query completa falló ("
+                    . $pdoEx->getMessage() . "). Usando fallback simplificado para id={$idPedido}.");
+                $stmt = $db->prepare("
+                    SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
+                           p.comentario, p.codigo_postal, p.precio_total_local,
+                           p.fecha_entrega, p.id_cliente,
+                           p.zona,
+                           NULL AS postalCode,
+                           NULL AS municipalitiesName,
+                           NULL AS departmentName,
+                           NULL AS Location,
+                           NULL AS betweenStreets,
+                           NULL AS _raw_id_municipio,
+                           NULL AS _raw_id_barrio,
+                           NULL AS _raw_id_departamento,
+                           ''   AS departamento,
+                           ''   AS barrio_nombre
+                    FROM pedidos p
+                    WHERE p.id = :id
+                ");
+                $stmt->execute([':id' => $idPedido]);
+                $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+
             if (!$pedido) return null;
 
             $pedido['productos'] = self::obtenerProductosPedido($idPedido);
             return $pedido;
         } catch (Exception $e) {
-            error_log("ForwardingModel::obtenerPedidoParaForwarding error: " . $e->getMessage());
+            error_log("ForwardingModel::obtenerPedidoParaForwarding error fatal para id={$idPedido}: " . $e->getMessage());
             return null;
         }
     }

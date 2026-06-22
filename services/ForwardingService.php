@@ -42,7 +42,10 @@ class ForwardingService
 
         // Obtener reglas activas para este cliente
         $reglas = ForwardingModel::obtenerReglasActivasPorCliente($idCliente);
-        if (empty($reglas)) return null;
+        if (empty($reglas)) {
+            error_log("ForwardingService::evaluarYReenviar: sin reglas activas para id_cliente={$idCliente}, id_pedido={$idPedido}. Forwarding omitido.");
+            return null;
+        }
 
         // Obtener datos del pedido
         $pedido = ForwardingModel::obtenerPedidoParaForwarding($idPedido);
@@ -204,7 +207,9 @@ class ForwardingService
         }
 
         $credentials = json_decode($regla['credentials'] ?? '{}', true) ?: [];
-        $defaultConfig = json_decode($regla['default_config'] ?? '{}', true) ?: [];
+        // Usar provider_config (alias del query JOIN) con fallback a default_config (columna directa de r.*)
+        // Ambas rutas son seguras: si la columna no existe, el ?? '{}' retorna array vacío.
+        $defaultConfig = json_decode($regla['provider_config'] ?? $regla['default_config'] ?? '{}', true) ?: [];
         $config = array_merge($defaultConfig, [
             'auth_endpoint'   => $regla['auth_endpoint']  ?? '/api/AccountApi',
             'order_endpoint'  => $regla['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
@@ -314,17 +319,36 @@ class ForwardingService
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("
-                SELECT r.*, p.nombre AS provider_nombre, p.slug, p.base_url, 
-                       p.auth_endpoint, p.order_endpoint, p.auth_method, 
-                       p.credentials, p.default_config AS provider_config
-                FROM forwarding_rules r
-                INNER JOIN forwarding_providers p ON p.id = r.id_provider
-                WHERE r.id = :id_rule 
-                  AND p.activo = 1
-            ");
-            $stmt->execute([':id_rule' => $idRegla]);
-            $regla = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Intento 1: query completa con default_config
+            try {
+                $stmt = $db->prepare("
+                    SELECT r.*, p.nombre AS provider_nombre, p.slug, p.base_url,
+                           p.auth_endpoint, p.order_endpoint, p.auth_method,
+                           p.credentials, p.default_config AS provider_config
+                    FROM forwarding_rules r
+                    INNER JOIN forwarding_providers p ON p.id = r.id_provider
+                    WHERE r.id = :id_rule
+                      AND p.activo = 1
+                ");
+                $stmt->execute([':id_rule' => $idRegla]);
+                $regla = $stmt->fetch(PDO::FETCH_ASSOC);
+            } catch (PDOException $pdoEx) {
+                // Fallback sin default_config
+                error_log("ForwardingService::reintentarRegla: query principal falló ("
+                    . $pdoEx->getMessage() . "). Usando fallback para id_rule={$idRegla}.");
+                $stmt = $db->prepare("
+                    SELECT r.*, p.nombre AS provider_nombre, p.slug, p.base_url,
+                           p.auth_endpoint, p.order_endpoint, p.auth_method,
+                           p.credentials, NULL AS provider_config
+                    FROM forwarding_rules r
+                    INNER JOIN forwarding_providers p ON p.id = r.id_provider
+                    WHERE r.id = :id_rule
+                      AND p.activo = 1
+                ");
+                $stmt->execute([':id_rule' => $idRegla]);
+                $regla = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
         } catch (Exception $e) {
             return [
                 'success' => false,
