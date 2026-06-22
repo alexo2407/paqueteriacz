@@ -68,6 +68,8 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'longitud' => $_POST['longitud'] ?? null,
             'id_pais' => $_POST['id_pais'] ?? ($_POST['pais'] ?? null),
             'id_departamento' => $_POST['id_departamento'] ?? ($_POST['departamento'] ?? null),
+            'id_municipio' => $_POST['id_municipio'] ?? null,
+            'id_barrio' => $_POST['id_barrio'] ?? null,
             'municipio' => $_POST['municipio'] ?? null,
             'barrio' => $_POST['barrio'] ?? null,
             'zona' => $_POST['zona'] ?? null,
@@ -82,6 +84,12 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'csrf_token' => $_POST['csrf_token'] ?? null,
             'id_cliente' => $_POST['id_cliente'] ?? null,
             'fecha_entrega' => !empty($_POST['fecha_entrega']) ? $_POST['fecha_entrega'] : null,
+            // Campos de dirección enriquecida para forwarding LogisPro
+            'municipalitiesName' => $_POST['municipalitiesName'] ?? null,
+            'departmentName'     => $_POST['departmentName'] ?? null,
+            'Location'           => $_POST['Location'] ?? ($_POST['barrio'] ?? null),
+            'betweenStreets'     => $_POST['betweenStreets'] ?? ($_POST['entre_calles'] ?? null),
+            'postalCode'         => isset($_POST['postalCode']) && $_POST['postalCode'] !== '' ? (int)$_POST['postalCode'] : null,
         ];
         
         if (defined('DEBUG') && DEBUG) {

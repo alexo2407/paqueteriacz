@@ -827,7 +827,13 @@ class PedidosController
             'precio_total_usd' => $precioTotalUsd,
             'tasa_conversion_usd' => $tasaConversionUsd,
             'es_combo' => $esCombo ? 1 : 0,
-            'id_codigo_postal' => null // Se resolverá abajo
+            'id_codigo_postal' => null, // Se resolverá abajo
+            // Campos de forwarding LogisPro / dirección enriquecida
+            'municipalitiesName' => $data['municipalitiesName'] ?? null,
+            'departmentName'     => $data['departmentName'] ?? null,
+            'Location'           => $data['Location'] ?? null,
+            'betweenStreets'     => $data['betweenStreets'] ?? null,
+            'postalCode'         => isset($data['postalCode']) && $data['postalCode'] !== '' ? (int)$data['postalCode'] : null,
         ];
 
         // 3. Resolver Homologación de Código Postal

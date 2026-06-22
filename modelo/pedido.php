@@ -302,10 +302,13 @@ class PedidosModel
                                 $params[':departmentName'] = $row['departmentName'] ?? null;
                                 break;
                             case 'Location':
-                                $params[':Location'] = $row['Location'] ?? null;
+                                // Location = barrio/colonia para LogisPro.
+                                // Si viene explícito en el row úsalo; si no, usar el campo 'barrio' del CSV.
+                                $params[':Location'] = $row['Location'] ?? $barrio ?? null;
                                 break;
                             case 'betweenStreets':
-                                $params[':betweenStreets'] = $row['betweenStreets'] ?? null;
+                                // Fallback: 'entre_calles' es el nombre en la plantilla XLSX
+                                $params[':betweenStreets'] = $row['betweenStreets'] ?? $row['entre_calles'] ?? null;
                                 break;
                         }
                     }
@@ -646,10 +649,12 @@ class PedidosModel
                         $params[':departmentName'] = $data['departmentName'] ?? null;
                         break;
                     case 'Location':
-                        $params[':Location'] = $data['Location'] ?? null;
+                        // Location = barrio/colonia para LogisPro.
+                        // Si viene explícito úsalo; si no, usar el campo 'barrio'.
+                        $params[':Location'] = $data['Location'] ?? $data['barrio'] ?? null;
                         break;
                     case 'betweenStreets':
-                        $params[':betweenStreets'] = $data['betweenStreets'] ?? null;
+                        $params[':betweenStreets'] = $data['betweenStreets'] ?? $data['entre_calles'] ?? null;
                         break;
                     case 'fecha_entrega':
                         $val = $data['fecha_entrega'] ?? null;
