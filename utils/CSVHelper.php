@@ -61,10 +61,32 @@ class CSVHelper
         'telefono_(texto_libre)' => 'telefono',
         'dirección_(texto_libre)' => 'direccion',
         'direccion_(texto_libre)' => 'direccion',
-        'postalcode'            => 'postalCode',
-        'postal_code'           => 'postalCode',
-        'postalcode_panama'     => 'postalCode',
-        'postal_code_panama'    => 'postalCode',
+        'postalcode'              => 'postalCode',
+        'postal_code'             => 'postalCode',
+        'postalcode_panama'       => 'postalCode',
+        'postal_code_panama'      => 'postalCode',
+
+        // ── Columnas especiales (pedidos LogisPro / proveedores externos) ──────
+        'municipalitiesname'      => 'municipalitiesName',
+        'municipalities_name'     => 'municipalitiesName',
+        'municipio_(logispro)'    => 'municipalitiesName',
+        'municipio_logispro'      => 'municipalitiesName',
+
+        'departmentname'          => 'departmentName',
+        'department_name'         => 'departmentName',
+        'departamento_(logispro)' => 'departmentName',
+        'departamento_logispro'   => 'departmentName',
+
+        'location'                => 'Location',
+        'ubicacion'               => 'Location',
+        'ubicación'               => 'Location',
+        'barrio_(logispro)'       => 'Location',
+        'barrio_logispro'         => 'Location',
+
+        'betweenstreets'          => 'betweenStreets',
+        'between_streets'         => 'betweenStreets',
+        'entre_calles_(logispro)' => 'betweenStreets',
+        'entre_calles_logispro'   => 'betweenStreets',
     ];
 
     /**

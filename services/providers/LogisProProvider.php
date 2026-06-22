@@ -160,16 +160,41 @@ class LogisProProvider extends BaseProvider
             $dateToReceive = $dt->format('Y-m-d\TH:i:s.000\Z');
         }
 
-        // Construir order con todos los campos requeridos por LogisPro
+        // ── Resolución de campos geográficos de texto ─────────────────────────
+        // Cuando el cliente sube un Excel con texto libre (Municipio, Barrio, Depto.),
+        // el sistema guarda ese texto en id_municipio / id_barrio / id_departamento.
+        // Aquí los recuperamos si son texto no-numérico (_raw_id_* viene del query).
+
+        $rawMunicipio = $pedido['_raw_id_municipio'] ?? null;
+        $municipalitiesName =
+            !empty($pedido['municipalitiesName'])        ? $pedido['municipalitiesName']
+            : (!empty($pedido['municipio'])              ? $pedido['municipio']
+            : (($rawMunicipio && !is_numeric($rawMunicipio)) ? $rawMunicipio : ''));
+
+        $rawDepto = $pedido['_raw_id_departamento'] ?? null;
+        $departmentName =
+            !empty($pedido['departmentName'])            ? $pedido['departmentName']
+            : (!empty($pedido['departamento'])           ? $pedido['departamento']
+            : (($rawDepto && !is_numeric($rawDepto))    ? $rawDepto : ''));
+
+        $rawBarrio = $pedido['_raw_id_barrio'] ?? null;
+        $location =
+            !empty($pedido['Location'])                   ? $pedido['Location']
+            : (!empty($pedido['barrio'])                  ? $pedido['barrio']
+            : (!empty($pedido['barrio_nombre'])           ? $pedido['barrio_nombre']
+            : (($rawBarrio && !is_numeric($rawBarrio))   ? $rawBarrio : '')));
+        // ─────────────────────────────────────────────────────────────────────
+
+        // Construir order con todos los campos requeridos por LogisPro.
         $order = [
             'customersId'        => $authData['customersId'],
             'orderNumber'        => (string)$pedido['numero_orden'],
             'clientName'         => $pedido['destinatario'] ?? '',
-            'municipalitiesName' => $pedido['municipalitiesName'] ?? '',
+            'municipalitiesName' => $municipalitiesName,
             'postalCode'         => $postalCode,
-            'departmentName'     => $pedido['departmentName'] ?? '',
+            'departmentName'     => $departmentName,
             'address'            => $pedido['direccion'] ?? '',
-            'Location'           => $pedido['Location'] ?? '',
+            'Location'           => $location,
             'betweenStreets'     => $pedido['betweenStreets'] ?? '',
             'phone'              => $pedido['telefono'] ?? '',
             'notes'              => $pedido['comentario'] ?? '',

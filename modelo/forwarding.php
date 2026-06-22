@@ -575,8 +575,16 @@ class ForwardingModel
                 SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
                        p.comentario, p.postalCode, p.codigo_postal, p.precio_total_local,
                        p.fecha_entrega, p.id_cliente,
-                       p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets
+                       p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets,
+                       p.municipio, p.barrio, p.zona,
+                       p.id_municipio  AS _raw_id_municipio,
+                       p.id_barrio     AS _raw_id_barrio,
+                       p.id_departamento AS _raw_id_departamento,
+                       IFNULL(dep.nombre, '') AS departamento,
+                       IFNULL(bar.nombre, '') AS barrio_nombre
                 FROM pedidos p
+                LEFT JOIN departamentos dep ON dep.id = p.id_departamento
+                LEFT JOIN barrios bar ON bar.id = p.id_barrio
                 WHERE p.id = :id
             ");
             $stmt->execute([':id' => $idPedido]);
