@@ -580,6 +580,8 @@
             <hr class="sidebar-divider">
             <div class="sidebar-label">Documentación</div>
             <a href="<?= RUTA_URL ?>api/doc/" class="nav-link"><i class="bi bi-book"></i> API Docs</a>
+            <a href="<?= RUTA_URL ?>api/doc/generator.php" class="nav-link" style="background:linear-gradient(90deg,rgba(99,102,241,.12),transparent);border-left:2px solid #6366f1"><i class="bi bi-magic"></i> Generar Doc. API</a>
+            <a href="<?= RUTA_URL ?>api/doc/historial.php" class="nav-link"><i class="bi bi-clock-history"></i> Historial Docs</a>
             <a href="<?= RUTA_URL ?>api/doc/crmdoc.php" class="nav-link"><i class="bi bi-file-earmark-code"></i> Doc. CRM</a>
             <a href="<?= RUTA_URL ?>crm/database_doc" class="nav-link"><i class="bi bi-database"></i> Doc. Base de Datos</a>
             <a href="<?= RUTA_URL ?>crm/logistics_worker_doc" class="nav-link"><i class="bi bi-diagram-3"></i> Doc. Worker Logístico</a>
