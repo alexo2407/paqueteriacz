@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -56,18 +56,6 @@ if ($filtroUsuario !== null) {
 // Obtener movimientos filtrados
 $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $filtros);
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movimientos de Stock - App RutaEx-Latam</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-</head>
-<body>
-
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <style>
@@ -341,5 +329,3 @@ $movimientos = StockModel::obtenerMovimientosPorFecha($fechaInicio, $fechaFin, $
         });
     });
 </script>
-</body>
-</html>

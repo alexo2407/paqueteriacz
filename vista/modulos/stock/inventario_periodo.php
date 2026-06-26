@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Vista Standalone: Inventario por Período — vista matricial (pivot)
  * Ruta: /stock/inventario-periodo
@@ -490,70 +490,6 @@ if ($export && !empty($colsList)) {
     exit;
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario por Período - App RutaEx-Latam</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <style>
-        .inv-header {
-            background: linear-gradient(135deg, #1a3a4a 0%, #2d6a4f 100%);
-            color: white;
-            padding: 1.5rem 2rem;
-            border-radius: 14px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 20px rgba(29,106,79,.25);
-        }
-        .filter-card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); }
-
-        /* Tabla matricial */
-        .tabla-matriz { font-size: .78rem; white-space: nowrap; }
-        .tabla-matriz thead th {
-            background: #2d6a4f;
-            color: #fff;
-            padding: .4rem .6rem;
-            font-weight: 700;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,.15);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .tabla-matriz thead th:first-child { left: 0; z-index: 11; min-width: 100px; }
-        .tabla-matriz tbody td {
-            padding: .3rem .6rem;
-            border: 1px solid #dee2e6;
-            text-align: center;
-            vertical-align: middle;
-        }
-        /* Fila entrada — verde claro */
-        .fila-entrada td { background: #e8f5e9; color: #2e7d32; }
-        .fila-entrada td:first-child { font-weight: 600; background: #c8e6c9; }
-        /* Fila salida — rojo muy suave */
-        .fila-salida  td { background: #fff3e0; color: #bf360c; }
-        .fila-salida  td:first-child { background: #ffe0b2; }
-        /* Fila total — amarillo brillante */
-        .fila-total   td { background: #ffff00; color: #000; font-weight: 700; }
-        .fila-total   td:first-child { font-style: italic; background: #ffd600; }
-        /* Columna fecha sticky */
-        .col-fecha { position: sticky; left: 0; z-index: 5; }
-        /* Sin movimientos — gris muy suave */
-        .fila-sin-mov td { opacity: .45; }
-
-        .tabla-wrapper { overflow-x: auto; max-height: 70vh; overflow-y: auto; border-radius: 10px; border: 1px solid #dee2e6; }
-        /* Fila reservas — azul oscuro */
-        .fila-reserva td { background: #e8eaf6; color: #283593; font-style: italic; }
-        .fila-reserva td:first-child { background: #c5cae9; font-weight: 600; }
-        /* Fila stock libre — verde oscuro sólido */
-        .fila-libre td { background: #1b5e20; color: #fff; font-weight: 700; }
-        .fila-libre td:first-child { background: #145214; }
-    </style>
-</head>
-<body class="bg-light">
-
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <div class="container-fluid py-4">
@@ -1350,6 +1286,3 @@ function copiarEnlacePublico() {
     });
 }
 </script>
-
-</body>
-</html>

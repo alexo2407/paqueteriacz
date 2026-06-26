@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Vista Standalone: Saldo por Producto
  * Accedida via: /stock/saldo
@@ -70,31 +70,6 @@ if ($export) {
     exit;
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Saldo por Producto - App RutaEx-Latam</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
-    <style>
-        .saldo-header {
-            background: linear-gradient(135deg, #093028 0%, #237A57 100%);
-            color: white;
-            padding: 1.75rem 2rem;
-            border-radius: 16px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 20px rgba(9,48,40,0.25);
-        }
-        .table-card { border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,.06); overflow: hidden; }
-        .table-danger td { background-color: #fff5f5 !important; }
-        .table-warning td { background-color: #fffdf0 !important; }
-    </style>
-</head>
-<body class="bg-light">
-
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <div class="container-fluid py-4">
@@ -203,5 +178,3 @@ $(document).ready(function() {
     }
 });
 </script>
-</body>
-</html>

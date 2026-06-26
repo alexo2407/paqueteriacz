@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Vista Standalone: Reporte Movimientos de Stock
  * Accedida via: /stock/movimientos
@@ -117,31 +117,6 @@ if ($export) {
     exit;
 }
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte Movimientos de Stock - App RutaEx-Latam</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/dataTables.bootstrap5.min.css">
-    <style>
-        .mov-header {
-            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
-            color: white;
-            padding: 1.75rem 2rem;
-            border-radius: 16px;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 20px rgba(44,83,100,0.25);
-        }
-        .filter-card { border: none; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,.06); }
-        .table-card  { border: none; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,.05); overflow: hidden; }
-        .badge-type  { padding: .45em .8em; border-radius: 6px; font-size: .8rem; font-weight: 600; }
-    </style>
-</head>
-<body class="bg-light">
-
 <?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <div class="container-fluid py-4">
@@ -302,5 +277,3 @@ $(document).ready(function() {
     }
 });
 </script>
-</body>
-</html>
