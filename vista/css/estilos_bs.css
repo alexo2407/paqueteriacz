@@ -522,11 +522,11 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   PRINT / PDF — Ocultar chrome del layout al imprimir
+   PRINT / PDF — Solo ocultar sidebar y footer, el navbar se mantiene
+   para que el logo RutaEx aparezca en el PDF
    ═══════════════════════════════════════════════════════════════ */
 @media print {
-    /* Ocultar navbar, sidebar y footer del layout */
-    .bs-navbar,
+    /* Ocultar SOLO sidebar y footer — el navbar con logo se conserva */
     #bsSidebar,
     .bs-footer,
     footer.bs-footer {
