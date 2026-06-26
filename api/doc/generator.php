@@ -218,25 +218,27 @@ include "vista/includes/header.php";
   .print-company{text-align:center;font-size:14px;color:#555;margin-bottom:20px}
   .print-url-link{color:#6366f1;font-weight:600}
   .print-section{margin-bottom:28px;page-break-inside:avoid}
-  .print-section-title{font-size:15px;font-weight:700;margin-bottom:10px;color:#1a1a2e}
-  .print-endpoint-box{background:#1a1a2e!important;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-section-title{font-size:15px;font-weight:700;margin-bottom:10px;color:#061C4C;border-left:3px solid #FF8A00;padding-left:8px}
+  .print-endpoint-box{background:#061C4C!important;border-radius:8px;padding:12px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .print-method{font-family:'Fira Code',monospace;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .print-method.post{background:#10b981!important}
-  .print-method.get{background:#3b82f6!important}
+  .print-method.get{background:#0B4EA2!important}
   .print-path{font-family:'Fira Code',monospace;font-size:13px;color:#e2e8f0!important;margin-left:10px}
   .print-badge-auth{font-size:10px;padding:2px 8px;border-radius:10px;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .print-badge-auth.public{background:#10b981!important}
-  .print-badge-auth.auth{background:#6366f1!important}
+  .print-badge-auth.auth{background:#0B4EA2!important}
   .print-table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:12px}
-  .print-table th{background:#e8ecf0!important;padding:7px 10px;text-align:left;font-weight:600;text-transform:uppercase;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-table th{background:#EEF2F6!important;color:#061C4C!important;padding:7px 10px;text-align:left;font-weight:600;text-transform:uppercase;font-size:11px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .print-table td{padding:6px 10px;border-bottom:1px solid #e5e7eb}
-  .print-table code{background:#f3f4f6!important;color:#6366f1!important;padding:1px 5px;border-radius:3px;font-family:'Fira Code',monospace;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .print-code-block{background:#1e2538!important;border-radius:6px;padding:12px 14px;font-family:'Fira Code',monospace;font-size:11px;color:#e2e8f0!important;overflow:hidden;white-space:pre-wrap;word-break:break-all;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-table code{background:#EEF2F6!important;color:#0B4EA2!important;padding:1px 5px;border-radius:3px;font-family:'Fira Code',monospace;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-code-block{background:#061C4C!important;border-radius:6px;padding:12px 14px;font-family:'Fira Code',monospace;font-size:11px;color:#e2e8f0!important;overflow:hidden;white-space:pre-wrap;word-break:break-all;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .print-label{font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;margin-top:10px}
   .print-creds{background:#f8fafc!important;border:1px solid #e5e7eb;border-radius:6px;padding:12px;font-size:12px;margin-bottom:16px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .print-creds p{margin-bottom:4px;color:#374151}
-  .print-creds strong{color:#1a1a2e}
-  .print-tip{background:#eff6ff!important;border-left:3px solid #3b82f6!important;padding:8px 12px;font-size:11px;color:#1e40af!important;border-radius:0 4px 4px 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-creds strong{color:#061C4C}
+  .print-tip{background:#EEF2F6!important;border-left:3px solid #0B4EA2!important;padding:8px 12px;font-size:11px;color:#061C4C!important;border-radius:0 4px 4px 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  /* Ocultar footer del layout del sistema en PDF */
+  .bs-footer,footer.bs-footer,#bsSidebar{display:none!important}
   .print-page-break{page-break-before:always}
   .badge-req-yes{background:#d1fae5!important;color:#065f46!important;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .badge-req-no{background:#f3f4f6!important;color:#6b7280!important;padding:2px 6px;border-radius:3px;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
