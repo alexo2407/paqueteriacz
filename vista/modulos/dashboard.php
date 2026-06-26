@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 
 start_secure_session();
 require_once __DIR__ . '/../../utils/permissions.php';
@@ -199,12 +199,12 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
 .efectividad-bar-inner { height: 100%; border-radius: 50px; transition: width .8s ease; }
 .ef-green  { background: linear-gradient(90deg, #0B4EA2, #38bdf8); }
 .ef-yellow { background: linear-gradient(90deg, #FF8A00, #ffd200); }
-.ef-red    { background: linear-gradient(90deg, #f5576c, #fa709a); }
+.ef-red    { background: linear-gradient(90deg, #FF8A00, #FF8A00); }
 
 /* Recomendación badges */
 .recomendacion-badge { display: inline-block; padding: .3rem .85rem; border-radius: 50px; font-size: .78rem; font-weight: 600; }
 .recomendacion-badge.best  { background: rgba(11,78,162,.1); color: #0B4EA2; }
-.recomendacion-badge.worst { background: rgba(245,87,108,.1); color: #f5576c; }
+.recomendacion-badge.worst { background: rgba(245,87,108,.1); color: #FF8A00; }
 
 /* Top Productos tabla */
 .top-prod-table td, .top-prod-table th { vertical-align: middle; padding: .65rem .75rem; }
@@ -406,7 +406,7 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
                     </div>
                     <?php if ($recomendacion): ?>
                     <div class="d-none d-md-block">
-                        <span class="badge" style="background:linear-gradient(135deg,#667eea,#764ba2);font-size:.85rem;padding:.5rem 1rem;border-radius:50px;">
+                        <span class="badge" style="background:linear-gradient(135deg,#0B4EA2,#061C4C);font-size:.85rem;padding:.5rem 1rem;border-radius:50px;">
                             ⭐ Estrella del período: <?= htmlspecialchars($recomendacion['nombre']) ?>
                         </span>
                     </div>
@@ -427,7 +427,7 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
                             <tbody>
                             <?php foreach ($topProductosDetalle as $i => $prod):
                                 $ef = (float)$prod['efectividad'];
-                                $efColor = $ef >= 70 ? '#11998e' : ($ef >= 50 ? '#f7971e' : '#f5576c');
+                                $efColor = $ef >= 70 ? '#0B4EA2' : ($ef >= 50 ? '#f7971e' : '#FF8A00');
                                 $rankClass = match($i) { 0 => 'rank-1', 1 => 'rank-2', 2 => 'rank-3', default => 'rank-n' };
                             ?>
                             <tr>
@@ -477,7 +477,7 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
                     <small>Rendimiento por proveedor · filtrado por <?= $periodoTexto ?></small>
                 </div>
                 <div class="chart-body">
-                    <div class="alert border-0 mb-4" style="background:linear-gradient(135deg,rgba(17,153,142,0.08),rgba(56,239,125,0.08));border-left:4px solid #11998e !important;border-radius:12px;">
+                    <div class="alert border-0 mb-4" style="background:linear-gradient(135deg,rgba(17,153,142,0.08),rgba(56,239,125,0.08));border-left:4px solid #0B4EA2 !important;border-radius:12px;">
                         <div class="d-flex align-items-center gap-3">
                             <span style="font-size:1.8rem;">🏆</span>
                             <div>
@@ -490,7 +490,7 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
                     <?php foreach ($proveedoresMensajeria as $idx => $prov):
                         $ef        = (float)$prov['efectividad'];
                         $barClass  = $ef >= 70 ? 'ef-green' : ($ef >= 50 ? 'ef-yellow' : 'ef-red');
-                        $badgeColor= $ef >= 70 ? '#11998e'  : ($ef >= 50 ? '#f7971e'  : '#f5576c');
+                        $badgeColor= $ef >= 70 ? '#0B4EA2'  : ($ef >= 50 ? '#f7971e'  : '#FF8A00');
                         $stars     = $ef >= 80 ? '⭐⭐⭐' : ($ef >= 60 ? '⭐⭐' : '⭐');
                     ?>
                     <div class="col-md-6 col-xl-4">
@@ -556,7 +556,7 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
         ?>
         <?php if ($peorProd): ?>
         <div class="col-md-6">
-            <div class="insight-card" style="background:linear-gradient(135deg,#2d1b69 0%,#1a1a2e 100%);">
+            <div class="insight-card" style="background:linear-gradient(135deg,#2d1b69 0%,#061C4C 100%);">
                 <div class="insight-icon">⚠️</div>
                 <div class="insight-title">Producto con Baja Efectividad</div>
                 <div class="insight-value"><?= htmlspecialchars($peorProd['nombre']) ?></div>
@@ -635,12 +635,12 @@ new Chart(document.getElementById('efectividadTemporalChart'), {
         datasets: [{
             label: '% Efectividad',
             data: <?= json_encode(array_column($efectividadTemporal, 'efectividad')) ?>,
-            borderColor: '#11998e',
+            borderColor: '#0B4EA2',
             backgroundColor: 'rgba(17,153,142,0.1)',
             tension: 0.4,
             fill: true,
             pointRadius: 4,
-            pointBackgroundColor: '#11998e'
+            pointBackgroundColor: '#0B4EA2'
         }]
     },
     options: {

@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php") ?>
+﻿<?php include("vista/includes/header.php") ?>
 
 <?php
 require_once __DIR__ . '/../../../modelo/forwarding.php';
@@ -10,7 +10,7 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
 
 <style>
 .fwd-card   { border:none; border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.08); overflow:hidden; }
-.fwd-header { background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:#fff; padding:1.75rem 2rem; }
+.fwd-header { background:linear-gradient(135deg,#0B4EA2 0%,#061C4C 100%); color:#fff; padding:1.75rem 2rem; }
 .fwd-header h3 { margin:0; font-weight:600; }
 
 /* Tabla de campos */
@@ -232,7 +232,7 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
 <div class="modal fade" id="modalCampo" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border:none;border-radius:16px;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:16px 16px 0 0;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#0B4EA2,#061C4C);color:#fff;border-radius:16px 16px 0 0;">
                 <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i> Agregar Campo de API</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

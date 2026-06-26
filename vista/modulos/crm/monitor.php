@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -420,7 +420,7 @@ async function executeCleanup(type) {
                 title: 'Error',
                 text: data.error || 'Error desconocido al ejecutar limpieza',
                 icon: 'error',
-                confirmButtonColor: '#0d6efd'
+                confirmButtonColor: '#0B4EA2'
             });
         }
     } catch (error) {
@@ -429,7 +429,7 @@ async function executeCleanup(type) {
             title: 'Error de Conexión',
             text: 'No se pudo conectar con el servidor: ' + error.message,
             icon: 'error',
-            confirmButtonColor: '#0d6efd'
+            confirmButtonColor: '#0B4EA2'
         });
         console.error('Error:', error);
     }
@@ -499,7 +499,7 @@ document.querySelectorAll('.btn-control-worker').forEach(button => {
             text: `Se enviará la orden para ${actionText} el proceso de ${worker.replace(/_/g, ' ')}.`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: action === 'start' ? '#198754' : '#dc3545',
+            confirmButtonColor: action === 'start' ? '#0B4EA2' : '#dc3545',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Confirmar',
             cancelButtonText: 'Cancelar'
@@ -541,7 +541,7 @@ document.querySelectorAll('.btn-control-worker').forEach(button => {
                             title: 'Error',
                             text: data.message || 'No se pudo realizar la acción.',
                             icon: 'error',
-                            confirmButtonColor: '#0d6efd'
+                            confirmButtonColor: '#0B4EA2'
                         });
                     }
                 })
@@ -550,7 +550,7 @@ document.querySelectorAll('.btn-control-worker').forEach(button => {
                         title: 'Error de Conexión',
                         text: 'Ocurrió un error al comunicarse con el servidor: ' + error.message,
                         icon: 'error',
-                        confirmButtonColor: '#0d6efd'
+                        confirmButtonColor: '#0B4EA2'
                     });
                 });
             }

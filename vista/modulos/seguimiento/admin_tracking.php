@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * vista/modulos/seguimiento/admin_tracking.php
  * Vista de Seguimiento Administrativo con la interfaz nativa del sistema (Bootstrap 5) y paginación.
@@ -205,7 +205,7 @@ if ($isAdmin) {
 /* Rojo Sólido - Problemas/Cancelado/Devuelto */
 .badge-canceled    { background: #ef4444; border: 1px solid #dc2626; }
 /* Púrpura Sólido - Reintentos/Reprogramado */
-.badge-retry       { background: #8b5cf6; border: 1px solid #7c3aed; }
+.badge-retry       { background: #0B4EA2; border: 1px solid #7c3aed; }
 /* Gris Sólido - Otros/Sistema */
 .badge-default     { background: #64748b; border: 1px solid #475569; }
 

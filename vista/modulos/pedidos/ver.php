@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 include("vista/includes/header.php"); 
 
  
@@ -100,7 +100,7 @@ if (!empty($fechaEntregaRaw)) {
     overflow: hidden;
 }
 .pedido-view-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 1.75rem 2rem;
 }
@@ -116,14 +116,14 @@ if (!empty($fechaEntregaRaw)) {
 }
 .info-section-title {
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 .info-section-title i {
-    color: #667eea;
+    color: #0B4EA2;
 }
 .info-item {
     margin-bottom: 0.75rem;
@@ -136,7 +136,7 @@ if (!empty($fechaEntregaRaw)) {
     display: block;
 }
 .info-item span {
-    color: #1a1a2e;
+    color: #061C4C;
     font-size: 1rem;
 }
 .order-badge {
@@ -151,7 +151,7 @@ if (!empty($fechaEntregaRaw)) {
     border: 1px solid #e2e8f0;
 }
 .products-table thead th {
-    background: #667eea !important;
+    background: #0B4EA2 !important;
     color: white !important;
     font-weight: 700;
     border: none;

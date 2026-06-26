@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -117,7 +117,7 @@ new Chart(document.getElementById('proveedoresChart'), {
         datasets: [{
             label: 'Leads',
             data: <?= json_encode(array_column($datos['leadsPorProveedor'], 'total')) ?>,
-            backgroundColor: '#667eea'
+            backgroundColor: '#0B4EA2'
         }]
     }
 });
@@ -130,7 +130,7 @@ new Chart(document.getElementById('clientesChart'), {
         datasets: [{
             label: 'Leads',
             data: <?= json_encode(array_column($datos['leadsPorCliente'], 'total')) ?>,
-            backgroundColor: '#764ba2'
+            backgroundColor: '#061C4C'
         }]
     }
 });

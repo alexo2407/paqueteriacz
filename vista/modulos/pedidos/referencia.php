@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Vista de Referencia de Valores
  * 
@@ -29,7 +29,7 @@ try {
     
     ?>
     <style>
-        .nav-pills .nav-link.active { background-color: #0d6efd; }
+        .nav-pills .nav-link.active { background-color: #0B4EA2; }
         .copy-btn { cursor: pointer; transition: all 0.2s; }
         .copy-btn:hover { transform: scale(1.05); }
         .table-hover tbody tr:hover { background-color: rgba(13, 110, 253, 0.05); }

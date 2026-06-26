@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * breadcrumb.php — Expert Arrow Breadcrumb
  * Autogestión de estilos para garantizar visualización premium independiente.
@@ -111,16 +111,16 @@ function _bcName(string $seg, array $map): string {
 
     /* Enlaces Azules (Color de la paleta: Azul oscuro del shell) */
     .expert-bc-arrow li a {
-        background-color: #0f3460;
+        background-color: #0B4EA2;
         color: #ffffff !important;
         text-decoration: none !important;
-        border: 1px solid #0f3460;
+        border: 1px solid #0B4EA2;
         z-index: 1;
     }
 
     .expert-bc-arrow li a:hover {
-        background-color: #1a1a2e;
-        border-color: #1a1a2e;
+        background-color: #061C4C;
+        border-color: #061C4C;
     }
 
     /* Efecto Flecha con Pseudoelementos */
@@ -139,17 +139,17 @@ function _bcName(string $seg, array $map): string {
     .expert-bc-arrow li a:before {
         right: -10px;
         z-index: 3;
-        border-left: 11px solid #0f3460;
+        border-left: 11px solid #0B4EA2;
     }
 
     .expert-bc-arrow li a:after {
         right: -11px;
         z-index: 2;
-        border-left: 11px solid #16213e;
+        border-left: 11px solid #061C4C;
     }
 
     .expert-bc-arrow li a:hover:before {
-        border-left-color: #1a1a2e;
+        border-left-color: #061C4C;
     }
 
     /* Página Activa (Gris) */

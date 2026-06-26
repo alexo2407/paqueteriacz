@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../modelo/categoria.php';
@@ -56,7 +56,7 @@ $productos = ProductoModel::listarPorCategoria($id);
     margin-bottom: 2rem;
 }
 .detail-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 2rem;
 }

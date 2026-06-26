@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php") ?>
+﻿<?php include("vista/includes/header.php") ?>
 
 <?php
 $usaDataTables = true;
@@ -22,13 +22,13 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
 
 <style>
 .fwd-card { border: none; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }
-.fwd-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.75rem 2rem; }
+.fwd-header { background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%); color: white; padding: 1.75rem 2rem; }
 .fwd-header h3 { margin: 0; font-weight: 600; }
 .rule-status { font-size: 0.8rem; padding: 0.3em 0.75em; border-radius: 8px; font-weight: 600; }
 .rule-status.active { background: #d1fae5; color: #065f46; }
 .rule-status.inactive { background: #fee2e2; color: #991b1b; }
 .form-switch .form-check-input { width: 3em; height: 1.5em; cursor: pointer; }
-.form-switch .form-check-input:checked { background-color: #667eea; border-color: #667eea; }
+.form-switch .form-check-input:checked { background-color: #0B4EA2; border-color: #0B4EA2; }
 </style>
 
 <div class="container-fluid py-3">
@@ -51,7 +51,7 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
                         <a href="<?= RUTA_URL ?>forwarding" class="btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:10px;">
                             <i class="bi bi-arrow-left me-1"></i> Dashboard
                         </a>
-                        <button class="btn" style="background:#fff;color:#667eea;border:none;border-radius:10px;font-weight:600;" data-bs-toggle="modal" data-bs-target="#modalRule">
+                        <button class="btn" style="background:#fff;color:#0B4EA2;border:none;border-radius:10px;font-weight:600;" data-bs-toggle="modal" data-bs-target="#modalRule">
                             <i class="bi bi-plus-circle-fill me-1"></i> Nueva Regla
                         </button>
                     </div>
@@ -129,7 +129,7 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
 <div class="modal fade" id="modalRule" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border:none;border-radius:16px;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:16px 16px 0 0;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#0B4EA2,#061C4C);color:#fff;border-radius:16px 16px 0 0;">
                 <h5 class="modal-title"><i class="bi bi-diagram-3 me-2"></i>Nueva Regla de Forwarding</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -171,7 +171,7 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
 <div class="modal fade" id="modalEditRule" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border:none;border-radius:16px;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:16px 16px 0 0;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#0B4EA2,#061C4C);color:#fff;border-radius:16px 16px 0 0;">
                 <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Regla de Forwarding</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php") ?>
+﻿<?php include("vista/includes/header.php") ?>
 
 <?php
 $usaDataTables = true;
@@ -53,7 +53,7 @@ if ($clientes) {
 }
 .btn-new-client {
     background: white;
-    color: #4facfe;
+    color: #0B4EA2;
     border: none;
     padding: 0.6rem 1.25rem;
     border-radius: 10px;
@@ -62,7 +62,7 @@ if ($clientes) {
 }
 .btn-new-client:hover {
     background: #f0f8ff;
-    color: #00f2fe;
+    color: #0B4EA2;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
@@ -90,7 +90,7 @@ if ($clientes) {
 #tblUsuarios thead th {
     background: #f8f9fa;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     border-bottom: 2px solid #e9ecef;
     padding: 1rem 0.75rem;
 }

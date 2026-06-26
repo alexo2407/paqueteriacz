@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 
 start_secure_session();
 
@@ -48,7 +48,7 @@ foreach ($leadsPorEstado as $item) {
 
 <style>
 .crm-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     border-radius: 20px;
     padding: 2rem;
     color: white;
@@ -69,13 +69,13 @@ foreach ($leadsPorEstado as $item) {
     box-shadow: 0 15px 35px rgba(0,0,0,0.15);
 }
 .stat-card.purple {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
 }
 .stat-card.green {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #38bdf8 100%);
 }
 .stat-card.blue {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #0B4EA2 100%);
 }
 .stat-card.yellow {
     background: linear-gradient(135deg, #ffa751 0%, #ffe259 100%);
@@ -104,7 +104,7 @@ foreach ($leadsPorEstado as $item) {
 .chart-card .chart-header h5 {
     margin: 0;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
 }
 .chart-card .chart-body {
     padding: 1.5rem;
@@ -307,7 +307,7 @@ new Chart(document.getElementById('tendenciaChart'), {
         datasets: [{
             label: 'Leads',
             data: tendenciaValues,
-            borderColor: '#667eea',
+            borderColor: '#0B4EA2',
             backgroundColor: 'rgba(102, 126, 234, 0.1)',
             tension: 0.4,
             fill: true

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -78,7 +78,7 @@ if (isSuperAdmin()) {
 }
 .form-section-title {
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     margin-bottom: 1.25rem;
     display: flex;
     align-items: center;
@@ -88,10 +88,10 @@ if (isSuperAdmin()) {
     padding-bottom: 0.5rem;
 }
 .form-section-title i {
-    color: #f5576c;
+    color: #FF8A00;
 }
 .btn-save-product {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    background: linear-gradient(135deg, #FF8A00 0%, #FF8A00 100%);
     border: none;
     padding: 0.75rem 2rem;
     font-weight: 600;
@@ -106,7 +106,7 @@ if (isSuperAdmin()) {
 }
 .btn-action-outline {
     background: white;
-    color: #f5576c;
+    color: #FF8A00;
     border: 1px solid rgba(245, 87, 108, 0.3);
     padding: 0.5rem 1rem;
     border-radius: 8px;

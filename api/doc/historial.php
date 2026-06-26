@@ -4,20 +4,31 @@
  * Acceso: Solo Admin
  */
 
-if (!defined('RUTA_URL')) {
-    require_once __DIR__ . '/../../config/config.php';
-}
-require_once __DIR__ . '/../../modelo/conexion.php';
-require_once __DIR__ . '/../../modelo/api_doc.php';
+// CWD to root to ensure relative paths resolve correctly
+chdir(dirname(__DIR__, 2));
 
-if (session_status() === PHP_SESSION_NONE) session_start();
+if (!defined('RUTA_URL')) {
+    require_once 'config/config.php';
+}
+require_once 'modelo/conexion.php';
+require_once 'modelo/api_doc.php';
+
+// ── Protección: solo sesión activa con rol admin ─────────────────────────────────────────
+require_once 'utils/session.php';
+start_secure_session();
+require_once 'utils/permissions.php';
+
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
-$sessionRol   = $_SESSION['rol'] ?? null;
-$adminRolName = defined('ROL_NOMBRE_ADMIN') ? ROL_NOMBRE_ADMIN : 'Administrador';
-$isAdmin      = in_array($adminRolName, $rolesNombres, true) || $sessionRol == 1;
+$isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
 
 if (!$isAdmin) {
-    header('Location: ' . RUTA_URL . 'login');
+    if (in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true)) {
+        set_flash('error', 'Acceso denegado para tu rol.');
+        header('Location: ' . RUTA_URL . 'seguimiento/admin_tracking');
+    } else {
+        set_flash('error', 'Acceso denegado para tu rol.');
+        header('Location: ' . RUTA_URL . 'dashboard');
+    }
     exit;
 }
 
@@ -88,61 +99,61 @@ if (isset($_GET['ver'])) {
 $docs  = ApiDocModel::listar(100);
 $total = ApiDocModel::contar();
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Historial de Documentación API · RutaEx-Latam</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<?php
+include "vista/includes/header.php";
+?>
+
+<div class="wizard-theme-container">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
+/* ===== RESET & BASE ===== */
+.wizard-theme-container * {box-sizing:border-box}
+.wizard-theme-container {
   --bg:#0f1117;--bg2:#161b27;--bg3:#1e2538;--bg4:#252d40;
   --accent:#6366f1;--accentg:linear-gradient(135deg,#6366f1,#8b5cf6);
   --green:#10b981;--blue:#3b82f6;--red:#ef4444;
   --text:#e2e8f0;--textm:#94a3b8;--texts:#64748b;
   --border:rgba(99,102,241,.25);--glassb:rgba(99,102,241,.08);
   --radius:12px;--radius2:8px;
+  
+  background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius);
+  margin-top: 1rem;
 }
-html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
-.top-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.top-bar-brand{display:flex;align-items:center;gap:.75rem;font-weight:700;font-size:1rem}
-.top-bar-brand i{font-size:1.25rem;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.back-btn{display:flex;align-items:center;gap:.4rem;color:var(--textm);text-decoration:none;font-size:.85rem;transition:.2s;padding:.4rem .75rem;border-radius:var(--radius2);border:1px solid var(--border)}
-.back-btn:hover{color:var(--text);border-color:var(--accent);background:var(--glassb)}
-.page-content{max-width:1100px;margin:2rem auto;padding:0 1.5rem}
-.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
-.page-title{font-size:1.5rem;font-weight:700;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.page-subtitle{font-size:.85rem;color:var(--textm);margin-top:.25rem}
-.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.2rem;border-radius:var(--radius2);font-size:.875rem;font-weight:600;cursor:pointer;transition:.2s;border:none;text-decoration:none}
-.btn-primary{background:var(--accentg);color:#fff;box-shadow:0 4px 15px rgba(99,102,241,.3)}
-.btn-primary:hover{transform:translateY(-1px)}
-.empty-state{text-align:center;padding:4rem 2rem;color:var(--textm)}
-.empty-state i{font-size:3rem;display:block;margin-bottom:1rem;opacity:.4}
-.empty-state h3{font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:.5rem}
-.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem}
-.doc-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.25rem;transition:.25s;display:flex;flex-direction:column;gap:.75rem}
-.doc-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,.15)}
-.doc-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem}
-.doc-card-title{font-size:.95rem;font-weight:700;color:var(--text);line-height:1.3}
-.doc-card-company{font-size:.8rem;color:var(--accent);font-weight:600;margin-top:.15rem}
-.doc-card-meta{display:flex;flex-wrap:wrap;gap:.5rem}
-.tag{display:inline-flex;align-items:center;gap:.25rem;font-size:.72rem;padding:.2rem .55rem;border-radius:20px;font-weight:500}
-.tag-url{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.2)}
-.tag-date{background:rgba(99,102,241,.1);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
-.tag-sec{background:rgba(16,185,129,.08);color:#6ee7b7;border:1px solid rgba(16,185,129,.15)}
-.doc-card-actions{display:flex;gap:.5rem;margin-top:.25rem}
-.btn-sm{padding:.35rem .75rem;font-size:.8rem}
-.btn-view{background:var(--glassb);color:var(--accent);border:1px solid var(--border)}
-.btn-view:hover{border-color:var(--accent);background:rgba(99,102,241,.15)}
-.btn-del{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.2)}
-.btn-del:hover{background:rgba(239,68,68,.18)}
-.count-badge{background:var(--bg3);border:1px solid var(--border);padding:.3rem .75rem;border-radius:20px;font-size:.8rem;color:var(--textm)}
+.wizard-theme-container .top-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-radius:var(--radius) var(--radius) 0 0}
+.wizard-theme-container .top-bar-brand{display:flex;align-items:center;gap:.75rem;font-weight:700;font-size:1rem}
+.wizard-theme-container .top-bar-brand i{font-size:1.25rem;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.wizard-theme-container .back-btn{display:flex;align-items:center;gap:.4rem;color:var(--textm);text-decoration:none;font-size:.85rem;transition:.2s;padding:.4rem .75rem;border-radius:var(--radius2);border:1px solid var(--border)}
+.wizard-theme-container .back-btn:hover{color:var(--text);border-color:var(--accent);background:var(--glassb)}
+.wizard-theme-container .page-content{max-width:1100px;margin:2rem auto;padding:0 1.5rem}
+.wizard-theme-container .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem}
+.wizard-theme-container .page-title{font-size:1.5rem;font-weight:700;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.wizard-theme-container .page-subtitle{font-size:.85rem;color:var(--textm);margin-top:.25rem}
+.wizard-theme-container .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.55rem 1.2rem;border-radius:var(--radius2);font-size:.875rem;font-weight:600;cursor:pointer;transition:.2s;border:none;text-decoration:none}
+.wizard-theme-container .btn-primary{background:var(--accentg);color:#fff;box-shadow:0 4px 15px rgba(99,102,241,.3)}
+.wizard-theme-container .btn-primary:hover{transform:translateY(-1px)}
+.wizard-theme-container .empty-state{text-align:center;padding:4rem 2rem;color:var(--textm)}
+.wizard-theme-container .empty-state i{font-size:3rem;display:block;margin-bottom:1rem;opacity:.4}
+.wizard-theme-container .empty-state h3{font-size:1.1rem;font-weight:600;color:var(--text);margin-bottom:.5rem}
+.wizard-theme-container .doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.25rem}
+.wizard-theme-container .doc-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1.25rem;transition:.25s;display:flex;flex-direction:column;gap:.75rem}
+.wizard-theme-container .doc-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,.15)}
+.wizard-theme-container .doc-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem}
+.wizard-theme-container .doc-card-title{font-size:.95rem;font-weight:700;color:var(--text);line-height:1.3}
+.wizard-theme-container .doc-card-company{font-size:.8rem;color:var(--accent);font-weight:600;margin-top:.15rem}
+.wizard-theme-container .doc-card-meta{display:flex;flex-wrap:wrap;gap:.5rem}
+.wizard-theme-container .tag{display:inline-flex;align-items:center;gap:.25rem;font-size:.72rem;padding:.2rem .55rem;border-radius:20px;font-weight:500}
+.wizard-theme-container .tag-url{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.2)}
+.wizard-theme-container .tag-date{background:rgba(99,102,241,.1);color:#a5b4fc;border:1px solid rgba(99,102,241,.2)}
+.wizard-theme-container .tag-sec{background:rgba(16,185,129,.08);color:#6ee7b7;border:1px solid rgba(16,185,129,.15)}
+.wizard-theme-container .doc-card-actions{display:flex;gap:.5rem;margin-top:.25rem}
+.wizard-theme-container .btn-sm{padding:.35rem .75rem;font-size:.8rem}
+.wizard-theme-container .btn-view{background:var(--glassb);color:var(--accent);border:1px solid var(--border)}
+.wizard-theme-container .btn-view:hover{border-color:var(--accent);background:rgba(99,102,241,.15)}
+.wizard-theme-container .btn-del{background:rgba(239,68,68,.08);color:var(--red);border:1px solid rgba(239,68,68,.2)}
+.wizard-theme-container .btn-del:hover{background:rgba(239,68,68,.18)}
+.wizard-theme-container .count-badge{background:var(--bg3);border:1px solid var(--border);padding:.3rem .75rem;border-radius:20px;font-size:.8rem;color:var(--textm)}
 </style>
-</head>
-<body>
 
 <div class="top-bar">
   <div class="top-bar-brand">
@@ -257,5 +268,8 @@ async function eliminar(id, btn) {
   }
 }
 </script>
-</body>
-</html>
+</div><!-- /wizard-theme-container -->
+
+<?php
+include "vista/includes/footer.php";
+?>

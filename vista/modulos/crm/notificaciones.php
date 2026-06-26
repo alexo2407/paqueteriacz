@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 start_secure_session();
 if(!isset($_SESSION['registrado'])) { header('location:'.RUTA_URL.'login'); die(); }
 
@@ -279,7 +279,7 @@ include("vista/includes/header.php");
     /* Efecto hover suave */
     .nav-pills .nav-link:hover:not(.active) {
         background: rgba(255, 255, 255, 0.8);
-        color: #0d6efd;
+        color: #0B4EA2;
         border-color: rgba(13, 110, 253, 0.1);
         box-shadow: 0 2px 8px rgba(13, 110, 253, 0.1);
         transform: translateY(-1px);
@@ -287,10 +287,10 @@ include("vista/includes/header.php");
     
     /* Tab activo con gradiente y sombra */
     .nav-pills .nav-link.active {
-        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        background: linear-gradient(135deg, #0B4EA2 0%, #0a58ca 100%);
         color: white;
         font-weight: 600;
-        border-color: #0d6efd;
+        border-color: #0B4EA2;
         box-shadow: 
             0 4px 12px rgba(13, 110, 253, 0.3),
             0 2px 4px rgba(13, 110, 253, 0.2);
@@ -365,8 +365,8 @@ include("vista/includes/header.php");
         border-color: #dee2e6; /* Keep original hover border color */
     }
     
-    .notif-card.unread { background-color: #f8f9fa; border-left-color: #0d6efd; }
-    .notif-card.type-lead { border-left-color: #198754; } 
+    .notif-card.unread { background-color: #f8f9fa; border-left-color: #0B4EA2; }
+    .notif-card.type-lead { border-left-color: #0B4EA2; } 
     .notif-card.type-update { border-left-color: #0dcaf0; }
     
     .timeline-label {
@@ -387,8 +387,8 @@ include("vista/includes/header.php");
         justify-content: center;
         font-size: 1.25rem;
     }
-    .bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
-    .bg-soft-success { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
+    .bg-soft-primary { background-color: rgba(13, 110, 253, 0.1); color: #0B4EA2; }
+    .bg-soft-success { background-color: rgba(25, 135, 84, 0.1); color: #0B4EA2; }
     .bg-soft-info { background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0; }
     
     /* DATATABLES GRID HACK: Transformar Tabla en Grid */
@@ -418,7 +418,7 @@ include("vista/includes/header.php");
         transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
     }
     #customSearch:focus, #updatesSearch:focus {
-        border-color: #0d6efd;
+        border-color: #0B4EA2;
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
     }
     .input-group-text {
@@ -1018,7 +1018,7 @@ function confirmarCambioEstado(selectElem, leadId, notifId) {
         text: `El lead pasará a estado: ${textoEstado}`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#198754',
+        confirmButtonColor: '#0B4EA2',
         cancelButtonColor: '#6c757d',
         confirmButtonText: 'Sí, cambiar',
         cancelButtonText: 'Cancelar'

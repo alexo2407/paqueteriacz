@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php") ?>
+﻿<?php include("vista/includes/header.php") ?>
 
 <?php
 $usaDataTables = true;
@@ -8,7 +8,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
 
 <style>
 .fwd-card { border: none; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }
-.fwd-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.75rem 2rem; }
+.fwd-header { background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%); color: white; padding: 1.75rem 2rem; }
 .fwd-header h3 { margin: 0; font-weight: 600; }
 .log-status { font-size: 0.75rem; padding: 0.25em 0.6em; border-radius: 6px; font-weight: 600; display: inline-block; }
 .log-status.success { background: #d1fae5; color: #065f46; }
@@ -155,7 +155,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
 <div class="modal fade" id="modalDetail" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content" style="border:none;border-radius:16px;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:16px 16px 0 0;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#0B4EA2,#061C4C);color:#fff;border-radius:16px 16px 0 0;">
                 <h5 class="modal-title"><i class="bi bi-code-slash me-2"></i>Detalle de Forwarding</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

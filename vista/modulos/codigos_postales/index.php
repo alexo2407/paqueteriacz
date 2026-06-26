@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $usaMaterialize = true; // Suprime Bootstrap en cargarRecursos()
 include("vista/includes/header_materialize.php");
 ?>
@@ -42,7 +42,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
 ?>
 
 <!-- ════ CABECERA ════ -->
-<div class="mz-card-header" style="background:linear-gradient(135deg,#4b6cb7 0%,#182848 100%); border-radius:12px; margin-bottom:1.5rem;">
+<div class="mz-card-header" style="background:linear-gradient(135deg,#0B4EA2 0%,#061C4C 100%); border-radius:12px; margin-bottom:1.5rem;">
     <div class="cp-header">
         <div>
             <h4 class="white-text" style="margin:0;font-weight:700">
@@ -296,7 +296,7 @@ $exportUrl = RUTA_URL . 'codigos_postales/exportar' . ($exportParams ? '?' . $ex
 
     <!-- HEADER -->
     <div class="modal-content" style="padding:0">
-        <div style="background:linear-gradient(135deg,#4b6cb7,#182848);padding:1.25rem 1.5rem;border-radius:12px 12px 0 0">
+        <div style="background:linear-gradient(135deg,#0B4EA2,#061C4C);padding:1.25rem 1.5rem;border-radius:12px 12px 0 0">
             <h5 class="white-text" style="margin:0;font-weight:700">
                 <i class="material-icons left" style="vertical-align:middle">upload</i>
                 Importar Códigos Postales

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once "controlador/logistica.php";
 
 // Instanciar controlador
@@ -1008,7 +1008,7 @@ include("vista/includes/header.php");
                                     <div class="d-flex justify-content-center gap-3">
                                         <button type="button" id="btnConfirmReturnYes"
                                             class="btn fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm"
-                                            style="background-color:#198754;color:#fff;min-width:120px;min-height:64px;font-size:1.1rem;border-radius:0.4rem;">
+                                            style="background-color:#0B4EA2;color:#fff;min-width:120px;min-height:64px;font-size:1.1rem;border-radius:0.4rem;">
                                             <i class="bi bi-check2 fs-4"></i> Sí
                                         </button>
                                         <button type="button" id="btnConfirmReturnNo"
@@ -1107,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon: 'success',
                         title: '¡Éxito!',
                         text: data.message || 'Estado actualizado correctamente',
-                        confirmButtonColor: '#0d6efd'
+                        confirmButtonColor: '#0B4EA2'
                     }).then(() => {
                         window.location.reload();
                     });
@@ -1121,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon: 'error',
                         title: 'Error',
                         text: data.message || 'Error al actualizar el estado',
-                        confirmButtonColor: '#0d6efd'
+                        confirmButtonColor: '#0B4EA2'
                     });
                 } else {
                     alert(data.message || 'Error al actualizar el estado');
@@ -1137,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     icon: 'error',
                     title: 'Error de Conexión',
                     text: error.message || 'Error en la comunicación con el servidor',
-                    confirmButtonColor: '#0d6efd'
+                    confirmButtonColor: '#0B4EA2'
                 });
             } else {
                 alert(error.message || 'Error en la comunicación con el servidor');
@@ -1269,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             icon: 'success',
                             title: '¡Resolución Procesada!',
                             text: data.message || 'Novedad resuelta y estado del pedido actualizado.',
-                            confirmButtonColor: '#0d6efd'
+                            confirmButtonColor: '#0B4EA2'
                         }).then(() => {
                             window.location.reload();
                         });
@@ -1318,14 +1318,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                         icon: 'success',
                                         title: 'Estado actualizado',
                                         text: d2.message,
-                                        confirmButtonColor: '#0d6efd'
+                                        confirmButtonColor: '#0B4EA2'
                                     }).then(() => window.location.reload());
                                 } else {
-                                    Swal.fire({ icon: 'error', title: 'Error', text: d2.message, confirmButtonColor: '#0d6efd' });
+                                    Swal.fire({ icon: 'error', title: 'Error', text: d2.message, confirmButtonColor: '#0B4EA2' });
                                 }
                             })
                             .catch(err => {
-                                Swal.fire({ icon: 'error', title: 'Error de Red', text: err.message, confirmButtonColor: '#0d6efd' });
+                                Swal.fire({ icon: 'error', title: 'Error de Red', text: err.message, confirmButtonColor: '#0B4EA2' });
                             });
                         });
                     } else {
@@ -1342,7 +1342,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             icon: 'error',
                             title: 'Error al Resolver',
                             text: data.message || 'No se pudo registrar la solución del incidente.',
-                            confirmButtonColor: '#0d6efd'
+                            confirmButtonColor: '#0B4EA2'
                         });
                     } else {
                         alert(data.message || 'No se pudo registrar la solución del incidente.');
@@ -1365,7 +1365,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         icon: 'error',
                         title: 'Error de Red',
                         text: error.message || 'Ocurrió un error al intentar enviar la resolución.',
-                        confirmButtonColor: '#0d6efd'
+                        confirmButtonColor: '#0B4EA2'
                     });
                 } else {
                     alert(error.message || 'Ocurrió un error al intentar enviar la resolución.');

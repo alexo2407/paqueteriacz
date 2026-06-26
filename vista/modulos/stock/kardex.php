@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -90,7 +90,7 @@ if ($producto || $numeroOrden) {
     padding: 1.5rem;
     height: 100%;
     transition: transform 0.2s;
-    border-left: 4px solid #11998e;
+    border-left: 4px solid #0B4EA2;
 }
 .info-box:hover {
     transform: translateY(-2px);
@@ -128,7 +128,7 @@ if ($producto || $numeroOrden) {
     padding: 0.4em 0.8em;
     border-radius: 4px;
 }
-.badge-entrada { background-color: #198754; color: white; }
+.badge-entrada { background-color: #0B4EA2; color: white; }
 .badge-salida { background-color: #dc3545; color: white; }
 .badge-ajuste { background-color: #ffc107; color: #212529; }
 
@@ -186,7 +186,7 @@ if ($producto || $numeroOrden) {
                     <input type="date" class="form-control" name="fecha_fin" value="<?php echo $fechaFin; ?>" required>
                 </div>
                 <div class="col-md-1">
-                    <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm" style="background: #11998e; border-color: #11998e;">
+                    <button type="submit" class="btn btn-success w-100 fw-bold shadow-sm" style="background: #0B4EA2; border-color: #0B4EA2;">
                         <i class="bi bi-search"></i>
                     </button>
                 </div>
@@ -220,7 +220,7 @@ if ($producto || $numeroOrden) {
                         </div>
                     </div>
                     <div class="col-md-3 col-sm-6">
-                        <div class="info-box" style="border-left-color: #38ef7d;">
+                        <div class="info-box" style="border-left-color: #38bdf8;">
                             <div class="info-label">Precio Unitario</div>
                             <div class="info-value text-success">$<?php echo number_format($producto['precio_usd'] ?? 0, 2); ?></div>
                         </div>

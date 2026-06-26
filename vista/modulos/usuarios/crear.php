@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 include("vista/includes/header.php");
 require_once __DIR__ . '/../../../controlador/usuario.php';
 require_once __DIR__ . '/../../../controlador/pais.php';
@@ -33,7 +33,7 @@ $roleIcons = [
     overflow: hidden;
 }
 .create-user-header {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #38bdf8 100%);
     color: white;
     padding: 1.5rem 2rem;
 }
@@ -49,14 +49,14 @@ $roleIcons = [
 }
 .form-section-title {
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 .form-section-title i {
-    color: #667eea;
+    color: #0B4EA2;
 }
 .input-icon-wrapper {
     position: relative;
@@ -110,11 +110,11 @@ $roleIcons = [
     background: white;
 }
 .role-card:hover {
-    border-color: #667eea;
+    border-color: #0B4EA2;
     background: #f8f9ff;
 }
 .role-card.selected {
-    border-color: #667eea;
+    border-color: #0B4EA2;
     background: #f0f3ff;
 }
 .role-card .role-icon {
@@ -138,7 +138,7 @@ $roleIcons = [
     display: none;
 }
 .btn-submit-user {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #38bdf8 100%);
     border: none;
     padding: 0.75rem 2rem;
     font-weight: 600;

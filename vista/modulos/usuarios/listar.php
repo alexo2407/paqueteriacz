@@ -1,4 +1,4 @@
-
+﻿
 <?php include("vista/includes/header.php") ?>
 
 <?php
@@ -53,7 +53,7 @@ $roleColors = [
     overflow: hidden;
 }
 .user-card-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 1.5rem;
 }
@@ -95,7 +95,7 @@ $roleColors = [
 }
 .user-name {
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     margin-bottom: 1px;
     font-size: 0.9rem;
 }
@@ -218,7 +218,7 @@ $roleColors = [
                             $iniciales = strtoupper(substr($partes[0], 0, 1) . (isset($partes[1]) ? substr($partes[1], 0, 1) : ''));
                             
                             // Color basado en el hash del nombre
-                            $colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7', '#fa709a', '#fee140'];
+                            $colors = ['#0B4EA2', '#061C4C', '#FF8A00', '#FF8A00', '#0B4EA2', '#0B4EA2', '#43e97b', '#38f9d7', '#FF8A00', '#FF8A00'];
                             $colorIndex = crc32($nombre) % count($colors);
                             $avatarColor = $colors[$colorIndex];
                             

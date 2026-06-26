@@ -5,23 +5,33 @@
  * Acceso: Solo Admin
  */
 
-// Cargar config solo si no está ya definida (evita doble include)
+// CWD to root to ensure relative paths resolve correctly
+chdir(dirname(__DIR__, 2));
+
 if (!defined('RUTA_URL')) {
-    require_once __DIR__ . '/../../config/config.php';
+    require_once 'config/config.php';
 }
-require_once __DIR__ . '/../../modelo/conexion.php';
-require_once __DIR__ . '/../../modelo/api_doc.php';
+require_once 'modelo/conexion.php';
+require_once 'modelo/api_doc.php';
+require_once 'modelo/pedido.php';
+require_once 'modelo/pais.php';
 
 // ── Protección: solo sesión activa con rol admin ─────────────────────────────────────────
-if (session_status() === PHP_SESSION_NONE) session_start();
-$sessionRol    = $_SESSION['rol']          ?? null;
-$rolesNombres  = $_SESSION['roles_nombres'] ?? [];
-// Usar el nombre de rol real de config/config.php
-$adminRolName  = defined('ROL_NOMBRE_ADMIN') ? ROL_NOMBRE_ADMIN : 'Administrador';
-$isAdmin       = in_array($adminRolName, $rolesNombres, true) || $sessionRol == 1;
+require_once 'utils/session.php';
+start_secure_session();
+require_once 'utils/permissions.php';
+
+$rolesNombres = $_SESSION['roles_nombres'] ?? [];
+$isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true);
 
 if (!$isAdmin) {
-    header('Location: ' . RUTA_URL . 'login');
+    if (in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true)) {
+        set_flash('error', 'Acceso denegado para tu rol.');
+        header('Location: ' . RUTA_URL . 'seguimiento/admin_tracking');
+    } else {
+        set_flash('error', 'Acceso denegado para tu rol.');
+        header('Location: ' . RUTA_URL . 'dashboard');
+    }
     exit;
 }
 
@@ -54,19 +64,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 }
+
+// Fetch lists for the select dropdowns
+$clientes = [];
+try {
+    $clientes = PedidosModel::obtenerClientes();
+} catch (Exception $e) {}
+
+$proveedores = [];
+try {
+    $proveedores = PedidosModel::obtenerProveedores();
+} catch (Exception $e) {}
+
+$monedas = [];
+try {
+    $monedas = PedidosModel::obtenerMonedas();
+} catch (Exception $e) {}
+
+$paises = [];
+try {
+    $paises = PaisModel::listar();
+} catch (Exception $e) {}
+
+include "vista/includes/header.php";
 ?>
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Documentación API · RutaEx-Latam</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<div class="wizard-theme-container">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap');
 /* ===== RESET & BASE ===== */
-*{margin:0;padding:0;box-sizing:border-box}
-:root{
+.wizard-theme-container * {box-sizing:border-box}
+.wizard-theme-container {
   --bg:#0f1117;--bg2:#161b27;--bg3:#1e2538;--bg4:#252d40;
   --accent:#6366f1;--accent2:#8b5cf6;--accentg:linear-gradient(135deg,#6366f1,#8b5cf6);
   --green:#10b981;--blue:#3b82f6;--orange:#f59e0b;--red:#ef4444;
@@ -75,105 +103,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
   --glass:rgba(30,37,56,.7);--glassb:rgba(99,102,241,.08);
   --radius:12px;--radius2:8px;
   --shadow:0 20px 60px rgba(0,0,0,.5);
+  
+  background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius);
+  margin-top: 1rem;
 }
-html,body{min-height:100vh;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
 
 /* ===== LAYOUT ===== */
-.page-wrap{min-height:100vh;display:flex;flex-direction:column}
-.top-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(20px)}
-.top-bar-brand{display:flex;align-items:center;gap:.75rem;font-weight:700;font-size:1rem;color:var(--text)}
-.top-bar-brand i{font-size:1.25rem;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.back-btn{display:flex;align-items:center;gap:.4rem;color:var(--textm);text-decoration:none;font-size:.85rem;transition:.2s;padding:.4rem .75rem;border-radius:var(--radius2);border:1px solid var(--border)}
-.back-btn:hover{color:var(--text);border-color:var(--accent);background:var(--glassb)}
+.wizard-theme-container .page-wrap{display:flex;flex-direction:column}
+.wizard-theme-container .top-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;border-radius:var(--radius) var(--radius) 0 0}
+.wizard-theme-container .top-bar-brand{display:flex;align-items:center;gap:.75rem;font-weight:700;font-size:1rem;color:var(--text)}
+.wizard-theme-container .top-bar-brand i{font-size:1.25rem;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.wizard-theme-container .back-btn{display:flex;align-items:center;gap:.4rem;color:var(--textm);text-decoration:none;font-size:.85rem;transition:.2s;padding:.4rem .75rem;border-radius:var(--radius2);border:1px solid var(--border)}
+.wizard-theme-container .back-btn:hover{color:var(--text);border-color:var(--accent);background:var(--glassb)}
 
 /* ===== WIZARD CONTAINER ===== */
-.wizard-wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem;gap:2rem}
-.wizard-card{width:100%;max-width:760px;background:var(--glass);border:1px solid var(--border);border-radius:16px;backdrop-filter:blur(20px);padding:2.5rem;box-shadow:var(--shadow)}
+.wizard-theme-container .wizard-wrap{display:flex;flex-direction:column;align-items:center;padding:2rem 0;gap:2rem}
+.wizard-theme-container .wizard-card{width:100%;max-width:760px;background:var(--glass);border:1px solid var(--border);border-radius:16px;backdrop-filter:blur(20px);padding:2.5rem;box-shadow:var(--shadow)}
 
 /* ===== PROGRESS BAR ===== */
-.progress-bar-wrap{width:100%;max-width:760px}
-.steps-row{display:flex;align-items:center;gap:0;justify-content:space-between;position:relative}
-.steps-row::before{content:'';position:absolute;top:50%;left:0;right:0;height:2px;background:var(--border);transform:translateY(-50%);z-index:0}
-.step-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;border:2px solid var(--border);background:var(--bg2);color:var(--textm);position:relative;z-index:1;transition:.3s;flex-shrink:0}
-.step-dot.active{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 20px rgba(99,102,241,.5)}
-.step-dot.done{border-color:var(--green);background:var(--green);color:#fff}
-.step-line{flex:1;height:2px;background:var(--border);transition:.4s;z-index:0}
-.step-line.done{background:var(--green)}
-.steps-labels{display:flex;justify-content:space-between;margin-top:.5rem;padding:0 2px}
-.step-label{font-size:.7rem;color:var(--texts);text-align:center;width:36px;transition:.3s}
-.step-label.active{color:var(--accent)}
-.step-label.done{color:var(--green)}
+.wizard-theme-container .progress-bar-wrap{width:100%;max-width:760px}
+.wizard-theme-container .steps-row{display:flex;align-items:center;gap:0;justify-content:space-between;position:relative}
+.wizard-theme-container .steps-row::before{content:'';position:absolute;top:50%;left:0;right:0;height:2px;background:var(--border);transform:translateY(-50%);z-index:0}
+.wizard-theme-container .step-dot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;border:2px solid var(--border);background:var(--bg2);color:var(--textm);position:relative;z-index:1;transition:.3s;flex-shrink:0}
+.wizard-theme-container .step-dot.active{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 20px rgba(99,102,241,.5)}
+.wizard-theme-container .step-dot.done{border-color:var(--green);background:var(--green);color:#fff}
+.wizard-theme-container .step-line{flex:1;height:2px;background:var(--border);transition:.4s;z-index:0}
+.wizard-theme-container .step-line.done{background:var(--green)}
+.wizard-theme-container .steps-labels{display:flex;justify-content:space-between;margin-top:.5rem;padding:0 2px}
+.wizard-theme-container .step-label{font-size:.7rem;color:var(--texts);text-align:center;width:36px;transition:.3s}
+.wizard-theme-container .step-label.active{color:var(--accent)}
+.wizard-theme-container .step-label.done{color:var(--green)}
 
 /* ===== STEP HEADINGS ===== */
-.step-title{font-size:1.4rem;font-weight:700;margin-bottom:.4rem;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.step-subtitle{color:var(--textm);font-size:.9rem;margin-bottom:1.75rem}
+.wizard-theme-container .step-title{font-size:1.4rem;font-weight:700;margin-bottom:.4rem;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.wizard-theme-container .step-subtitle{color:var(--textm);font-size:.9rem;margin-bottom:1.75rem}
 
 /* ===== FORM ELEMENTS ===== */
-.form-group{margin-bottom:1.25rem}
-label{display:block;font-size:.8rem;font-weight:600;color:var(--textm);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.05em}
-input[type=text],input[type=url],input[type=email],input[type=password],input[type=number],textarea,select{
+.wizard-theme-container .form-group{margin-bottom:1.25rem}
+.wizard-theme-container label{display:block;font-size:.8rem;font-weight:600;color:var(--textm);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.05em}
+.wizard-theme-container input[type=text], .wizard-theme-container input[type=url], .wizard-theme-container input[type=email], .wizard-theme-container input[type=password], .wizard-theme-container input[type=number], .wizard-theme-container textarea, .wizard-theme-container select{
   width:100%;background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius2);
   color:var(--text);font-family:'Inter',sans-serif;font-size:.9rem;padding:.65rem .9rem;
   transition:.2s;outline:none}
-input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
-input::placeholder,textarea::placeholder{color:var(--texts)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
-.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
-textarea{min-height:80px;resize:vertical}
+.wizard-theme-container input:focus, .wizard-theme-container textarea:focus, .wizard-theme-container select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.wizard-theme-container input::placeholder, .wizard-theme-container textarea::placeholder{color:var(--texts)}
+.wizard-theme-container .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.wizard-theme-container .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+.wizard-theme-container textarea{min-height:80px;resize:vertical}
 
 /* ===== CHECKBOX GRID ===== */
-.section-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
-.section-card{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius2);padding:1rem;cursor:pointer;transition:.25s;display:flex;align-items:flex-start;gap:.75rem}
-.section-card:hover{border-color:var(--accent);background:var(--glassb)}
-.section-card.selected{border-color:var(--accent);background:rgba(99,102,241,.12);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
-.section-card input[type=checkbox]{display:none}
-.section-check{width:20px;height:20px;border-radius:4px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:.2s}
-.section-card.selected .section-check{background:var(--accent);border-color:var(--accent);color:#fff}
-.section-card.selected .section-check::after{content:'✓';font-size:.75rem;font-weight:700}
-.section-info h4{font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.2rem}
-.section-info span{font-size:.75rem;color:var(--textm)}
-.badge-method{padding:.15rem .5rem;border-radius:4px;font-family:'Fira Code',monospace;font-size:.7rem;font-weight:600;color:#fff}
-.m-post{background:var(--green)}
-.m-get{background:var(--blue)}
+.wizard-theme-container .section-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.wizard-theme-container .section-card{background:var(--bg3);border:1.5px solid var(--border);border-radius:var(--radius2);padding:1rem;cursor:pointer;transition:.25s;display:flex;align-items:flex-start;gap:.75rem}
+.wizard-theme-container .section-card:hover{border-color:var(--accent);background:var(--glassb)}
+.wizard-theme-container .section-card.selected{border-color:var(--accent);background:rgba(99,102,241,.12);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.wizard-theme-container .section-card input[type=checkbox]{display:none}
+.wizard-theme-container .section-check{width:20px;height:20px;border-radius:4px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:.2s}
+.wizard-theme-container .section-card.selected .section-check{background:var(--accent);border-color:var(--accent);color:#fff}
+.wizard-theme-container .section-card.selected .section-check::after{content:'✓';font-size:.75rem;font-weight:700}
+.wizard-theme-container .section-info h4{font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.2rem}
+.wizard-theme-container .section-info span{font-size:.75rem;color:var(--textm)}
+.wizard-theme-container .badge-method{padding:.15rem .5rem;border-radius:4px;font-family:'Fira Code',monospace;font-size:.7rem;font-weight:600;color:#fff}
+.wizard-theme-container .m-post{background:var(--green)}
+.wizard-theme-container .m-get{background:var(--blue)}
 
 /* ===== EXAMPLE FIELDS ===== */
-.example-block{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:1.25rem;margin-bottom:1rem}
-.example-block h4{font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
-.field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem}
-.field-label{font-size:.8rem;color:var(--textm);width:160px;flex-shrink:0;font-family:'Fira Code',monospace}
-.field-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Fira Code',monospace;font-size:.82rem;padding:.45rem .7rem}
-.field-input:focus{border-color:var(--accent);outline:none}
+.wizard-theme-container .example-block{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:1.25rem;margin-bottom:1rem}
+.wizard-theme-container .example-block h4{font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.wizard-theme-container .field-row{display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem}
+.wizard-theme-container .field-label{font-size:.8rem;color:var(--textm);width:160px;flex-shrink:0;font-family:'Fira Code',monospace}
+.wizard-theme-container .field-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Fira Code',monospace;font-size:.82rem;padding:.45rem .7rem}
+.wizard-theme-container .field-input:focus{border-color:var(--accent);outline:none}
 
 /* ===== BUTTONS ===== */
-.btn-row{display:flex;gap:.75rem;justify-content:flex-end;margin-top:2rem}
-.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.4rem;border-radius:var(--radius2);font-size:.9rem;font-weight:600;cursor:pointer;transition:.2s;border:none;text-decoration:none}
-.btn-primary{background:var(--accentg);color:#fff;box-shadow:0 4px 15px rgba(99,102,241,.35)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,.5)}
-.btn-secondary{background:var(--bg3);color:var(--textm);border:1.5px solid var(--border)}
-.btn-secondary:hover{border-color:var(--accent);color:var(--text)}
-.btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 4px 15px rgba(16,185,129,.3)}
-.btn-success:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,185,129,.5)}
-.btn-danger{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)}
-.btn-danger:hover{background:rgba(239,68,68,.2)}
-.btn-sm{padding:.4rem .8rem;font-size:.8rem}
+.wizard-theme-container .btn-row{display:flex;gap:.75rem;justify-content:flex-end;margin-top:2rem}
+.wizard-theme-container .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.4rem;border-radius:var(--radius2);font-size:.9rem;font-weight:600;cursor:pointer;transition:.2s;border:none;text-decoration:none}
+.wizard-theme-container .btn-primary{background:var(--accentg);color:#fff;box-shadow:0 4px 15px rgba(99,102,241,.35)}
+.wizard-theme-container .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(99,102,241,.5)}
+.wizard-theme-container .btn-secondary{background:var(--bg3);color:var(--textm);border:1.5px solid var(--border)}
+.wizard-theme-container .btn-secondary:hover{border-color:var(--accent);color:var(--text)}
+.wizard-theme-container .btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff;box-shadow:0 4px 15px rgba(16,185,129,.3)}
+.wizard-theme-container .btn-success:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,185,129,.5)}
+.wizard-theme-container .btn-danger{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.wizard-theme-container .btn-danger:hover{background:rgba(239,68,68,.2)}
+.wizard-theme-container .btn-sm{padding:.4rem .8rem;font-size:.8rem}
 
 /* ===== PREVIEW PANEL ===== */
-#step-preview{display:none}
-.preview-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
-.saved-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--green);background:rgba(16,185,129,.1);padding:.3rem .75rem;border-radius:20px;border:1px solid rgba(16,185,129,.3)}
+.wizard-theme-container #step-preview{display:none}
+.wizard-theme-container .preview-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.wizard-theme-container .saved-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--green);background:rgba(16,185,129,.1);padding:.3rem .75rem;border-radius:20px;border:1px solid rgba(16,185,129,.3)}
 
 /* ===== ALERT ===== */
-.alert-info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93c5fd;border-radius:var(--radius2);padding:.75rem 1rem;font-size:.85rem;margin-bottom:1rem}
-.alert-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;border-radius:var(--radius2);padding:.75rem 1rem;font-size:.85rem;display:none}
+.wizard-theme-container .alert-info{background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93c5fd;border-radius:var(--radius2);padding:.75rem 1rem;font-size:.85rem;margin-bottom:1rem}
+.wizard-theme-container .alert-success{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;border-radius:var(--radius2);padding:.75rem 1rem;font-size:.85rem;display:none}
 
 /* ===== STEP VISIBILITY ===== */
-.step-panel{display:none}
-.step-panel.active{display:block}
+.wizard-theme-container .step-panel{display:none}
+.wizard-theme-container .step-panel.active{display:block}
 
 /* ===== LOADER ===== */
-.loader-overlay{display:none;position:fixed;inset:0;background:rgba(15,17,23,.8);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
-.loader-overlay.show{display:flex}
-.spinner{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+.wizard-theme-container .loader-overlay{display:none;position:fixed;inset:0;background:rgba(15,17,23,.8);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+.wizard-theme-container .loader-overlay.show{display:flex}
+.wizard-theme-container .spinner{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ===== PRINT STYLES ===== */
@@ -277,6 +309,57 @@ textarea{min-height:80px;resize:vertical}
           <input type="text" id="f_fecha" placeholder="Ej: Junio 2026">
         </div>
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cliente (Comercio)</label>
+          <select id="sel_cliente" onchange="onClienteChange()">
+            <option value="">-- Selecciona Cliente --</option>
+            <?php foreach ($clientes as $c): ?>
+              <option value="<?= $c['id'] ?>" data-nombre="<?= htmlspecialchars($c['nombre']) ?>" data-email="<?= htmlspecialchars($c['email'] ?? '') ?>">
+                <?= htmlspecialchars($c['nombre']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Proveedor (Mensajería)</label>
+          <select id="sel_proveedor" onchange="onProveedorChange()">
+            <option value="">-- Selecciona Proveedor --</option>
+            <?php foreach ($proveedores as $p): ?>
+              <option value="<?= $p['id'] ?>" data-nombre="<?= htmlspecialchars($p['nombre']) ?>">
+                <?= htmlspecialchars($p['nombre']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>País de Ejemplo</label>
+          <select id="sel_pais" onchange="onPaisChange()">
+            <option value="">-- Selecciona País --</option>
+            <?php foreach ($paises as $p): ?>
+              <option value="<?= $p['id'] ?>" data-nombre="<?= htmlspecialchars($p['nombre']) ?>">
+                <?= htmlspecialchars($p['nombre']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Moneda de Ejemplo</label>
+          <select id="sel_moneda" onchange="onMonedaChange()">
+            <option value="">-- Selecciona Moneda --</option>
+            <?php foreach ($monedas as $m): ?>
+              <option value="<?= $m['id'] ?>" data-nombre="<?= htmlspecialchars($m['nombre']) ?>">
+                <?= htmlspecialchars($m['nombre']) ?> (<?= htmlspecialchars($m['codigo']) ?>)
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      </div>
+
       <div class="form-group">
         <label>URL Base de la API</label>
         <input type="text" id="f_url_base" placeholder="https://rutaexlatam.com/api" value="https://rutaexlatam.com/api">
@@ -464,6 +547,61 @@ const totalSteps = 5;
 const selectedSections = new Set(['auth','crear','listar','historial']);
 let lastConfig = null;
 let lastHtml   = null;
+
+// ═══════════════════════════════════════════════════
+// SELECTORS CHANGE HANDLERS
+// ═══════════════════════════════════════════════════
+function onClienteChange() {
+  const sel = document.getElementById('sel_cliente');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+
+  const id = opt.value;
+  const nombre = opt.getAttribute('data-nombre');
+  const email = opt.getAttribute('data-email');
+
+  // Auto-populate
+  document.getElementById('f_empresa').value = nombre;
+  document.getElementById('f_cred_id').value = id;
+  document.getElementById('f_cred_nombre').value = nombre;
+  document.getElementById('f_cred_email').value = email;
+
+  // Auto-populate step 4 values
+  document.getElementById('ex_id_cliente').value = id;
+}
+
+function onProveedorChange() {
+  const sel = document.getElementById('sel_proveedor');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+
+  const id = opt.value;
+  document.getElementById('ex_id_proveedor').value = id;
+}
+
+function onPaisChange() {
+  const sel = document.getElementById('sel_pais');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+
+  const id = opt.value;
+  const nombre = opt.getAttribute('data-nombre');
+
+  document.getElementById('ex_id_pais').value = id;
+  document.getElementById('ex_pais_nombre').value = nombre;
+}
+
+function onMonedaChange() {
+  const sel = document.getElementById('sel_moneda');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+
+  const id = opt.value;
+  const nombre = opt.getAttribute('data-nombre');
+
+  document.getElementById('ex_id_moneda').value = id;
+  document.getElementById('ex_moneda_nombre').value = nombre;
+}
 
 // ═══════════════════════════════════════════════════
 // NAVIGATION
@@ -885,5 +1023,8 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
-</body>
-</html>
+</div><!-- /wizard-theme-container -->
+
+<?php
+include "vista/includes/footer.php";
+?>

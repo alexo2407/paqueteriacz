@@ -1,4 +1,4 @@
-<?php
+﻿<?php
     require_once __DIR__ . '/../../utils/permissions.php';
 
     // ── Roles / home URL ────────────────────────────────────────────────────
@@ -197,7 +197,7 @@
                                 $npTime  = date('d/m H:i', strtotime($np['created_at']));
                             } else {
                                 $npIcon  = 'bi-bell';
-                                $npColor = '#0d6efd';
+                                $npColor = '#0B4EA2';
                                 $npUrl   = RUTA_URL . 'crm/notificaciones';
                                 $npRead  = (bool)($np['is_read'] ?? $np['read'] ?? false);
                                 $npId    = $np['id'];
@@ -276,14 +276,14 @@
                 overflow: hidden;
                 text-overflow: ellipsis;
                 max-width: 240px;
-                color: #1a1a2e !important;          /* oscuro, buen contraste */
+                color: #061C4C !important;          /* oscuro, buen contraste */
             }
             .notif-drop-sub  { font-size: .72rem; color: #495057 !important; } /* gris medio */
             .notif-drop-time { font-size: .70rem; color: #6c757d !important; } /* gris suave */
             .notif-drop-dot {
                 width: 8px; height: 8px;
                 border-radius: 50%;
-                background: #0d6efd;
+                background: #0B4EA2;
                 margin-top: 4px;
             }
             #navNotifBadge {

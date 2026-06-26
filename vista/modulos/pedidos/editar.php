@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 ob_start(); // Start buffering immediately to catch any spurious output/whitespace
 
 // El ID del pedido se pasa desde el controlador
@@ -234,7 +234,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
     overflow: hidden;
 }
 .editar-pedido-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 1.5rem 2rem;
 }
@@ -250,7 +250,7 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
 }
 .form-section-title {
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
@@ -258,10 +258,10 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
     font-size: 1.1rem;
 }
 .form-section-title i {
-    color: #667eea;
+    color: #0B4EA2;
 }
 .btn-submit-order {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     border: none;
     padding: 0.75rem 2rem;
     font-weight: 600;
@@ -310,11 +310,11 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
 }
 .nav-pills .nav-link:hover:not(.active) {
     background: rgba(255, 255, 255, 0.8);
-    color: #0d6efd;
+    color: #0B4EA2;
     transform: translateY(-1px);
 }
 .nav-pills .nav-link.active {
-    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #0a58ca 100%);
     color: white;
     font-weight: 600;
     box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3);

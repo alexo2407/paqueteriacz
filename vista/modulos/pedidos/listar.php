@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $usaDataTables = true;
 require_once "utils/authorization.php";
 require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
@@ -153,7 +153,7 @@ endif;
                     <!-- Documentación de campos al estilo API -->
                     <div class="mt-3 border rounded overflow-hidden" style="font-size:0.82rem;">
                         <!-- Header -->
-                        <div class="d-flex align-items-center justify-content-between px-3 py-2 text-white" style="background:linear-gradient(135deg,#667eea,#764ba2)">
+                        <div class="d-flex align-items-center justify-content-between px-3 py-2 text-white" style="background:linear-gradient(135deg,#0B4EA2,#061C4C)">
                             <span class="fw-bold"><i class="bi bi-file-earmark-excel me-1"></i> Referencia de Campos XLSX — Orden de Columnas</span>
                             <a href="<?= RUTA_URL ?>Pedidos/referencia" target="_blank" class="text-white small opacity-75">
                                 <i class="bi bi-box-arrow-up-right me-1"></i>Ver IDs disponibles
@@ -452,11 +452,11 @@ endif;
                             <div class="border rounded-3 p-3 h-100 modo-card" id="cardModoB" onclick="switchModoReasignar('B')">
                                 <div class="d-flex align-items-center gap-2 mb-2">
                                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                         style="width:38px;height:38px;background:linear-gradient(135deg,#667eea,#764ba2);">
+                                         style="width:38px;height:38px;background:linear-gradient(135deg,#0B4EA2,#061C4C);">
                                         <i class="bi bi-table text-white"></i>
                                     </div>
                                     <strong>Proveedor por fila</strong>
-                                    <span class="badge ms-auto d-none" id="badgeModoB" style="background:#764ba2;">Seleccionado</span>
+                                    <span class="badge ms-auto d-none" id="badgeModoB" style="background:#061C4C;">Seleccionado</span>
                                 </div>
                                 <p class="small text-muted mb-0">Sube un Excel con <code>numero_orden</code> + <code>id_proveedor</code>. Cada fila puede tener un proveedor distinto.</p>
                             </div>
@@ -645,7 +645,7 @@ try {
     overflow: hidden;
 }
 .pedidos-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 1.75rem 2rem;
 }
@@ -676,7 +676,7 @@ try {
     margin-bottom: 1rem;
 }
 .btn-import {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #38bdf8 100%);
     border: none;
     color: white;
     padding: 0.6rem 1.25rem;
@@ -715,7 +715,7 @@ try {
     background: rgba(59, 130, 246, 0.04);
 }
 .btn-new-order {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     border: none;
     color: white;
     padding: 0.75rem 1.5rem;
@@ -734,7 +734,7 @@ try {
 #tblPedidos thead th {
     background: #f8f9fa;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     border-bottom: 2px solid #e9ecef;
     padding: 1rem 0.75rem;
 }
@@ -1367,7 +1367,7 @@ document.addEventListener('DOMContentLoaded', function(){
         if (defaultEsCombo) {
             defaultsHtml += `
                 <div class="col-md-2 col-sm-6 mb-1">
-                    <strong>Es Combo:</strong> <span class="badge text-wrap" style="background:#6366f1;">✔ Sí (forzado)</span>
+                    <strong>Es Combo:</strong> <span class="badge text-wrap" style="background:#061C4C;">✔ Sí (forzado)</span>
                 </div>
             `;
         }

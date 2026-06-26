@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header.php"); ?>
 
 <?php
 $usaDataTables = true;
@@ -51,7 +51,7 @@ $totalInactivos = $clientesInactivos ? count($clientesInactivos) : 0;
 #tblInactivos thead th {
     background: #f8f9fa;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     border-bottom: 2px solid #e9ecef;
     padding: 1rem 0.75rem;
 }

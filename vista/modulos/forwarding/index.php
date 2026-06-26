@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php") ?>
+﻿<?php include("vista/includes/header.php") ?>
 
 <?php
 require_once __DIR__ . '/../../../modelo/forwarding.php';
@@ -40,15 +40,15 @@ try {
 
 <style>
 .fwd-card { border: none; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }
-.fwd-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.75rem 2rem; }
+.fwd-header { background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%); color: white; padding: 1.75rem 2rem; }
 .fwd-header h3 { margin: 0; font-weight: 600; }
 .kpi-card { background: #fff; border-radius: 14px; padding: 1.25rem; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #f0f0f5; transition: transform 0.2s, box-shadow 0.2s; }
 .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
 .kpi-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
 .kpi-value { font-size: 1.75rem; font-weight: 700; line-height: 1; }
 .kpi-label { font-size: 0.8rem; color: #6b7280; font-weight: 500; margin-top: 2px; }
-.quick-link { display: flex; align-items: center; gap: 12px; padding: 1rem 1.25rem; border-radius: 12px; text-decoration: none; color: #1a1a2e; transition: all 0.2s; border: 1px solid #e5e7eb; background: #fff; }
-.quick-link:hover { background: #f8f9ff; border-color: #667eea; transform: translateX(4px); color: #667eea; }
+.quick-link { display: flex; align-items: center; gap: 12px; padding: 1rem 1.25rem; border-radius: 12px; text-decoration: none; color: #061C4C; transition: all 0.2s; border: 1px solid #e5e7eb; background: #fff; }
+.quick-link:hover { background: #f8f9ff; border-color: #0B4EA2; transform: translateX(4px); color: #0B4EA2; }
 .quick-link i { font-size: 1.3rem; }
 .log-status { font-size: 0.75rem; padding: 0.25em 0.6em; border-radius: 6px; font-weight: 600; }
 .log-status.success { background: #d1fae5; color: #065f46; }

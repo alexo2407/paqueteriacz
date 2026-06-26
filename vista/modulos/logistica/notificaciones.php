@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 start_secure_session();
 if (!isset($_SESSION['registrado'])) { header('location:' . RUTA_URL . 'login'); die(); }
 
@@ -221,16 +221,16 @@ include("vista/includes/header.php");
     }
     .nav-pills-logistica .nav-link:hover:not(.active) {
         background: rgba(255,255,255,0.8);
-        color: #0d6efd;
+        color: #0B4EA2;
         border-color: rgba(13, 110, 253, 0.1);
         box-shadow: 0 2px 8px rgba(13, 110, 253, 0.1);
         transform: translateY(-1px);
     }
     .nav-pills-logistica .nav-link.active {
-        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        background: linear-gradient(135deg, #0B4EA2 0%, #0a58ca 100%);
         color: white;
         font-weight: 600;
-        border-color: #0d6efd;
+        border-color: #0B4EA2;
         box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3), 0 2px 4px rgba(13, 110, 253, 0.2);
         transform: translateY(-2px);
     }
@@ -269,9 +269,9 @@ include("vista/includes/header.php");
     }
 
     /* Soft background colors */
-    .bg-soft-success   { background-color: rgba(25, 135, 84, 0.12);  color: #198754; }
+    .bg-soft-success   { background-color: rgba(25, 135, 84, 0.12);  color: #0B4EA2; }
     .bg-soft-info      { background-color: rgba(13, 202, 240, 0.12); color: #0dcaf0; }
-    .bg-soft-primary   { background-color: rgba(13, 110, 253, 0.12); color: #0d6efd; }
+    .bg-soft-primary   { background-color: rgba(13, 110, 253, 0.12); color: #0B4EA2; }
     .bg-soft-danger    { background-color: rgba(220, 53, 69, 0.12);  color: #dc3545; }
     .bg-soft-warning   { background-color: rgba(255, 193, 7, 0.18);  color: #856404; }
     .bg-soft-secondary { background-color: rgba(108, 117, 125, 0.12);color: #6c757d; }
@@ -300,7 +300,7 @@ include("vista/includes/header.php");
 
     /* Search bar */
     #historialSearch:focus {
-        border-color: #0d6efd;
+        border-color: #0B4EA2;
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
     }
 

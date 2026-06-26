@@ -1,4 +1,4 @@
-<?php include __DIR__ . '/../../includes/header.php'; ?>
+﻿<?php include __DIR__ . '/../../includes/header.php'; ?>
 
 <?php
 // Incluir el modelo de categorías
@@ -10,7 +10,7 @@ $categoriasDisponibles = CategoriaModel::listar();
 
 <style>
 .form-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 1.5rem;
     border-radius: 12px 12px 0 0;

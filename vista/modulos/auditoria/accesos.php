@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -44,8 +44,8 @@ $totalApi = count(array_filter($registros, fn($r) => $r['tipo'] === 'api'));
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     <style>
-        .badge-gui { background-color: #0d6efd; }
-        .badge-api { background-color: #6f42c1; }
+        .badge-gui { background-color: #0B4EA2; }
+        .badge-api { background-color: #061C4C; }
         .country-flag { font-size: 1.1em; }
     </style>
 </head>
@@ -85,7 +85,7 @@ $totalApi = count(array_filter($registros, fn($r) => $r['tipo'] === 'api'));
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card border-0" style="background:#6f42c1;color:#fff">
+            <div class="card border-0" style="background:#061C4C;color:#fff">
                 <div class="card-body text-center py-3">
                     <h3 class="mb-0"><?php echo $totalApi; ?></h3>
                     <small><i class="bi bi-code-slash"></i> Accesos vía API</small>

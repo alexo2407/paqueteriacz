@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 
 start_secure_session();
 
@@ -1035,7 +1035,7 @@ sudo systemctl status crm-worker</code></pre>
     }
     
     .timeline .card.border-primary {
-        border-left-color: #0d6efd !important;
+        border-left-color: #0B4EA2 !important;
     }
     
     .timeline .card.border-warning {
@@ -1047,7 +1047,7 @@ sudo systemctl status crm-worker</code></pre>
     }
     
     .timeline .card.border-success {
-        border-left-color: #198754 !important;
+        border-left-color: #0B4EA2 !important;
     }
     
     pre {

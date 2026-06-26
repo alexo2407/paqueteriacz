@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php") ?>
+﻿<?php include("vista/includes/header.php") ?>
 
 <?php
 $usaDataTables = true;
@@ -8,12 +8,12 @@ $proveedores = ForwardingModel::obtenerProveedores();
 
 <style>
 .fwd-card { border: none; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }
-.fwd-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.75rem 2rem; }
+.fwd-header { background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%); color: white; padding: 1.75rem 2rem; }
 .fwd-header h3 { margin: 0; font-weight: 600; }
 .provider-status { font-size: 0.8rem; padding: 0.3em 0.75em; border-radius: 8px; font-weight: 600; }
 .provider-status.active { background: #d1fae5; color: #065f46; }
 .provider-status.inactive { background: #fee2e2; color: #991b1b; }
-.btn-test { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; }
+.btn-test { background: linear-gradient(135deg, #0B4EA2, #061C4C); color: #fff; border: none; }
 .btn-test:hover { background: linear-gradient(135deg, #5a6fd6, #6a4199); color: #fff; transform: translateY(-1px); }
 .test-result { border-radius: 10px; padding: 1rem; margin-top: 1rem; display: none; }
 .test-result.success { background: #d1fae5; border: 1px solid #6ee7b7; }
@@ -40,7 +40,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         <a href="<?= RUTA_URL ?>forwarding" class="btn" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:10px;">
                             <i class="bi bi-arrow-left me-1"></i> Dashboard
                         </a>
-                        <button class="btn" style="background:#fff;color:#667eea;border:none;border-radius:10px;font-weight:600;" data-bs-toggle="modal" data-bs-target="#modalProvider">
+                        <button class="btn" style="background:#fff;color:#0B4EA2;border:none;border-radius:10px;font-weight:600;" data-bs-toggle="modal" data-bs-target="#modalProvider">
                             <i class="bi bi-plus-circle-fill me-1"></i> Nuevo Proveedor
                         </button>
                     </div>
@@ -122,7 +122,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
 <div class="modal fade" id="modalProvider" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content" style="border:none;border-radius:16px;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border-radius:16px 16px 0 0;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#0B4EA2,#061C4C);color:#fff;border-radius:16px 16px 0 0;">
                 <h5 class="modal-title" id="modalProviderTitle"><i class="bi bi-building me-2"></i>Nuevo Proveedor</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 /**
  * Dashboard Logística (Cliente) - Redesign
@@ -243,11 +243,11 @@ include "vista/includes/header.php";
 
     .nav-pills .nav-link:hover:not(.active) {
         background: rgba(255, 255, 255, 0.8);
-        color: #0d6efd;
+        color: #0B4EA2;
     }
 
     .nav-pills .nav-link.active {
-        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        background: linear-gradient(135deg, #0B4EA2 0%, #0a58ca 100%);
         color: white;
         font-weight: 600;
         transform: translateY(-2px);
@@ -269,7 +269,7 @@ include "vista/includes/header.php";
     }
 
     .notif-card.type-lead {
-        border-left-color: #198754;
+        border-left-color: #0B4EA2;
     }
 
     .notif-card.type-update {
@@ -288,12 +288,12 @@ include "vista/includes/header.php";
 
     .bg-soft-primary {
         background-color: rgba(13, 110, 253, 0.1);
-        color: #0d6efd;
+        color: #0B4EA2;
     }
 
     .bg-soft-success {
         background-color: rgba(25, 135, 84, 0.1);
-        color: #198754;
+        color: #0B4EA2;
     }
 
     .bg-soft-info {
@@ -1039,7 +1039,7 @@ include "vista/includes/header.php";
 
             <?php if ($liquidadosTotal > 0): ?>
                 <!-- Tarjeta resumen total período -->
-                <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #198754 !important;">
+                <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #0B4EA2 !important;">
                     <div class="card-body d-flex justify-content-between align-items-center py-3">
                         <div>
                             <div class="text-muted small fw-bold text-uppercase"><i class="bi bi-cash-coin me-1 text-success"></i>Total Liquidado en el período</div>
@@ -1365,7 +1365,7 @@ include "vista/includes/header.php";
                                 icon: 'success',
                                 title: '¡Actualizado!',
                                 text: data.message || 'El estado ha sido actualizado.',
-                                confirmButtonColor: '#0d6efd'
+                                confirmButtonColor: '#0B4EA2'
                             }).then(() => {
                                 window.location.reload();
                             });
@@ -1379,7 +1379,7 @@ include "vista/includes/header.php";
                                 icon: 'error',
                                 title: 'Error',
                                 text: data.message || 'No se pudo actualizar el estado.',
-                                confirmButtonColor: '#0d6efd'
+                                confirmButtonColor: '#0B4EA2'
                             });
                         } else {
                             alert(data.message || 'Error al actualizar');
@@ -1395,7 +1395,7 @@ include "vista/includes/header.php";
                             icon: 'error',
                             title: 'Error de Red',
                             text: 'Hubo un error en la comunicación con el servidor.',
-                            confirmButtonColor: '#0d6efd'
+                            confirmButtonColor: '#0B4EA2'
                         });
                     } else {
                         alert('Error en la comunicación con el servidor');
@@ -1883,7 +1883,7 @@ include "vista/includes/header.php";
         }
 
         .badge-resuelto {
-            background: #198754;
+            background: #0B4EA2;
             color: #fff;
         }
 
@@ -2289,12 +2289,12 @@ include "vista/includes/header.php";
     <style>
         .envio-row:hover { background: #f0f4ff !important; }
         #tabEnviosBody td { vertical-align: middle; }
-        .badge-envio-entregado   { background:#198754; color:#fff; }
-        .badge-envio-en-ruta     { background:#0d6efd; color:#fff; }
+        .badge-envio-entregado   { background:#0B4EA2; color:#fff; }
+        .badge-envio-en-ruta     { background:#0B4EA2; color:#fff; }
         .badge-envio-bodega      { background:#6c757d; color:#fff; }
         .badge-envio-novedad     { background:#ff8d33; color:#fff; }
         .badge-envio-cancelado   { background:#dc3545; color:#fff; }
-        .badge-envio-devolucion  { background:#6f42c1; color:#fff; }
+        .badge-envio-devolucion  { background:#061C4C; color:#fff; }
         .badge-envio-default     { background:#adb5bd; color:#000; }
     </style>
 
@@ -2912,7 +2912,7 @@ include "vista/includes/header.php";
                         title: '✅ Demo: Novedad Resuelta',
                         html: `<p class="mb-1">La novedad del pedido <strong>${escH(orderNumber)}</strong> fue marcada como resuelta.</p>
                                <p class="text-muted small mb-0">Acción: <strong>${accion}</strong> (simulación — no se llamó a la API real de HL Express).</p>`,
-                        confirmButtonColor: '#0d6efd',
+                        confirmButtonColor: '#0B4EA2',
                         confirmButtonText: 'Entendido'
                     }).then(() => cargarNovedadesTab(true));
                     _restoreRnovBtns();
@@ -2947,7 +2947,7 @@ include "vista/includes/header.php";
                                     icon: 'success',
                                     title: '¡Resuelta!',
                                     text: data.message,
-                                    confirmButtonColor: '#0d6efd'
+                                    confirmButtonColor: '#0B4EA2'
                                 })
                                 .then(() => cargarNovedadesTab(true));
                         } else {
@@ -2955,7 +2955,7 @@ include "vista/includes/header.php";
                                 icon: 'error',
                                 title: 'Error',
                                 text: data.message || 'No se pudo resolver.',
-                                confirmButtonColor: '#0d6efd'
+                                confirmButtonColor: '#0B4EA2'
                             });
                         }
                         _restoreRnovBtns();

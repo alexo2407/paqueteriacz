@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -113,7 +113,7 @@ sort($marcasUnicas);
 }
 .btn-new-product {
     background: white;
-    color: #f5576c;
+    color: #FF8A00;
     border: none;
     padding: 0.6rem 1.25rem;
     border-radius: 10px;
@@ -166,7 +166,7 @@ sort($marcasUnicas);
 #tablaProductos thead th {
     background: #f8f9fa;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     border-bottom: 2px solid #e9ecef;
     padding: 1rem 0.75rem;
 }

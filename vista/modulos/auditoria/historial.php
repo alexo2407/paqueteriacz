@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -185,8 +185,8 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     <style>
         /* ── Audit modal styles ── */
-        .badge-crear     { background-color: #198754; }
-        .badge-actualizar{ background-color: #0d6efd; }
+        .badge-crear     { background-color: #0B4EA2; }
+        .badge-actualizar{ background-color: #0B4EA2; }
         .badge-eliminar  { background-color: #dc3545; }
 
         /* Country hero banner */
@@ -214,7 +214,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
         .audit-country-hero .hero-value {
             font-size: 1.2rem;
             font-weight: 700;
-            color: #1a1a2e;
+            color: #061C4C;
             line-height: 1.2;
         }
         .audit-country-hero .hero-ip {
@@ -300,7 +300,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
         }
         /* Modal header accent */
         .modal-header.audit-header {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, #061C4C 0%, #061C4C 100%);
             color: #fff;
             border-radius: 0;
         }

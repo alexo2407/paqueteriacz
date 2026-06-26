@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
@@ -93,7 +93,7 @@ if (isset($producto['categoria_id']) && $producto['categoria_id']) {
 .kpi-value {
     font-size: 1.75rem;
     font-weight: 700;
-    color: #f5576c;
+    color: #FF8A00;
     margin-bottom: 0px;
 }
 .kpi-label {

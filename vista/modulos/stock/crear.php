@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -31,11 +31,11 @@ $productoPreseleccionado = $_GET['producto'] ?? '';
             border: 2px solid #dee2e6;
         }
         .tipo-movimiento-option:hover {
-            border-color: #0d6efd;
+            border-color: #0B4EA2;
             transform: translateY(-2px);
         }
         .tipo-movimiento-option.selected {
-            border-color: #0d6efd;
+            border-color: #0B4EA2;
             background-color: #e7f1ff;
         }
         .tipo-icon {
@@ -57,7 +57,7 @@ $productoPreseleccionado = $_GET['producto'] ?? '';
     box-shadow: 0 4px 20px rgba(17, 153, 142, 0.2);
 }
 .form-section-title {
-    color: #11998e;
+    color: #0B4EA2;
     font-weight: 700;
     margin-bottom: 1.5rem;
     display: flex;
@@ -77,10 +77,10 @@ $productoPreseleccionado = $_GET['producto'] ?? '';
 .type-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-    border-color: #38ef7d;
+    border-color: #38bdf8;
 }
 .type-card.selected {
-    border-color: #11998e;
+    border-color: #0B4EA2;
     background-color: #f0fdf4;
     box-shadow: 0 0 0 4px rgba(17, 153, 142, 0.1);
 }

@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header.php"); ?>
 
 <?php
 $pedidosController = new PedidosController();
@@ -126,7 +126,7 @@ try {
     overflow: hidden;
 }
 .crear-pedido-header {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #38bdf8 100%);
     color: white;
     padding: 1.5rem 2rem;
 }
@@ -142,7 +142,7 @@ try {
 }
 .form-section-title {
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
@@ -150,10 +150,10 @@ try {
     font-size: 1.1rem;
 }
 .form-section-title i {
-    color: #11998e;
+    color: #0B4EA2;
 }
 .btn-submit-order {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #38bdf8 100%);
     border: none;
     padding: 0.75rem 2rem;
     font-weight: 600;
@@ -195,11 +195,11 @@ try {
 }
 .nav-pills .nav-link:hover:not(.active) {
     background: rgba(255, 255, 255, 0.8);
-    color: #11998e;
+    color: #0B4EA2;
     transform: translateY(-1px);
 }
 .nav-pills .nav-link.active {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #38bdf8 100%);
     color: white;
     font-weight: 600;
     box-shadow: 0 4px 12px rgba(17, 153, 142, 0.3);

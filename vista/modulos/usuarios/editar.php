@@ -1,4 +1,4 @@
-<?php include("vista/includes/header.php"); ?>
+﻿<?php include("vista/includes/header.php"); ?>
 
 <?php
 $params = isset($parametros) ? $parametros : [];
@@ -37,7 +37,7 @@ $roleIcons = [
 $nombre = $usuario['nombre'] ?? 'U';
 $partes = explode(' ', $nombre);
 $iniciales = strtoupper(substr($partes[0], 0, 1) . (isset($partes[1]) ? substr($partes[1], 0, 1) : ''));
-$colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#38f9d7', '#fa709a', '#fee140'];
+$colors = ['#0B4EA2', '#061C4C', '#FF8A00', '#FF8A00', '#0B4EA2', '#0B4EA2', '#43e97b', '#38f9d7', '#FF8A00', '#FF8A00'];
 $colorIndex = crc32($nombre) % count($colors);
 $avatarColor = $colors[$colorIndex];
 
@@ -53,7 +53,7 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
     overflow: hidden;
 }
 .edit-user-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 2rem;
 }
@@ -97,14 +97,14 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
 }
 .form-section-title {
     font-weight: 600;
-    color: #1a1a2e;
+    color: #061C4C;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 .form-section-title i {
-    color: #667eea;
+    color: #0B4EA2;
 }
 .input-icon-wrapper {
     position: relative;
@@ -129,11 +129,11 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
     background: white;
 }
 .role-card:hover {
-    border-color: #667eea;
+    border-color: #0B4EA2;
     background: #f8f9ff;
 }
 .role-card.selected {
-    border-color: #667eea;
+    border-color: #0B4EA2;
     background: #f0f3ff;
 }
 .role-card .role-icon {
@@ -157,7 +157,7 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
     display: none;
 }
 .btn-submit-user {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     border: none;
     padding: 0.75rem 2rem;
     font-weight: 600;

@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 include __DIR__ . '/../../includes/header.php'; 
 require_once __DIR__ . '/../../../controlador/categoria.php';
 
@@ -9,7 +9,7 @@ $categorias = $ctrl->obtenerEstadisticas();
 
 <style>
 .category-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
     color: white;
     padding: 2rem;
     border-radius: 16px;

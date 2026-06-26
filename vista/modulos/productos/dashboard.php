@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -120,7 +120,7 @@ $valorEstimado = array_sum(array_map(function($p) {
 }
 .btn-action-primary {
     background: white;
-    color: #f5576c;
+    color: #FF8A00;
     border: none;
     padding: 0.5rem 1.25rem;
     border-radius: 8px;
@@ -381,9 +381,9 @@ $valorEstimado = array_sum(array_map(function($p) {
             
             // Paleta de colores vibrantes moderna
             const colors = [
-                '#f5576c', '#f093fb', '#4facfe', '#00f2fe', 
-                '#43e97b', '#38f9d7', '#fa709a', '#fee140', 
-                '#667eea', '#764ba2'
+                '#FF8A00', '#FF8A00', '#0B4EA2', '#0B4EA2', 
+                '#43e97b', '#38f9d7', '#FF8A00', '#FF8A00', 
+                '#0B4EA2', '#061C4C'
             ];
 
             new Chart(ctx, {
