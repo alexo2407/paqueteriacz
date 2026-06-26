@@ -1,35 +1,55 @@
 /*
- * estilos_bs.css
- * Shell Bootstrap con look visual identico al shell Materialize.
- * Solo afecta el SHELL (navbar, sidebar). No toca inputs, cards ni tablas.
- * Paleta: #1a1a2e (fondo oscuro), #16213e (degradado).
+ * estilos_bs.css — RutaEx Latam Brand System
+ * Paleta oficial: #061C4C | #0B4EA2 | #FF8A00 | #FFFFFF | #EEF2F6
+ * Tipografía: Montserrat (títulos) + Inter (cuerpo)
  */
 
-/* Tipografia base */
-body.bs-body {
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    background-color: #f5f6fa;
-    color: #2d2d2d;
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — CSS Custom Properties
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+    /* Paleta Oficial */
+    --brand-navy:      #061C4C;   /* Azul marino profundo — Navbar, Sidebar, Footer */
+    --brand-blue:      #0B4EA2;   /* Azul profundo — Gradientes, activos, botones */
+    --brand-orange:    #FF8A00;   /* Naranja acento — CTA, hover activo, breadcrumb */
+    --brand-orange-dk: #E07900;   /* Naranja hover/pressed */
+    --brand-white:     #FFFFFF;   /* Blanco — Cards, secciones */
+    --brand-gray:      #EEF2F6;   /* Gris claro — Fondo de página */
+
+    /* Utilidades derivadas */
+    --brand-navy-gradient: linear-gradient(135deg, #061C4C 0%, #0B4EA2 100%);
+    --brand-orange-glow:   rgba(255, 138, 0, 0.20);
+    --brand-sidebar-hover: rgba(255, 138, 0, 0.12);
+    --brand-sidebar-text:  #c9d6e8;
+    --brand-sidebar-label: rgba(255, 138, 0, 0.75);
 }
 
-/* NAVBAR */
+/* ═══════════════════════════════════════════════════════════════
+   TIPOGRAFÍA BASE
+   ═══════════════════════════════════════════════════════════════ */
+body.bs-body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background-color: var(--brand-gray);
+    color: #1e293b;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NAVBAR
+   ═══════════════════════════════════════════════════════════════ */
 .bs-navbar {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%) !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+    background: var(--brand-navy-gradient) !important;
+    box-shadow: 0 2px 12px rgba(6, 28, 76, 0.45);
     padding: 0 .75rem;
-    /* Reducido para controlar altura */
     position: sticky;
     top: 0;
     z-index: 1050;
-    /* Mayor a sidebar */
     height: 60px;
-    /* Altura fija invariable */
     display: flex;
     align-items: center;
 }
 
-/* Evitar que el navbar haga wrap en mobile */
-.bs-navbar>.container-fluid {
+/* Evitar wrap en mobile */
+.bs-navbar > .container-fluid {
     flex-wrap: nowrap !important;
 }
 
@@ -40,19 +60,15 @@ body.bs-body {
     color: #fff !important;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 280px;
-    /* Incrementado para evitar el corte */
+    max-width: 300px;
 }
 
 @media (max-width: 400px) {
-    .bs-navbar .navbar-brand {
-        max-width: 200px;
-        /* Permitir más espacio en móviles */
-    }
+    .bs-navbar .navbar-brand { max-width: 200px; }
 }
 
 .bs-navbar .navbar-toggler {
@@ -64,11 +80,12 @@ body.bs-body {
     filter: brightness(10);
 }
 
+/* Badge de notificaciones */
 .bs-nav-badge {
     position: absolute;
     top: 4px;
     right: 0;
-    background: #f44336;
+    background: var(--brand-orange);
     color: #fff;
     border-radius: 50%;
     min-width: 16px;
@@ -93,33 +110,32 @@ body.bs-body {
     color: #fff !important;
 }
 
+/* Dropdown de usuario */
 .bs-navbar .dropdown-menu {
-    background: #1e2a42;
-    border: 1px solid rgba(255, 255, 255, .1);
-    border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, .45);
+    background: #0a2258;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(6, 28, 76, .55);
     min-width: 200px;
     position: absolute !important;
-    /* Forzar absoluto para evitar estiramiento */
     top: 100% !important;
     right: 0 !important;
     left: auto !important;
-    margin-top: 5px !important;
+    margin-top: 6px !important;
     z-index: 1100;
     max-width: calc(100vw - 20px);
-    /* Prevenir salida lateral en movil */
 }
 
 .bs-navbar .dropdown-item {
-    color: #c9d1e0;
+    color: #c9d6e8;
     font-size: .88rem;
     padding: .5rem 1rem;
     transition: background .15s, color .15s;
 }
 
 .bs-navbar .dropdown-item:hover {
-    background: rgba(255, 255, 255, .08);
-    color: #fff;
+    background: var(--brand-sidebar-hover);
+    color: var(--brand-orange);
 }
 
 .bs-navbar .dropdown-divider {
@@ -127,31 +143,59 @@ body.bs-body {
 }
 
 .bs-navbar .dropdown-header {
-    color: #5a6a8a;
+    color: var(--brand-sidebar-label);
     font-size: .72rem;
     text-transform: uppercase;
     letter-spacing: .8px;
     font-weight: 700;
 }
 
-/* SIDEBAR */
+/* ═══════════════════════════════════════════════════════════════
+   BRAND en NAVBAR — Logo + texto
+   ═══════════════════════════════════════════════════════════════ */
+.brand-title {
+    font-family: 'Montserrat', 'Inter', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    font-style: italic;
+    letter-spacing: -0.5px;
+    color: #fff;
+    line-height: 1;
+}
+
+.brand-subtitle {
+    font-family: 'Montserrat', 'Inter', sans-serif;
+    font-size: 0.52rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    color: var(--brand-orange);
+    margin-top: 2px;
+    line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════════════════════════ */
 .bs-sidebar {
     width: 260px;
-    background: #1a1a2e !important;
-    background-color: #1a1a2e !important;
+    background: var(--brand-navy) !important;
+    background-color: var(--brand-navy) !important;
     border-right: none !important;
     flex-shrink: 0;
-    color: #c9d1e0;
-    /* Override Bootstrap offcanvas default white bg */
-    --bs-offcanvas-bg: #1a1a2e;
+    color: var(--brand-sidebar-text);
+    --bs-offcanvas-bg: var(--brand-navy);
 }
 
 .bs-sidebar-header {
-    background: linear-gradient(135deg, #0f3460, #16213e);
+    background: linear-gradient(135deg, #040f2a, #061C4C);
     padding: 1.25rem 1rem .75rem;
+    border-bottom: 2px solid var(--brand-orange);
 }
 
 .bs-sidebar-header .bs-sidebar-brand {
+    font-family: 'Montserrat', sans-serif;
     font-weight: 700;
     font-size: 1rem;
     color: #fff;
@@ -160,56 +204,65 @@ body.bs-body {
 
 .bs-sidebar-header .bs-sidebar-user {
     font-size: .82rem;
-    color: rgba(255, 255, 255, .65);
-    margin-top: 2px;
+    color: var(--brand-sidebar-label);
+    margin-top: 3px;
 }
 
+/* Nav links generales */
 .bs-sidebar .nav-link {
-    color: #c9d1e0 !important;
+    color: var(--brand-sidebar-text) !important;
     font-size: .88rem;
     padding: .65rem 1rem;
     display: flex;
     align-items: center;
     gap: 10px;
     border-radius: 0;
-    transition: background .15s, color .15s;
+    border-left: 3px solid transparent;
+    transition: background .15s, color .15s, border-color .15s;
 }
 
 .bs-sidebar .nav-link:hover {
-    background: rgba(255, 255, 255, .07);
+    background: var(--brand-sidebar-hover);
     color: #fff !important;
+    border-left-color: var(--brand-orange);
 }
 
 .bs-sidebar .nav-link .bi {
-    font-size: 1.1rem;
-    opacity: .85;
+    font-size: 1.05rem;
+    opacity: .8;
     flex-shrink: 0;
+    transition: opacity .15s;
 }
 
 .bs-sidebar .nav-link:hover .bi {
     opacity: 1;
+    color: var(--brand-orange);
 }
 
+/* Divider y labels de sección */
 .bs-sidebar .sidebar-divider {
     border-color: rgba(255, 255, 255, .08);
-    margin: .25rem 0;
+    margin: .3rem 0;
 }
 
 .bs-sidebar .sidebar-label {
-    color: #5a6a8a;
-    font-size: .68rem;
+    color: var(--brand-sidebar-label);
+    font-size: .67rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.2px;
     font-weight: 700;
-    padding: .6rem 1rem .2rem;
+    padding: .65rem 1rem .2rem;
     pointer-events: none;
 }
 
 .bs-sidebar .nav-link .badge {
     margin-left: auto;
+    background: var(--brand-orange) !important;
 }
 
-/* LAYOUT */
+/* ═══════════════════════════════════════════════════════════════
+   LAYOUT
+   ═══════════════════════════════════════════════════════════════ */
 .bs-body-row {
     display: flex;
     flex: 1;
@@ -235,31 +288,35 @@ body.bs-body {
     }
 }
 
-/* FOOTER */
+/* ═══════════════════════════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════════════════════════ */
 .bs-footer {
-    background: #001042 !important;
-    color: rgba(255, 255, 255, .6);
+    background: var(--brand-navy) !important;
+    color: rgba(255, 255, 255, .55);
     font-size: .78rem;
     padding: 1.25rem 1rem;
     margin-top: auto;
+    border-top: 2px solid var(--brand-orange);
 }
 
 .bs-footer a {
-    color: rgba(255, 255, 255, .5);
+    color: var(--brand-orange);
+    text-decoration: none;
+    transition: opacity .2s;
 }
 
 .bs-footer a:hover {
-    color: #fff;
+    opacity: .8;
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BREADCRUMB — Custom Arrow Style (Expert UX/UI)
+   BREADCRUMB — Arrow Style con paleta de marca
    ═══════════════════════════════════════════════════════════════ */
-
 .custom-breadcrumb-area {
-    padding: 15px 20px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #dee2e6;
+    padding: 12px 20px;
+    background-color: #fff;
+    border-bottom: 1px solid #dde3ec;
 }
 
 .custom-breadcrumb-arrow {
@@ -268,10 +325,8 @@ body.bs-body {
     margin: 0;
     line-height: 36px;
     list-style: none !important;
-    /* Forzar quitar puntos */
-    background-color: #e6e9ed;
+    background-color: var(--brand-gray);
     display: inline-flex;
-    /* Uso flex para evitar espacios raros */
     border-radius: 4px;
 }
 
@@ -288,7 +343,6 @@ body.bs-body {
 
 .custom-breadcrumb-arrow li+li:before {
     display: none !important;
-    /* Quitar el separador / de Bootstrap */
 }
 
 .custom-breadcrumb-arrow li a,
@@ -310,12 +364,12 @@ body.bs-body {
 .custom-breadcrumb-arrow li a {
     color: #fff !important;
     text-decoration: none !important;
-    background-color: #3bafda;
-    border: 1px solid #3bafda;
+    background-color: var(--brand-blue);
+    border: 1px solid var(--brand-blue);
     transition: all 0.2s;
 }
 
-/* Las flechas (Triángulos CSS) */
+/* Flechas CSS */
 .custom-breadcrumb-arrow li a:after,
 .custom-breadcrumb-arrow li a:before {
     position: absolute;
@@ -327,50 +381,45 @@ body.bs-body {
     border-bottom: 18px solid transparent;
 }
 
-/* La punta de la flecha (relleno) */
 .custom-breadcrumb-arrow li a:before {
     right: -10px;
     z-index: 3;
-    border-left: 11px solid #3bafda;
+    border-left: 11px solid var(--brand-blue);
 }
 
-/* El borde de la flecha (para el efecto 3D/borde) */
 .custom-breadcrumb-arrow li a:after {
     right: -11px;
     z-index: 2;
-    border-left: 11px solid #2494be;
+    border-left: 11px solid #0940881a;
 }
 
-/* Hover effects */
+/* Hover — naranja acento */
 .custom-breadcrumb-arrow li a:hover {
-    background-color: #4fc1e9;
-    border-color: #4fc1e9;
+    background-color: var(--brand-orange);
+    border-color: var(--brand-orange);
 }
 
 .custom-breadcrumb-arrow li a:hover:before {
-    border-left-color: #4fc1e9;
+    border-left-color: var(--brand-orange);
 }
 
 /* Active / Current Page */
 .custom-breadcrumb-arrow li.active span {
-    background-color: #e6e9ed;
-    color: #434a54;
+    background-color: var(--brand-gray);
+    color: var(--brand-navy);
     padding-left: 25px;
     padding-right: 15px;
     border-radius: 0 4px 4px 0;
+    font-weight: 700;
 }
 
 .custom-breadcrumb-arrow li:last-child span {
-    border-right: 1px solid #d1d4d7;
+    border-right: 1px solid #dde3ec;
 }
 
-
-
-
-
-/* RESPONSIVE */
-
-/* Desktop (>=992px): sidebar SIEMPRE visible, sticky altura completa */
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — Sidebar
+   ═══════════════════════════════════════════════════════════════ */
 @media (min-width: 992px) {
     #bsSidebar {
         position: sticky !important;
@@ -383,56 +432,54 @@ body.bs-body {
     }
 }
 
-/* Mobile (<992px): sidebar es offcanvas overlay */
 @media (max-width: 991px) {
     #bsSidebar {
         width: 260px !important;
-        background: #1a1a2e !important;
+        background: var(--brand-navy) !important;
     }
 
-    .bs-main {
-        width: 100%;
-    }
+    .bs-main { width: 100%; }
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   DECORACIONES ADICIONALES (Dropdown Desktop)
-   ═══════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════
    FIX: DROPDOWN OVERLAY (NO DEFORMA HEADER)
    ═══════════════════════════════════════════════════════════════ */
-
-/* 1) Forzar que el item del dropdown sea el punto de referencia */
 .navbar .nav-item.dropdown {
     position: relative !important;
 }
 
-/* 2) Sobrescribir position: static de Bootstrap y hacerlo flotante */
 .navbar .navbar-nav .dropdown-menu {
     position: absolute !important;
-    /* Salir del flujo para no estirar el header */
     top: calc(100% + .5rem) !important;
     right: 0 !important;
     left: auto !important;
     z-index: 9999 !important;
-    /* Encima de todo */
     margin-top: 0 !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, .5) !important;
+    box-shadow: 0 8px 32px rgba(6, 28, 76, .5) !important;
 }
 
-/* 3) Evitar que los contenedores del navbar recorten el menú (overflow) */
 .bs-navbar,
 .bs-navbar .container,
 .bs-navbar .container-fluid {
     overflow: visible !important;
 }
 
-/* 4) Ajuste para móvil: que no se salga de la pantalla */
 @media (max-width: 576px) {
     .navbar .navbar-nav .dropdown-menu {
         max-width: calc(100vw - 20px);
         right: -10px !important;
-        /* Pequeño ajuste de margen */
     }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SCROLLBAR personalizado para sidebar
+   ═══════════════════════════════════════════════════════════════ */
+#bsSidebar::-webkit-scrollbar { width: 4px; }
+#bsSidebar::-webkit-scrollbar-track { background: transparent; }
+#bsSidebar::-webkit-scrollbar-thumb {
+    background: rgba(255,138,0,.3);
+    border-radius: 4px;
+}
+#bsSidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--brand-orange);
 }

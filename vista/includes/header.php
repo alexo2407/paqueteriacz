@@ -84,8 +84,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="<?= RUTA_URL ?>favicon-16x16.png">
     <link rel="manifest" href="<?= RUTA_URL ?>site.webmanifest">
 
-    <!-- Google Fonts — Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts — Montserrat + Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Bootstrap 5 CSS -->
@@ -97,23 +97,10 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
     <?php endif; ?>
-    <!-- Shell Bootstrap (tema oscuro sidebar + navbar) -->
+    <!-- Shell Bootstrap (tema marca RutaEx Latam) -->
     <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos_bs.css">
     <!-- Estilos propios de la app -->
     <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos.css">
-
-    <style>
-        .brand-title {
-            font-size: 1.25rem; font-weight: 900; 
-            text-transform: uppercase; font-style: italic; 
-            letter-spacing: -0.5px; color: #fff; line-height: 1;
-        }
-        .brand-subtitle {
-            font-size: 0.55rem; font-weight: 800; 
-            text-transform: uppercase; letter-spacing: 0.25em; 
-            color: rgba(255,255,255,1); margin-top: 1px;
-        }
-    </style>
     <!-- Variables JS globales disponibles para todos los scripts de la app -->
     <meta name="base-url" content="<?= RUTA_URL ?>">
     <script>
@@ -135,16 +122,17 @@
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Brand -->
+        <!-- Brand — Logo nuevo logovc.png -->
         <a class="navbar-brand d-flex align-items-center gap-2" href="<?= $homeUrl ?>" style="min-width: 0; overflow: visible;">
-            <!-- Icono (Oculto en móvil) -->
-            <div class="d-none d-md-flex" style="flex-shrink: 0; align-items: center;">
-                <img src="<?= RUTA_URL ?>vista/img/icono-logo.png" alt="Icono" style="height: 34px; width: auto; filter: brightness(0) invert(1); object-fit: contain;">
-            </div>
-            <!-- Textos (Estables) -->
-            <div class="d-flex flex-column" style="white-space: nowrap;">
-                <span class="brand-title">RutaEx-Latam</span>
-                <span class="brand-subtitle">Pan-Latam Logistics</span>
+            <!-- Logo imagen horizontal (visible en desktop) -->
+            <img src="<?= RUTA_URL ?>vista/img/logovc.png"
+                 alt="RutaEx Latam"
+                 class="d-none d-md-block"
+                 style="height: 42px; width: auto; object-fit: contain;">
+            <!-- En móvil: solo texto Montserrat -->
+            <div class="d-flex d-md-none flex-column" style="white-space: nowrap;">
+                <span class="brand-title">RutaEx</span>
+                <span class="brand-subtitle">Latam Logistics</span>
             </div>
         </a>
 
@@ -168,7 +156,7 @@
 
                     <!-- Header -->
                     <div class="d-flex align-items-center justify-content-between px-3 py-2"
-                         style="background:linear-gradient(135deg,#0d6efd,#0a58ca);">
+                         style="background:linear-gradient(135deg,#061C4C,#0B4EA2);">
                         <span class="text-white fw-semibold">
                             <i class="bi bi-bell-fill me-1"></i>
                             <?= $showProviderLeads ? 'Leads pendientes' : 'Notificaciones' ?>

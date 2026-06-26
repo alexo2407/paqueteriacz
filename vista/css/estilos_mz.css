@@ -11,8 +11,8 @@
 
 body.mz-body {
     font-family: 'Inter', 'Roboto', sans-serif;
-    background-color: #f5f6fa;
-    color: #2d2d2d;
+    background-color: #EEF2F6;
+    color: #1e293b;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -29,8 +29,8 @@ body.mz-body {
 
 /* ── Navbar ─────────────────────────────────────────────────────────────── */
 .mz-navbar {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, #061C4C 0%, #0B4EA2 100%);
+    box-shadow: 0 2px 10px rgba(6, 28, 76, 0.4);
     position: sticky;
     top: 0;
     z-index: 997;
@@ -74,7 +74,7 @@ nav li>a {
 
 /* ── Sidenav ─────────────────────────────────────────────────────────────── */
 .mz-sidenav {
-    background: #1a1a2e;
+    background: #061C4C;
     width: 260px;
 }
 
@@ -119,12 +119,13 @@ nav li>a {
 }
 
 .mz-sidenav-header {
-    background: linear-gradient(135deg, #0f3460, #16213e) !important;
+    background: linear-gradient(135deg, #040f2a, #061C4C) !important;
     padding: 20px 16px 12px;
+    border-bottom: 2px solid #FF8A00;
 }
 
 .mz-sidenav-bg {
-    background: linear-gradient(135deg, #0f3460, #16213e) !important;
+    background: linear-gradient(135deg, #040f2a, #061C4C) !important;
 }
 
 /* ── User Dropdown ───────────────────────────────────────────────────────── */
@@ -168,26 +169,29 @@ nav li>a {
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 .mz-footer {
-    background: #001042 !important;
+    background: #061C4C !important;
     font-size: 12px;
     margin-top: 2rem;
+    border-top: 2px solid #FF8A00;
 }
 
 /* ── Cards ───────────────────────────────────────────────────────────────── */
 .card {
     border-radius: 12px !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .07) !important;
+    border: 1px solid rgba(6, 28, 76, .07) !important;
 }
 
 .card.mz-card-raised {
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* Cabeceras de card con gradiente */
+/* Cabeceras de card con gradiente de marca */
 .mz-card-header {
     border-radius: 12px 12px 0 0;
     padding: 1.5rem 2rem;
     color: white;
+    background: linear-gradient(135deg, #061C4C 0%, #0B4EA2 100%);
 }
 
 /* ── Tablas ──────────────────────────────────────────────────────────────── */
@@ -201,13 +205,13 @@ table.highlight>tbody>tr:hover {
 
 table thead th {
     background: #f4f6fb;
-    color: #4a5568;
-    font-weight: 600;
+    color: #334155;
+    font-weight: 700;
     font-size: 0.82rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 14px 12px;
-    border-bottom: 2px solid #e2e8f0;
+    border-bottom: 2px solid #FF8A00;
 }
 
 table tbody td {
@@ -259,12 +263,13 @@ table.responsive-table {
 }
 
 .btn-primary-mz {
-    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    background: linear-gradient(135deg, #0B4EA2 0%, #061C4C 100%);
+    color: #fff !important;
 }
 
 .btn-primary-mz:hover {
-    background: linear-gradient(135deg, #3d5fae 0%, #10203c 100%);
-    box-shadow: 0 4px 15px rgba(75, 108, 183, 0.4);
+    background: linear-gradient(135deg, #0940a0 0%, #040f2a 100%);
+    box-shadow: 0 4px 15px rgba(11, 78, 162, 0.4);
 }
 
 .btn-success-mz {
@@ -372,15 +377,16 @@ table.responsive-table {
 }
 
 .mz-pagination li a:hover {
-    background: #eef2ff;
-    border-color: #4b6cb7;
+    background: #fff3e0;
+    border-color: #FF8A00;
+    color: #FF8A00;
 }
 
 .mz-pagination li.active a,
 .mz-pagination li.active span {
-    background: #4b6cb7;
+    background: #FF8A00;
     color: white;
-    border-color: #4b6cb7;
+    border-color: #FF8A00;
 }
 
 .mz-pagination li.disabled a,
@@ -388,6 +394,12 @@ table.responsive-table {
     color: #ccc;
     pointer-events: none;
     border-color: #eee;
+}
+
+/* Paginación links normales */
+.mz-pagination li a,
+.mz-pagination li span {
+    color: #0B4EA2;
 }
 
 /* ── Alertas / Mensajes inline ───────────────────────────────────────────── */
@@ -420,9 +432,9 @@ table.responsive-table {
 }
 
 .mz-alert.mz-alert-info {
-    background: #e3f2fd;
-    color: #0d47a1;
-    border-left: 4px solid #1e88e5;
+    background: #e8eeff;
+    color: #061C4C;
+    border-left: 4px solid #0B4EA2;
 }
 
 /* ── Stepper (wizard) ────────────────────────────────────────────────────── */
@@ -466,24 +478,25 @@ table.responsive-table {
 }
 
 .mz-step.active .mz-step-circle {
-    background: #4b6cb7;
+    background: #FF8A00;
     color: #fff;
-    border-color: #4b6cb7;
+    border-color: #FF8A00;
+    box-shadow: 0 0 0 3px rgba(255,138,0,.2);
 }
 
 .mz-step.completed .mz-step-circle {
-    background: #43a047;
+    background: #0B4EA2;
     color: #fff;
-    border-color: #43a047;
+    border-color: #0B4EA2;
 }
 
 .mz-step.active .mz-step-label {
-    color: #4b6cb7;
+    color: #FF8A00;
     font-weight: 600;
 }
 
 .mz-step.completed .mz-step-label {
-    color: #43a047;
+    color: #0B4EA2;
 }
 
 .mz-step-connector {
