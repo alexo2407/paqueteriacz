@@ -66,90 +66,189 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
 ?>
 
 <style>
+/* ══════════════════════════════════════
+   Dashboard — Paleta RutaEx Latam
+   #061C4C | #0B4EA2 | #FF8A00
+══════════════════════════════════════ */
 .dashboard-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #061C4C 0%, #0B4EA2 100%);
     border-radius: 20px; padding: 2rem; color: white;
-    margin-bottom: 1.5rem; box-shadow: 0 10px 40px rgba(102,126,234,0.3);
+    margin-bottom: 1.5rem;
+    box-shadow: 0 10px 40px rgba(6,28,76,0.35);
+    position: relative; overflow: hidden;
 }
-.dashboard-header h2 { font-weight: 700; margin-bottom: 0.25rem; }
+.dashboard-header::before {
+    content: ''; position: absolute;
+    top: -60px; right: -60px;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    background: rgba(255,138,0,0.08);
+    pointer-events: none;
+}
+.dashboard-header::after {
+    content: ''; position: absolute;
+    bottom: -40px; right: 80px;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    pointer-events: none;
+}
+.dashboard-header h2 { font-weight: 800; margin-bottom: 0.25rem; font-family:'Inter',sans-serif; }
 .dashboard-header p  { opacity: 0.9; margin-bottom: 0; }
+
+/* Filtros */
 .filter-card {
     background: white; border-radius: 16px; padding: 1rem 1.5rem;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: none; margin-bottom: 1.5rem;
+    box-shadow: 0 4px 15px rgba(6,28,76,0.06);
+    border: 1px solid rgba(6,28,76,0.07) !important;
+    margin-bottom: 1.5rem;
 }
-.filter-card .form-control { border-radius: 10px; border: 2px solid #e9ecef; padding: .5rem 1rem; }
-.filter-card .form-control:focus { border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,.15); }
-.filter-card .btn-primary  { background:linear-gradient(135deg,#667eea,#764ba2); border:none; border-radius:10px; padding:.5rem 1.5rem; }
-.filter-card .btn-secondary{ background:#f8f9fa; border:2px solid #e9ecef; color:#6c757d; border-radius:10px; padding:.5rem 1.5rem; }
+.filter-card .form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: .5rem 1rem;
+}
+.filter-card .form-control:focus {
+    border-color: #0B4EA2;
+    box-shadow: 0 0 0 3px rgba(11,78,162,.12);
+}
+.filter-card .btn-primary {
+    background: linear-gradient(135deg, #FF8A00, #d96d00);
+    border: none; border-radius: 10px;
+    padding: .5rem 1.5rem;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(255,138,0,.3);
+}
+.filter-card .btn-primary:hover {
+    background: linear-gradient(135deg, #d96d00, #b85c00);
+    box-shadow: 0 6px 18px rgba(255,138,0,.4);
+}
+.filter-card .btn-secondary {
+    background: #EEF2F6;
+    border: 2px solid #dde3ec;
+    color: #334155;
+    border-radius: 10px;
+    padding: .5rem 1.5rem;
+    font-weight: 600;
+}
+.filter-card .btn-secondary:hover {
+    background: #dde3ec;
+    color: #061C4C;
+}
+
+/* KPI Cards */
 .kpi-card {
-    border:none; border-radius:16px; padding:1.5rem; color:white;
-    box-shadow:0 8px 25px rgba(0,0,0,.1); transition:all .3s ease; height:100%;
+    border: none; border-radius: 16px; padding: 1.5rem; color: white;
+    box-shadow: 0 8px 25px rgba(0,0,0,.12);
+    transition: all .3s ease; height: 100%;
 }
-.kpi-card:hover { transform:translateY(-5px); box-shadow:0 15px 35px rgba(0,0,0,.15); }
-.kpi-card .kpi-icon  { font-size:2.5rem; opacity:.8; margin-bottom:.5rem; }
-.kpi-card .kpi-value { font-size:2rem; font-weight:700; margin-bottom:.25rem; }
-.kpi-card .kpi-label { font-size:.9rem; opacity:.9; margin-bottom:.5rem; }
-.kpi-card .kpi-desc  { font-size:.8rem; opacity:.75; }
+.kpi-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,.18); }
+.kpi-card .kpi-icon  { font-size: 2.2rem; opacity: .85; margin-bottom: .5rem; }
+.kpi-card .kpi-value { font-size: 2.2rem; font-weight: 800; margin-bottom: .25rem; font-family:'Inter',sans-serif; }
+.kpi-card .kpi-label { font-size: .9rem; opacity: .95; margin-bottom: .5rem; font-weight: 600; }
+.kpi-card .kpi-desc  { font-size: .8rem; opacity: .75; }
+
+/* Chart Cards */
 .chart-card {
-    background:white; border:none; border-radius:16px;
-    box-shadow:0 4px 20px rgba(0,0,0,.06); overflow:hidden; margin-bottom:1.5rem;
+    background: white; border: 1px solid rgba(6,28,76,0.07) !important;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(6,28,76,.06);
+    overflow: hidden; margin-bottom: 1.5rem;
 }
-.chart-card .chart-header { padding:1.25rem 1.5rem; border-bottom:1px solid #f0f0f0; }
-.chart-card .chart-header h5 { margin:0; font-weight:600; color:#1a1a2e; display:flex; align-items:center; gap:.5rem; }
-.chart-card .chart-header small { color:#6c757d; display:block; margin-top:.25rem; }
-.chart-card .chart-body { padding:1.5rem; }
+.chart-card .chart-header { padding: 1.25rem 1.5rem; border-bottom: 2px solid #EEF2F6; }
+.chart-card .chart-header h5 {
+    margin: 0; font-weight: 700; color: #061C4C;
+    display: flex; align-items: center; gap: .5rem;
+    font-family: 'Inter', sans-serif;
+}
+.chart-card .chart-header small { color: #64748b; display: block; margin-top: .25rem; }
+.chart-card .chart-body { padding: 1.5rem; }
+
+/* Period badge */
 .period-badge {
-    background:rgba(255,255,255,.2); padding:.5rem 1rem;
-    border-radius:50px; font-size:.85rem; display:inline-flex; align-items:center; gap:.5rem;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: .5rem 1rem;
+    border-radius: 50px; font-size: .85rem;
+    display: inline-flex; align-items: center; gap: .5rem;
+    backdrop-filter: blur(4px);
 }
+
+/* Efectividad por País */
 .efectividad-card {
-    background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);
-    border-radius:12px; padding:1.5rem; text-align:center; height:100%;
+    background: linear-gradient(135deg, #EEF2F6 0%, #dde3ec 100%);
+    border-radius: 12px; padding: 1.5rem; text-align: center; height: 100%;
+    border: 1px solid rgba(6,28,76,0.08);
 }
-.efectividad-value { font-size:2.5rem; font-weight:700; color:#11998e; }
-.stat-item { display:flex; align-items:center; justify-content:center; gap:.5rem; margin:.5rem 0; font-size:.9rem; }
+.efectividad-value { font-size: 2.5rem; font-weight: 800; color: #0B4EA2; font-family:'Inter',sans-serif; }
+.stat-item { display: flex; align-items: center; justify-content: center; gap: .5rem; margin: .5rem 0; font-size: .9rem; }
+
+/* Proveedor cards */
 .proveedor-bi-card {
-    border:none; border-radius:14px; padding:1.25rem 1.5rem;
-    box-shadow:0 4px 16px rgba(0,0,0,.07); background:white;
-    transition:transform .25s ease, box-shadow .25s ease;
+    border: 1px solid rgba(6,28,76,0.08) !important;
+    border-radius: 14px; padding: 1.25rem 1.5rem;
+    box-shadow: 0 4px 16px rgba(6,28,76,.06); background: white;
+    transition: transform .25s ease, box-shadow .25s ease;
 }
-.proveedor-bi-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.12); }
-.proveedor-bi-card .prov-name  { font-weight:700; font-size:1rem; color:#1a1a2e; }
-.proveedor-bi-card .prov-badge { font-size:1.7rem; font-weight:800; }
-.efectividad-bar { height:8px; border-radius:50px; background:#f0f0f0; overflow:hidden; }
-.efectividad-bar-inner { height:100%; border-radius:50px; transition:width .8s ease; }
-.ef-green  { background:linear-gradient(90deg,#11998e,#38ef7d); }
-.ef-yellow { background:linear-gradient(90deg,#f7971e,#ffd200); }
-.ef-red    { background:linear-gradient(90deg,#f5576c,#f093fb); }
-.recomendacion-badge { display:inline-block; padding:.3rem .85rem; border-radius:50px; font-size:.78rem; font-weight:600; }
-.recomendacion-badge.best  { background:rgba(17,153,142,.12); color:#11998e; }
-.recomendacion-badge.worst { background:rgba(245,87,108,.12); color:#f5576c; }
-.top-prod-table td, .top-prod-table th { vertical-align:middle; padding:.65rem .75rem; }
-.top-prod-table th { background:#f8f9fa; font-size:.8rem; text-transform:uppercase; color:#8a94a6; }
+.proveedor-bi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(6,28,76,.12); }
+.proveedor-bi-card .prov-name  { font-weight: 700; font-size: 1rem; color: #061C4C; }
+.proveedor-bi-card .prov-badge { font-size: 1.7rem; font-weight: 800; color: #0B4EA2; }
+
+/* Progress bars */
+.efectividad-bar { height: 8px; border-radius: 50px; background: #EEF2F6; overflow: hidden; }
+.efectividad-bar-inner { height: 100%; border-radius: 50px; transition: width .8s ease; }
+.ef-green  { background: linear-gradient(90deg, #0B4EA2, #38bdf8); }
+.ef-yellow { background: linear-gradient(90deg, #FF8A00, #ffd200); }
+.ef-red    { background: linear-gradient(90deg, #f5576c, #fa709a); }
+
+/* Recomendación badges */
+.recomendacion-badge { display: inline-block; padding: .3rem .85rem; border-radius: 50px; font-size: .78rem; font-weight: 600; }
+.recomendacion-badge.best  { background: rgba(11,78,162,.1); color: #0B4EA2; }
+.recomendacion-badge.worst { background: rgba(245,87,108,.1); color: #f5576c; }
+
+/* Top Productos tabla */
+.top-prod-table td, .top-prod-table th { vertical-align: middle; padding: .65rem .75rem; }
+.top-prod-table th { background: #EEF2F6; font-size: .8rem; text-transform: uppercase; color: #334155; font-weight: 700; border-bottom: 2px solid #FF8A00 !important; }
+
+/* Rank badges */
 .rank-badge {
-    width:28px; height:28px; border-radius:50%; display:inline-flex;
-    align-items:center; justify-content:center; font-weight:700; font-size:.8rem; color:white;
+    width: 28px; height: 28px; border-radius: 50%; display: inline-flex;
+    align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; color: white;
 }
-.rank-1 { background:linear-gradient(135deg,#f7971e,#ffd200); }
-.rank-2 { background:linear-gradient(135deg,#667eea,#764ba2); }
-.rank-3 { background:linear-gradient(135deg,#4facfe,#00f2fe); }
-.rank-n { background:#ced4da; }
+.rank-1 { background: linear-gradient(135deg, #FF8A00, #ffd200); }
+.rank-2 { background: linear-gradient(135deg, #061C4C, #0B4EA2); }
+.rank-3 { background: linear-gradient(135deg, #64748b, #94a3b8); }
+.rank-n { background: #ced4da; }
+
+/* Insight card (widget KPI oscuro) */
 .insight-card {
-    background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);
-    border-radius:16px; padding:1.5rem 2rem; color:white;
-    box-shadow:0 8px 32px rgba(15,52,96,.35); position:relative; overflow:hidden;
+    background: linear-gradient(135deg, #061C4C 0%, #0B4EA2 100%);
+    border-radius: 16px; padding: 1.5rem 2rem; color: white;
+    box-shadow: 0 8px 32px rgba(6,28,76,.35);
+    position: relative; overflow: hidden;
 }
 .insight-card::before {
-    content:''; position:absolute; top:-40px; right:-40px;
-    width:160px; height:160px; border-radius:50%; background:rgba(255,255,255,.04);
+    content: ''; position: absolute; top: -40px; right: -40px;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: rgba(255,138,0,.08);
 }
-.insight-card .insight-icon  { font-size:2.8rem; margin-bottom:.5rem; }
-.insight-card .insight-title { font-size:.85rem; opacity:.7; text-transform:uppercase; letter-spacing:.05em; }
-.insight-card .insight-value { font-size:1.6rem; font-weight:800; margin:.25rem 0; }
-.insight-card .insight-tip   { font-size:.88rem; opacity:.8; margin-top:.75rem; }
+.insight-card .insight-icon  { font-size: 2.8rem; margin-bottom: .5rem; }
+.insight-card .insight-title { font-size: .85rem; opacity: .7; text-transform: uppercase; letter-spacing: .05em; }
+.insight-card .insight-value { font-size: 1.6rem; font-weight: 800; margin: .25rem 0; font-family: 'Inter', sans-serif; }
+.insight-card .insight-tip   { font-size: .88rem; opacity: .8; margin-top: .75rem; }
 .insight-chip {
-    display:inline-block; padding:.25rem .7rem; border-radius:50px;
-    background:rgba(255,255,255,.12); font-size:.78rem; margin-top:.5rem;
+    display: inline-block; padding: .25rem .7rem; border-radius: 50px;
+    background: rgba(255,138,0,.2); color: #FF8A00;
+    font-size: .78rem; margin-top: .5rem; font-weight: 600;
+}
+
+/* Estrella del período badge */
+.star-badge {
+    background: linear-gradient(135deg, #FF8A00, #ffd200);
+    color: white; border-radius: 50px;
+    font-size: .78rem; font-weight: 700;
+    padding: .25rem .75rem;
+    display: inline-flex; align-items: center; gap: .3rem;
 }
 </style>
 
@@ -189,7 +288,7 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
             <?php if ($isAdmin && !empty($clientes)): ?>
             <div class="col-md-3">
                 <label for="cliente_id" class="form-label small text-muted mb-1"><i class="bi bi-person me-1"></i>Cliente</label>
-                <select id="cliente_id" name="cliente_id" class="form-control" style="border-radius:10px;border:2px solid <?= $clienteIdFiltro ? '#667eea' : '#e9ecef' ?>;">
+                <select id="cliente_id" name="cliente_id" class="form-control" style="border-radius:10px;border:2px solid <?= $clienteIdFiltro ? '#FF8A00' : '#e9ecef' ?>;">
                     <option value="">— Todos los clientes —</option>
                     <?php foreach ($clientes as $c): ?>
                     <option value="<?= (int)$c['id'] ?>" <?= (int)$c['id'] === $clienteIdFiltro ? 'selected' : '' ?>>
@@ -210,33 +309,37 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
 
     <!-- KPIs -->
     <div class="row g-4 mb-4">
+        <!-- Efectividad Global -->
         <div class="col-md-3">
-            <div class="kpi-card" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
-                <div class="kpi-icon">📊</div>
+            <div class="kpi-card" style="background:linear-gradient(135deg, #061C4C 0%, #0B4EA2 100%);">
+                <div class="kpi-icon"><i class="bi bi-graph-up-arrow"></i></div>
                 <div class="kpi-value"><?= number_format($kpis['efectividad_global'],1) ?>%</div>
                 <div class="kpi-label">Efectividad Global</div>
                 <div class="kpi-desc">Entregas exitosas</div>
             </div>
         </div>
+        <!-- Entregas Exitosas -->
         <div class="col-md-3">
-            <div class="kpi-card" style="background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);">
-                <div class="kpi-icon">✅</div>
+            <div class="kpi-card" style="background:linear-gradient(135deg, #FF8A00 0%, #d96d00 100%);">
+                <div class="kpi-icon"><i class="bi bi-check-circle-fill"></i></div>
                 <div class="kpi-value"><?= number_format($kpis['total_entregados']) ?></div>
                 <div class="kpi-label">Entregas Exitosas</div>
                 <div class="kpi-desc">Pedidos entregados</div>
             </div>
         </div>
+        <!-- En Proceso -->
         <div class="col-md-3">
-            <div class="kpi-card" style="background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);">
-                <div class="kpi-icon">🚚</div>
+            <div class="kpi-card" style="background:linear-gradient(135deg, #0B4EA2 0%, #1d6bc9 100%);">
+                <div class="kpi-icon"><i class="bi bi-truck-front"></i></div>
                 <div class="kpi-value"><?= number_format($kpis['en_proceso']) ?></div>
                 <div class="kpi-label">En Proceso</div>
                 <div class="kpi-desc">Pedidos en tránsito</div>
             </div>
         </div>
+        <!-- Tasa Devolución -->
         <div class="col-md-3">
-            <div class="kpi-card" style="background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);">
-                <div class="kpi-icon">↩️</div>
+            <div class="kpi-card" style="background:linear-gradient(135deg, #FF8A00 0%, #061C4C 100%);">
+                <div class="kpi-icon"><i class="bi bi-arrow-return-left"></i></div>
                 <div class="kpi-value"><?= number_format($kpis['tasa_devolucion'],1) ?>%</div>
                 <div class="kpi-label">Tasa de Devolución</div>
                 <div class="kpi-desc">Pedidos devueltos</div>
