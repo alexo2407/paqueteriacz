@@ -98,7 +98,7 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
     <?php endif; ?>
     <!-- Shell Bootstrap (tema marca RutaEx Latam) -->
-    <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos_bs.css">
+    <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos_bs.css?v=<?= filemtime(__DIR__.'/../css/estilos_bs.css') ?>">
     <!-- Estilos propios de la app -->
     <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos.css">
     <!-- Variables JS globales disponibles para todos los scripts de la app -->

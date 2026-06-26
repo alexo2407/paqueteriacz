@@ -297,25 +297,21 @@ body.bs-body {
 }
 
 .bs-page-container {
-    padding: 1.5rem 1rem;
+    padding: 0 1rem 1.5rem 1rem;
     flex: 1;
 }
 
 @media (min-width: 992px) {
     .bs-page-container {
-        padding: 2rem 1.5rem;
+        padding: 0 1.5rem 2rem 1.5rem;
     }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   FIX GLOBAL: Eliminar padding-top de container-fluid en TODAS las vistas
-   Bootstrap py-3 / py-4 agrega padding-top que crea espacio vacío.
-   El padding-bottom se preserva para respiración inferior.
+   FIX GLOBAL: Eliminar padding-top en TODAS las vistas.
+   Cubre hijos directos e indirectos (py-3, py-4, pt-3, pt-4).
    ═══════════════════════════════════════════════════════════════ */
-.bs-page-container > .container-fluid,
-.bs-page-container > .container,
-.bs-page-container > .container-lg,
-.bs-page-container > .container-xl {
+.bs-page-container [class*="container"] {
     padding-top: 0 !important;
 }
 
