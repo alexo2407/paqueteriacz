@@ -24,25 +24,11 @@
     --brand-sidebar-label: rgba(255, 138, 0, 0.75);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   FIX CRÍTICO: Bootstrap 5 offcanvas-lg agrega padding-top al body
-   en desktop, creando un espacio vacío entre navbar y contenido.
-   ═══════════════════════════════════════════════════════════════ */
-body.bs-body {
-    padding-top: 0 !important;
-    margin-top: 0 !important;
-}
-
-/* En desktop, el offcanvas-lg NO debe comportarse como modal */
+/* FIX: Bootstrap 5 offcanvas-lg — no agregar padding-right al body */
 @media (min-width: 992px) {
-    body.offcanvas-backdrop,
-    body.modal-open {
+    body.bs-body {
         overflow: auto !important;
         padding-right: 0 !important;
-    }
-    /* Eliminar cualquier margen que Bootstrap inyecte en el body */
-    body[style*="padding"] {
-        padding-top: 0 !important;
     }
 }
 
@@ -456,20 +442,18 @@ body.bs-body {
 @media (min-width: 992px) {
     #bsSidebar {
         position: sticky !important;
-        top: 0;
-        height: 100vh;
+        /* El navbar tiene 60px de altura — el sidebar debe comenzar justo debajo */
+        top: 60px !important;
+        height: calc(100vh - 60px) !important;
         transform: none !important;
         visibility: visible !important;
         flex-shrink: 0;
         overflow-y: auto;
-        /* FIX: Bootstrap offcanvas-lg adds empty space — remove it */
         margin-top: 0 !important;
         margin-left: 0 !important;
         border-top: none !important;
-        box-shadow: none !important;
     }
 
-    /* FIX: Bootstrap offcanvas backdrop creates gap on desktop */
     .offcanvas-lg.offcanvas-start {
         transform: none !important;
         visibility: visible !important;
