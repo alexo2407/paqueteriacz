@@ -520,3 +520,34 @@ body.bs-body {
 #bsSidebar::-webkit-scrollbar-thumb:hover {
     background: var(--brand-orange);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT / PDF — Ocultar chrome del layout al imprimir
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+    /* Ocultar navbar, sidebar y footer del layout */
+    .bs-navbar,
+    #bsSidebar,
+    .bs-footer,
+    footer.bs-footer {
+        display: none !important;
+    }
+
+    /* El área principal ocupa todo el ancho */
+    .bs-body-row {
+        display: block !important;
+    }
+    .bs-main {
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    .bs-page-container {
+        padding: 0 !important;
+    }
+
+    /* Sin fondo de color en la impresión para ahorrar tinta */
+    body.bs-body {
+        background: #fff !important;
+    }
+}
