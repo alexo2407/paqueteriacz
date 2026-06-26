@@ -122,10 +122,11 @@
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Brand — Logo tipográfico estilo web -->
+        <!-- Brand — Logo tipográfico Inter con pipe (Manual de Marca) -->
         <a class="navbar-brand" href="<?= $homeUrl ?>" style="display:flex;align-items:center;gap:0;text-decoration:none;">
-            <span style="font-family:'Outfit',sans-serif;font-size:1.45rem;font-weight:800;color:#ffffff;letter-spacing:-0.5px;line-height:1;">Ruta<span style="color:#FF8A00;">Ex</span></span>
-            <span style="font-family:'Outfit',sans-serif;font-size:1.45rem;font-weight:400;color:rgba(255,255,255,0.85);letter-spacing:0.3px;line-height:1;">&nbsp;Latam</span>
+            <span style="font-family:'Inter',sans-serif;font-size:1.38rem;font-weight:800;color:#ffffff;letter-spacing:-0.3px;line-height:1;">Ruta<span style="color:#FF8A00;">Ex</span></span>
+            <span style="font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:200;color:rgba(255,255,255,0.35);margin:0 7px;line-height:1;">|</span>
+            <span style="font-family:'Inter',sans-serif;font-size:1.38rem;font-weight:400;color:rgba(255,255,255,0.85);letter-spacing:0.2px;line-height:1;">Latam</span>
         </a>
 
         <!-- Derecha: notificaciones + usuario -->
@@ -405,17 +406,17 @@
             <!-- ═══ Dashboard ═══ -->
             <?php if ((!$isRepartidor || $isAdmin) && !$isCliente): ?>
             <a href="<?= RUTA_URL ?>dashboard" class="nav-link">
-                <i class="bi bi-speedometer2"></i> Dashboard
+                <i class="bi bi-house-door"></i> Dashboard
             </a>
             <?php endif; ?>
 
             <!-- ═══ Logística Cliente ═══ -->
             <?php if ($isMensajero): ?>
             <a href="<?= RUTA_URL ?>logistica/dashboard" class="nav-link">
-                <i class="bi bi-truck"></i> Mis Pedidos
+                <i class="bi bi-truck-front"></i> Mis Pedidos
             </a>
             <a href="<?= RUTA_URL ?>logistica/notificaciones" class="nav-link d-flex align-items-center justify-content-between">
-                <span><i class="bi bi-bell me-1"></i> Notificaciones</span>
+                <span><i class="bi bi-bell-fill me-1"></i> Notificaciones</span>
                 <?php if ($isLogisticaCliente && $unreadCount > 0): ?>
                 <span class="badge bg-danger"><?= $unreadCount ?></span>
                 <?php endif; ?>
@@ -427,7 +428,7 @@
             <hr class="sidebar-divider">
             <div class="sidebar-label">Operaciones</div>
             <a href="<?= RUTA_URL ?>pedidos/listar" class="nav-link">
-                <i class="bi bi-clipboard-check"></i> Pedidos
+                <i class="bi bi-box-seam"></i> Pedidos
             </a>
             <?php if ($isAdmin): ?>
             <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="nav-link">
@@ -439,12 +440,12 @@
             if ($isAdmin || $isNutraTradeClient || $isCliente || $sessionRol == 4 || in_array('Cliente', $rolesNombres) || in_array('cliente', $rolesNombres)): 
             ?>
             <a href="<?= RUTA_URL ?>seguimiento/admin_tracking" class="nav-link">
-                <i class="bi bi-geo-fill"></i>
+                <i class="bi bi-crosshair"></i>
                 <span>Tracking de Estados</span>
             </a>
             <?php endif; ?>
             <a href="<?= RUTA_URL ?>pedidos/reportes" class="nav-link">
-                <i class="bi bi-file-earmark-bar-graph"></i> Reporte de Pedidos
+                <i class="bi bi-bar-chart-line"></i> Reporte de Pedidos
             </a>
             <!-- ═══ Grupo Informes ═══ -->
             <?php if ($isAdmin || !$isProveedor): ?>
@@ -453,12 +454,12 @@
                aria-expanded="<?= (strpos($_SERVER['REQUEST_URI'] ?? '', 'informes') !== false) ? 'true' : 'false' ?>"
                aria-controls="navInformes"
                style="cursor:pointer">
-                <span><i class="bi bi-bar-chart-fill me-1"></i> Informes</span>
+                <span><i class="bi bi-graph-up-arrow me-1"></i> Informes</span>
                 <i class="bi bi-chevron-down" style="font-size:.7rem;transition:transform .2s" id="chevronInformes"></i>
             </a>
             <div class="collapse <?= (strpos($_SERVER['REQUEST_URI'] ?? '', 'informes') !== false) ? 'show' : '' ?>" id="navInformes">
                 <a href="<?= RUTA_URL ?>pedidos/informes/estatus" class="nav-link ps-4" style="font-size:.85rem">
-                    <i class="bi bi-pie-chart me-1"></i> Estatus de Órdenes
+                    <i class="bi bi-pie-chart-fill me-1"></i> Estatus de Órdenes
                 </a>
                 <a href="<?= RUTA_URL ?>pedidos/informes/region" class="nav-link ps-4" style="font-size:.85rem">
                     <i class="bi bi-map me-1"></i> Efectividad por Región
@@ -467,7 +468,7 @@
                     <i class="bi bi-box-seam me-1"></i> Efectividad por Producto
                 </a>
                 <a href="<?= RUTA_URL ?>pedidos/informes/semana" class="nav-link ps-4" style="font-size:.85rem">
-                    <i class="bi bi-calendar-week me-1"></i> Tendencia Semanal
+                    <i class="bi bi-calendar3-week me-1"></i> Tendencia Semanal
                 </a>
             </div>
             <?php endif; // Admin || !$isProveedor (Informes) ?>
@@ -475,7 +476,7 @@
 
             <?php if ($isRepartidor || $isAdmin): ?>
             <a href="<?= RUTA_URL ?>seguimiento/listar" class="nav-link">
-                <i class="bi bi-geo-alt"></i> Seguimiento
+                <i class="bi bi-geo-alt-fill"></i> Seguimiento
             </a>
             <?php endif; ?>
 
@@ -483,16 +484,16 @@
             <?php if ($isAdmin || $isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Inventario</div>
-            <a href="<?= RUTA_URL ?>productos/listar" class="nav-link"><i class="bi bi-grid"></i> Productos</a>
+            <a href="<?= RUTA_URL ?>productos/listar" class="nav-link"><i class="bi bi-box"></i> Productos</a>
             <?php if ($isAdmin || !$isProveedor): // ocultar gestión de stock al rol Cliente ?>
-            <a href="<?= RUTA_URL ?>categorias/listar" class="nav-link"><i class="bi bi-folder2"></i> Categorías</a>
-            <a href="<?= RUTA_URL ?>stock/listar" class="nav-link"><i class="bi bi-arrow-down-up"></i> Mov. de Stock</a>
-            <a href="<?= RUTA_URL ?>stock/kardex" class="nav-link"><i class="bi bi-file-earmark-text"></i> Kardex</a>
+            <a href="<?= RUTA_URL ?>categorias/listar" class="nav-link"><i class="bi bi-tag"></i> Categorías</a>
+            <a href="<?= RUTA_URL ?>stock/listar" class="nav-link"><i class="bi bi-arrow-left-right"></i> Mov. de Stock</a>
+            <a href="<?= RUTA_URL ?>stock/kardex" class="nav-link"><i class="bi bi-file-ruled"></i> Kardex</a>
             <?php if ($isAdmin): ?>
-            <a href="<?= RUTA_URL ?>stock/movimientos" class="nav-link"><i class="bi bi-journal-arrow-down"></i> Reporte Movimientos</a>
-            <a href="<?= RUTA_URL ?>stock/saldo" class="nav-link"><i class="bi bi-bar-chart-steps"></i> Saldo por Producto</a>
+            <a href="<?= RUTA_URL ?>stock/movimientos" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> Reporte Movimientos</a>
+            <a href="<?= RUTA_URL ?>stock/saldo" class="nav-link"><i class="bi bi-bar-chart"></i> Saldo por Producto</a>
             <?php endif; ?>
-            <a href="<?= RUTA_URL ?>stock/inventario_periodo" class="nav-link"><i class="bi bi-table"></i> Inventario Período</a>
+            <a href="<?= RUTA_URL ?>stock/inventario_periodo" class="nav-link"><i class="bi bi-calendar-range"></i> Inventario Período</a>
             <a href="<?= RUTA_URL ?>stock/crear" class="nav-link"><i class="bi bi-plus-circle"></i> Nuevo Movimiento</a>
             <?php endif; ?>
             <?php endif; ?>
@@ -501,16 +502,16 @@
             <?php if ($isAdmin || $isVendedor): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Geografía</div>
-            <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-geo-fill"></i> Códigos Postales</a>
-            <a href="<?= RUTA_URL ?>paises/listar" class="nav-link"><i class="bi bi-globe"></i> Países</a>
+            <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-mailbox"></i> Códigos Postales</a>
+            <a href="<?= RUTA_URL ?>paises/listar" class="nav-link"><i class="bi bi-globe2"></i> Países</a>
             <a href="<?= RUTA_URL ?>departamentos/listar" class="nav-link"><i class="bi bi-map"></i> Departamentos</a>
-            <a href="<?= RUTA_URL ?>municipios/listar" class="nav-link"><i class="bi bi-pin-map"></i> Municipios</a>
+            <a href="<?= RUTA_URL ?>municipios/listar" class="nav-link"><i class="bi bi-geo"></i> Municipios</a>
             <a href="<?= RUTA_URL ?>barrios/listar" class="nav-link"><i class="bi bi-building"></i> Barrios</a>
-            <a href="<?= RUTA_URL ?>monedas/listar" class="nav-link"><i class="bi bi-currency-exchange"></i> Monedas</a>
+            <a href="<?= RUTA_URL ?>monedas/listar" class="nav-link"><i class="bi bi-currency-dollar"></i> Monedas</a>
             <?php elseif ($isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Geografía</div>
-            <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-geo-fill"></i> Códigos Postales</a>
+            <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-mailbox"></i> Códigos Postales</a>
             <?php endif; ?>
 
 
@@ -520,16 +521,16 @@
             <div class="sidebar-label">CRM Relay</div>
             <?php if ($isAdmin || $isProveedorCRM): ?>
             <a href="<?= RUTA_URL ?>crm/dashboard" class="nav-link"><i class="bi bi-speedometer2"></i> Dashboard CRM</a>
-            <a href="<?= RUTA_URL ?>crm/listar" class="nav-link"><i class="bi bi-people-fill"></i> Leads</a>
+            <a href="<?= RUTA_URL ?>crm/listar" class="nav-link"><i class="bi bi-people"></i> Leads</a>
             <?php endif; ?>
             <a href="<?= RUTA_URL ?>crm/notificaciones" class="nav-link">
-                <i class="bi bi-bell"></i> Notificaciones CRM
+                <i class="bi bi-bell-fill"></i> Notificaciones CRM
                 <?php if (!$isLogisticaCliente && $unreadCount > 0): ?>
                 <span class="badge bg-danger ms-auto"><?= $unreadCount ?></span>
                 <?php endif; ?>
             </a>
             <?php if ($isAdmin): ?>
-            <a href="<?= RUTA_URL ?>crm/integraciones" class="nav-link"><i class="bi bi-plug"></i> Integraciones</a>
+            <a href="<?= RUTA_URL ?>crm/integraciones" class="nav-link"><i class="bi bi-link-45deg"></i> Integraciones</a>
             <a href="<?= RUTA_URL ?>crm/monitor" class="nav-link"><i class="bi bi-activity"></i> Monitor Worker</a>
             <a href="<?= RUTA_URL ?>crm/reportes" class="nav-link"><i class="bi bi-graph-up"></i> Reportes</a>
             <?php endif; ?>
@@ -539,17 +540,17 @@
             <?php if ($isAdmin): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Integraciones</div>
-            <a href="<?= RUTA_URL ?>forwarding" class="nav-link"><i class="bi bi-arrow-left-right"></i> Forwarding</a>
-            <a href="<?= RUTA_URL ?>webhooks" class="nav-link"><i class="bi bi-broadcast"></i> Webhooks</a>
+            <a href="<?= RUTA_URL ?>forwarding" class="nav-link"><i class="bi bi-arrows-left-right"></i> Forwarding</a>
+            <a href="<?= RUTA_URL ?>webhooks" class="nav-link"><i class="bi bi-wifi"></i> Webhooks</a>
             <?php endif; ?>
 
             <!-- ═══ Administración (Admin) ═══ -->
             <?php if ($isAdmin): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Administración</div>
-            <a href="<?= RUTA_URL ?>usuarios/listar" class="nav-link"><i class="bi bi-people"></i> Usuarios</a>
-            <a href="<?= RUTA_URL ?>auditoria/historial" class="nav-link"><i class="bi bi-clock-history"></i> Auditoría</a>
-            <a href="<?= RUTA_URL ?>auditoria/accesos" class="nav-link"><i class="bi bi-person-badge"></i> Hist. Accesos</a>
+            <a href="<?= RUTA_URL ?>usuarios/listar" class="nav-link"><i class="bi bi-person-badge"></i> Usuarios</a>
+            <a href="<?= RUTA_URL ?>auditoria/historial" class="nav-link"><i class="bi bi-shield-check"></i> Auditoría</a>
+            <a href="<?= RUTA_URL ?>auditoria/accesos" class="nav-link"><i class="bi bi-person-lock"></i> Hist. Accesos</a>
             <?php endif; ?>
 
             <?php /* Auditoría solo visible para Admin */ ?>
@@ -559,8 +560,8 @@
             <?php if ($isAdmin): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Documentación</div>
-            <a href="<?= RUTA_URL ?>api/doc/" class="nav-link"><i class="bi bi-book"></i> API Docs</a>
-            <a href="<?= RUTA_URL ?>api/doc/generator.php" class="nav-link" style="background:linear-gradient(90deg,rgba(99,102,241,.12),transparent);border-left:2px solid #6366f1"><i class="bi bi-magic"></i> Generar Doc. API</a>
+            <a href="<?= RUTA_URL ?>api/doc/" class="nav-link"><i class="bi bi-code-slash"></i> API Docs</a>
+            <a href="<?= RUTA_URL ?>api/doc/generator.php" class="nav-link" style="background:linear-gradient(90deg,rgba(255,138,0,.12),transparent);border-left:2px solid #FF8A00"><i class="bi bi-stars"></i> Generar Doc. API</a>
             <a href="<?= RUTA_URL ?>api/doc/historial.php" class="nav-link"><i class="bi bi-clock-history"></i> Historial Docs</a>
             <a href="<?= RUTA_URL ?>api/doc/crmdoc.php" class="nav-link"><i class="bi bi-file-earmark-code"></i> Doc. CRM</a>
             <a href="<?= RUTA_URL ?>crm/database_doc" class="nav-link"><i class="bi bi-database"></i> Doc. Base de Datos</a>
@@ -570,7 +571,7 @@
             <!-- Logout -->
             <hr class="sidebar-divider">
             <?php if ($userName): ?>
-            <a href="<?= RUTA_URL ?>usuarios/perfil" class="nav-link"><i class="bi bi-person"></i> <?= htmlspecialchars($userName) ?></a>
+            <a href="<?= RUTA_URL ?>usuarios/perfil" class="nav-link"><i class="bi bi-person-circle"></i> <?= htmlspecialchars($userName) ?></a>
             <?php endif; ?>
             <a href="<?= RUTA_URL ?>salir" class="nav-link text-danger">
                 <i class="bi bi-box-arrow-right"></i> Cerrar Sesión

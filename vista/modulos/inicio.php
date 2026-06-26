@@ -3,11 +3,10 @@
 <div class="login-wrapper">
     <div class="login-card">
 
-        <!-- Logo tipográfico estilo web -->
+        <!-- Logo tipográfico Inter con pipe — Manual de Marca -->
         <div class="login-logo text-center mb-4">
-            <!-- Logo texto Outfit — igual que la web -->
-            <div style="margin-bottom: .75rem; line-height: 1;">
-                <span style="font-family:'Outfit',sans-serif;font-size:2.6rem;font-weight:900;color:#ffffff;letter-spacing:-1px;">Ruta<span style="color:#FF8A00;">Ex</span></span><span style="font-family:'Outfit',sans-serif;font-size:2.6rem;font-weight:400;color:rgba(255,255,255,0.85);letter-spacing:0.2px;">&nbsp;Latam</span>
+            <div style="margin-bottom: .85rem; line-height: 1;">
+                <span style="font-family:'Inter',sans-serif;font-size:2.5rem;font-weight:800;color:#ffffff;letter-spacing:-0.5px;">Ruta<span style="color:#FF8A00;">Ex</span></span><span style="font-family:'Inter',sans-serif;font-size:2rem;font-weight:200;color:rgba(255,255,255,0.3);margin:0 10px;">|</span><span style="font-family:'Inter',sans-serif;font-size:2.5rem;font-weight:300;color:rgba(255,255,255,0.85);">Latam</span>
             </div>
             <p class="login-tagline">Pan-Latam Logistics</p>
         </div>
