@@ -1,0 +1,3 @@
+numero_orden,fecha_ingreso,destinatario,telefono,direccion,comentario,zona,codigo_postal,pais,departamento,municipio,barrio,entre_calles,estado,fecha_entrega,precio_total_local,moneda,cliente,id_proveedor,es_combo,producto_1,cantidad_1
+999901,06/06/2026,Test Cliente Explicit,50212345678,Ciudad de Guatemala,Comentario de prueba,10,01010,Guatemala,Guatemala,Guatemala,Zona 10,Calle 1 y Calle 2,Entregado,07/06/2026,150.00,GTQ,5,18,0,Cardiotens,1
+999902,06/06/2026,Test Cliente Default,50287654321,Ciudad de Guatemala,Comentario de prueba 2,10,01010,Guatemala,Guatemala,Guatemala,Zona 10,Calle 3 y Calle 4,,,120.00,,5,,0,Dialux,2

@@ -294,6 +294,7 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
         .tabla-region thead tr:first-child th { background: #1e293b; color: #fff; font-weight: 700; text-align: center; border: none; padding: .55rem .75rem; }
         .tabla-region thead tr:last-child th.th-ent  { background: #3cb043; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-rec  { background: #c0392b; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
+        .tabla-region thead tr:last-child th.th-dev  { background: #b71c1c; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-proc { background: #f5e400; color: #3d3200; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-rep  { background: #f97316; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-base { background: #334155; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
@@ -302,6 +303,7 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
 
         .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
         .cell-rec  { background: #fae0dc !important; color: #7b1a11 !important; font-weight: 700; text-align: center; }
+        .cell-dev  { background: #fee2e2 !important; color: #7f1d1d !important; font-weight: 700; text-align: center; }
         .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
         .cell-num  { text-align: center; font-weight: 600; }
@@ -455,8 +457,8 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
                         <th class="th-ent">%</th>
                         <th class="th-rec">Cant.</th>
                         <th class="th-rec">%</th>
-                        <th style="background:#fee2e2;color:#7f1d1d;font-weight:600;text-align:center;font-size:.78rem">Cant.</th>
-                        <th style="background:#fee2e2;color:#7f1d1d;font-weight:600;text-align:center;font-size:.78rem">%</th>
+                        <th class="th-dev">Cant.</th>
+                        <th class="th-dev">%</th>
                         <th class="th-proc">Cant.</th>
                         <th class="th-proc">%</th>
                         <th class="th-rep">Cant.</th>
@@ -472,8 +474,8 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
                     <td class="cell-ent"><?= $reg['pct_entregados'] ?>%</td>
                     <td class="cell-rec"><?= number_format($reg['rechazados']) ?></td>
                     <td class="cell-rec"><?= $reg['pct_rechazados'] ?>%</td>
-                    <td style="background:#fee2e2;color:#7f1d1d;font-weight:700;text-align:center"><?= number_format($reg['devueltos']) ?></td>
-                    <td style="background:#fee2e2;color:#7f1d1d;font-weight:700;text-align:center"><?= $reg['pct_devueltos'] ?>%</td>
+                    <td class="cell-dev"><?= number_format($reg['devueltos']) ?></td>
+                    <td class="cell-dev"><?= $reg['pct_devueltos'] ?>%</td>
                     <td class="cell-proc"><?= number_format($reg['en_proceso']) ?></td>
                     <td class="cell-proc"><?= $reg['pct_en_proceso'] ?>%</td>
                     <td class="cell-rep"><?= number_format($reg['reprogramados']) ?></td>

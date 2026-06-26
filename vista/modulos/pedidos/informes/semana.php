@@ -426,6 +426,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         /* Celdas de cantidad */
         .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
         .cell-rec  { background: #fae0dc !important; color: #7b1a11 !important; font-weight: 700; text-align: center; }
+        .cell-dev  { background: #fee2e2 !important; color: #7f1d1d !important; font-weight: 700; text-align: center; }
         .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
         .cell-num  { text-align: center; font-weight: 600; }
@@ -433,6 +434,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         /* Celdas de porcentaje con color sólido — especificidad mayor que .row-pct td */
         .row-pct .pct-ent  { background: var(--clr-entregado) !important;    color: #fff !important; font-weight: 700; text-align: center; }
         .row-pct .pct-rec  { background: var(--clr-rechazado) !important;    color: #fff !important; font-weight: 700; text-align: center; }
+        .row-pct .pct-dev  { background: var(--clr-devuelto) !important;     color: #fff !important; font-weight: 700; text-align: center; }
         .row-pct .pct-proc { background: var(--clr-proceso) !important;      color: #3d3200 !important; font-weight: 700; text-align: center; }
         .row-pct .pct-rep  { background: var(--clr-reprogramado) !important; color: #fff !important; font-weight: 700; text-align: center; }
     </style>
@@ -652,7 +654,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     <td class="cell-num"><?= number_format($sem['cantidad']) ?></td>
                     <td class="cell-ent"><?= number_format($sem['entregados']) ?></td>
                     <td class="cell-rec"><?= number_format($sem['rechazados']) ?></td>
-                    <td style="background:#fee2e2;color:#7f1d1d;font-weight:700;text-align:center"><?= number_format($sem['devueltos']) ?></td>
+                    <td class="cell-dev"><?= number_format($sem['devueltos']) ?></td>
                     <td class="cell-proc"><?= number_format($sem['en_proceso']) ?></td>
                     <td class="cell-rep"><?= number_format($sem['reprogramados']) ?></td>
                 </tr>
@@ -662,7 +664,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     <td></td>
                     <td class="pct-ent"><?= $sem['pct_entregados'] ?>%</td>
                     <td class="pct-rec"><?= $sem['pct_rechazados'] ?>%</td>
-                    <td style="background:#b71c1c;color:#fff;font-weight:700;text-align:center"><?= $sem['pct_devueltos'] ?>%</td>
+                    <td class="pct-dev"><?= $sem['pct_devueltos'] ?>%</td>
                     <td class="pct-proc"><?= $sem['pct_en_proceso'] ?>%</td>
                     <td class="pct-rep"><?= $sem['pct_reprogramados'] ?>%</td>
                 </tr>
@@ -674,7 +676,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                         <td><?= number_format($totalCantidad) ?></td>
                         <td class="cell-ent"><?= number_format($totalEntregados) ?> (<?= $pctTotE ?>%)</td>
                         <td class="cell-rec"><?= number_format($totalRechazados) ?> (<?= $pctTotR ?>%)</td>
-                        <td style="background:#ede9fe;color:#5b21b6;font-weight:700;text-align:center"><?= number_format($totalDevueltos) ?> (<?= $pctTotD ?>%)</td>
+                        <td class="cell-dev"><?= number_format($totalDevueltos) ?> (<?= $pctTotD ?>%)</td>
                         <td class="cell-proc"><?= number_format($totalEnProceso) ?> (<?= $pctTotP ?>%)</td>
                         <td class="cell-rep"><?= number_format($totalReprogramados) ?> (<?= $pctTotRp ?>%)</td>
                     </tr>

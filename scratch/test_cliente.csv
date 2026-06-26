@@ -1,0 +1,2 @@
+numero_orden,fecha_ingreso,destinatario,telefono,direccion,comentario,zona,codigo_postal,pais,departamento,municipio,barrio,entre_calles,estado,fecha_entrega,precio_total_local,moneda,id_proveedor,es_combo,producto_1,cantidad_1
+999903,06/06/2026,Test Cliente Default,50287654321,Ciudad de Guatemala,Comentario de prueba 2,10,01010,Guatemala,Guatemala,Guatemala,Zona 10,Calle 3 y Calle 4,,,120.00,,12,0,Dialux,2
