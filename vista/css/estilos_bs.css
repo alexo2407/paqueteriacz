@@ -25,6 +25,28 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   FIX CRÍTICO: Bootstrap 5 offcanvas-lg agrega padding-top al body
+   en desktop, creando un espacio vacío entre navbar y contenido.
+   ═══════════════════════════════════════════════════════════════ */
+body.bs-body {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* En desktop, el offcanvas-lg NO debe comportarse como modal */
+@media (min-width: 992px) {
+    body.offcanvas-backdrop,
+    body.modal-open {
+        overflow: auto !important;
+        padding-right: 0 !important;
+    }
+    /* Eliminar cualquier margen que Bootstrap inyecte en el body */
+    body[style*="padding"] {
+        padding-top: 0 !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    TIPOGRAFÍA BASE
    ═══════════════════════════════════════════════════════════════ */
 body.bs-body {
@@ -274,7 +296,9 @@ body.bs-body {
     display: flex;
     flex: 1;
     min-height: 0;
-    align-items: flex-start;
+    align-items: stretch;  /* Stretch sidebar and main to full height */
+    margin-top: 0 !important;
+    padding-top: 0 !important;
 }
 
 .bs-main {
@@ -282,6 +306,8 @@ body.bs-body {
     min-width: 0;
     display: flex;
     flex-direction: column;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
 }
 
 .bs-page-container {
@@ -436,6 +462,18 @@ body.bs-body {
         visibility: visible !important;
         flex-shrink: 0;
         overflow-y: auto;
+        /* FIX: Bootstrap offcanvas-lg adds empty space — remove it */
+        margin-top: 0 !important;
+        margin-left: 0 !important;
+        border-top: none !important;
+        box-shadow: none !important;
+    }
+
+    /* FIX: Bootstrap offcanvas backdrop creates gap on desktop */
+    .offcanvas-lg.offcanvas-start {
+        transform: none !important;
+        visibility: visible !important;
+        position: sticky !important;
     }
 }
 
