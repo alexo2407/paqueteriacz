@@ -238,7 +238,8 @@ include "vista/includes/header.php";
   .print-creds strong{color:#061C4C}
   .print-tip{background:#EEF2F6!important;border-left:3px solid #0B4EA2!important;padding:8px 12px;font-size:11px;color:#061C4C!important;border-radius:0 4px 4px 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   /* Ocultar footer del layout del sistema en PDF */
-  .bs-footer,footer.bs-footer,#bsSidebar{display:none!important}
+  .bs-footer,footer.bs-footer,#bsSidebar,
+  body footer,body footer *{display:none!important;visibility:hidden!important}
   .print-page-break{page-break-before:always}
   .badge-req-yes{background:#d1fae5!important;color:#065f46!important;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .badge-req-no{background:#f3f4f6!important;color:#6b7280!important;padding:2px 6px;border-radius:3px;font-size:10px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -1030,6 +1031,16 @@ window.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     document.getElementById('f_fecha').value = now.toLocaleDateString('es-MX',{month:'long',year:'numeric'});
   }
+});
+
+// Ocultar footer del sistema al generar PDF
+window.addEventListener('beforeprint', () => {
+  const footer = document.querySelector('footer.bs-footer');
+  if (footer) { footer.setAttribute('data-was', footer.style.display); footer.style.setProperty('display','none','important'); }
+});
+window.addEventListener('afterprint', () => {
+  const footer = document.querySelector('footer.bs-footer');
+  if (footer) { footer.style.display = footer.getAttribute('data-was') || ''; }
 });
 </script>
 </div><!-- /wizard-theme-container -->
