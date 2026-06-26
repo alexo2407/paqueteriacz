@@ -1,4 +1,4 @@
-﻿<?php 
+<?php 
 
 start_secure_session();
 require_once __DIR__ . '/../../utils/permissions.php';
@@ -252,7 +252,7 @@ else                  { $saludo = 'Buenas noches';  $saludoIcon = '🌙'; }
 }
 </style>
 
-<div class="container-fluid py-3">
+<div class="container-fluid pt-2 pb-3">
 
     <!-- Header -->
     <div class="dashboard-header">
