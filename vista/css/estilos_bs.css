@@ -308,6 +308,18 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   FIX GLOBAL: Eliminar padding-top de container-fluid en TODAS las vistas
+   Bootstrap py-3 / py-4 agrega padding-top que crea espacio vacío.
+   El padding-bottom se preserva para respiración inferior.
+   ═══════════════════════════════════════════════════════════════ */
+.bs-page-container > .container-fluid,
+.bs-page-container > .container,
+.bs-page-container > .container-lg,
+.bs-page-container > .container-xl {
+    padding-top: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    FOOTER
    ═══════════════════════════════════════════════════════════════ */
 .bs-footer {
