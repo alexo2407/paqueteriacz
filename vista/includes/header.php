@@ -1,4 +1,4 @@
-﻿<?php
+<?php
     require_once __DIR__ . '/../../utils/permissions.php';
 
     // ── Roles / home URL ────────────────────────────────────────────────────
@@ -588,8 +588,26 @@
     if (!el || !ch) return;
     el.addEventListener('show.bs.collapse',  () => ch.style.transform = 'rotate(-180deg)');
     el.addEventListener('hide.bs.collapse',  () => ch.style.transform = 'rotate(0deg)');
-    // Set initial state
     if (el.classList.contains('show')) ch.style.transform = 'rotate(-180deg)';
+})();
+
+// ── FIX: Bootstrap 5 offcanvas inyecta padding-top/padding-right en el body ──
+// Lo removemos con un MutationObserver que reacciona en tiempo real
+(function() {
+    function stripBodyPadding() {
+        const b = document.body;
+        if (b.style.paddingTop    || b.style.paddingRight) {
+            b.style.removeProperty('padding-top');
+            b.style.removeProperty('padding-right');
+        }
+    }
+    // Corregir inmediatamente al cargar
+    stripBodyPadding();
+    // Observar cambios en el style del body (Bootstrap los aplica inline)
+    new MutationObserver(stripBodyPadding).observe(document.body, {
+        attributes: true,
+        attributeFilter: ['style']
+    });
 })();
 </script>
 

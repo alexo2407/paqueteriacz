@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * breadcrumb.php — Expert Arrow Breadcrumb
  * Autogestión de estilos para garantizar visualización premium independiente.
@@ -58,10 +58,10 @@ function _bcName(string $seg, array $map): string {
 <style>
     /* Reset y Estilos Base del Breadcrumb */
     .expert-bc-area {
-        padding: 12px 20px;
+        padding: 8px 16px;
         background-color: #f4f7f9;
         border-bottom: 1px solid #e1e8ed;
-        margin-bottom: 10px;
+        margin-bottom: 0;
     }
 
     .expert-bc-arrow {
