@@ -151,27 +151,34 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BRAND en NAVBAR — Logo + texto
+   BRAND en NAVBAR — Logo tipográfico Outfit
    ═══════════════════════════════════════════════════════════════ */
-.brand-title {
-    font-family: 'Montserrat', 'Inter', sans-serif;
-    font-size: 1.2rem;
-    font-weight: 900;
-    text-transform: uppercase;
-    font-style: italic;
-    letter-spacing: -0.5px;
-    color: #fff;
+.brand-logo-text {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
     line-height: 1;
 }
 
+.brand-title {
+    font-family: 'Outfit', 'Montserrat', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+
+.brand-title .accent {
+    color: #FF8A00;
+}
+
 .brand-subtitle {
-    font-family: 'Montserrat', 'Inter', sans-serif;
-    font-size: 0.52rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.3em;
-    color: var(--brand-orange);
-    margin-top: 2px;
+    font-family: 'Outfit', 'Montserrat', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.85);
+    letter-spacing: 0.3px;
     line-height: 1;
 }
 

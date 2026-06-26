@@ -84,8 +84,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="<?= RUTA_URL ?>favicon-16x16.png">
     <link rel="manifest" href="<?= RUTA_URL ?>site.webmanifest">
 
-    <!-- Google Fonts — Montserrat + Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts — Outfit + Montserrat + Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Montserrat:ital,wght@0,700;0,900;1,900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- Bootstrap 5 CSS -->
@@ -122,18 +122,10 @@
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        <!-- Brand — Logo nuevo logovc.png -->
-        <a class="navbar-brand d-flex align-items-center gap-2" href="<?= $homeUrl ?>" style="min-width: 0; overflow: visible;">
-            <!-- Logo imagen horizontal (visible en desktop) -->
-            <img src="<?= RUTA_URL ?>vista/img/logovc.png"
-                 alt="RutaEx Latam"
-                 class="d-none d-md-block"
-                 style="height: 42px; width: auto; object-fit: contain;">
-            <!-- En móvil: solo texto Montserrat -->
-            <div class="d-flex d-md-none flex-column" style="white-space: nowrap;">
-                <span class="brand-title">RutaEx</span>
-                <span class="brand-subtitle">Latam Logistics</span>
-            </div>
+        <!-- Brand — Logo tipográfico estilo web -->
+        <a class="navbar-brand" href="<?= $homeUrl ?>" style="display:flex;align-items:center;gap:0;text-decoration:none;">
+            <span style="font-family:'Outfit',sans-serif;font-size:1.45rem;font-weight:800;color:#ffffff;letter-spacing:-0.5px;line-height:1;">Ruta<span style="color:#FF8A00;">Ex</span></span>
+            <span style="font-family:'Outfit',sans-serif;font-size:1.45rem;font-weight:400;color:rgba(255,255,255,0.85);letter-spacing:0.3px;line-height:1;">&nbsp;Latam</span>
         </a>
 
         <!-- Derecha: notificaciones + usuario -->

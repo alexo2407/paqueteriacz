@@ -3,11 +3,12 @@
 <div class="login-wrapper">
     <div class="login-card">
 
-        <!-- Logo nuevo logovc.png -->
+        <!-- Logo tipográfico estilo web -->
         <div class="login-logo text-center mb-4">
-            <img src="<?= RUTA_URL ?>vista/img/logovc.png"
-                 alt="RutaEx Latam"
-                 class="login-logo-img">
+            <!-- Logo texto Outfit — igual que la web -->
+            <div style="margin-bottom: .75rem; line-height: 1;">
+                <span style="font-family:'Outfit',sans-serif;font-size:2.6rem;font-weight:900;color:#ffffff;letter-spacing:-1px;">Ruta<span style="color:#FF8A00;">Ex</span></span><span style="font-family:'Outfit',sans-serif;font-size:2.6rem;font-weight:400;color:rgba(255,255,255,0.85);letter-spacing:0.2px;">&nbsp;Latam</span>
+            </div>
             <p class="login-tagline">Pan-Latam Logistics</p>
         </div>
 
