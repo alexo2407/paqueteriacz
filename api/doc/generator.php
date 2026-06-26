@@ -754,13 +754,20 @@ function buildDocument(c) {
     <div class="print-section">
       <div class="print-label">📋 Ejemplo de credenciales válidas (para pruebas en la API)</div>
       <div class="print-creds">
-        ${c.credId ? `<p><strong>id:</strong> ${esc(c.credId)}</p>` : ''}
+        ${c.credId     ? `<p><strong>id:</strong> ${esc(c.credId)}</p>` : ''}
         ${c.credNombre ? `<p><strong>Empresa/Usuario:</strong> ${esc(c.credNombre)}</p>` : ''}
         <p><strong>Usuario:</strong> ${esc(c.credEmail)}</p>
         <p><strong>Contraseña:</strong> ${esc(c.credPass)}</p>
+        <p style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb">
+          <strong>id_proveedor:</strong> ${esc(c.ex.id_proveedor)} &nbsp;·&nbsp;
+          <strong>id_pais:</strong> ${esc(c.ex.id_pais)} &nbsp;·&nbsp;
+          <strong>id_moneda:</strong> ${esc(c.ex.id_moneda)} &nbsp;·&nbsp;
+          <strong>es_combo:</strong> ${esc(c.ex.es_combo)} <span style="color:#6b7280">(${c.ex.es_combo == '1' ? 'Combo' : 'Estándar'})</span>
+        </p>
       </div>
     </div>`;
   }
+
 
   // AUTENTICACIÓN (siempre)
   html += buildAuth(c);
