@@ -122,16 +122,9 @@ class HLExpressProvider extends BaseProvider
 
             $nombreProd = $p['producto_nombre'] ?? 'Producto';
             $contains[] = [
+                'Id'       => (string)($p['id_producto'] ?? ''),
                 'name'     => $nombreProd,
-                'quantity' => $cantidad
-            ];
-        }
-
-        // Si no hay productos (fallback de seguridad)
-        if (empty($contains)) {
-            $contains[] = [
-                'name'     => 'Envío',
-                'quantity' => 1
+                'quantity' => $cantidad,
             ];
         }
 
