@@ -27,8 +27,11 @@
 /* FIX: Bootstrap 5 offcanvas-lg — no agregar padding-right al body */
 @media (min-width: 992px) {
     body.bs-body {
-        overflow: auto !important;
+        overflow-y: auto !important;
         padding-right: 0 !important;
+    }
+    html {
+        overflow-y: auto;
     }
 }
 
@@ -39,6 +42,13 @@ body.bs-body {
     font-family: 'Inter', 'Segoe UI', sans-serif;
     background-color: var(--brand-gray);
     color: #1e293b;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    /* El scroll debe ocurrir en el body, no en children */
+    overflow-x: hidden;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -283,8 +293,8 @@ body.bs-body {
     flex: 1;
     min-height: 0;
     align-items: stretch;  /* Stretch sidebar and main to full height */
-    margin-top: 0 !important;
-    padding-top: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .bs-main {
@@ -292,8 +302,8 @@ body.bs-body {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    margin-top: 0 !important;
-    padding-top: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .bs-page-container {
@@ -311,7 +321,25 @@ body.bs-body {
    FIX GLOBAL: Eliminar padding-top en TODAS las vistas.
    Cubre hijos directos e indirectos (py-3, py-4, pt-3, pt-4).
    ═══════════════════════════════════════════════════════════════ */
+
+/* El primer hijo directo del contenedor de página nunca debe tener padding-top */
+.bs-page-container > * {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+/* Cubrir cualquier container/container-fluid con clase py-* o pt-* */
 .bs-page-container [class*="container"] {
+    padding-top: 0 !important;
+}
+
+/* Anular directamente las utilidades de Bootstrap dentro del page-container */
+.bs-page-container .py-1, .bs-page-container .py-2,
+.bs-page-container .py-3, .bs-page-container .py-4,
+.bs-page-container .py-5,
+.bs-page-container .pt-1, .bs-page-container .pt-2,
+.bs-page-container .pt-3, .bs-page-container .pt-4,
+.bs-page-container .pt-5 {
     padding-top: 0 !important;
 }
 
@@ -451,8 +479,9 @@ body.bs-body {
     #bsSidebar {
         position: sticky !important;
         /* El navbar tiene 60px de altura — el sidebar debe comenzar justo debajo */
-        top: 60px !important;
-        height: calc(100vh - 60px) !important;
+        top: 0 !important;
+        height: 100vh !important;
+        padding-top: 60px;
         transform: none !important;
         visibility: visible !important;
         flex-shrink: 0;

@@ -108,6 +108,40 @@
     </script>
     <!-- Web Push: Service Worker manager -->
     <script src="<?= RUTA_URL ?>js/push-manager.js" defer></script>
+    <!-- ══ LAYOUT RESET: eliminar gap navbar→contenido ══ -->
+    <style>
+        /* Forzar layout limpio sin gaps entre navbar y contenido */
+        html, body.bs-body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        body.bs-body > nav.bs-navbar {
+            margin-bottom: 0 !important;
+        }
+        body.bs-body > div.bs-body-row {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        div.bs-body-row > main.bs-main {
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }
+        /* El primer elemento dentro de main (breadcrumb) no debe tener margin arriba */
+        main.bs-main > *:first-child {
+            margin-top: 0 !important;
+        }
+        /* Anular padding-top en containers de contenido */
+        div.bs-page-container > div[class*="container"] {
+            padding-top: 0 !important;
+        }
+        div.bs-page-container > div.py-1,
+        div.bs-page-container > div.py-2,
+        div.bs-page-container > div.py-3,
+        div.bs-page-container > div.py-4,
+        div.bs-page-container > div.py-5 {
+            padding-top: 0 !important;
+        }
+    </style>
 </head>
 <body class="bs-body">
 
