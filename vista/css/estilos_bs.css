@@ -5,6 +5,15 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════
+   RESET GLOBAL — Eliminar cualquier margin/padding de navegador
+   ═══════════════════════════════════════════════════════════════ */
+html {
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    DESIGN TOKENS — CSS Custom Properties
    ═══════════════════════════════════════════════════════════════ */
 :root {
@@ -29,9 +38,12 @@
     body.bs-body {
         overflow-y: auto !important;
         padding-right: 0 !important;
+        padding-top: 0 !important;
     }
     html {
         overflow-y: auto;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
     }
 }
 
@@ -45,8 +57,8 @@ body.bs-body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     /* El scroll debe ocurrir en el body, no en children */
     overflow-x: hidden;
 }
@@ -58,12 +70,15 @@ body.bs-body {
     background: var(--brand-navy-gradient) !important;
     box-shadow: 0 2px 12px rgba(6, 28, 76, 0.45);
     padding: 0 .75rem;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 1050;
     height: 60px;
     display: flex;
     align-items: center;
+    flex-shrink: 0;
 }
 
 /* Evitar wrap en mobile */
@@ -291,9 +306,11 @@ body.bs-body {
 .bs-body-row {
     display: flex;
     flex: 1;
-    min-height: 0;
+    /* min-height garantiza que sidebar + contenido siempre llenen el viewport */
+    min-height: calc(100vh - 60px);
     align-items: stretch;  /* Stretch sidebar and main to full height */
     margin: 0 !important;
+    margin-top: 60px !important; /* Compensar navbar fixed de 60px usando margin */
     padding: 0 !important;
 }
 
@@ -304,6 +321,8 @@ body.bs-body {
     flex-direction: column;
     margin: 0 !important;
     padding: 0 !important;
+    /* El contenido siempre ocupa la altura completa debajo del navbar */
+    min-height: calc(100vh - 60px);
 }
 
 .bs-page-container {
@@ -478,10 +497,9 @@ body.bs-body {
 @media (min-width: 992px) {
     #bsSidebar {
         position: sticky !important;
-        /* El navbar tiene 60px de altura — el sidebar debe comenzar justo debajo */
-        top: 0 !important;
-        height: 100vh !important;
-        padding-top: 60px;
+        /* Navbar fixed 60px — sidebar comienza justo donde termina */
+        top: 60px !important;
+        height: calc(100vh - 60px) !important;
         transform: none !important;
         visibility: visible !important;
         flex-shrink: 0;
@@ -489,6 +507,7 @@ body.bs-body {
         margin-top: 0 !important;
         margin-left: 0 !important;
         border-top: none !important;
+        padding-top: 0 !important;
     }
 
     .offcanvas-lg.offcanvas-start {
@@ -555,6 +574,11 @@ body.bs-body {
    para que el logo RutaEx aparezca en el PDF
    ═══════════════════════════════════════════════════════════════ */
 @media print {
+    /* En impresión el navbar fixed pasa a estático para imprimirse */
+    .bs-navbar {
+        position: static !important;
+    }
+
     /* Ocultar SOLO sidebar y footer — el navbar con logo se conserva */
     #bsSidebar,
     .bs-footer,
@@ -562,14 +586,18 @@ body.bs-body {
         display: none !important;
     }
 
-    /* El área principal ocupa todo el ancho */
+    /* El área principal ocupa todo el ancho — sin padding/margin del navbar fixed */
     .bs-body-row {
         display: block !important;
+        padding-top: 0 !important;
+        margin-top: 0 !important;
+        min-height: 0 !important;
     }
     .bs-main {
         width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
+        min-height: 0 !important;
     }
     .bs-page-container {
         padding: 0 !important;

@@ -108,37 +108,24 @@
     </script>
     <!-- Web Push: Service Worker manager -->
     <script src="<?= RUTA_URL ?>js/push-manager.js" defer></script>
-    <!-- ══ LAYOUT RESET: eliminar gap navbar→contenido ══ -->
+    <!-- ══ RESET GLOBAL: html/body sin espacio ══ -->
     <style>
-        /* Forzar layout limpio sin gaps entre navbar y contenido */
-        html, body.bs-body {
+        /* Garantizar que html y body nunca tengan espacio superior */
+        html {
+            margin: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box;
+        }
+        body.bs-body {
             margin: 0 !important;
             padding: 0 !important;
         }
-        body.bs-body > nav.bs-navbar {
-            margin-bottom: 0 !important;
-        }
-        body.bs-body > div.bs-body-row {
-            margin-top: 0 !important;
+        /* Anular padding-top dentro del page-container */
+        div.bs-page-container > *:first-child {
             padding-top: 0 !important;
-        }
-        div.bs-body-row > main.bs-main {
-            margin-top: 0 !important;
-            padding-top: 0 !important;
-        }
-        /* El primer elemento dentro de main (breadcrumb) no debe tener margin arriba */
-        main.bs-main > *:first-child {
             margin-top: 0 !important;
         }
-        /* Anular padding-top en containers de contenido */
         div.bs-page-container > div[class*="container"] {
-            padding-top: 0 !important;
-        }
-        div.bs-page-container > div.py-1,
-        div.bs-page-container > div.py-2,
-        div.bs-page-container > div.py-3,
-        div.bs-page-container > div.py-4,
-        div.bs-page-container > div.py-5 {
             padding-top: 0 !important;
         }
     </style>
@@ -625,23 +612,29 @@
     if (el.classList.contains('show')) ch.style.transform = 'rotate(-180deg)';
 })();
 
-// ── FIX: Bootstrap 5 offcanvas inyecta padding-top/padding-right en el body ──
-// Lo removemos con un MutationObserver que reacciona en tiempo real
+// ── FIX: Bootstrap 5 offcanvas/modal inyecta padding/margin en body y html ──
+// Lo removemos con MutationObserver que reacciona en tiempo real
 (function() {
-    function stripBodyPadding() {
+    function stripTopSpacing() {
+        // Limpiar body
         const b = document.body;
-        if (b.style.paddingTop    || b.style.paddingRight) {
-            b.style.removeProperty('padding-top');
-            b.style.removeProperty('padding-right');
-        }
+        const propsBody = ['padding-top', 'padding-right', 'margin-top', 'margin-right'];
+        propsBody.forEach(function(p) {
+            if (b.style.getPropertyValue(p)) b.style.removeProperty(p);
+        });
+        // Limpiar html
+        const h = document.documentElement;
+        const propsHtml = ['margin-top', 'padding-top', 'margin', 'padding'];
+        propsHtml.forEach(function(p) {
+            if (h.style.getPropertyValue(p)) h.style.removeProperty(p);
+        });
     }
     // Corregir inmediatamente al cargar
-    stripBodyPadding();
-    // Observar cambios en el style del body (Bootstrap los aplica inline)
-    new MutationObserver(stripBodyPadding).observe(document.body, {
-        attributes: true,
-        attributeFilter: ['style']
-    });
+    stripTopSpacing();
+    // Observar cambios de style en body y html (Bootstrap los aplica inline)
+    var observer = new MutationObserver(stripTopSpacing);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
 })();
 </script>
 

@@ -1,7 +1,4 @@
 </div><!-- /.bs-page-container -->
-</main><!-- /.bs-main -->
-
-</div><!-- /.bs-body-row -->
 
 <!-- ══════ FOOTER ══════ -->
 <footer class="bs-footer">
@@ -10,6 +7,10 @@
         <span>Desarrollado por <a href="#">@albertoCalero</a></span>
     </div>
 </footer>
+
+</main><!-- /.bs-main -->
+
+</div><!-- /.bs-body-row -->
 
 <?php
 $paginaActual = isset($_GET['enlace']) ? explode("/", $_GET['enlace'])[0] : "inicio";
