@@ -242,11 +242,54 @@ class ProductoModel
         }
     }
 
-    public static function buscarPorNombre($nombre)
+    /**
+     * Busca un producto activo por nombre (case-insensitive, trim).
+     *
+     * Si se indica $idCliente, busca PRIMERO dentro del catálogo propio del
+     * cliente. Solo devuelve null cuando no existe ninguna coincidencia en su
+     * propio catálogo. Nunca devuelve un producto de otro cliente, evitando
+     * que pedidos de un cliente descuenten stock de otro.
+     *
+     * @param string   $nombre    Nombre a buscar
+     * @param int|null $idCliente ID del usuario-cliente propietario del pedido
+     * @return array|null
+     */
+    public static function buscarPorNombre($nombre, $idCliente = null)
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('SELECT id, nombre, descripcion, precio_usd FROM productos WHERE nombre = :nombre');
+
+            if ($idCliente !== null) {
+                // Buscar dentro del catálogo propio del cliente (case-insensitive)
+                $stmt = $db->prepare(
+                    'SELECT id, nombre, descripcion, precio_usd
+                     FROM   productos
+                     WHERE  LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))
+                       AND  id_usuario_creador  = :id_cliente
+                       AND  activo = 1
+                     ORDER BY id ASC
+                     LIMIT 1'
+                );
+                $stmt->bindValue(':nombre',    $nombre,    PDO::PARAM_STR);
+                $stmt->bindValue(':id_cliente', $idCliente, PDO::PARAM_INT);
+                $stmt->execute();
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                // Si existe en el catálogo propio → usarlo.
+                // Si NO existe → devolver null para que el llamador cree uno nuevo
+                // para este cliente. NO caer al catálogo global para evitar
+                // mezclar productos entre clientes.
+                return $row ?: null;
+            }
+
+            // Sin cliente: búsqueda global (compatibilidad con llamadas antiguas)
+            $stmt = $db->prepare(
+                'SELECT id, nombre, descripcion, precio_usd
+                 FROM   productos
+                 WHERE  LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))
+                   AND  activo = 1
+                 ORDER BY id ASC
+                 LIMIT 1'
+            );
             $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -256,22 +299,31 @@ class ProductoModel
         }
     }
 
-    public static function crearRapido($nombre, $descripcion = null, $precioUsd = null)
+    /**
+     * Crea un producto mínimo (solo nombre) y lo asigna al cliente indicado.
+     * Siempre guarda id_usuario_creador para que el producto quede aislado
+     * en el catálogo del cliente y no se comparta con otros.
+     *
+     * @param string   $nombre
+     * @param string|null $descripcion
+     * @param float|null  $precioUsd
+     * @param int|null    $idCliente  ID del usuario-cliente propietario
+     * @return int|null ID del producto creado, null en error
+     */
+    public static function crearRapido($nombre, $descripcion = null, $precioUsd = null, $idCliente = null)
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare('INSERT INTO productos (nombre, descripcion, precio_usd) VALUES (:nombre, :descripcion, :precio_usd)');
+            $stmt = $db->prepare(
+                'INSERT INTO productos (nombre, descripcion, precio_usd, id_usuario_creador)
+                 VALUES (:nombre, :descripcion, :precio_usd, :id_usuario_creador)'
+            );
             $stmt->bindValue(':nombre', $nombre, PDO::PARAM_STR);
-            if ($descripcion === null || $descripcion === '') {
-                $stmt->bindValue(':descripcion', null, PDO::PARAM_NULL);
-            } else {
-                $stmt->bindValue(':descripcion', $descripcion, PDO::PARAM_STR);
-            }
-            if ($precioUsd === null || $precioUsd === '') {
-                $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
-            } else {
-                $stmt->bindValue(':precio_usd', $precioUsd);
-            }
+            $stmt->bindValue(':descripcion',       ($descripcion === null || $descripcion === '') ? null : $descripcion,
+                             ($descripcion === null || $descripcion === '') ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':precio_usd',        ($precioUsd === null || $precioUsd === '') ? null : $precioUsd,
+                             ($precioUsd === null || $precioUsd === '') ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':id_usuario_creador', $idCliente, PDO::PARAM_INT);
             $stmt->execute();
             return (int)$db->lastInsertId();
         } catch (PDOException $e) {

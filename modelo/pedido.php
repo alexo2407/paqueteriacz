@@ -329,21 +329,20 @@ class PedidosModel
                             $pCantidad = (int)($prod['cantidad'] ?? 1);
                             if ($pNombre === '' || $pCantidad < 1) continue;
 
-                            $pId = null;
-                            $p   = ProductoModel::buscarPorNombre($pNombre);
-                            if ($p && isset($p['id'])) {
-                                $pId = (int)$p['id'];
-                            } elseif ($autoCreateProducts) {
-                                $pId = ProductoModel::crearRapido($pNombre);
-                                if (!in_array($pNombre, $resultado['productos_creados'])) {
-                                    $resultado['productos_creados'][] = $pNombre;
-                                }
-                            } else {
-                                throw new Exception("Producto '{$pNombre}' no existe y autoCreateProducts está desactivado");
-                            }
+                            // Obtener id_cliente del pedido actual para aislar el catálogo
+                            $pIdCliente = isset($params[':id_cliente']) && $params[':id_cliente'] !== ''
+                                ? (int)$params[':id_cliente'] : null;
 
-                            if ($pId !== null) {
-                                $productosAInsertar[] = ['id' => $pId, 'cantidad' => $pCantidad];
+                            $p = ProductoModel::buscarPorNombre($pNombre, $pIdCliente);
+                            if ($p && isset($p['id'])) {
+                                $productosAInsertar[] = ['id' => (int)$p['id'], 'cantidad' => $pCantidad];
+                            } else {
+                                // Producto no encontrado en el catálogo del cliente → rechazar fila completa.
+                                // No se crea automáticamente para evitar mezcla de catálogos entre clientes.
+                                throw new Exception(
+                                    "Producto '" . $pNombre . "' no existe en el catálogo del cliente."
+                                    . " Agréguelo primero desde el módulo de productos."
+                                );
                             }
                         }
                     } else {
@@ -351,21 +350,25 @@ class PedidosModel
                         $productoId     = null;
                         $productoNombre = $row['producto_nombre'] ?? $row['producto'] ?? null;
 
+                        // Obtener id_cliente del pedido actual para aislar el catálogo
+                        $idClientePedido = isset($params[':id_cliente']) && $params[':id_cliente'] !== ''
+                            ? (int)$params[':id_cliente'] : null;
+
                         if (isset($row['id_producto']) && is_numeric($row['id_producto']) && (int)$row['id_producto'] > 0) {
                             $productoId = (int)$row['id_producto'];
                         } elseif (isset($row['producto_id']) && is_numeric($row['producto_id']) && (int)$row['producto_id'] > 0) {
                             $productoId = (int)$row['producto_id'];
                         } elseif (!empty($productoNombre)) {
-                            $p = ProductoModel::buscarPorNombre($productoNombre);
+                            $p = ProductoModel::buscarPorNombre($productoNombre, $idClientePedido);
                             if ($p && isset($p['id'])) {
                                 $productoId = (int)$p['id'];
-                            } elseif ($autoCreateProducts) {
-                                $productoId = ProductoModel::crearRapido($productoNombre);
-                                if (!in_array($productoNombre, $resultado['productos_creados'])) {
-                                    $resultado['productos_creados'][] = $productoNombre;
-                                }
                             } else {
-                                throw new Exception("Producto '{$productoNombre}' no existe y autoCreateProducts está desactivado");
+                                // Producto no encontrado en el catálogo del cliente → rechazar fila.
+                                // No se crea automáticamente para evitar mezcla entre clientes.
+                                throw new Exception(
+                                    "Producto '" . $productoNombre . "' no existe en el catálogo del cliente."
+                                    . " Aggéguelo primero desde el módulo de productos."
+                                );
                             }
                         }
 
@@ -675,15 +678,19 @@ class PedidosModel
 
             // Insertar producto(s) en la tabla pivot cuando se provean.
             // Aceptamos dos formatos en $data: (1) 'producto_id' + 'cantidad'
-            // o (2) 'producto' (nombre) + 'cantidad' — en este caso intentamos resolver el id.
-            $productoId = null;
-            $cantidad = isset($data['cantidad']) ? (int)$data['cantidad'] : null;
+            // o (2) 'producto' (nombre) + 'cantidad' — en este caso intentamos resolver el id
+            // buscando SOLO en el catálogo del cliente del pedido para evitar mezcla entre clientes.
+            $productoId  = null;
+            $cantidad    = isset($data['cantidad']) ? (int)$data['cantidad'] : null;
+            $idCliData   = isset($params[':id_cliente']) && $params[':id_cliente'] !== ''
+                           ? (int)$params[':id_cliente']
+                           : (!empty($data['id_cliente']) ? (int)$data['id_cliente'] : null);
 
             if (isset($data['producto_id'])) {
                 $productoId = (int)$data['producto_id'];
             } elseif (!empty($data['producto'])) {
-                // Intentar resolver por nombre (retorna null si no existe)
-                $p = ProductoModel::buscarPorNombre($data['producto']);
+                // Buscar solo en el catálogo propio del cliente (pasa $idCliData)
+                $p = ProductoModel::buscarPorNombre($data['producto'], $idCliData);
                 $productoId = $p['id'] ?? null;
             }
 
