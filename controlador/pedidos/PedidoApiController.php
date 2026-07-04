@@ -807,7 +807,12 @@ class PedidoApiController
             'telefono' => $data['telefono'] ?? '',
             'direccion' => $data['direccion'] ?? '',
             'comentario' => $data['comentario'] ?? null,
-            'estado' => isset($data['id_estado']) ? (int)$data['id_estado'] : 1,
+            // IMPORTANTE: Al crear un pedido siempre se fuerza estado=1 (En Bodega).
+            // Esto garantiza que PedidoService::aplicarStockPorEstado() ejecute siempre
+            // la reserva de stock. Si un pedido se crea con estado 2 o superior,
+            // la salida física nunca se registra y el stock queda incorrecto.
+            // El cambio de estado debe realizarse DESPUÉS de crear el pedido.
+            'estado' => 1,
             'vendedor' => $vendedorId,
             'proveedor' => $proveedorId,
             'id_moneda' => $monedaId ?? 0,
@@ -916,7 +921,10 @@ class PedidoApiController
             'telefono' => $pedido['telefono'] ?? null,
             'direccion' => $pedido['direccion'] ?? null,
             'comentario' => $pedido['comentario'] ?? null,
-            'estado' => isset($pedido['id_estado']) ? (int)$pedido['id_estado'] : (isset($pedido['estado']) ? (int)$pedido['estado'] : 1),
+            // IMPORTANTE: Al crear un pedido siempre se fuerza estado=1 (En Bodega).
+            // Esto garantiza que PedidoService::aplicarStockPorEstado() ejecute siempre
+            // la reserva de stock. Ver corrección 2026-07-04.
+            'estado' => 1,
             'id_moneda' => isset($pedido['id_moneda']) ? (int)$pedido['id_moneda'] : (isset($pedido['moneda']) ? (int)$pedido['moneda'] : null),
             'moneda' => isset($pedido['id_moneda']) ? (int)$pedido['id_moneda'] : (isset($pedido['moneda']) ? (int)$pedido['moneda'] : null),
             'id_vendedor' => isset($pedido['id_vendedor']) ? (int)$pedido['id_vendedor'] : (isset($pedido['vendedor']) ? (int)$pedido['vendedor'] : null),

@@ -804,7 +804,10 @@ class PedidosController
             'telefono' => $telefono,
             'direccion' => $direccion,
             'comentario' => $comentario !== '' ? $comentario : null,
-            'estado' => is_int($estado) ? (int)$estado : null,
+            // IMPORTANTE: Al crear siempre se fuerza estado=1 (En Bodega) para que
+            // PedidoService::aplicarStockPorEstado() ejecute la reserva de stock.
+            // Si se crea con estado 2+, la salida física nunca se registra. Ver fix 2026-07-04.
+            'estado' => 1,
             'vendedor' => is_int($vendedor) ? (int)$vendedor : null,
             'proveedor' => is_int($proveedor) ? (int)$proveedor : null,
             'id_cliente' => is_int($idCliente) ? (int)$idCliente : null,
@@ -1295,15 +1298,16 @@ class PedidosController
             }
         }
 
-        // [CLIENTE] El cliente NO puede usar Entregado (3) ni Devuelto (7) como destino.
-        // Puede cambiar a cualquier otro estado disponible.
+        // [CLIENTE] Lista BLANCA de estados que el cliente puede usar como destino.
+        // Más seguro que lista negra: estados nuevos nunca quedan expuestos accidentalmente.
+        // 4=Reprogramado, 9=Rechazado, 17=Cancelado
         if ($isClienteRole) {
-            $estadosBloqueadosCliente = [3, 7]; // 3=Entregado, 7=Devuelto
-            if (in_array($nuevo_estado, $estadosBloqueadosCliente, true)) {
+            $estadosPermitidosCliente = [4, 9, 17];
+            if (!in_array($nuevo_estado, $estadosPermitidosCliente, true)) {
                 http_response_code(403);
                 echo json_encode([
                     "success" => false,
-                    "message" => "No puedes usar este estado."
+                    "message" => "No tienes permiso para usar este estado."
                 ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
                 exit();
             }

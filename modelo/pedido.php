@@ -1729,12 +1729,14 @@ class PedidosModel
             }
 
             // 4. Aplicar movimiento de stock según el estado inicial del pedido.
-            // Se usa PedidoService para mantener consistencia con el flujo de cambios
-            // de estado (reserva en En Bodega → salida física en En Ruta).
-            // Los pedidos anteriores al 2026-04-03 usaban StockModel::registrarSalida()
-            // directamente al crear; esos registros se conservan sin modificar.
+            // SALVAGUARDA: Al crear un pedido SIEMPRE se usa estado 1 (En Bodega)
+            // para garantizar que se ejecute la reserva de stock. Si el caller
+            // envió un estado distinto (ej. 2=En ruta), se ignora aquí — el cambio
+            // de estado debe realizarse DESPUÉS mediante cambiarEstadoPedido().
+            // Esto previene que la salida física se pierda si el pedido nace en estado 2+.
+            // Ver corrección 2026-07-04.
             require_once __DIR__ . '/../services/PedidoService.php';
-            $estadoInicial = (int)($pedido['estado'] ?? 1);
+            $estadoInicial = 1; // Siempre En Bodega al crear
             PedidoService::aplicarStockPorEstado($pedidoId, $estadoInicial, $resolvedFallbackUser, $db);
 
             if (defined('DEBUG') && DEBUG) {

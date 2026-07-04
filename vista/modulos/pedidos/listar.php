@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $usaDataTables = true;
 require_once "utils/authorization.php";
 require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
@@ -590,7 +590,23 @@ endif;
 // Obtener estadísticas de pedidos mediante aggregación rápida (sin traer todos los registros a PHP)
 require_once __DIR__ . '/../../../modelo/pedido.php';
 $listarPedidos = new PedidosController();
-$estados = $listarPedidos->obtenerEstados();
+$todosEstados = $listarPedidos->obtenerEstados();
+
+// Para clientes restringidos, solo mostrar los estados que ellos pueden seleccionar.
+// Lista blanca: Cancelado (17), Rechazado (9), Reprogramado (4).
+// Más seguro que lista negra: estados nuevos nunca quedan expuestos accidentalmente.
+$ESTADOS_PERMITIDOS_CLIENTE = [4, 9, 17]; // 4=Reprogramado, 9=Rechazado, 17=Cancelado
+$isClienteRestrictoPhp = (in_array('Cliente', $_SESSION['roles_nombres'] ?? [], true) ||
+    in_array('cliente', $_SESSION['roles_nombres'] ?? [], true)) &&
+    !in_array(ROL_NOMBRE_ADMIN, $_SESSION['roles_nombres'] ?? [], true);
+
+if ($isClienteRestrictoPhp) {
+    $estados = array_values(array_filter($todosEstados, function($e) use ($ESTADOS_PERMITIDOS_CLIENTE) {
+        return in_array((int)$e['id'], $ESTADOS_PERMITIDOS_CLIENTE, true);
+    }));
+} else {
+    $estados = $todosEstados;
+}
 
 // Contadores via query de agregación con filtro por rol
 // Misma lógica que PedidoQueryService y datatable.php
@@ -882,14 +898,18 @@ $rolesNombres       = $_SESSION['roles_nombres'] ?? [];
 $isAdmin            = in_array(ROL_NOMBRE_ADMIN,     $rolesNombres, true);
 $isCliente          = in_array('Cliente', $rolesNombres, true) || in_array('cliente', $rolesNombres, true);
 $isClienteRestricto = $isCliente && !$isAdmin;
-$ESTADOS_TERMINALES_CLIENTE = [3, 7];
-$ESTADOS_BLOQUEADOS_CLIENTE = [3, 7];
+// Lista blanca de estados permitidos para cliente.
+// No usar lista negra — cualquier estado nuevo quedaría expuesto.
+$ESTADOS_TERMINALES_CLIENTE = [3, 7]; // No se pueden editar pedidos en estos estados
+$ESTADOS_PERMITIDOS_CLIENTE_JS = [4, 9, 17]; // 4=Reprogramado, 9=Rechazado, 17=Cancelado
 ?>
 <script>
 const RUTA_BASE          = '<?= RUTA_URL ?>';
 const SESSION_USER_NAME  = '<?= htmlspecialchars($_SESSION['nombre'] ?? '') ?>';
 const ESTADOS_OPCIONES   = <?= json_encode($estados, JSON_UNESCAPED_UNICODE) ?>;
-const ESTADOS_BLOQUEADOS_CLIENTE = <?= json_encode($ESTADOS_BLOQUEADOS_CLIENTE) ?>;
+// El JS ya no necesita filtrar porque PHP ya entrega solo los estados permitidos.
+// Esta constante se mantiene como doble verificación en el frontend.
+const ESTADOS_PERMITIDOS_CLIENTE = <?= json_encode($ESTADOS_PERMITIDOS_CLIENTE_JS) ?>;
 const ESTADOS_TERMINALES_CLIENTE = <?= json_encode($ESTADOS_TERMINALES_CLIENTE) ?>;
 const IS_CLIENTE_RESTRICTO = <?= ($isClienteRestricto) ? 'true' : 'false' ?>;
 const IS_ADMIN           = <?= ($isAdmin) ? 'true' : 'false' ?>;
@@ -903,19 +923,31 @@ function buildEstadoSelect(idPedido, idEstadoActual, nombreEstado) {
     const disabled = esPedidoTerminal ? 'disabled' : '';
 
     let opts = '';
-    ESTADOS_OPCIONES.forEach(function(e) {
-        const esBloqueado = ESTADOS_BLOQUEADOS_CLIENTE.includes(parseInt(e.id));
-        const esActual    = parseInt(e.id) === parseInt(idEstadoActual);
-        // Para cliente restringido: ocultar bloqueados salvo que sea el actual
-        if (IS_CLIENTE_RESTRICTO && esBloqueado && !esActual) return;
-        opts += `<option value="${e.id}" ${esActual ? 'selected' : ''}>${e.nombre_estado}</option>`;
-    });
+
+    if (IS_CLIENTE_RESTRICTO) {
+        // CLIENTE: mostrar siempre el estado actual (aunque no esté en lista blanca)
+        // y solo los estados de la lista blanca permitidos.
+        // El estado actual debe aparecer aunque no sea editable.
+        const estadoActualObj = ESTADOS_OPCIONES.find(e => parseInt(e.id) === parseInt(idEstadoActual))
+            || { id: idEstadoActual, nombre_estado: nombreEstado };
+        opts += `<option value="${estadoActualObj.id}" selected>${estadoActualObj.nombre_estado}</option>`;
+        ESTADOS_OPCIONES.forEach(function(e) {
+            if (parseInt(e.id) !== parseInt(idEstadoActual)) {
+                opts += `<option value="${e.id}">${e.nombre_estado}</option>`;
+            }
+        });
+    } else {
+        ESTADOS_OPCIONES.forEach(function(e) {
+            const esActual = parseInt(e.id) === parseInt(idEstadoActual);
+            opts += `<option value="${e.id}" ${esActual ? 'selected' : ''}>${e.nombre_estado}</option>`;
+        });
+    }
 
     let hint = '';
     if (IS_CLIENTE_RESTRICTO) {
         hint = esPedidoTerminal
             ? `<small class="text-muted d-block mt-1" style="font-size:.75rem;"><i class="bi bi-lock-fill text-danger"></i> Este pedido no puede ser modificado.</small>`
-            : `<small class="text-muted d-block mt-1" style="font-size:.75rem;"><i class="bi bi-info-circle"></i> No puedes cambiar a <strong>Entregado</strong> ni <strong>Devuelto</strong>.</small>`;
+            : `<small class="text-muted d-block mt-1" style="font-size:.75rem;"><i class="bi bi-info-circle"></i> Puedes <strong>Cancelar</strong>, <strong>Rechazar</strong> o <strong>Reprogramar</strong> tu pedido.</small>`;
     }
 
     return `<select class="form-select actualizarEstado" data-id="${idPedido}" data-estado="${idEstadoActual}" ${disabled}>${opts}</select>${hint}`;
@@ -1016,8 +1048,8 @@ $(document).on('change', '.actualizarEstado', function() {
         return;
     }
 
-    // Guard: destino bloqueado para cliente
-    if (IS_CLIENTE_RESTRICTO && ESTADOS_BLOQUEADOS_CLIENTE.includes(nuevoEstado)) {
+    // Guard: destino no permitido para cliente (lista blanca: Reprogramado=4, Rechazado=9, Cancelado=17)
+    if (IS_CLIENTE_RESTRICTO && !ESTADOS_PERMITIDOS_CLIENTE.includes(nuevoEstado)) {
         select.val(estadoAnterior);
         Swal.fire({ title: 'Acción no permitida', text: 'No puedes cambiar el pedido a ese estado.', icon: 'warning', confirmButtonText: 'Entendido' });
         return;
