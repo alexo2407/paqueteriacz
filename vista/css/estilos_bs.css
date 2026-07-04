@@ -478,14 +478,32 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   FIX GLOBAL: Eliminar padding-top en TODAS las vistas.
-   Solo afecta al primer hijo directo del page-container.
+   FIX GLOBAL: Normalizar padding-top de las vistas
+   ──────────────────────────────────────────────────────────────
+   PROBLEMA: Casi todos los módulos abren con:
+     <div class="container-fluid py-3">   ← Bootstrap añade padding-top
+     <div class="container-fluid py-4">   ← Bootstrap añade padding-top
+   Eso crea un espacio blanco extra entre el breadcrumb y el
+   contenido de la vista en las páginas que lo usan.
+
+   SOLUCIÓN: Eliminar padding-top del primer hijo directo de
+   .bs-page-container y de cualquier container/container-fluid
+   que sea su primer descendiente inmediato.
    ═══════════════════════════════════════════════════════════════ */
+
+/* Primer hijo directo del page-container: sin margin-top */
 .bs-page-container > *:first-child {
     margin-top: 0 !important;
 }
 
-/* Anular py-* / pt-* de Bootstrap solo en el primer hijo directo */
+/* El caso más frecuente: <div class="container-fluid py-N"> como
+   primer div de la vista. Eliminamos el padding-top sin importar
+   qué variante de py-* o pt-* lleve. */
+.bs-page-container > [class*="container"] {
+    padding-top: 0 !important;
+}
+
+/* Cobertura explícita de todas las utilidades Bootstrap py-* / pt-* */
 .bs-page-container > .py-1, .bs-page-container > .py-2,
 .bs-page-container > .py-3, .bs-page-container > .py-4,
 .bs-page-container > .py-5,
@@ -494,6 +512,19 @@ body.bs-body {
 .bs-page-container > .pt-5 {
     padding-top: 0 !important;
 }
+
+/* Cobertura responsive: py-sm-*, py-md-*, py-lg-*, pt-sm-*, etc. */
+.bs-page-container > [class*="py-sm-"],
+.bs-page-container > [class*="py-md-"],
+.bs-page-container > [class*="py-lg-"],
+.bs-page-container > [class*="py-xl-"],
+.bs-page-container > [class*="pt-sm-"],
+.bs-page-container > [class*="pt-md-"],
+.bs-page-container > [class*="pt-lg-"],
+.bs-page-container > [class*="pt-xl-"] {
+    padding-top: 0 !important;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════
    BREADCRUMB — Arrow Style con paleta de marca
