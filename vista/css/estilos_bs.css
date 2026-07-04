@@ -272,6 +272,13 @@ body.bs-body {
     /* min-height como fallback para navegadores sin soporte flex completo */
     min-height: calc(100vh - var(--navbar-height));
     width: 100%;
+    /* ╔══ FAKE COLUMN TRICK ══╗
+       El contenedor padre lleva el color del sidebar.
+       Así el azul siempre cubre el 100% del alto,
+       incluso cuando el sidebar tiene pocos items o
+       la página central es muy larga.
+       .bs-main sobrepone su propio fondo gris. */
+    background: var(--brand-navy);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -359,12 +366,20 @@ body.bs-body {
     background: var(--brand-orange) !important;
 }
 
-/* Desktop: sidebar sticky bajo el navbar */
+/* Desktop: sidebar sticky — fondo cubre 100% del alto vía fake-column en .bs-body-row */
 @media (min-width: 992px) {
     #bsSidebar {
+        /* ── OPCIÓN B + C combinadas ──
+           position:sticky mantiene el menú visible mientras la página hace scroll.
+           height:100vh garantiza que el fondo azul nunca se corte.
+           overflow-y:auto permite scroll interno del menú si crece mucho. */
         position: sticky !important;
-        top: 0 !important;           /* sticky desde el tope del bs-body-row */
-        height: calc(100vh - var(--navbar-height)) !important;
+        top: 0 !important;
+        /* 100vh: el sidebar ocupa todo el alto del viewport SIEMPRE.
+           El fondo azul nunca queda cortado, sin importar qué tan largo
+           sea el contenido central. */
+        height: 100vh !important;
+        min-height: 100vh !important;
         transform: none !important;
         visibility: visible !important;
         flex-shrink: 0;
@@ -372,8 +387,9 @@ body.bs-body {
         margin: 0 !important;
         border-top: none !important;
         padding-top: 0 !important;
-        /* Alinearse al tope del bs-body-row, no del viewport */
-        align-self: flex-start;
+        /* IMPORTANTE: NO usar align-self:flex-start aquí.
+           Dejamos que .bs-body-row con align-items:stretch maneje el alto.
+           El sidebar participa en el stretch para que su fondo llene el espacio. */
     }
 
     .offcanvas-lg.offcanvas-start {
@@ -416,6 +432,8 @@ body.bs-body {
     flex-direction: column;
     margin: 0 !important;
     padding: 0 !important;
+    /* El main lleva su propio fondo para tapar el azul del fake-column */
+    background-color: var(--brand-gray);
     /* Sin overflow:hidden para no cortar dropdowns */
     overflow: visible;
 }
