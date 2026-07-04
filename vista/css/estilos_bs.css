@@ -503,13 +503,26 @@ body.bs-body {
     padding-top: 0 !important;
 }
 
+/* Algunas vistas (ej. admin_tracking) renderizan su container-fluid
+   directamente en .bs-main sin pasar por .bs-page-container.
+   Aplicamos el mismo fix para cubrir ambos casos. */
+.bs-main > [class*="container"] {
+    padding-top: 0 !important;
+}
+
 /* Cobertura explícita de todas las utilidades Bootstrap py-* / pt-* */
 .bs-page-container > .py-1, .bs-page-container > .py-2,
 .bs-page-container > .py-3, .bs-page-container > .py-4,
 .bs-page-container > .py-5,
 .bs-page-container > .pt-1, .bs-page-container > .pt-2,
 .bs-page-container > .pt-3, .bs-page-container > .pt-4,
-.bs-page-container > .pt-5 {
+.bs-page-container > .pt-5,
+.bs-main > .py-1, .bs-main > .py-2,
+.bs-main > .py-3, .bs-main > .py-4,
+.bs-main > .py-5,
+.bs-main > .pt-1, .bs-main > .pt-2,
+.bs-main > .pt-3, .bs-main > .pt-4,
+.bs-main > .pt-5 {
     padding-top: 0 !important;
 }
 
@@ -521,9 +534,18 @@ body.bs-body {
 .bs-page-container > [class*="pt-sm-"],
 .bs-page-container > [class*="pt-md-"],
 .bs-page-container > [class*="pt-lg-"],
-.bs-page-container > [class*="pt-xl-"] {
+.bs-page-container > [class*="pt-xl-"],
+.bs-main > [class*="py-sm-"],
+.bs-main > [class*="py-md-"],
+.bs-main > [class*="py-lg-"],
+.bs-main > [class*="py-xl-"],
+.bs-main > [class*="pt-sm-"],
+.bs-main > [class*="pt-md-"],
+.bs-main > [class*="pt-lg-"],
+.bs-main > [class*="pt-xl-"] {
     padding-top: 0 !important;
 }
+
 
 
 /* ═══════════════════════════════════════════════════════════════
