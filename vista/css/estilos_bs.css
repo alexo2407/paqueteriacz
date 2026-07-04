@@ -433,12 +433,12 @@ body.bs-body {
     padding: 0 !important;
     /* El main lleva su propio fondo para tapar el azul del fake-column */
     background-color: var(--brand-gray);
-    /* Sin overflow:hidden para no cortar dropdowns */
+    /* Sin overflow:hidden para no cortar dropdowns ni modales */
     overflow: visible;
-    /* Asegura que el contenido del main no quede detrás del navbar.
-       El z-index es menor al del navbar (1050) para mantener el orden correcto. */
-    position: relative;
-    z-index: 1;
+    /* IMPORTANTE: NO añadir position:relative + z-index aquí.
+       Crear un contexto de apilamiento en bs-main atrapa a los modales
+       de Bootstrap (z-index:1055) dentro de ese contexto, haciendo que
+       el backdrop del body (z-index:1050) quede encima del modal. */
 }
 
 .bs-page-container {
