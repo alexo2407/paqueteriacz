@@ -108,27 +108,7 @@
     </script>
     <!-- Web Push: Service Worker manager -->
     <script src="<?= RUTA_URL ?>js/push-manager.js" defer></script>
-    <!-- ══ RESET GLOBAL: html/body sin espacio ══ -->
-    <style>
-        /* Garantizar que html y body nunca tengan espacio superior */
-        html {
-            margin: 0 !important;
-            padding: 0 !important;
-            box-sizing: border-box;
-        }
-        body.bs-body {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        /* Anular padding-top dentro del page-container */
-        div.bs-page-container > *:first-child {
-            padding-top: 0 !important;
-            margin-top: 0 !important;
-        }
-        div.bs-page-container > div[class*="container"] {
-            padding-top: 0 !important;
-        }
-    </style>
+
 </head>
 <body class="bs-body">
 
@@ -612,29 +592,16 @@
     if (el.classList.contains('show')) ch.style.transform = 'rotate(-180deg)';
 })();
 
-// ── FIX: Bootstrap 5 offcanvas/modal inyecta padding/margin en body y html ──
-// Lo removemos con MutationObserver que reacciona en tiempo real
+// ── FIX: Bootstrap 5 offcanvas inyecta padding-right al body en desktop ──
+// Solo limpiamos padding-right (el padding-top lo maneja el CSS con body.bs-body).
 (function() {
-    function stripTopSpacing() {
-        // Limpiar body
-        const b = document.body;
-        const propsBody = ['padding-top', 'padding-right', 'margin-top', 'margin-right'];
-        propsBody.forEach(function(p) {
-            if (b.style.getPropertyValue(p)) b.style.removeProperty(p);
-        });
-        // Limpiar html
-        const h = document.documentElement;
-        const propsHtml = ['margin-top', 'padding-top', 'margin', 'padding'];
-        propsHtml.forEach(function(p) {
-            if (h.style.getPropertyValue(p)) h.style.removeProperty(p);
-        });
+    function fixPaddingRight() {
+        if (document.body.style.paddingRight) {
+            document.body.style.paddingRight = '';
+        }
     }
-    // Corregir inmediatamente al cargar
-    stripTopSpacing();
-    // Observar cambios de style en body y html (Bootstrap los aplica inline)
-    var observer = new MutationObserver(stripTopSpacing);
+    var observer = new MutationObserver(fixPaddingRight);
     observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
 })();
 </script>
 

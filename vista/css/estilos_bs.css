@@ -2,15 +2,25 @@
  * estilos_bs.css — RutaEx Latam Brand System
  * Paleta oficial: #061C4C | #0B4EA2 | #FF8A00 | #FFFFFF | #EEF2F6
  * Tipografía: Montserrat (títulos) + Inter (cuerpo)
+ * Normalización de layout: 2026-07-04
  */
 
 /* ═══════════════════════════════════════════════════════════════
-   RESET GLOBAL — Eliminar cualquier margin/padding de navegador
+   RESET GLOBAL
    ═══════════════════════════════════════════════════════════════ */
-html {
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
     margin: 0 !important;
     padding: 0 !important;
-    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+    /* Scroll en html para que position:sticky del sidebar funcione */
+    overflow-y: scroll;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -18,12 +28,16 @@ html {
    ═══════════════════════════════════════════════════════════════ */
 :root {
     /* Paleta Oficial */
-    --brand-navy:      #061C4C;   /* Azul marino profundo — Navbar, Sidebar, Footer */
-    --brand-blue:      #0B4EA2;   /* Azul profundo — Gradientes, activos, botones */
-    --brand-orange:    #FF8A00;   /* Naranja acento — CTA, hover activo, breadcrumb */
-    --brand-orange-dk: #E07900;   /* Naranja hover/pressed */
-    --brand-white:     #FFFFFF;   /* Blanco — Cards, secciones */
-    --brand-gray:      #EEF2F6;   /* Gris claro — Fondo de página */
+    --brand-navy:      #061C4C;
+    --brand-blue:      #0B4EA2;
+    --brand-orange:    #FF8A00;
+    --brand-orange-dk: #E07900;
+    --brand-white:     #FFFFFF;
+    --brand-gray:      #EEF2F6;
+
+    /* Sidebar */
+    --sidebar-width:   260px;
+    --navbar-height:   60px;
 
     /* Utilidades derivadas */
     --brand-navy-gradient: linear-gradient(135deg, #061C4C 0%, #0B4EA2 100%);
@@ -33,57 +47,60 @@ html {
     --brand-sidebar-label: rgba(255, 138, 0, 0.75);
 }
 
-/* FIX: Bootstrap 5 offcanvas-lg — no agregar padding-right al body */
-@media (min-width: 992px) {
-    body.bs-body {
-        overflow-y: auto !important;
-        padding-right: 0 !important;
-        padding-top: 0 !important;
-    }
-    html {
-        overflow-y: auto;
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-    }
-}
-
 /* ═══════════════════════════════════════════════════════════════
-   TIPOGRAFÍA BASE
+   TIPOGRAFÍA BASE + LAYOUT RAÍZ
+   El body es el contenedor raíz flex-column. Garantiza sticky
+   footer en cualquier página con poco o mucho contenido.
    ═══════════════════════════════════════════════════════════════ */
 body.bs-body {
     font-family: 'Inter', 'Segoe UI', sans-serif;
     background-color: var(--brand-gray);
     color: #1e293b;
+    /* ── STICKY FOOTER: flex column + min-height ── */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    /* Compensar el navbar fixed */
+    padding-top: var(--navbar-height);
     margin: 0 !important;
-    padding: 0 !important;
-    /* El scroll debe ocurrir en el body, no en children */
     overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* FIX: Bootstrap 5 offcanvas inyecta padding-right al body en desktop.
+   Lo bloqueamos siempre para no deformar el layout. */
+@media (min-width: 992px) {
+    body.bs-body {
+        padding-right: 0 !important;
+        overflow-y: auto !important;
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   NAVBAR
+   NAVBAR — fijo al tope, z-index alto, ancho 100%
    ═══════════════════════════════════════════════════════════════ */
 .bs-navbar {
     background: var(--brand-navy-gradient) !important;
     box-shadow: 0 2px 12px rgba(6, 28, 76, 0.45);
-    padding: 0 .75rem;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
+    width: 100%;
     z-index: 1050;
-    height: 60px;
+    height: var(--navbar-height);
     display: flex;
     align-items: center;
+    padding: 0 .75rem;
     flex-shrink: 0;
+    /* Nunca dejar que el overflow del navbar afecte el layout */
+    overflow: visible;
 }
 
 /* Evitar wrap en mobile */
 .bs-navbar > .container-fluid {
     flex-wrap: nowrap !important;
+    overflow: visible;
 }
 
 .bs-navbar .navbar-brand {
@@ -129,6 +146,7 @@ body.bs-body {
     align-items: center;
     justify-content: center;
     padding: 0 3px;
+    pointer-events: none;
 }
 
 .bs-navbar .nav-link {
@@ -183,8 +201,30 @@ body.bs-body {
     font-weight: 700;
 }
 
+/* FIX: Dropdowns del navbar nunca deforman el header */
+.navbar .nav-item.dropdown {
+    position: relative !important;
+}
+
+.navbar .navbar-nav .dropdown-menu {
+    position: absolute !important;
+    top: calc(100% + .5rem) !important;
+    right: 0 !important;
+    left: auto !important;
+    z-index: 9999 !important;
+    margin-top: 0 !important;
+    box-shadow: 0 8px 32px rgba(6, 28, 76, .5) !important;
+}
+
+@media (max-width: 576px) {
+    .navbar .navbar-nav .dropdown-menu {
+        max-width: calc(100vw - 20px);
+        right: -10px !important;
+    }
+}
+
 /* ═══════════════════════════════════════════════════════════════
-   BRAND en NAVBAR — Logo tipográfico Outfit
+   BRAND en NAVBAR — Logo tipográfico
    ═══════════════════════════════════════════════════════════════ */
 .brand-logo-text {
     display: flex;
@@ -216,10 +256,29 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   LAYOUT INTERMEDIO — Sidebar + Main en fila
+   .bs-body-row es el contenedor flex-row que ocupa todo el
+   espacio restante (flex:1) debajo del navbar.
+   ═══════════════════════════════════════════════════════════════ */
+.bs-body-row {
+    display: flex;
+    flex-direction: row;
+    /* flex:1 absorbe todo el espacio disponible en el body flex-column */
+    flex: 1 0 auto;
+    /* align-items:stretch garantiza que sidebar y main sean igual de altos */
+    align-items: stretch;
+    margin: 0 !important;
+    padding: 0 !important;
+    /* min-height como fallback para navegadores sin soporte flex completo */
+    min-height: calc(100vh - var(--navbar-height));
+    width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    SIDEBAR
    ═══════════════════════════════════════════════════════════════ */
 .bs-sidebar {
-    width: 260px;
+    width: var(--sidebar-width);
     background: var(--brand-navy) !important;
     background-color: var(--brand-navy) !important;
     border-right: none !important;
@@ -300,34 +359,71 @@ body.bs-body {
     background: var(--brand-orange) !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   LAYOUT
-   ═══════════════════════════════════════════════════════════════ */
-.bs-body-row {
-    display: flex;
-    flex: 1;
-    /* min-height garantiza que sidebar + contenido siempre llenen el viewport */
-    min-height: calc(100vh - 60px);
-    align-items: stretch;  /* Stretch sidebar and main to full height */
-    margin: 0 !important;
-    margin-top: 60px !important; /* Compensar navbar fixed de 60px usando margin */
-    padding: 0 !important;
+/* Desktop: sidebar sticky bajo el navbar */
+@media (min-width: 992px) {
+    #bsSidebar {
+        position: sticky !important;
+        top: 0 !important;           /* sticky desde el tope del bs-body-row */
+        height: calc(100vh - var(--navbar-height)) !important;
+        transform: none !important;
+        visibility: visible !important;
+        flex-shrink: 0;
+        overflow-y: auto;
+        margin: 0 !important;
+        border-top: none !important;
+        padding-top: 0 !important;
+        /* Alinearse al tope del bs-body-row, no del viewport */
+        align-self: flex-start;
+    }
+
+    .offcanvas-lg.offcanvas-start {
+        transform: none !important;
+        visibility: visible !important;
+        position: sticky !important;
+    }
 }
 
+/* Mobile */
+@media (max-width: 991px) {
+    #bsSidebar {
+        width: var(--sidebar-width) !important;
+        background: var(--brand-navy) !important;
+    }
+    .bs-main { width: 100%; }
+}
+
+/* Scrollbar sidebar */
+#bsSidebar::-webkit-scrollbar { width: 4px; }
+#bsSidebar::-webkit-scrollbar-track { background: transparent; }
+#bsSidebar::-webkit-scrollbar-thumb {
+    background: rgba(255,138,0,.3);
+    border-radius: 4px;
+}
+#bsSidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--brand-orange);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN — Área de contenido principal
+   flex:1 para absorber todo el ancho restante.
+   flex-direction:column para que .bs-page-container crezca y
+   el footer quede empujado al fondo.
+   ═══════════════════════════════════════════════════════════════ */
 .bs-main {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 0%;
+    min-width: 0;            /* Evitar overflow horizontal en flex */
     display: flex;
     flex-direction: column;
     margin: 0 !important;
     padding: 0 !important;
-    /* El contenido siempre ocupa la altura completa debajo del navbar */
-    min-height: calc(100vh - 60px);
+    /* Sin overflow:hidden para no cortar dropdowns */
+    overflow: visible;
 }
 
 .bs-page-container {
+    flex: 1 0 auto;          /* Empuja el footer hacia abajo */
     padding: 0 1rem 1.5rem 1rem;
-    flex: 1;
+    /* Sin margin-top: el breadcrumb ya tiene su propio espaciado */
 }
 
 @media (min-width: 992px) {
@@ -337,41 +433,17 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   FIX GLOBAL: Eliminar padding-top en TODAS las vistas.
-   Cubre hijos directos e indirectos (py-3, py-4, pt-3, pt-4).
-   ═══════════════════════════════════════════════════════════════ */
-
-/* El primer hijo directo del contenedor de página nunca debe tener padding-top */
-.bs-page-container > * {
-    padding-top: 0 !important;
-    margin-top: 0 !important;
-}
-
-/* Cubrir cualquier container/container-fluid con clase py-* o pt-* */
-.bs-page-container [class*="container"] {
-    padding-top: 0 !important;
-}
-
-/* Anular directamente las utilidades de Bootstrap dentro del page-container */
-.bs-page-container .py-1, .bs-page-container .py-2,
-.bs-page-container .py-3, .bs-page-container .py-4,
-.bs-page-container .py-5,
-.bs-page-container .pt-1, .bs-page-container .pt-2,
-.bs-page-container .pt-3, .bs-page-container .pt-4,
-.bs-page-container .pt-5 {
-    padding-top: 0 !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   FOOTER
+   FOOTER — Siempre al fondo del .bs-main
+   margin-top: auto lo empuja al fondo cuando hay poco contenido.
    ═══════════════════════════════════════════════════════════════ */
 .bs-footer {
     background: var(--brand-navy) !important;
     color: rgba(255, 255, 255, .55);
     font-size: .78rem;
     padding: 1.25rem 1rem;
-    margin-top: auto;
+    margin-top: auto;        /* Sticky footer: empuje hacia abajo */
     border-top: 2px solid var(--brand-orange);
+    flex-shrink: 0;
 }
 
 .bs-footer a {
@@ -385,12 +457,31 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   FIX GLOBAL: Eliminar padding-top en TODAS las vistas.
+   Solo afecta al primer hijo directo del page-container.
+   ═══════════════════════════════════════════════════════════════ */
+.bs-page-container > *:first-child {
+    margin-top: 0 !important;
+}
+
+/* Anular py-* / pt-* de Bootstrap solo en el primer hijo directo */
+.bs-page-container > .py-1, .bs-page-container > .py-2,
+.bs-page-container > .py-3, .bs-page-container > .py-4,
+.bs-page-container > .py-5,
+.bs-page-container > .pt-1, .bs-page-container > .pt-2,
+.bs-page-container > .pt-3, .bs-page-container > .pt-4,
+.bs-page-container > .pt-5 {
+    padding-top: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    BREADCRUMB — Arrow Style con paleta de marca
    ═══════════════════════════════════════════════════════════════ */
 .custom-breadcrumb-area {
     padding: 12px 20px;
     background-color: #fff;
     border-bottom: 1px solid #dde3ec;
+    flex-shrink: 0;
 }
 
 .custom-breadcrumb-arrow {
@@ -467,7 +558,6 @@ body.bs-body {
     border-left: 11px solid #0940881a;
 }
 
-/* Hover — naranja acento */
 .custom-breadcrumb-arrow li a:hover {
     background-color: var(--brand-orange);
     border-color: var(--brand-orange);
@@ -477,7 +567,6 @@ body.bs-body {
     border-left-color: var(--brand-orange);
 }
 
-/* Active / Current Page */
 .custom-breadcrumb-arrow li.active span {
     background-color: var(--brand-gray);
     color: var(--brand-navy);
@@ -492,119 +581,37 @@ body.bs-body {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   RESPONSIVE — Sidebar
-   ═══════════════════════════════════════════════════════════════ */
-@media (min-width: 992px) {
-    #bsSidebar {
-        position: sticky !important;
-        /* Navbar fixed 60px — sidebar comienza justo donde termina */
-        top: 60px !important;
-        height: calc(100vh - 60px) !important;
-        transform: none !important;
-        visibility: visible !important;
-        flex-shrink: 0;
-        overflow-y: auto;
-        margin-top: 0 !important;
-        margin-left: 0 !important;
-        border-top: none !important;
-        padding-top: 0 !important;
-    }
-
-    .offcanvas-lg.offcanvas-start {
-        transform: none !important;
-        visibility: visible !important;
-        position: sticky !important;
-    }
-}
-
-@media (max-width: 991px) {
-    #bsSidebar {
-        width: 260px !important;
-        background: var(--brand-navy) !important;
-    }
-
-    .bs-main { width: 100%; }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   FIX: DROPDOWN OVERLAY (NO DEFORMA HEADER)
-   ═══════════════════════════════════════════════════════════════ */
-.navbar .nav-item.dropdown {
-    position: relative !important;
-}
-
-.navbar .navbar-nav .dropdown-menu {
-    position: absolute !important;
-    top: calc(100% + .5rem) !important;
-    right: 0 !important;
-    left: auto !important;
-    z-index: 9999 !important;
-    margin-top: 0 !important;
-    box-shadow: 0 8px 32px rgba(6, 28, 76, .5) !important;
-}
-
-.bs-navbar,
-.bs-navbar .container,
-.bs-navbar .container-fluid {
-    overflow: visible !important;
-}
-
-@media (max-width: 576px) {
-    .navbar .navbar-nav .dropdown-menu {
-        max-width: calc(100vw - 20px);
-        right: -10px !important;
-    }
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   SCROLLBAR personalizado para sidebar
-   ═══════════════════════════════════════════════════════════════ */
-#bsSidebar::-webkit-scrollbar { width: 4px; }
-#bsSidebar::-webkit-scrollbar-track { background: transparent; }
-#bsSidebar::-webkit-scrollbar-thumb {
-    background: rgba(255,138,0,.3);
-    border-radius: 4px;
-}
-#bsSidebar::-webkit-scrollbar-thumb:hover {
-    background: var(--brand-orange);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   PRINT / PDF — Solo ocultar sidebar y footer, el navbar se mantiene
-   para que el logo RutaEx aparezca en el PDF
+   PRINT / PDF
    ═══════════════════════════════════════════════════════════════ */
 @media print {
-    /* En impresión el navbar fixed pasa a estático para imprimirse */
     .bs-navbar {
         position: static !important;
     }
 
-    /* Ocultar SOLO sidebar y footer — el navbar con logo se conserva */
     #bsSidebar,
     .bs-footer,
     footer.bs-footer {
         display: none !important;
     }
 
-    /* El área principal ocupa todo el ancho — sin padding/margin del navbar fixed */
+    body.bs-body {
+        padding-top: 0 !important;
+        background: #fff !important;
+    }
+
     .bs-body-row {
         display: block !important;
-        padding-top: 0 !important;
-        margin-top: 0 !important;
         min-height: 0 !important;
     }
+
     .bs-main {
         width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
         min-height: 0 !important;
     }
+
     .bs-page-container {
         padding: 0 !important;
-    }
-
-    /* Sin fondo de color en la impresión para ahorrar tinta */
-    body.bs-body {
-        background: #fff !important;
     }
 }

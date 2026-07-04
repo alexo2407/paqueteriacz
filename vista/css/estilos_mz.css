@@ -1,4 +1,4 @@
-﻿/*
+/*
  * estilos_mz.css
  * Estilos globales para el layout Materialize de App RutaEx-Latam.
  * No depende de Bootstrap en absoluto.
@@ -13,14 +13,15 @@ body.mz-body {
     font-family: 'Inter', 'Roboto', sans-serif;
     background-color: #EEF2F6;
     color: #1e293b;
+    /* STICKY FOOTER: flex column + min-height */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
 }
 
-/* En desktop el sidenav-fixed tiene 260px de ancho y es position:fixed.
-   Para que navbar y contenido no queden por detrás del sidebar,
-   desplazamos todo el body con padding-left. */
+/* En desktop el sidenav-fixed de Materialize tiene 260px y es position:fixed.
+   Para que el contenido no quede por debajo del sidebar, añadimos padding-left.
+   Usamos padding-left en vez de margin-left para que el fondo de color cubra correctamente. */
 @media only screen and (min-width: 993px) {
     body.mz-body {
         padding-left: 260px;
@@ -34,6 +35,7 @@ body.mz-body {
     position: sticky;
     top: 0;
     z-index: 997;
+    flex-shrink: 0;
 }
 
 .mz-brand-logo {
@@ -147,14 +149,16 @@ nav li>a {
 }
 
 /* ── Layout principal ────────────────────────────────────────────────────── */
+/* flex:1 garantiza que el main crezca y empuje el footer hacia abajo */
 .mz-main-content {
-    flex: 1;
+    flex: 1 0 auto;
     padding-top: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-/* En desktop el padding-left en body.mz-body ya desplaza .mz-main-content */
-
 .mz-page-container {
+    flex: 1 0 auto;
     padding: 1.5rem 1rem;
     max-width: 1400px;
     margin: 0 auto;
@@ -168,12 +172,15 @@ nav li>a {
 }
 
 /* ── Footer ──────────────────────────────────────────────────────────────── */
+/* margin-top: auto garantiza el sticky footer en flex-column */
 .mz-footer {
     background: #061C4C !important;
     font-size: 12px;
-    margin-top: 2rem;
+    margin-top: auto;
     border-top: 2px solid #FF8A00;
+    flex-shrink: 0;
 }
+
 
 /* ── Cards ───────────────────────────────────────────────────────────────── */
 .card {
