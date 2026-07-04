@@ -369,17 +369,16 @@ body.bs-body {
 /* Desktop: sidebar sticky — fondo cubre 100% del alto vía fake-column en .bs-body-row */
 @media (min-width: 992px) {
     #bsSidebar {
-        /* ── OPCIÓN B + C combinadas ──
-           position:sticky mantiene el menú visible mientras la página hace scroll.
-           height:100vh garantiza que el fondo azul nunca se corte.
-           overflow-y:auto permite scroll interno del menú si crece mucho. */
+        /* ── SOLUCIÓN B: Navbar fixed → sidebar compensa con top = altura del navbar ──
+           top: var(--navbar-height) garantiza que el sidebar empiece JUSTO debajo
+           del navbar y no por detrás de él (evita que el header del menú quede oculto).
+           height: calc(100vh - var(--navbar-height)) ocupa exactamente el espacio
+           restante del viewport debajo del navbar.
+           El fondo azul completo se garantiza por el fake-column en .bs-body-row. */
         position: sticky !important;
-        top: 0 !important;
-        /* 100vh: el sidebar ocupa todo el alto del viewport SIEMPRE.
-           El fondo azul nunca queda cortado, sin importar qué tan largo
-           sea el contenido central. */
-        height: 100vh !important;
-        min-height: 100vh !important;
+        top: var(--navbar-height) !important;
+        height: calc(100vh - var(--navbar-height)) !important;
+        min-height: calc(100vh - var(--navbar-height)) !important;
         transform: none !important;
         visibility: visible !important;
         flex-shrink: 0;
@@ -387,9 +386,6 @@ body.bs-body {
         margin: 0 !important;
         border-top: none !important;
         padding-top: 0 !important;
-        /* IMPORTANTE: NO usar align-self:flex-start aquí.
-           Dejamos que .bs-body-row con align-items:stretch maneje el alto.
-           El sidebar participa en el stretch para que su fondo llene el espacio. */
     }
 
     .offcanvas-lg.offcanvas-start {
@@ -398,6 +394,7 @@ body.bs-body {
         position: sticky !important;
     }
 }
+
 
 /* Mobile */
 @media (max-width: 991px) {
