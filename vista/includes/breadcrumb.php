@@ -62,6 +62,11 @@ function _bcName(string $seg, array $map): string {
         background-color: #f4f7f9;
         border-bottom: 1px solid #e1e8ed;
         margin-bottom: 0;
+        /* Garantizar que el breadcrumb nunca quede detr\u00e1s del navbar fixed.
+           El navbar tiene z-index:1050; el breadcrumb debe estar por debajo
+           pero siempre visible en el flujo normal del documento. */
+        position: relative;
+        z-index: 2;
     }
 
     .expert-bc-arrow {

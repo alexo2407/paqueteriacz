@@ -60,8 +60,9 @@ body.bs-body {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    /* Compensar el navbar fixed */
-    padding-top: var(--navbar-height);
+    /* Compensar navbar fixed de var(--navbar-height).
+       !important evita que Bootstrap o cualquier hoja externa lo pisen. */
+    padding-top: var(--navbar-height) !important;
     margin: 0 !important;
     overflow-x: hidden;
     overflow-y: auto;
@@ -87,13 +88,14 @@ body.bs-body {
     left: 0;
     right: 0;
     width: 100%;
+    /* z-index alto para estar siempre encima del contenido pero
+       nunca tapar modales (Bootstrap modals usan 1055+) */
     z-index: 1050;
     height: var(--navbar-height);
     display: flex;
     align-items: center;
     padding: 0 .75rem;
     flex-shrink: 0;
-    /* Nunca dejar que el overflow del navbar afecte el layout */
     overflow: visible;
 }
 
@@ -433,6 +435,10 @@ body.bs-body {
     background-color: var(--brand-gray);
     /* Sin overflow:hidden para no cortar dropdowns */
     overflow: visible;
+    /* Asegura que el contenido del main no quede detrás del navbar.
+       El z-index es menor al del navbar (1050) para mantener el orden correcto. */
+    position: relative;
+    z-index: 1;
 }
 
 .bs-page-container {
