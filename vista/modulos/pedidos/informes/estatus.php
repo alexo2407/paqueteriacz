@@ -341,7 +341,6 @@ if ($export) {
 </head>
 <?php if (!$isPublicLink): ?>
 <?php include __DIR__ . '/../../../includes/header.php'; ?>
-<body>
 <?php else: ?>
 <body class="bg-light">
 <?php endif; ?>
@@ -684,5 +683,9 @@ function copiarEnlacePublico() {
     });
 }
 </script>
+<?php if (!$isPublicLink): ?>
+<?php include __DIR__ . '/../../../includes/footer.php'; ?>
+<?php else: ?>
 </body>
 </html>
+<?php endif; ?>
