@@ -202,7 +202,8 @@ if (!empty($pedidos)) {
         SELECT
             h.id_pedido,
             ep_new.nombre_estado AS estado_nuevo,
-            h.created_at         AS fecha_cambio
+            h.created_at         AS fecha_cambio,
+            h.observaciones      AS motivo
         FROM pedidos_historial_estados h
         LEFT JOIN estados_pedidos ep_new ON ep_new.id = h.id_estado_nuevo
         WHERE h.id_pedido IN ({$placeholders})
@@ -215,6 +216,7 @@ if (!empty($pedidos)) {
         $historialPorPedido[$h['id_pedido']][] = [
             'estado' => $h['estado_nuevo'],
             'fecha'  => $h['fecha_cambio'],
+            'motivo' => $h['motivo'] ?? '',
         ];
     }
 
@@ -299,7 +301,8 @@ if ($export && !empty($pedidosExport)) {
         $expIds = array_column($pedidosExport, 'id');
         $expPlaceholders = implode(',', array_fill(0, count($expIds), '?'));
         $sqlHistExp = "
-            SELECT h.id_pedido, ep_new.nombre_estado AS estado_nuevo, h.created_at AS fecha_cambio
+            SELECT h.id_pedido, ep_new.nombre_estado AS estado_nuevo, h.created_at AS fecha_cambio,
+                   h.observaciones AS motivo
             FROM pedidos_historial_estados h
             LEFT JOIN estados_pedidos ep_new ON ep_new.id = h.id_estado_nuevo
             WHERE h.id_pedido IN ({$expPlaceholders})
@@ -308,7 +311,7 @@ if ($export && !empty($pedidosExport)) {
         $stmtHExp = $db->prepare($sqlHistExp);
         $stmtHExp->execute($expIds);
         foreach ($stmtHExp->fetchAll(PDO::FETCH_ASSOC) as $h) {
-            $historialExport[$h['id_pedido']][] = ['estado' => $h['estado_nuevo'], 'fecha' => $h['fecha_cambio']];
+            $historialExport[$h['id_pedido']][] = ['estado' => $h['estado_nuevo'], 'fecha' => $h['fecha_cambio'], 'motivo' => $h['motivo'] ?? ''];
         }
         foreach ($historialExport as $hist) {
             $maxTransicionesExport = max($maxTransicionesExport, count($hist));
@@ -322,6 +325,7 @@ if ($export && !empty($pedidosExport)) {
     for ($n = 1; $n <= $maxTransicionesExport; $n++) {
         $sheet->setCellValue($coord($colIdx++, 2), "Estado {$n}");
         $sheet->setCellValue($coord($colIdx++, 2), "Fecha {$n}");
+        $sheet->setCellValue($coord($colIdx++, 2), "Motivo {$n}");
     }
     $totalCols  = $colIdx - 1;
     $lastColLtr = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
@@ -368,6 +372,7 @@ if ($export && !empty($pedidosExport)) {
             $entry  = $hist[$n] ?? null;
             $estado = $entry['estado'] ?? '';
             $fecha  = $entry ? date('d/m/Y H:i', strtotime($entry['fecha'])) : '';
+            $motivo = $entry['motivo'] ?? '';
 
             $cellH = $coord($c, $excelRow);
             $sheet->setCellValue($cellH, $estado);
@@ -380,6 +385,7 @@ if ($export && !empty($pedidosExport)) {
             }
             $c++;
             $sheet->setCellValue($coord($c++, $excelRow), $fecha);
+            $sheet->setCellValue($coord($c++, $excelRow), $motivo);
         }
         $excelRow++;
     }
@@ -663,7 +669,7 @@ if ($export && !empty($pedidosExport)) {
                             <th>Fecha Creado</th>
                             <!-- Columnas dinámicas del historial -->
                             <?php for ($n = 1; $n <= $maxTransiciones; $n++): ?>
-                            <th class="th-hist" colspan="2">Cambio <?= $n ?></th>
+                            <th class="th-hist" colspan="3">Cambio <?= $n ?></th>
                             <?php endfor; ?>
                         </tr>
                         <?php if ($maxTransiciones > 0): ?>
@@ -672,6 +678,7 @@ if ($export && !empty($pedidosExport)) {
                             <?php for ($n = 1; $n <= $maxTransiciones; $n++): ?>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Estado</th>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Fecha / Hora</th>
+                            <th class="th-hist" style="font-size:.7rem;font-weight:600;">Motivo</th>
                             <?php endfor; ?>
                         </tr>
                         <?php endif; ?>
@@ -714,6 +721,7 @@ if ($export && !empty($pedidosExport)) {
                                 $entry  = $hist[$n] ?? null;
                                 $estado = $entry['estado'] ?? '';
                                 $fecha  = $entry ? date('d/m/Y H:i', strtotime($entry['fecha'])) : '';
+                                $motivo = $entry['motivo'] ?? '';
                                 $clrH   = $estado ? colorEstado($estado) : ['bg' => 'transparent', 'text' => '#888'];
                             ?>
                             <td class="td-estado-hist text-center">
@@ -728,6 +736,10 @@ if ($export && !empty($pedidosExport)) {
                             </td>
                             <td class="text-center text-muted" style="font-size:.74rem;">
                                 <?= $fecha ?: '—' ?>
+                            </td>
+                            <td class="text-muted" style="font-size:.74rem; max-width:160px; overflow:hidden; text-overflow:ellipsis;"
+                                title="<?= htmlspecialchars($motivo) ?>">
+                                <?= $motivo ? htmlspecialchars($motivo) : '<span class="text-muted">—</span>' ?>
                             </td>
                             <?php endfor; ?>
                         </tr>
