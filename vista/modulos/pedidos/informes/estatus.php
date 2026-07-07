@@ -167,7 +167,7 @@ if ($export) {
     $colores = [
         'ENTREGADO'    => ['bg' => '3CB043', 'text' => 'FFFFFF'],
         'EN PROCESO'   => ['bg' => 'F5E400', 'text' => '3D3200'],
-        'RECHAZADO'    => ['bg' => 'C0392B', 'text' => 'FFFFFF'],
+        'RECHAZADO'    => ['bg' => '8E44AD', 'text' => 'FFFFFF'],
         'DEVUELTO'     => ['bg' => 'B71C1C', 'text' => 'FFFFFF'],
         'REPROGRAMADO' => ['bg' => 'F97316', 'text' => 'FFFFFF'],
     ];
@@ -202,7 +202,7 @@ if ($export) {
 
     $filename = 'Estatus_Ordenes_' . date('Ymd', strtotime($fechaDesde)) . '_' . date('Ymd', strtotime($fechaHasta)) . '.xlsx';
     // Guardar en archivo temporal para evitar problemas con output buffering del router en produccion
-    $tmpFile = tempnam(sys_get_temp_dir(), 'rpt_');
+    $tmpFile = tempnam(__DIR__ . '/../../../../tmp', 'rpt_');
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmpFile);
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -227,7 +227,7 @@ if ($export) {
         :root {
             --clr-entregado:    #3cb043;
             --clr-proceso:      #f5e400;
-            --clr-rechazado:    #c0392b;
+            --clr-rechazado:    #8e44ad;
             --clr-devuelto:     #b71c1c;
             --clr-reprogramado: #f97316;
             --clr-dark:         #0f172a;
@@ -272,7 +272,7 @@ if ($export) {
         .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,.18); }
         .kpi-card.entregado     { background: #3cb043; color: #fff; }
         .kpi-card.en-proceso    { background: #f5e400; color: #3d3200; }
-        .kpi-card.rechazado     { background: #c0392b; color: #fff; }
+        .kpi-card.rechazado     { background: #8e44ad; color: #fff; }
         .kpi-card.devuelto      { background: #b71c1c; color: #fff; }
         .kpi-card.reprogramado  { background: #f97316; color: #fff; }
         .kpi-num  { font-size: 2.5rem; font-weight: 800; line-height: 1; }
@@ -322,7 +322,7 @@ if ($export) {
         }
         .badge-entregado     { background: #d4f5d6; color: #1d6b22; }
         .badge-proceso       { background: #fdf8b0; color: #5a5000; }
-        .badge-rechazado     { background: #fae0dc; color: #7b1a11; }
+        .badge-rechazado     { background: #f3e5f5; color: #4a148c; }
         .badge-devuelto      { background: #fee2e2; color: #7f1d1d; }
         .badge-reprogramado  { background: #ffedd5; color: #9a3412; }
 
@@ -573,7 +573,7 @@ if ($export) {
     const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'DEVUELTO', 'REPROGRAMADO'];
     const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>, <?= $data['DEVUELTO'] ?>, <?= $data['REPROGRAMADO'] ?>];
     const total  = values.reduce((a, b) => a + b, 0);
-    const colors = ['#3cb043', '#f5e400', '#c0392b', '#b71c1c', '#f97316'];
+    const colors = ['#3cb043', '#f5e400', '#8e44ad', '#b71c1c', '#f97316'];
 
     new Chart(ctx, {
         type: 'doughnut',

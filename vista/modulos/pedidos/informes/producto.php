@@ -161,7 +161,7 @@ if ($export) {
     $sheet->getRowDimension(2)->setRowHeight(6);
 
     $headerColors = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', '3D3200', 'FFFFFF', 'FFFFFF'];
-    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', 'C0392B', 'C0392B', 'B71C1C', 'B71C1C', 'F5E400', 'F5E400', 'F97316', 'F97316'];
+    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', '8E44AD', '8E44AD', 'B71C1C', 'B71C1C', 'F5E400', 'F5E400', 'F97316', 'F97316'];
     foreach ($headers as $ci => $h) {
         $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci + 1);
         $sheet->setCellValue("{$col}3", $h);
@@ -182,7 +182,7 @@ if ($export) {
         $sheet->setCellValue("I{$row}", $prod['en_proceso']);   $sheet->setCellValue("J{$row}", $prod['pct_en_proceso'] . '%');
         $sheet->setCellValue("K{$row}", $prod['reprogramados']); $sheet->setCellValue("L{$row}", $prod['pct_reprogramados'] . '%');
         $sheet->getStyle("C{$row}:D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '3CB043']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
-        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'C0392B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '8E44AD']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'B71C1C']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $sheet->getStyle("I{$row}:J{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true]]);
         $sheet->getStyle("K{$row}:L{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
@@ -205,7 +205,7 @@ if ($export) {
     foreach (range('A', 'L') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
 
     $filename = 'Efectividad_Producto_' . date('Ymd', strtotime($fechaDesde)) . '_' . date('Ymd', strtotime($fechaHasta)) . '.xlsx';
-    $tmpFile = tempnam(sys_get_temp_dir(), 'rpt_');
+    $tmpFile = tempnam(__DIR__ . '/../../../../tmp', 'rpt_');
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmpFile);
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -221,6 +221,7 @@ if ($export) {
 $chartLabels        = json_encode(array_column($productos, 'producto'));
 $chartEntregados    = json_encode(array_column($productos, 'entregados'));
 $chartRechazados    = json_encode(array_column($productos, 'rechazados'));
+$chartDevueltos     = json_encode(array_column($productos, 'devueltos'));
 $chartEnProceso     = json_encode(array_column($productos, 'en_proceso'));
 $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
 ?>
@@ -252,14 +253,16 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
         .tabla-prod { font-size: .84rem; }
         .tabla-prod thead tr:first-child th { background: #1e293b; color: #fff; font-weight: 700; text-align: center; border: none; padding: .55rem .75rem; }
         .tabla-prod thead tr:last-child th.th-ent  { background: #3cb043; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
-        .tabla-prod thead tr:last-child th.th-rec  { background: #c0392b; color: #fff; font-weight: 600; text-size: .78rem; }
+        .tabla-prod thead tr:last-child th.th-rec  { background: #8e44ad; color: #fff; font-weight: 600; text-size: .78rem; }
+        .tabla-prod thead tr:last-child th.th-dev  { background: #b71c1c; color: #fff; font-weight: 600; text-size: .78rem; text-align: center; }
         .tabla-prod thead tr:last-child th.th-proc { background: #f5e400; color: #3d3200; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-prod thead tr:last-child th.th-rep  { background: #f97316; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-prod tbody td { padding: .5rem .75rem; vertical-align: middle; border-color: #e2e8f0; }
         .tabla-prod tfoot td { font-weight: 700; background: #f1f5f9; border-color: #e2e8f0; padding: .55rem .75rem; }
 
         .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
-        .cell-rec  { background: #fae0dc !important; color: #7b1a11 !important; font-weight: 700; text-align: center; }
+        .cell-rec  { background: #f3e5f5 !important; color: #4a148c !important; font-weight: 700; text-align: center; }
+        .cell-dev  { background: #fee2e2 !important; color: #7f1d1d !important; font-weight: 700; text-align: center; }
         .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
         .cell-num  { text-align: center; font-weight: 600; }
@@ -414,13 +417,15 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
                         <th rowspan="2" style="vertical-align:middle">PRODUCTO</th>
                         <th rowspan="2" class="text-center" style="vertical-align:middle">CANTIDAD</th>
                         <th colspan="2" class="text-center" style="background:#3cb043;color:#fff">ENTREGADO</th>
-                        <th colspan="2" class="text-center" style="background:#c0392b;color:#fff">RECHAZADO</th>
+                        <th colspan="2" class="text-center" style="background:#8e44ad;color:#fff">RECHAZADO</th>
+                        <th colspan="2" class="text-center" style="background:#b71c1c;color:#fff">DEVUELTO</th>
                         <th colspan="2" class="text-center" style="background:#f5e400;color:#3d3200">EN PROCESO</th>
                         <th colspan="2" class="text-center" style="background:#f97316;color:#fff">REPROGRAMADO</th>
                     </tr>
                     <tr>
                         <th class="th-ent">Cant.</th><th class="th-ent">%</th>
                         <th class="th-rec">Cant.</th><th class="th-rec">%</th>
+                        <th class="th-dev">Cant.</th><th class="th-dev">%</th>
                         <th class="th-proc">Cant.</th><th class="th-proc">%</th>
                         <th class="th-rep">Cant.</th><th class="th-rep">%</th>
                     </tr>
@@ -440,6 +445,8 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
                     <td class="cell-ent"><?= $prod['pct_entregados'] ?>%</td>
                     <td class="cell-rec"><?= number_format($prod['rechazados']) ?></td>
                     <td class="cell-rec"><?= $prod['pct_rechazados'] ?>%</td>
+                    <td class="cell-dev"><?= number_format($prod['devueltos']) ?></td>
+                    <td class="cell-dev"><?= $prod['pct_devueltos'] ?>%</td>
                     <td class="cell-proc"><?= number_format($prod['en_proceso']) ?></td>
                     <td class="cell-proc"><?= $prod['pct_en_proceso'] ?>%</td>
                     <td class="cell-rep"><?= number_format($prod['reprogramados']) ?></td>
@@ -451,6 +458,7 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
                     <?php
                     $pctTotE  = $totalCantidad > 0 ? round($totalEntregados    / $totalCantidad * 100) : 0;
                     $pctTotR  = $totalCantidad > 0 ? round($totalRechazados    / $totalCantidad * 100) : 0;
+                    $pctTotD  = $totalCantidad > 0 ? round($totalDevueltos     / $totalCantidad * 100) : 0;
                     $pctTotP  = $totalCantidad > 0 ? round($totalEnProceso     / $totalCantidad * 100) : 0;
                     $pctTotRp = $totalCantidad > 0 ? round($totalReprogramados / $totalCantidad * 100) : 0;
                     ?>
@@ -461,6 +469,8 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
                         <td class="text-center"><?= $pctTotE ?>%</td>
                         <td class="text-center"><?= number_format($totalRechazados) ?></td>
                         <td class="text-center"><?= $pctTotR ?>%</td>
+                        <td class="text-center"><?= number_format($totalDevueltos) ?></td>
+                        <td class="text-center"><?= $pctTotD ?>%</td>
                         <td class="text-center"><?= number_format($totalEnProceso) ?></td>
                         <td class="text-center"><?= $pctTotP ?>%</td>
                         <td class="text-center"><?= number_format($totalReprogramados) ?></td>
@@ -488,7 +498,8 @@ $chartReprogramados = json_encode(array_column($productos, 'reprogramados'));
             labels: <?= $chartLabels ?>,
             datasets: [
                 { label: 'Entregado',     data: <?= $chartEntregados ?>,    backgroundColor: 'rgba(60,176,67,.8)',   borderColor: '#3cb043', borderWidth: 1.5, borderRadius: 4 },
-                { label: 'Rechazado',     data: <?= $chartRechazados ?>,    backgroundColor: 'rgba(192,57,43,.8)',   borderColor: '#c0392b', borderWidth: 1.5, borderRadius: 4 },
+                { label: 'Rechazado',     data: <?= $chartRechazados ?>,    backgroundColor: 'rgba(142,68,173,.8)',   borderColor: '#8e44ad', borderWidth: 1.5, borderRadius: 4 },
+                { label: 'Devuelto',      data: <?= $chartDevueltos ?>,     backgroundColor: 'rgba(183,28,28,.8)',    borderColor: '#b71c1c', borderWidth: 1.5, borderRadius: 4 },
                 { label: 'En Proceso',    data: <?= $chartEnProceso ?>,     backgroundColor: 'rgba(245,228,0,.8)',   borderColor: '#f5e400', borderWidth: 1.5, borderRadius: 4 },
                 { label: 'Reprogramado',  data: <?= $chartReprogramados ?>, backgroundColor: 'rgba(249,115,22,.8)', borderColor: '#f97316', borderWidth: 1.5, borderRadius: 4 }
             ]

@@ -194,7 +194,7 @@ if ($export) {
 
     // Row 3 — headers
     $headerColors = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', '3D3200', 'FFFFFF', 'FFFFFF'];
-    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', 'C0392B', 'C0392B', 'B71C1C', 'B71C1C', 'F5E400', 'F5E400', 'F97316', 'F97316'];
+    $headerBg     = ['1E293B', '1E293B', '3CB043', '3CB043', '8E44AD', '8E44AD', 'B71C1C', 'B71C1C', 'F5E400', 'F5E400', 'F97316', 'F97316'];
     foreach ($headers as $ci => $h) {
         $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci + 1);
         $sheet->setCellValue("{$col}3", $h);
@@ -220,8 +220,8 @@ if ($export) {
         $sheet->setCellValue("K{$row}", $reg['reprogramados']);
         $sheet->setCellValue("L{$row}", $reg['pct_reprogramados'] . '%');
         $sheet->getStyle("C{$row}:D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '3CB043']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
-        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D42B2B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
-        $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '7C3AED']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("E{$row}:F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '8E44AD']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
+        $sheet->getStyle("G{$row}:H{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'B71C1C']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $sheet->getStyle("I{$row}:J{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true]]);
         $sheet->getStyle("K{$row}:L{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true]]);
         $row++;
@@ -245,7 +245,7 @@ if ($export) {
     foreach (range('A', 'L') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
 
     $filename = 'Efectividad_Region_' . date('Ymd', strtotime($fechaDesde)) . '_' . date('Ymd', strtotime($fechaHasta)) . '.xlsx';
-    $tmpFile = tempnam(sys_get_temp_dir(), 'rpt_');
+    $tmpFile = tempnam(__DIR__ . '/../../../../tmp', 'rpt_');
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmpFile);
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -293,7 +293,7 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
         .tabla-region { font-size: .84rem; }
         .tabla-region thead tr:first-child th { background: #1e293b; color: #fff; font-weight: 700; text-align: center; border: none; padding: .55rem .75rem; }
         .tabla-region thead tr:last-child th.th-ent  { background: #3cb043; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
-        .tabla-region thead tr:last-child th.th-rec  { background: #c0392b; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
+        .tabla-region thead tr:last-child th.th-rec  { background: #8e44ad; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-dev  { background: #b71c1c; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-proc { background: #f5e400; color: #3d3200; font-weight: 600; text-align: center; font-size: .78rem; }
         .tabla-region thead tr:last-child th.th-rep  { background: #f97316; color: #fff; font-weight: 600; text-align: center; font-size: .78rem; }
@@ -302,7 +302,7 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
         .tabla-region tfoot td { font-weight: 700; background: #f1f5f9; border-color: #e2e8f0; padding: .55rem .75rem; }
 
         .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
-        .cell-rec  { background: #fae0dc !important; color: #7b1a11 !important; font-weight: 700; text-align: center; }
+        .cell-rec  { background: #f3e5f5 !important; color: #4a148c !important; font-weight: 700; text-align: center; }
         .cell-dev  { background: #fee2e2 !important; color: #7f1d1d !important; font-weight: 700; text-align: center; }
         .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
@@ -446,7 +446,7 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
                         <th rowspan="2" style="vertical-align:middle">PROVINCIAS</th>
                         <th rowspan="2" class="text-center" style="vertical-align:middle">CANTIDAD</th>
                         <th colspan="2" class="text-center" style="background:#3cb043;color:#fff">ENTREGADO</th>
-                        <th colspan="2" class="text-center" style="background:#c0392b;color:#fff">RECHAZADO</th>
+                        <th colspan="2" class="text-center" style="background:#8e44ad;color:#fff">RECHAZADO</th>
                         <th colspan="2" class="text-center" style="background:#b71c1c;color:#fff">DEVUELTO</th>
                         <th colspan="2" class="text-center" style="background:#f5e400;color:#3d3200">EN PROCESO</th>
                         <th colspan="2" class="text-center" style="background:#f97316;color:#fff">REPROGRAMADO</th>
@@ -526,7 +526,7 @@ $chartReprogramados = json_encode(array_column($regiones, 'reprogramados'));
             labels: <?= $chartLabels ?>,
             datasets: [
                 { label: 'Entregado',    data: <?= $chartEntregados ?>,    backgroundColor: 'rgba(60,176,67,.8)',    borderColor: '#3cb043', borderWidth: 1.5, borderRadius: 4 },
-                { label: 'Rechazado',    data: <?= $chartRechazados ?>,    backgroundColor: 'rgba(192,57,43,.8)', borderColor: '#c0392b', borderWidth: 1.5, borderRadius: 4 },
+                { label: 'Rechazado',    data: <?= $chartRechazados ?>,    backgroundColor: 'rgba(142,68,173,.8)', borderColor: '#8e44ad', borderWidth: 1.5, borderRadius: 4 },
                 { label: 'Devuelto',     data: <?= $chartDevueltos ?>,     backgroundColor: 'rgba(183,28,28,.8)',   borderColor: '#b71c1c', borderWidth: 1.5, borderRadius: 4 },
                 { label: 'En Proceso',   data: <?= $chartEnProceso ?>,     backgroundColor: 'rgba(245,228,0,.8)',  borderColor: '#f5e400', borderWidth: 1.5, borderRadius: 4 },
                 { label: 'Reprogramado', data: <?= $chartReprogramados ?>, backgroundColor: 'rgba(249,115,22,.8)',borderColor: '#f97316', borderWidth: 1.5, borderRadius: 4 }

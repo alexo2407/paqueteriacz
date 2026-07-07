@@ -197,7 +197,7 @@ if ($export) {
 
     // Cabeceras (7 columnas: A-G)
     $headers   = ['FECHA (Semana)', 'CANTIDAD DE ORDENES', 'ENTREGADO', 'RECHAZADO', 'DEVUELTO', 'EN PROCESO', 'REPROGRAMADO'];
-    $headerBg  = ['1E293B', '334155', '3CB043', 'C0392B', 'B71C1C', 'F5E400', 'F97316'];
+    $headerBg  = ['1E293B', '334155', '3CB043', '8E44AD', 'B71C1C', 'F5E400', 'F97316'];
     $headerTxt = ['FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', 'FFFFFF', '3D3200', 'FFFFFF'];
     foreach ($headers as $ci => $h) {
         $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci + 1);
@@ -248,8 +248,8 @@ if ($export) {
         $sheet->setCellValue("F{$row}", $sem['en_proceso']);
         $sheet->setCellValue("G{$row}", $sem['reprogramados']);
         $sheet->getStyle("C{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D4F5D6']], 'font' => ['color' => ['rgb' => '1D6B22'], 'bold' => true]]);
-        $sheet->getStyle("D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FAD4D4']], 'font' => ['color' => ['rgb' => '8B1A1A'], 'bold' => true]]);
-        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'EDE9FE']], 'font' => ['color' => ['rgb' => '5B21B6'], 'bold' => true]]);
+        $sheet->getStyle("D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'EDE9FE']], 'font' => ['color' => ['rgb' => '4A148C'], 'bold' => true]]);
+        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FEE2E2']], 'font' => ['color' => ['rgb' => '7F1D1D'], 'bold' => true]]);
         $sheet->getStyle("F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FDF8B0']], 'font' => ['color' => ['rgb' => '5A5000'], 'bold' => true]]);
         $sheet->getStyle("G{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFEDD5']], 'font' => ['color' => ['rgb' => '9A3412'], 'bold' => true]]);
         $row++;
@@ -264,8 +264,8 @@ if ($export) {
         $sheet->setCellValue("G{$row}", $sem['pct_reprogramados'] . '%');
         $sheet->getStyle("A{$row}")->applyFromArray(['font' => ['bold' => true, 'italic' => true, 'color' => ['rgb' => '475569']], 'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F1F5F9']]]);
         $sheet->getStyle("C{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '3CB043']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
-        $sheet->getStyle("D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'D42B2B']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
-        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '7C3AED']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
+        $sheet->getStyle("D{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '8E44AD']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
+        $sheet->getStyle("E{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'B71C1C']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
         $sheet->getStyle("F{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F5E400']], 'font' => ['color' => ['rgb' => '3D3200'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
         $sheet->getStyle("G{$row}")->applyFromArray(['fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => 'F97316']], 'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true], 'alignment' => ['horizontal' => 'center']]);
         $row++;
@@ -290,7 +290,7 @@ if ($export) {
     foreach (range('A', 'H') as $col) $sheet->getColumnDimension($col)->setAutoSize(true);
 
     $filename = 'Tendencia_Semanal_' . date('Ymd', strtotime($fechaDesde)) . '_' . date('Ymd', strtotime($fechaHasta)) . '.xlsx';
-    $tmpFile = tempnam(sys_get_temp_dir(), 'rpt_');
+    $tmpFile = tempnam(__DIR__ . '/../../../../tmp', 'rpt_');
     (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($tmpFile);
     while (ob_get_level() > 0) ob_end_clean();
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -355,7 +355,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         :root {
             --clr-entregado:    #3cb043;
             --clr-proceso:      #f5e400;
-            --clr-rechazado:    #c0392b;
+            --clr-rechazado:    #8e44ad;
             --clr-devuelto:     #b71c1c;
             --clr-reprogramado: #f97316;
         }
@@ -407,7 +407,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
             text-align: center; border: none; padding: .6rem .75rem;
         }
         .tabla-semana thead th.th-ent  { background: #3cb043; }
-        .tabla-semana thead th.th-rec  { background: #c0392b; }
+        .tabla-semana thead th.th-rec  { background: #8e44ad; }
         .tabla-semana thead th.th-proc { background: #f5e400; color: #3d3200; }
         .tabla-semana thead th.th-rep  { background: #f97316; }
 
@@ -425,7 +425,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
 
         /* Celdas de cantidad */
         .cell-ent  { background: #d4f5d6 !important; color: #1d6b22 !important; font-weight: 700; text-align: center; }
-        .cell-rec  { background: #fae0dc !important; color: #7b1a11 !important; font-weight: 700; text-align: center; }
+        .cell-rec  { background: #f3e5f5 !important; color: #4a148c !important; font-weight: 700; text-align: center; }
         .cell-dev  { background: #fee2e2 !important; color: #7f1d1d !important; font-weight: 700; text-align: center; }
         .cell-proc { background: #fdf8b0 !important; color: #5a5000 !important; font-weight: 700; text-align: center; }
         .cell-rep  { background: #ffedd5 !important; color: #9a3412 !important; font-weight: 700; text-align: center; }
@@ -711,7 +711,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                 {
                     label: 'Rechazado',
                     data: <?= $chartRechazadosJson ?>,
-                    borderColor: '#c0392b', backgroundColor: 'rgba(192,57,43,.12)',
+                    borderColor: '#8e44ad', backgroundColor: 'rgba(142,68,173,.12)',
                     borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6,
                     fill: false, tension: 0.3,
                 },
