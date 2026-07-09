@@ -395,6 +395,91 @@ class ProductoModel
     }
 
     /**
+     * Crear un producto con todos los campos del formulario.
+     * A diferencia de crear(), este método acepta un array asociativo completo
+     * e inserta categoria_id, marca, unidad_medida, stock_minimo, stock_maximo,
+     * activo e imagen_url que el método simple ignoraba.
+     *
+     * @param array $datos Array con todos los campos del formulario
+     * @return int|null ID creado o null en error
+     */
+    public static function crearCompleto(array $datos)
+    {
+        try {
+            $idUsuarioCreador = $datos['id_usuario_creador'] ?? null;
+            if ($idUsuarioCreador === null) {
+                $idUsuarioCreador = AuditoriaModel::getIdUsuarioActual();
+            }
+
+            $nombre      = trim($datos['nombre'] ?? '');
+            $sku         = isset($datos['sku'])         && $datos['sku']         !== '' ? $datos['sku']         : null;
+            $descripcion = isset($datos['descripcion']) && $datos['descripcion'] !== '' ? $datos['descripcion'] : null;
+            $precioUsd   = isset($datos['precio_usd'])  && $datos['precio_usd']  !== '' ? $datos['precio_usd']  : null;
+            $categoriaId = isset($datos['categoria_id']) && $datos['categoria_id'] !== '' ? (int)$datos['categoria_id'] : null;
+            $marca       = isset($datos['marca'])       && $datos['marca']       !== '' ? $datos['marca']       : null;
+            $unidad      = isset($datos['unidad'])      && $datos['unidad']      !== '' ? $datos['unidad']      : 'unidad';
+            $stockMin    = isset($datos['stock_minimo']) ? (int)$datos['stock_minimo'] : 10;
+            $stockMax    = isset($datos['stock_maximo']) ? (int)$datos['stock_maximo'] : 100;
+            $activo      = isset($datos['activo'])      ? (int)$datos['activo']       : 1;
+            $imagenUrl   = isset($datos['imagen_url'])  && $datos['imagen_url']  !== '' ? $datos['imagen_url']  : null;
+
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare('
+                INSERT INTO productos
+                    (nombre, sku, descripcion, precio_usd, categoria_id, marca,
+                     unidad_medida, stock_minimo, stock_maximo, activo, imagen_url, id_usuario_creador)
+                VALUES
+                    (:nombre, :sku, :descripcion, :precio_usd, :categoria_id, :marca,
+                     :unidad_medida, :stock_minimo, :stock_maximo, :activo, :imagen_url, :id_usuario_creador)
+            ');
+
+            $stmt->bindValue(':nombre',            $nombre,         PDO::PARAM_STR);
+            $stmt->bindValue(':sku',               $sku,            $sku         === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':descripcion',       $descripcion,    $descripcion === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':precio_usd',        $precioUsd,      $precioUsd   === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':categoria_id',      $categoriaId,    $categoriaId === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+            $stmt->bindValue(':marca',             $marca,          $marca       === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':unidad_medida',     $unidad,         PDO::PARAM_STR);
+            $stmt->bindValue(':stock_minimo',      $stockMin,       PDO::PARAM_INT);
+            $stmt->bindValue(':stock_maximo',      $stockMax,       PDO::PARAM_INT);
+            $stmt->bindValue(':activo',            $activo,         PDO::PARAM_INT);
+            $stmt->bindValue(':imagen_url',        $imagenUrl,      $imagenUrl   === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+            $stmt->bindValue(':id_usuario_creador', $idUsuarioCreador, $idUsuarioCreador === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+
+            $stmt->execute();
+            $nuevoId = (int)$db->lastInsertId();
+
+            // Registrar auditoría con todos los campos guardados
+            AuditoriaModel::registrar(
+                'productos',
+                $nuevoId,
+                'crear',
+                $idUsuarioCreador,
+                null,
+                [
+                    'nombre'            => $nombre,
+                    'sku'               => $sku,
+                    'descripcion'       => $descripcion,
+                    'precio_usd'        => $precioUsd,
+                    'categoria_id'      => $categoriaId,
+                    'marca'             => $marca,
+                    'unidad_medida'     => $unidad,
+                    'stock_minimo'      => $stockMin,
+                    'stock_maximo'      => $stockMax,
+                    'activo'            => $activo,
+                    'imagen_url'        => $imagenUrl,
+                    'id_usuario_creador'=> $idUsuarioCreador,
+                ]
+            );
+
+            return $nuevoId;
+        } catch (PDOException $e) {
+            error_log('Error al crear producto completo: ' . $e->getMessage(), 3, __DIR__ . '/../logs/errors.log');
+            return null;
+        }
+    }
+
+    /**
      * Actualizar un producto existente con todos los campos
      * @param int $id
      * @param array $datos Array asociativo con los campos a actualizar

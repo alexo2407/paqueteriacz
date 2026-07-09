@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../modelo/producto.php';
@@ -389,14 +389,28 @@ if (isSuperAdmin()) {
         });
     }
 
-    // Auto-generar SKU cuando cambia la categoría (opcional)
-    document.getElementById('categoria_id').addEventListener('change', function() {
+    // Auto-generar SKU cuando cambia la categoría (compatible con Select2)
+    // Select2 no dispara el evento nativo 'change' en el <select>, usa jQuery 'change'
+    // Por eso usamos ambos: el nativo para cuando Select2 no está activo, y jQuery/Select2 si está
+    function onCategoriaChange() {
         const skuInput = document.getElementById('sku');
         // Solo auto-generar si el SKU está vacío o es un SKU generado previamente
         if (!skuInput.value || skuInput.value.match(/^[A-Z]{2,4}-\d{3}$/)) {
             generarSKU();
         }
-    });
+    }
+
+    // Listener nativo (funciona cuando Select2 NO está inicializado)
+    document.getElementById('categoria_id').addEventListener('change', onCategoriaChange);
+
+    // Listener Select2 vía jQuery (funciona cuando Select2 SÍ está inicializado)
+    if (typeof $ !== 'undefined') {
+        $(document).ready(function() {
+            $('#categoria_id').on('select2:select', function() {
+                onCategoriaChange();
+            });
+        });
+    }
 
     // Validación del formulario antes de enviar
     document.getElementById('formProducto').addEventListener('submit', function(e) {

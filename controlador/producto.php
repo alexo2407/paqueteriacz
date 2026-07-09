@@ -35,7 +35,8 @@ class ProductosController
 
     /**
      * Crear producto desde formulario/data
-     * @param array $data ['nombre','descripcion','precio_usd']
+     * @param array $data ['nombre','sku','descripcion','precio_usd','categoria_id','marca',
+     *                     'unidad','stock_minimo','stock_maximo','activo','imagen_url','id_usuario_creador']
      * @return array ['success'=>bool,'message'=>string,'id'=>int|null]
      */
     public function crear(array $data)
@@ -44,10 +45,6 @@ class ProductosController
         if ($nombre === '') {
             return ['success' => false, 'message' => 'El nombre es obligatorio.', 'id' => null];
         }
-
-        $sku         = $data['sku']         ?? null;
-        $descripcion = $data['descripcion'] ?? null;
-        $precio      = $data['precio_usd']  ?? null;
 
         // Obtener el usuario actual de la sesión para asignar como creador
         $idUsuarioCreador = (int)($_SESSION['idUsuario'] ?? 0) ?: null;
@@ -58,7 +55,11 @@ class ProductosController
             $idUsuarioCreador = (int)$data['id_usuario_creador'];
         }
 
-        $id = ProductoModel::crear($nombre, $sku, $descripcion, $precio, $idUsuarioCreador);
+        // Inyectar el creador resuelto en el array para que el modelo lo use
+        $data['id_usuario_creador'] = $idUsuarioCreador;
+
+        // Pasar el array completo al modelo para guardar todos los campos del formulario
+        $id = ProductoModel::crearCompleto($data);
         if ($id === null) {
             return ['success' => false, 'message' => 'No fue posible crear el producto.', 'id' => null];
         }
