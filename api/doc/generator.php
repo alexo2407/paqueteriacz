@@ -870,9 +870,18 @@ function buildCrear(c) {
       ['<code>es_combo</code>',      'entero',     'ESTRICTO (0 ó 1)',    '1 si es combo, 0 si estándar'],
       ['<code>fecha_entrega</code>', 'string',     'ESTRICTO YYYY-MM-DD','Fecha estimada de entrega'],
     ])}
+    <p class="print-label" style="margin-top:12px">⚙️ Campos Opcionales</p>
+    ${table(['Campo','Tipo','Descripción'],[
+      ['<code>courier_service</code>', 'string', 'Nombre del servicio de mensajería / courier (ej: DHL, FedEx, UPS). Máx 100 chars.'],
+      ['<code>zona</code>',            'string', 'Zona de entrega'],
+      ['<code>codigo_postal</code>',   'string', 'Código postal del destinatario'],
+      ['<code>id_pais</code>',         'entero', 'ID del país de destino'],
+      ['<code>id_departamento</code>', 'entero', 'ID del departamento/estado'],
+      ['<code>id_municipio</code>',    'entero', 'ID del municipio/ciudad'],
+    ])}
     <p class="print-label">Ejemplo JSON de Petición</p>
     <div class="print-tip">⚠️ Nota: JSON no permite comentarios (//) ni comas extra. Usar el formato exacto.</div>
-    ${codeBlock(`{\n  "numero_orden": ${ex.numero_orden},\n  "destinatario": "${ex.destinatario}",\n  "id_cliente": ${ex.id_cliente},\n  "id_pais": ${ex.id_pais},\n  "telefono": "${ex.telefono}",\n  "direccion": "${ex.direccion}",\n  "comentario": "Dejar con el guardia si no hay nadie.",\n  "id_proveedor": ${ex.id_proveedor},\n  "id_moneda": ${ex.id_moneda},\n  "precio_total_local": ${ex.precio},\n  "es_combo": ${ex.es_combo},\n  "fecha_entrega": "${ex.fecha_entrega}",\n  "productos": [\n    { "producto_id": 49, "cantidad": 3 },\n    { "producto_id": 50, "cantidad": 2 }\n  ]\n}`)}
+    ${codeBlock(`{\n  "numero_orden": ${ex.numero_orden},\n  "destinatario": "${ex.destinatario}",\n  "id_cliente": ${ex.id_cliente},\n  "id_pais": ${ex.id_pais},\n  "telefono": "${ex.telefono}",\n  "direccion": "${ex.direccion}",\n  "comentario": "Dejar con el guardia si no hay nadie.",\n  "courier_service": "DHL",\n  "id_proveedor": ${ex.id_proveedor},\n  "id_moneda": ${ex.id_moneda},\n  "precio_total_local": ${ex.precio},\n  "es_combo": ${ex.es_combo},\n  "fecha_entrega": "${ex.fecha_entrega}",\n  "productos": [\n    { "producto_id": 49, "cantidad": 3 },\n    { "producto_id": 50, "cantidad": 2 }\n  ]\n}`)}
     <p class="print-label">Respuesta <strong>200 OK</strong></p>
     ${codeBlock(`{\n  "success": true,\n  "message": "Pedido creado exitosamente",\n  "data": {\n    "pedido_id": 1245,\n    "numero_orden": ${ex.numero_orden}\n  }\n}`)}
     <p class="print-label">Errores Comunes</p>
@@ -977,6 +986,18 @@ function buildBuscar(c) {
       ['<code>numero_orden</code>', 'string', 'Número de orden a buscar'],
     ])}
     ${codeBlock(`GET ${base}/pedidos/buscar?numero_orden=697896`)}
+    <p class="print-label" style="margin-top:10px">Campos devueltos en la respuesta</p>
+    ${table(['Campo','Tipo','Descripción'],[
+      ['<code>numero_orden</code>',    'string',  'Número de orden'],
+      ['<code>destinatario</code>',    'string',  'Nombre del destinatario'],
+      ['<code>telefono</code>',        'string',  'Teléfono de contacto'],
+      ['<code>direccion</code>',       'string',  'Dirección de entrega'],
+      ['<code>comentario</code>',      'string',  'Notas de entrega'],
+      ['<code>courier_service</code>', 'string',  'Servicio de mensajería asignado (puede ser null)'],
+      ['<code>nombre_estado</code>',   'string',  'Estado actual del pedido'],
+      ['<code>fecha_ingreso</code>',   'datetime','Fecha de creación'],
+      ['<code>fecha_entrega</code>',   'date',    'Fecha estimada de entrega'],
+    ])}
   </div>`;
 }
 

@@ -837,6 +837,8 @@ class PedidosController
             'Location'           => $data['Location'] ?? null,
             'betweenStreets'     => $data['betweenStreets'] ?? null,
             'postalCode'         => isset($data['postalCode']) && $data['postalCode'] !== '' ? (int)$data['postalCode'] : null,
+            // Courier Service
+            'courier_service'    => !empty($data['courier_service']) ? trim($data['courier_service']) : null,
         ];
 
         // 3. Resolver Homologación de Código Postal

@@ -97,6 +97,7 @@ class LogisticaModel {
                         p.departmentName,
                         p.municipalitiesName,
                         p.postalCode,
+                        p.courier_service,
                         ep.nombre_estado AS estado,
                         m.codigo AS moneda,
                         pa.nombre AS nombre_pais,

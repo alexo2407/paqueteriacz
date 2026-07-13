@@ -850,6 +850,8 @@ class PedidoApiController
             // desde id_barrio si no viene explícito en el request.
             'Location'           => $this->resolverLocation($data),
             'betweenStreets'     => $data['betweenStreets']     ?? $data['entre_calles'] ?? null,
+            // Courier Service
+            'courier_service'    => !empty($data['courier_service']) ? trim($data['courier_service']) : null,
             // Flag de control de productos — se pasa al modelo para que respete la regla
             'requiere_productos' => isset($data['requiere_productos']) ? (int)$data['requiere_productos'] : 1,
         ];
@@ -960,6 +962,8 @@ class PedidoApiController
             // desde id_barrio si no viene explícito en el request.
             'Location'           => $this->resolverLocation($pedido),
             'betweenStreets'     => $pedido['betweenStreets']     ?? $pedido['entre_calles'] ?? null,
+            // Courier Service
+            'courier_service'    => !empty($pedido['courier_service']) ? trim($pedido['courier_service']) : null,
         ];
     }
 

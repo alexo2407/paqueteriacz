@@ -184,7 +184,7 @@ class LogisticaController {
             if (count($prods) > $maxProductos) $maxProductos = count($prods);
         }
 
-        // Encabezados fijos A–X
+        // Encabezados fijos A–Y
         $headersFixed = [
             'A1' => 'Núm. Orden',
             'B1' => 'Fecha Ingreso',
@@ -210,6 +210,7 @@ class LogisticaController {
             'V1' => 'Moneda',
             'W1' => 'Cliente',
             'X1' => 'Proveedor',
+            'Y1' => 'Courier Service',
         ];
 
         $boldStyle = [
@@ -227,9 +228,9 @@ class LogisticaController {
             $sheet->getStyle($cell)->applyFromArray($boldStyle);
         }
 
-        // Encabezados dinámicos de productos a partir de columna Y (índice 25)
-        // M–Q reservadas para campos opcionales de dirección especial
-        $colInicioProd = 25; // Y = 25 en PhpSpreadsheet (A=1)
+        // Encabezados dinámicos de productos a partir de columna Z (índice 26)
+        // Y reservada para Courier Service; M–Q para campos opcionales de dirección especial
+        $colInicioProd = 26; // Z = 26 en PhpSpreadsheet (A=1)
         for ($i = 0; $i < $maxProductos; $i++) {
             $num         = $i + 1;
             $colNombre   = $colInicioProd + ($i * 2);
@@ -431,6 +432,7 @@ class LogisticaController {
             $sheet->setCellValue("V{$fila}", $p['moneda']              ?? '');
             $sheet->setCellValue("W{$fila}", $p['nombre_cliente']      ?? '');
             $sheet->setCellValue("X{$fila}", $p['nombre_proveedor']    ?? '');
+            $sheet->setCellValue("Y{$fila}", $p['courier_service']     ?? '');
 
             // Pintar de amarillo las celdas con valores inferidos por fallback
             if ($deptoInferid) $sheet->getStyle("J{$fila}")->applyFromArray($styleInferido);

@@ -1,4 +1,4 @@
-﻿<?php 
+<?php 
 include("vista/includes/header.php"); 
 
  
@@ -441,6 +441,12 @@ if (!empty($fechaEntregaRaw)) {
                                     <div class="col-12">
                                         <dt>Entre Calles</dt>
                                         <dd><?= htmlspecialchars($pedido['betweenStreets']) ?></dd>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($pedido['courier_service'])): ?>
+                                    <div class="col-12">
+                                        <dt>Courier Service</dt>
+                                        <dd><?= htmlspecialchars($pedido['courier_service']) ?></dd>
                                     </div>
                                     <?php endif; ?>
                                     <?php endif; ?>

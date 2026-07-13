@@ -87,6 +87,13 @@ class CSVHelper
         'between_streets'         => 'betweenStreets',
         'entre_calles_(logispro)' => 'betweenStreets',
         'entre_calles_logispro'   => 'betweenStreets',
+
+        // ── Courier Service ─────────────────────────────────────────────────
+        'courier_service'         => 'courier_service',
+        'courier'                 => 'courier_service',
+        'servicio_courier'        => 'courier_service',
+        'servicio_mensajeria'     => 'courier_service',
+        'mensajeria'              => 'courier_service',
     ];
 
     /**

@@ -126,7 +126,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -309,6 +309,9 @@ class PedidosModel
                             case 'betweenStreets':
                                 // Fallback: 'entre_calles' es el nombre en la plantilla XLSX
                                 $params[':betweenStreets'] = $row['betweenStreets'] ?? $row['entre_calles'] ?? null;
+                                break;
+                            case 'courier_service':
+                                $params[':courier_service'] = $row['courier_service'] ?? null;
                                 break;
                         }
                     }
@@ -515,7 +518,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_proveedor', 'id_cliente', 'id_vendedor', 'fecha_entrega'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_proveedor', 'id_cliente', 'id_vendedor', 'fecha_entrega', 'courier_service'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -659,6 +662,9 @@ class PedidosModel
                     case 'betweenStreets':
                         $params[':betweenStreets'] = $data['betweenStreets'] ?? $data['entre_calles'] ?? null;
                         break;
+                    case 'courier_service':
+                        $params[':courier_service'] = $data['courier_service'] ?? null;
+                        break;
                     case 'fecha_entrega':
                         $val = $data['fecha_entrega'] ?? null;
                         if ($val === '' || $val === null) {
@@ -763,6 +769,7 @@ class PedidosModel
                         p.departmentName,
                         p.Location,
                         p.betweenStreets,
+                        p.courier_service,
                         ST_Y(p.coordenadas) AS latitud,
                         ST_X(p.coordenadas) AS longitud,
                         ep.nombre_estado AS nombre_estado
@@ -816,7 +823,8 @@ class PedidosModel
                 p.tasa_conversion_usd,
                 m.codigo AS Moneda,
                     p.id_proveedor,
-                    p.id_cliente
+                    p.id_cliente,
+                    p.courier_service
                 FROM pedidos p
                 LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
                 LEFT JOIN monedas m ON p.id_moneda = m.id
@@ -889,7 +897,8 @@ class PedidosModel
                     p.postalCode,
                     p.departmentName,
                     p.Location,
-                    p.betweenStreets
+                    p.betweenStreets,
+                    p.courier_service
                 FROM pedidos p
                 {$whereClause}
                 ORDER BY p.fecha_ingreso DESC
@@ -1202,6 +1211,10 @@ class PedidosModel
             if (isset($data['betweenStreets'])) {
                 $fields[] = 'betweenStreets = :betweenStreets';
                 $params[':betweenStreets'] = $data['betweenStreets'] !== '' ? $data['betweenStreets'] : null;
+            }
+            if (isset($data['courier_service'])) {
+                $fields[] = 'courier_service = :courier_service';
+                $params[':courier_service'] = $data['courier_service'] !== '' ? $data['courier_service'] : null;
             }
 
             // Execute UPDATE if there are fields to update
@@ -1617,7 +1630,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service'];
 
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1685,7 +1698,8 @@ class PedidosModel
                 'postalCode' => 'postalCode',
                 'departmentName' => 'departmentName',
                 'Location' => 'Location',
-                'betweenStreets' => 'betweenStreets'
+                'betweenStreets' => 'betweenStreets',
+                'courier_service' => 'courier_service'
             ];
 
             foreach ($map as $col => $key) {
@@ -3189,7 +3203,8 @@ class PedidosModel
                         uP.nombre AS proveedor,
                         uV.nombre AS vendedor,
                         p.id_proveedor,
-                        p.id_cliente
+                        p.id_cliente,
+                        p.courier_service
                     FROM pedidos p
                     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
                     LEFT JOIN monedas m ON p.id_moneda = m.id

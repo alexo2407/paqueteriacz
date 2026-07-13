@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 ob_start(); // Start buffering immediately to catch any spurious output/whitespace
 
 // El ID del pedido se pasa desde el controlador
@@ -423,6 +423,14 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                 <div class="mb-3">
                                     <label for="comentario" class="form-label">Comentarios / Notas Internas</label>
                                     <textarea class="form-control" id="comentario" name="comentario" maxlength="500" rows="4"><?= htmlspecialchars($pedido['comentario']) ?></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="courier_service" class="form-label">Courier Service</label>
+                                    <input type="text" class="form-control" id="courier_service" name="courier_service"
+                                           maxlength="100"
+                                           placeholder="Ej: DHL, FedEx, UPS, Correos..."
+                                           value="<?= htmlspecialchars($pedido['courier_service'] ?? '') ?>">
+                                    <small class="form-text text-muted">Servicio de mensajería para el envío (opcional)</small>
                                 </div>
                             </div>
                         </div>
