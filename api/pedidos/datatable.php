@@ -43,8 +43,9 @@ $search = trim($_REQUEST['search']['value'] ?? '');
 $columnasMapeadas = [
     0 => 'p.numero_orden',
     1 => 'p.destinatario',
-    2 => 'p.comentario',
-    3 => 'ep.nombre_estado',
+    2 => 'p.courier_service',
+    3 => 'p.comentario',
+    4 => 'ep.nombre_estado',
 ];
 $orderCol  = (int)($_REQUEST['order'][0]['column'] ?? 0);
 $orderDir  = strtoupper($_REQUEST['order'][0]['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
@@ -127,6 +128,7 @@ try {
             p.id            AS ID_Pedido,
             p.numero_orden  AS Numero_Orden,
             p.destinatario  AS Cliente,
+            p.courier_service,
             p.comentario    AS Comentario,
             ST_Y(p.coordenadas) AS latitud,
             ST_X(p.coordenadas) AS longitud,

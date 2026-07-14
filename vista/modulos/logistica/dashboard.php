@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 /**
  * Dashboard Logística (Cliente) - Redesign
@@ -575,6 +575,12 @@ include "vista/includes/header.php";
                                         <i class="bi bi-telephone me-1"></i> <?= htmlspecialchars($p['telefono']) ?>
                                     </div>
 
+                                    <?php if (!empty($p['courier_service'])): ?>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars($p['courier_service']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+
                                     <hr class="my-3 opacity-25">
 
                                     <div class="d-flex justify-content-between align-items-end">
@@ -830,6 +836,7 @@ include "vista/includes/header.php";
                         <tr>
                             <th>Orden</th>
                             <th>Destinatario</th>
+                            <th>Courier</th>
                             <th>Fecha</th>
                             <th>Total</th>
                             <th>Estado</th>
@@ -839,7 +846,7 @@ include "vista/includes/header.php";
                     <tbody>
                         <?php if (empty($historialCompleto)): ?>
                             <tr>
-                                <td colspan="6" class="text-center py-4">No se encontraron registros.</td>
+                                <td colspan="7" class="text-center py-4">No se encontraron registros.</td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($historialCompleto as $p):
@@ -857,6 +864,13 @@ include "vista/includes/header.php";
                                     <td>
                                         <div><?= htmlspecialchars($p['destinatario']) ?></div>
                                         <small class="text-muted"><?= htmlspecialchars($p['direccion']) ?></small>
+                                    </td>
+                                    <td>
+                                        <?php if (!empty($p['courier_service'])): ?>
+                                            <span class="badge bg-info text-dark"><?= htmlspecialchars($p['courier_service']) ?></span>
+                                        <?php else: ?>
+                                            <span class="text-muted small">—</span>
+                                        <?php endif; ?>
                                     </td>
                                     <td><?= date('d/m/Y', strtotime($p['fecha_ingreso'])) ?></td>
                                     <td><?= htmlspecialchars($p['moneda']) ?> <?= number_format($p['precio_total_local'], 2) ?></td>

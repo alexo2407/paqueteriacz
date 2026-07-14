@@ -167,6 +167,7 @@ $sqlPedidos = "
         p.direccion,
         p.zona,
         p.comentario,
+        p.courier_service,
         ep.nombre_estado  AS estado_actual,
         p.precio_total_local,
         m.nombre          AS moneda,
@@ -251,6 +252,7 @@ if ($export) {
             p.direccion,
             p.zona,
             p.comentario,
+            p.courier_service,
             ep.nombre_estado  AS estado_actual,
             p.precio_total_local,
             m.nombre          AS moneda,
@@ -281,7 +283,7 @@ if ($export && !empty($pedidosExport)) {
     // Cabeceras fijas
     $headersFixed = [
         'Núm. Orden', 'Fecha Ingreso', 'Destinatario', 'Teléfono',
-        'Dirección', 'Zona', 'Comentario', 'Estado Actual',
+        'Dirección', 'Zona', 'Comentario', 'Courier Service', 'Estado Actual',
         'Liquidación', 'Moneda', 'Fecha Creado',
     ];
 
@@ -351,6 +353,7 @@ if ($export && !empty($pedidosExport)) {
         $sheet->setCellValue($coord($c++, $excelRow), $ped['direccion']);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['zona']);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['comentario']);
+        $sheet->setCellValue($coord($c++, $excelRow), $ped['courier_service'] ?? '');
 
         // Estado actual con color
         $cellEstado = $coord($c, $excelRow);
@@ -663,6 +666,7 @@ if ($export && !empty($pedidosExport)) {
                             <th>Dirección</th>
                             <th>Zona</th>
                             <th>Comentario</th>
+                            <th>Courier Service</th>
                             <th>Estado Actual</th>
                             <th>Liquidación</th>
                             <th>Moneda</th>
@@ -674,7 +678,7 @@ if ($export && !empty($pedidosExport)) {
                         </tr>
                         <?php if ($maxTransiciones > 0): ?>
                         <tr>
-                            <th colspan="11"></th>
+                            <th colspan="12"></th>
                             <?php for ($n = 1; $n <= $maxTransiciones; $n++): ?>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Estado</th>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Fecha / Hora</th>
@@ -701,6 +705,13 @@ if ($export && !empty($pedidosExport)) {
                             <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;"
                                 title="<?= htmlspecialchars($ped['comentario'] ?? '') ?>">
                                 <?= htmlspecialchars($ped['comentario'] ?? '—') ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($ped['courier_service'])): ?>
+                                    <span class="badge" style="background:#0dcaf0;color:#000;"><?= htmlspecialchars($ped['courier_service']) ?></span>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
                             </td>
                             <td class="text-center">
                                 <span class="badge-estado"

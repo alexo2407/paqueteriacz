@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once "controlador/logistica.php";
 
 // Instanciar controlador
@@ -193,6 +193,16 @@ include("vista/includes/header.php");
                                 <?= htmlspecialchars($pedido['cliente_nombre'] ?? 'No asignado') ?>
                             </div>
                         </div>
+
+                        <?php if (!empty($pedido['courier_service'])): ?>
+                        <div class="col-md-6">
+                            <label class="small text-muted fw-bold text-uppercase">Courier Service</label>
+                            <div class="text-dark">
+                                <i class="bi bi-truck me-1"></i>
+                                <span class="badge bg-info text-dark fw-semibold"><?= htmlspecialchars($pedido['courier_service']) ?></span>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                         <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Fecha Creación</label>
                             <div><?= date('d/m/Y H:i', strtotime($pedido['fecha_ingreso'])) ?></div>
@@ -768,6 +778,7 @@ include("vista/includes/header.php");
                                             'destinatario'      => 'Destinatario',
                                             'telefono'          => 'Teléfono',
                                             'comentario'        => 'Comentario',
+                                            'courier_service'   => 'Courier Service',
                                             'fecha_entrega'     => 'Fecha de Entrega',
                                             'precio_local'      => 'Precio Local',
                                             'precio_usd'        => 'Precio USD',

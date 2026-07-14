@@ -33,6 +33,7 @@ if ($userId) {
                         <th>Número</th>
                         <th>Destinatario</th>
                         <th>Estado</th>
+                        <th>Courier</th>
                         <th>Dirección</th>
                         <th>Fecha</th>
                         <th>Acciones</th>
@@ -45,6 +46,13 @@ if ($userId) {
                             <td><?= htmlspecialchars($p['numero_orden']) ?></td>
                             <td><?= htmlspecialchars($p['destinatario']) ?></td>
                             <td><span class="badge bg-secondary"><?= htmlspecialchars($p['nombre_estado'] ?? 'N/D') ?></span></td>
+                            <td>
+                                <?php if (!empty($p['courier_service'])): ?>
+                                    <span class="badge bg-info text-dark"><?= htmlspecialchars($p['courier_service']) ?></span>
+                                <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                <?php endif; ?>
+                            </td>
                             <td><?= htmlspecialchars($p['direccion']) ?></td>
                             <td><?= htmlspecialchars($p['fecha_ingreso']) ?></td>
                             <td>

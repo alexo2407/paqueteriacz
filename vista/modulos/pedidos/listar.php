@@ -871,6 +871,7 @@ require_once __DIR__ . '/../../../utils/permissions.php';
                     <tr>
                         <th>Número de Orden</th>
                         <th>Cliente</th>
+                        <th>Courier</th>
                         <th>Comentario</th>
                         <th>Estado</th>
                         <th>Acciones</th>
@@ -989,9 +990,18 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 'Numero_Orden',  title: 'Nº Orden' },
-            { data: 'Cliente',       title: 'Destinatario' },
-            { data: 'Comentario',    title: 'Comentario', orderable: false },
+            { data: 'Numero_Orden',   title: 'Nº Orden' },
+            { data: 'Cliente',        title: 'Destinatario' },
+            {
+                data: 'courier_service',
+                title: 'Courier',
+                orderable: false,
+                render: function(data, type, row) {
+                    if (!data) return '<span class="text-muted">—</span>';
+                    return '<span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i>' + data + '</span>';
+                }
+            },
+            { data: 'Comentario',     title: 'Comentario', orderable: false },
             {
                 data: null,
                 title: 'Estado',
