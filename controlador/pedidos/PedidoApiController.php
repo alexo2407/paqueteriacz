@@ -423,11 +423,11 @@ class PedidoApiController
                 'messages' => ['date' => 'La fecha_entrega debe estar en formato YYYY-MM-DD, ej: "2026-03-15". Valor recibido: "%s".'],
             ],
             'precio_total_local' => [
-                'required' => true, 'numeric' => true, 'min_val' => 0.01,
+                'required' => true, 'numeric' => true, 'min_val' => 0,
                 'messages' => [
                     'required' => 'El precio_total_local es obligatorio. Indica el precio total en moneda local, ej: 673.',
                     'numeric'  => 'El precio_total_local debe ser un número. Valor recibido: "%s".',
-                    'min_val'  => 'El precio_total_local debe ser mayor a 0.',
+                    'min_val'  => 'El precio_total_local debe ser mayor o igual a 0.',
                 ],
             ],
             'es_combo' => [
