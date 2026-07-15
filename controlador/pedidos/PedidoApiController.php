@@ -423,11 +423,11 @@ class PedidoApiController
                 'messages' => ['date' => 'La fecha_entrega debe estar en formato YYYY-MM-DD, ej: "2026-03-15". Valor recibido: "%s".'],
             ],
             'precio_total_local' => [
-                'required' => true, 'numeric' => true, 'min_val' => 0,
+                'required' => true, 'numeric' => true,
+                // min_val se valida manualmente después del foreach según el flag 'cortesia'
                 'messages' => [
                     'required' => 'El precio_total_local es obligatorio. Indica el precio total en moneda local, ej: 673.',
                     'numeric'  => 'El precio_total_local debe ser un número. Valor recibido: "%s".',
-                    'min_val'  => 'El precio_total_local debe ser mayor o igual a 0.',
                 ],
             ],
             'es_combo' => [
@@ -435,6 +435,12 @@ class PedidoApiController
                 'messages' => [
                     'required' => 'El campo es_combo es obligatorio. Envía 1 si es combo de productos, 0 si es producto simple.',
                     'in'       => 'El campo es_combo solo acepta 0 (producto simple) o 1 (combo). Valor recibido: "%s".',
+                ],
+            ],
+            'cortesia' => [
+                'required' => false, 'in' => [0, 1],
+                'messages' => [
+                    'in' => 'El campo cortesia solo acepta 0 (pedido normal) o 1 (pedido de cortesía sin costo). Valor recibido: "%s".',
                 ],
             ],
             'requiere_productos' => [
@@ -488,6 +494,17 @@ class PedidoApiController
                 if (!$d || $d->format('Y-m-d') !== (string)$val) {
                     $errores[$field] = isset($msgs['date']) ? sprintf($msgs['date'], $val) : "El campo '$field' debe estar en formato YYYY-MM-DD.";
                 }
+            }
+        }
+
+        // 1b. Validar precio_total_local según flag cortesia
+        // cortesia=1 → se permite precio 0 (pedido gratuito/muestra)
+        // cortesia=0 o no enviado → precio debe ser > 0
+        if (!isset($errores['precio_total_local'])) {
+            $esCortesia = isset($data['cortesia']) && (int)$data['cortesia'] === 1;
+            $precioVal  = (float)($data['precio_total_local'] ?? 0);
+            if (!$esCortesia && $precioVal <= 0) {
+                $errores['precio_total_local'] = 'El precio_total_local debe ser mayor a 0. Si el pedido es de cortesía (sin costo), envía "cortesia": 1.';
             }
         }
 
