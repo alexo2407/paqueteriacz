@@ -124,7 +124,7 @@ $old_edit = $_SESSION['old_pedido_edit_' . $id_pedido] ?? null;
 if (isset($_SESSION['old_pedido_edit_' . $id_pedido])) unset($_SESSION['old_pedido_edit_' . $id_pedido]);
 if ($old_edit) {
     // override scalar values present in old edit
-    $fieldsToCopy = ['numero_orden','destinatario','telefono','direccion','codigo_postal','comentario','latitud','longitud','precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','proveedor','moneda','vendedor','estado'];
+    $fieldsToCopy = ['numero_orden','destinatario','telefono','direccion','codigo_postal','code_city','comentario','latitud','longitud','precio_local','precio_usd','precio_total_local','precio_total_usd','tasa_conversion_usd','id_pais','id_departamento','id_municipio','id_barrio','proveedor','moneda','vendedor','estado'];
     foreach ($fieldsToCopy as $f) {
         if (isset($old_edit[$f])) $pedido[$f] = $old_edit[$f];
     }
@@ -444,6 +444,12 @@ $selectDisabledClient = $esCliente ? 'disabled' : ''; // Selects disabled are no
                                     <div class="col-md-6 mb-3">
                                         <label for="codigo_postal" class="form-label">Código Postal 📮</label>
                                         <input type="text" class="form-control" id="codigo_postal" name="codigo_postal" placeholder="Ej: 10101" value="<?= htmlspecialchars($pedido['codigo_postal'] ?? '') ?>">
+                                    </div>
+
+                                    <!-- Code City Field (HLExpress city_dane_code) -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="code_city" class="form-label">Código Ciudad <span class="badge bg-info text-dark" title="Usado por HLExpress como city_dane_code">HLExpress</span></label>
+                                        <input type="text" class="form-control" id="code_city" name="code_city" placeholder="Ej: 100075918" value="<?= htmlspecialchars($pedido['code_city'] ?? '') ?>">
                                     </div>
                                 </div>
                             </div>

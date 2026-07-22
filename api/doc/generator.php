@@ -875,13 +875,14 @@ function buildCrear(c) {
       ['<code>courier_service</code>', 'string', 'Nombre del servicio de mensajería / courier (ej: DHL, FedEx, UPS). Máx 100 chars.'],
       ['<code>zona</code>',            'string', 'Zona de entrega'],
       ['<code>codigo_postal</code>',   'string', 'Código postal del destinatario'],
+      ['<code>code_city</code>',       'string', 'Código de ciudad para HLExpress (se envía como <strong>city_dane_code</strong>). Tiene prioridad sobre codigo_postal al despachar a HLExpress. Ej: 100075918'],
       ['<code>id_pais</code>',         'entero', 'ID del país de destino'],
       ['<code>id_departamento</code>', 'entero', 'ID del departamento/estado'],
       ['<code>id_municipio</code>',    'entero', 'ID del municipio/ciudad'],
     ])}
     <p class="print-label">Ejemplo JSON de Petición</p>
     <div class="print-tip">⚠️ Nota: JSON no permite comentarios (//) ni comas extra. Usar el formato exacto.</div>
-    ${codeBlock(`{\n  "numero_orden": ${ex.numero_orden},\n  "destinatario": "${ex.destinatario}",\n  "id_cliente": ${ex.id_cliente},\n  "id_pais": ${ex.id_pais},\n  "telefono": "${ex.telefono}",\n  "direccion": "${ex.direccion}",\n  "comentario": "Dejar con el guardia si no hay nadie.",\n  "courier_service": "DHL",\n  "id_proveedor": ${ex.id_proveedor},\n  "id_moneda": ${ex.id_moneda},\n  "precio_total_local": ${ex.precio},\n  "es_combo": ${ex.es_combo},\n  "fecha_entrega": "${ex.fecha_entrega}",\n  "productos": [\n    { "producto_id": 49, "cantidad": 3 },\n    { "producto_id": 50, "cantidad": 2 }\n  ]\n}`)}
+    ${codeBlock(`{\n  "numero_orden": ${ex.numero_orden},\n  "destinatario": "${ex.destinatario}",\n  "id_cliente": ${ex.id_cliente},\n  "id_pais": ${ex.id_pais},\n  "telefono": "${ex.telefono}",\n  "direccion": "${ex.direccion}",\n  "comentario": "Dejar con el guardia si no hay nadie.",\n  "courier_service": "DHL",\n  "code_city": "100075918",\n  "id_proveedor": ${ex.id_proveedor},\n  "id_moneda": ${ex.id_moneda},\n  "precio_total_local": ${ex.precio},\n  "es_combo": ${ex.es_combo},\n  "fecha_entrega": "${ex.fecha_entrega}",\n  "productos": [\n    { "producto_id": 49, "cantidad": 3 },\n    { "producto_id": 50, "cantidad": 2 }\n  ]\n}`)}
     <p class="print-label">Respuesta <strong>200 OK</strong></p>
     ${codeBlock(`{\n  "success": true,\n  "message": "Pedido creado exitosamente",\n  "data": {\n    "pedido_id": 1245,\n    "numero_orden": ${ex.numero_orden}\n  }\n}`)}
     <p class="print-label">Errores Comunes</p>

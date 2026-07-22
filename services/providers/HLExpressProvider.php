@@ -106,7 +106,9 @@ class HLExpressProvider extends BaseProvider
         $destination = [
             'address'        => $destDir,
             'address_line'   => $pedido['comentario'] ?? '',
-            'city_dane_code' => !empty($pedido['postalCode']) ? $pedido['postalCode'] : ($pedido['codigo_postal'] ?? '100075918'),
+            // code_city = código de ciudad específico para HLExpress (campo de la tabla pedidos).
+            // Prioridad: code_city → postalCode → codigo_postal → default Panamá Centro.
+            'city_dane_code' => !empty($pedido['code_city']) ? $pedido['code_city'] : (!empty($pedido['postalCode']) ? $pedido['postalCode'] : ($pedido['codigo_postal'] ?? '100075918')),
             'full_name'      => $destNombre,
             'phone_number'   => $destTel,
             'lat'            => $lat,

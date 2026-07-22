@@ -126,7 +126,7 @@ class PedidosModel
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Lista de columnas candidatas que algunas bases pueden no tener
             // Note: DB schema uses foreign keys id_pais and id_departamento now
-            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service', 'code_city'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -312,6 +312,10 @@ class PedidosModel
                                 break;
                             case 'courier_service':
                                 $params[':courier_service'] = $row['courier_service'] ?? null;
+                                break;
+                            case 'code_city':
+                                // Código de ciudad para HLExpress (city_dane_code).
+                                $params[':code_city'] = $row['code_city'] ?? null;
                                 break;
                         }
                     }
@@ -518,7 +522,7 @@ class PedidosModel
             // Construir INSERT dinámico según columnas disponibles para compatibilidad
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
             // Use id_pais / id_departamento (FKs) in schema-aware inserts
-            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_proveedor', 'id_cliente', 'id_vendedor', 'fecha_entrega', 'courier_service'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_proveedor', 'id_cliente', 'id_vendedor', 'fecha_entrega', 'courier_service', 'code_city'];
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
                     $columns[] = $c;
@@ -664,6 +668,10 @@ class PedidosModel
                         break;
                     case 'courier_service':
                         $params[':courier_service'] = $data['courier_service'] ?? null;
+                        break;
+                    case 'code_city':
+                        // Código de ciudad para HLExpress (city_dane_code).
+                        $params[':code_city'] = $data['code_city'] ?? null;
                         break;
                     case 'fecha_entrega':
                         $val = $data['fecha_entrega'] ?? null;
@@ -1216,6 +1224,11 @@ class PedidosModel
                 $fields[] = 'courier_service = :courier_service';
                 $params[':courier_service'] = $data['courier_service'] !== '' ? $data['courier_service'] : null;
             }
+            if (isset($data['code_city'])) {
+                $fields[] = 'code_city = :code_city';
+                // Código de ciudad para HLExpress (city_dane_code).
+                $params[':code_city'] = $data['code_city'] !== '' ? $data['code_city'] : null;
+            }
 
             // Execute UPDATE if there are fields to update
             if (!empty($fields)) {
@@ -1630,7 +1643,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service', 'code_city'];
 
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {
@@ -1699,7 +1712,8 @@ class PedidosModel
                 'departmentName' => 'departmentName',
                 'Location' => 'Location',
                 'betweenStreets' => 'betweenStreets',
-                'courier_service' => 'courier_service'
+                'courier_service' => 'courier_service',
+                'code_city' => 'code_city',     // Código de ciudad para HLExpress (city_dane_code)
             ];
 
             foreach ($map as $col => $key) {

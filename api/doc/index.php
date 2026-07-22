@@ -988,6 +988,11 @@
                             <tr><td><code>id_municipio</code> or <code>municipio</code></td><td>integer</td><td>City/Municipality ID. Optional if <code>codigo_postal</code> is recognized.</td></tr>
                             <tr><td><code>id_barrio</code> or <code>barrio</code></td><td>integer</td><td>Neighborhood/District ID. Optional, auto-filled from CP if available.</td></tr>
                             <tr><td><code>zona</code></td><td>string</td><td>Zone name. Optional.</td></tr>
+                            <tr class="table-info">
+                                <td><code>code_city</code> <span class="badge bg-info text-dark">HLExpress</span></td>
+                                <td>string</td>
+                                <td>City code sent as <code>city_dane_code</code> to HLExpress. Takes priority over <code>codigo_postal</code> when dispatching to HLExpress. Example: <code>100075918</code></td>
+                            </tr>
                         </tbody>
                     </table>
                     
@@ -1000,6 +1005,11 @@
                             <tr><td><code>id_municipio</code> o <code>municipio</code></td><td>entero</td><td>ID del municipio. Opcional si el <code>codigo_postal</code> es reconocido.</td></tr>
                             <tr><td><code>id_barrio</code> o <code>barrio</code></td><td>entero</td><td>ID del barrio. Opcional, se auto-rellena desde CP si está disponible.</td></tr>
                             <tr><td><code>zona</code></td><td>string</td><td>Nombre de la zona. Opcional.</td></tr>
+                            <tr class="table-info">
+                                <td><code>code_city</code> <span class="badge bg-info text-dark">HLExpress</span></td>
+                                <td>string</td>
+                                <td>Código de ciudad enviado como <code>city_dane_code</code> a HLExpress. Tiene prioridad sobre <code>codigo_postal</code> al despachar a HLExpress. Ej: <code>100075918</code></td>
+                            </tr>
                         </tbody>
                     </table>
 
@@ -1151,6 +1161,28 @@
         { "producto_id": 49, "cantidad": 10 }
     ]
     // id_pais, id_departamento, id_municipio se auto-rellenan desde el CP
+}</code></pre>
+
+                    <h4 data-lang="en">🚚 Example: Order with HLExpress city code</h4>
+                    <h4 data-lang="es">🚚 Ejemplo: Pedido con código de ciudad HLExpress</h4>
+                    <div class="alert alert-info" data-lang="en"><i class="bi bi-info-circle-fill me-2"></i><strong>HLExpress:</strong> When this order is dispatched to HLExpress, the <code>code_city</code> value is sent as <code>city_dane_code</code>. It takes priority over <code>codigo_postal</code> for this field.</div>
+                    <div class="alert alert-info" data-lang="es"><i class="bi bi-info-circle-fill me-2"></i><strong>HLExpress:</strong> Al despachar este pedido a HLExpress, el valor de <code>code_city</code> se envía como <code>city_dane_code</code>. Tiene prioridad sobre <code>codigo_postal</code> para ese campo.</div>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 697896,
+    "destinatario": "Carlos Mendoza",
+    "id_cliente": 9,
+    "telefono": "(502) 5555-1234",
+    "direccion": "6 Avenida 12-34 Zona 3",
+    "comentario": "Dejar con el guardia si no hay nadie.",
+    "id_proveedor": 12,
+    "codigo_postal": "46400",
+    "code_city": "100075918",
+    "fecha_entrega": "2026-03-15",
+    "precio_total_local": 250.75,
+    "es_combo": 1,
+    "productos": [
+        { "producto_id": 49, "cantidad": 10 }
+    ]
 }</code></pre>
 
                     <h4 data-lang="en">📝 Example: Special Order (no postal code, custom address fields)</h4>

@@ -418,6 +418,7 @@ class PedidoApiController
             'zona'            => ['required' => false, 'max_len' => 100,
                 'messages' => ['max_len' => 'La zona no debe exceder 100 caracteres.']],
             'codigo_postal'   => ['required' => false],
+            'code_city'       => ['required' => false],   // Código de ciudad para HLExpress (city_dane_code)
             'fecha_entrega'   => [
                 'required' => false, 'date' => true,
                 'messages' => ['date' => 'La fecha_entrega debe estar en formato YYYY-MM-DD, ej: "2026-03-15". Valor recibido: "%s".'],
@@ -869,6 +870,8 @@ class PedidoApiController
             'betweenStreets'     => $data['betweenStreets']     ?? $data['entre_calles'] ?? null,
             // Courier Service
             'courier_service'    => !empty($data['courier_service']) ? trim($data['courier_service']) : null,
+            // Código de ciudad para HLExpress (city_dane_code). Se usa como prioridad en HLExpressProvider.
+            'code_city'          => !empty($data['code_city']) ? trim($data['code_city']) : null,
             // Flag de control de productos — se pasa al modelo para que respete la regla
             'requiere_productos' => isset($data['requiere_productos']) ? (int)$data['requiere_productos'] : 1,
         ];
@@ -981,6 +984,8 @@ class PedidoApiController
             'betweenStreets'     => $pedido['betweenStreets']     ?? $pedido['entre_calles'] ?? null,
             // Courier Service
             'courier_service'    => !empty($pedido['courier_service']) ? trim($pedido['courier_service']) : null,
+            // Código de ciudad para HLExpress (city_dane_code). Se usa como prioridad en HLExpressProvider.
+            'code_city'          => !empty($pedido['code_city']) ? trim($pedido['code_city']) : null,
         ];
     }
 

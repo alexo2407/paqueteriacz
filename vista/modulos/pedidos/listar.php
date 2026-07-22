@@ -228,6 +228,12 @@ endif;
                                         <td>Ej: <code>GT3155</code></td>
                                     </tr>
                                     <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">H2</td>
+                                        <td><code>code_city</code> <span class="badge bg-warning text-dark">OPT</span> <span class="badge bg-info text-dark">HLExpress</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Código de ciudad para HLExpress (<code>city_dane_code</code>). Tiene prioridad sobre <code>codigo_postal</code> al enviar a HLExpress. Ej: <code>100075918</code></td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
                                         <td class="text-muted text-center fw-bold">I</td>
                                         <td><code>pais</code> <span class="badge bg-warning text-dark">OPT</span></td>
                                         <td class="text-muted">texto</td>

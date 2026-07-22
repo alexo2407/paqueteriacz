@@ -407,6 +407,12 @@ if (!empty($fechaEntregaRaw)) {
                                         <dd><?= htmlspecialchars($pedido['codigo_postal']) ?></dd>
                                     </div>
                                     <?php endif; ?>
+                                    <?php if (!empty($pedido['code_city'])): ?>
+                                    <div class="col-12">
+                                        <dt>Código Ciudad <span class="badge bg-info text-dark" style="font-size:0.7em;" title="Usado por HLExpress como city_dane_code">HLExpress</span></dt>
+                                        <dd><?= htmlspecialchars($pedido['code_city']) ?></dd>
+                                    </div>
+                                    <?php endif; ?>
                                     <div class="col-12">
                                         <dt>Dirección Completa</dt>
                                         <dd class="p-2 bg-white rounded border border-light"><?= htmlspecialchars($pedido['direccion'] ?? '—') ?></dd>
