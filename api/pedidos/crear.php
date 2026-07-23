@@ -89,12 +89,11 @@ try {
     $extra = isset($response['fields']) ? ['fields' => $response['fields']] : [];
     responder($response['success'], $response['message'], $response['data'] ?? null, $httpCode, $extra);
 } catch (Throwable $e) {
+    error_log('[api/pedidos/crear] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error interno: ' . $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
+        'message' => 'Error interno del servidor.'
     ]);
 }
 

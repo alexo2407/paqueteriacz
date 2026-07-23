@@ -33,6 +33,7 @@ try {
 
 } catch (Throwable $e) {
     ob_end_clean();
+    error_log('[api/dashboard/efectividad-temporal] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
-    echo json_encode(['error' => $e->getMessage(), 'file' => basename($e->getFile()), 'line' => $e->getLine()]);
+    echo json_encode(['error' => 'Error interno del servidor.']);
 }
