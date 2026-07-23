@@ -40,6 +40,7 @@ class PayloadBuilderService
             ['key' => 'nit',                  'label' => 'NIT del Destinatario'],
             ['key' => 'lat',                  'label' => 'Latitud'],
             ['key' => 'lng',                  'label' => 'Longitud'],
+            ['key' => 'code_city',            'label' => 'Código de Ciudad (City DANE Code)'],
             // Productos (arreglo — usar prefijo productos[])
             ['key' => 'productos[].producto_nombre',     'label' => 'Productos → Nombre'],
             ['key' => 'productos[].sku',                 'label' => 'Productos → SKU'],
