@@ -315,7 +315,8 @@ class PedidosModel
                                 break;
                             case 'code_city':
                                 // Código de ciudad para HLExpress (city_dane_code).
-                                $params[':code_city'] = $row['code_city'] ?? null;
+                                // Fallback '' para evitar NOT NULL en producción.
+                                $params[':code_city'] = $row['code_city'] ?? '';
                                 break;
                         }
                     }
@@ -671,7 +672,8 @@ class PedidosModel
                         break;
                     case 'code_city':
                         // Código de ciudad para HLExpress (city_dane_code).
-                        $params[':code_city'] = $data['code_city'] ?? null;
+                        // Fallback '' para evitar NOT NULL en producción.
+                        $params[':code_city'] = $data['code_city'] ?? '';
                         break;
                     case 'fecha_entrega':
                         $val = $data['fecha_entrega'] ?? null;
@@ -1227,7 +1229,8 @@ class PedidosModel
             if (isset($data['code_city'])) {
                 $fields[] = 'code_city = :code_city';
                 // Código de ciudad para HLExpress (city_dane_code).
-                $params[':code_city'] = $data['code_city'] !== '' ? $data['code_city'] : null;
+                // Fallback '' para evitar NOT NULL en producción.
+                $params[':code_city'] = ($data['code_city'] !== '' && $data['code_city'] !== null) ? $data['code_city'] : '';
             }
 
             // Execute UPDATE if there are fields to update
@@ -1726,6 +1729,11 @@ class PedidosModel
                         } else {
                             $val = null;
                         }
+                    }
+                    // code_city es opcional pero en producción puede estar como NOT NULL;
+                    // se usa '' como fallback seguro cuando no se envía en el payload.
+                    if ($col === 'code_city' && $val === null) {
+                        $val = '';
                     }
                     $stmt->bindValue(':' . $col, $val);
                 }

@@ -871,7 +871,7 @@ class PedidoApiController
             // Courier Service
             'courier_service'    => !empty($data['courier_service']) ? trim($data['courier_service']) : null,
             // Código de ciudad para HLExpress (city_dane_code). Se usa como prioridad en HLExpressProvider.
-            'code_city'          => !empty($data['code_city']) ? trim($data['code_city']) : null,
+            'code_city'          => !empty($data['code_city']) ? trim($data['code_city']) : '',
             // Flag de control de productos — se pasa al modelo para que respete la regla
             'requiere_productos' => isset($data['requiere_productos']) ? (int)$data['requiere_productos'] : 1,
         ];
@@ -985,7 +985,7 @@ class PedidoApiController
             // Courier Service
             'courier_service'    => !empty($pedido['courier_service']) ? trim($pedido['courier_service']) : null,
             // Código de ciudad para HLExpress (city_dane_code). Se usa como prioridad en HLExpressProvider.
-            'code_city'          => !empty($pedido['code_city']) ? trim($pedido['code_city']) : null,
+            'code_city'          => !empty($pedido['code_city']) ? trim($pedido['code_city']) : '',
         ];
     }
 
