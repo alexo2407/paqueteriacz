@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.5/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         stopOnFailure="false"
+         failOnWarning="false"
+         failOnRisky="false">
+
+    <testsuites>
+        <testsuite name="regression">
+            <directory>tests/Regression</directory>
+        </testsuite>
+        <testsuite name="logistica-operativa">
+            <directory>tests/LogisticaOperativa</directory>
+        </testsuite>
+    </testsuites>
+
+    <php>
+        <!-- Entorno de pruebas: nunca conectar a BD productiva -->
+        <env name="APP_ENV" value="testing"/>
+        <!-- Feature flags de Logística Operativa: todos desactivados en pruebas -->
+        <const name="LOGISTICA_OPERATIVA_ENABLED"           value="false"/>
+        <const name="LOGISTICA_OPERATIVA_SHADOW_MODE"        value="true"/>
+        <const name="LOGISTICA_OPERATIVA_UPDATE_STATES"      value="false"/>
+        <const name="LOGISTICA_OPERATIVA_INVENTORY_ENABLED"  value="false"/>
+        <const name="LOGISTICA_OPERATIVA_ROUTES_ENABLED"     value="false"/>
+        <const name="LOGISTICA_OPERATIVA_SETTLEMENT_ENABLED" value="false"/>
+    </php>
+
+    <source>
+        <include>
+            <directory>services</directory>
+            <directory>modelo</directory>
+            <directory>controlador</directory>
+        </include>
+        <exclude>
+            <directory>vendor</directory>
+            <directory>tests</directory>
+            <directory>vista</directory>
+        </exclude>
+    </source>
+
+</phpunit>

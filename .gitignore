@@ -20,7 +20,9 @@ logs/*.heartbeat
 # =====================================================
 # Archivos de Prueba y Testing
 # =====================================================
-tests/
+# NOTA: tests/ fue removido del gitignore en feature/logistica-operativa-sdd
+# para permitir versionar las pruebas de regresión (SDD Fase 0).
+# tests/bootstrap.php y tests/**/*.php sí se versionan.
 test_*.php
 *_test.php
 reproduce_*.php

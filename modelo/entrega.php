@@ -2,6 +2,8 @@
 require_once 'conexion.php';
 
 class EntregaModel {
+
+    public const ESTADO_ENTREGADO_EXITOSO = 3; // estados_entrega: 1=Asignado, 3=Entregado con éxito
     
     /**
      * Asignar una entrega a un repartidor.
@@ -48,8 +50,8 @@ class EntregaModel {
             $existing = $stmtCheck->fetch(PDO::FETCH_ASSOC);
             
             if ($existing) {
-                $stmt = $db->prepare("UPDATE entregas SET fecha_entrega = NOW(), id_estado_entrega = 1 WHERE id = :id"); // Asumimos 1 = Entregado en estado_entrega? O simplemente llenamos la fecha.
-                $stmt->execute([':id' => $existing['id']]);
+                $stmt = $db->prepare("UPDATE entregas SET fecha_entrega = NOW(), id_estado_entrega = :id_estado_entrega WHERE id = :id");
+                $stmt->execute([':id_estado_entrega' => self::ESTADO_ENTREGADO_EXITOSO, ':id' => $existing['id']]);
             } else {
                 // Fallback: intentar obtener el repartidor del pedido para crear el registro
                 $stmtPed = $db->prepare("SELECT id_vendedor FROM pedidos WHERE id = :id");
@@ -57,8 +59,8 @@ class EntregaModel {
                 $ped = $stmtPed->fetch(PDO::FETCH_ASSOC);
                 
                 if ($ped && $ped['id_vendedor']) {
-                    $stmt = $db->prepare("INSERT INTO entregas (id_pedido, id_repartidor, fecha_entrega, id_estado_entrega) VALUES (:id_pedido, :id_repartidor, NOW(), 1)");
-                    $stmt->execute([':id_pedido' => $idPedido, ':id_repartidor' => $ped['id_vendedor']]);
+                    $stmt = $db->prepare("INSERT INTO entregas (id_pedido, id_repartidor, fecha_entrega, id_estado_entrega) VALUES (:id_pedido, :id_repartidor, NOW(), :id_estado_entrega)");
+                    $stmt->execute([':id_pedido' => $idPedido, ':id_repartidor' => $ped['id_vendedor'], ':id_estado_entrega' => self::ESTADO_ENTREGADO_EXITOSO]);
                 }
             }
             return true;

@@ -4,5 +4,18 @@
         "phpmailer/phpmailer": "^7.0",
         "phpoffice/phpspreadsheet": "^2.3",
         "minishlink/web-push": "^9.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "10.5"
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:regression": "phpunit --testsuite regression",
+        "test:logistica": "phpunit --testsuite logistica-operativa"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
     }
 }

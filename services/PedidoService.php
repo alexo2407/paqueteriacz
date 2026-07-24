@@ -27,7 +27,7 @@
         const ESTADO_EN_BODEGA       = 1;
         const ESTADO_EN_RUTA         = 2;
         const ESTADO_ENTREGADO       = 3;
-        const ESTADO_CANCELADO       = 5;
+        const ESTADO_CANCELADO       = 17; // Corregido Fase 0.1: 5=Domicilio cerrado, 17=Cancelado
         const ESTADO_DEVUELTO        = 7;
         const ESTADO_RECHAZADO       = 9;
         const ESTADO_DEVUELTO_BODEGA = 15; // Llegada física a bodega → suma stock

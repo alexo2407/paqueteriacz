@@ -1,0 +1,10 @@
+# Logística Operativa — Tests
+
+Este directorio contendrá las pruebas específicas del módulo Logística Operativa.
+
+Se crearán a partir de la Fase 2, cuando se autorice la implementación.
+
+Estructura futura:
+- `ColectaServiceTest.php`
+- `EscaneoIdempotenciaTest.php`
+- `ConciliacionTest.php`
