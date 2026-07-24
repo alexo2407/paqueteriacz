@@ -19,6 +19,11 @@
     <php>
         <!-- Entorno de pruebas: nunca conectar a BD productiva -->
         <env name="APP_ENV" value="testing"/>
+        <!-- Base de datos exclusiva para pruebas de integración -->
+        <const name="DB_HOST"     value="localhost"/>
+        <const name="DB_SCHEMA"   value="paquetes_apppack_test"/>
+        <const name="DB_USER"     value="root"/>
+        <const name="DB_PASSWORD" value=""/>
         <!-- Feature flags de Logística Operativa: todos desactivados en pruebas -->
         <const name="LOGISTICA_OPERATIVA_ENABLED"           value="false"/>
         <const name="LOGISTICA_OPERATIVA_SHADOW_MODE"        value="true"/>

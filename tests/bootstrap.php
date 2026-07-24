@@ -13,15 +13,13 @@
  * 6. NO procesa rutas.
  * 7. NO ejecuta migraciones.
  * 8. NO se conecta automáticamente a la base de datos.
- * 9. Registra DB_SCHEMA para que pruebas puedan validarlo antes de conectar.
- * 10. Expone una función de seguridad: assertTestDatabase().
- * 11. Rechaza nombres: paqueteriacz, paquetes_apppack, production, prod.
- * 12. Permite pruebas unitarias que no necesiten conexión (sin lanzar excepción).
- *
- * IMPORTANTE: Este bootstrap NO bloquea la ejecución por la BD productiva
- * porque las pruebas de regresión de Fase 0 son 100% unitarias (sin conexión).
- * La protección se activa cuando una prueba intenta conectarse vía
- * assertTestDatabase() o cuando DB_SCHEMA_TEST no está definida y se necesita BD.
+ * 9. phpunit.xml inyecta DB_SCHEMA=paquetes_apppack_test como constante ANTES
+ *    de que este bootstrap cargue config/config.php. Así config.php no puede
+ *    sobreescribir la constante (define() ignora redefiniciones con @include_once).
+ * 10. Expone assertTestDatabase() para pruebas de integración.
+ * 11. Rechaza: paqueteriacz, paquetes_apppack, production, prod, cadena vacía.
+ * 12. Acepta cualquier base cuyo nombre termine en '_test'.
+ * 13. Permite pruebas unitarias sin conexión (sin lanzar excepción).
  */
 
 declare(strict_types=1);
@@ -46,9 +44,10 @@ require_once $autoload;
 
 // ── 4. Cargar config.php de forma segura (sin conectar a BD) ─────────────
 //
-// config.php define constantes como DB_SCHEMA, DB_HOST, etc.
-// Solo lo incluimos para que estén disponibles si algún test lo necesita.
-// NO abrimos conexión aquí.
+// phpunit.xml ya definió DB_SCHEMA='paquetes_apppack_test' como constante PHP
+// antes de llegar aquí. Los define() de config.php para DB_* serán ignorados
+// silenciosamente (@include_once suprime el E_NOTICE de redefinición).
+// NO se abre ninguna conexión a la base de datos aquí.
 //
 $configFile = __DIR__ . '/../config/config.php';
 if (file_exists($configFile)) {
@@ -58,11 +57,6 @@ if (file_exists($configFile)) {
 }
 
 // ── 5. Constantes de base de datos prohibidas ─────────────────────────────
-//
-// Lista negra de bases de datos que nunca deben usarse en pruebas.
-// Cualquier test que llame a assertTestDatabase() será bloqueado
-// si DB_SCHEMA coincide con alguno de estos valores.
-//
 define('DB_SCHEMAS_PROHIBIDOS', [
     'paqueteriacz',
     'paquetes_apppack',
@@ -73,17 +67,16 @@ define('DB_SCHEMAS_PROHIBIDOS', [
 /**
  * Protección de seguridad para pruebas que SÍ necesitan base de datos.
  *
- * Llama a esta función al inicio de cualquier prueba que vaya a abrir
- * una conexión PDO. Lanzará una excepción si la base configurada es
- * una base de datos productiva o no termina en '_test'.
+ * Llama a esta función en setUp() de cualquier test que abra una conexión PDO.
+ * Lanza RuntimeException si la base configurada es productiva o no termina en '_test'.
  *
- * Las pruebas unitarias (como PedidoServiceStateTest) NO deben llamar
- * a esta función porque no necesitan base de datos.
+ * Condiciones de rechazo:
+ * - DB_SCHEMA vacía o no definida.
+ * - DB_SCHEMA coincide con la lista negra (paquetes_apppack, production, prod, …).
+ * - DB_SCHEMA no termina en '_test'.
  *
- * Ejemplo de uso en un TestCase:
- *   protected function setUp(): void {
- *       assertTestDatabase();
- *   }
+ * Las pruebas unitarias (PedidoServiceStateTest, LogisticaOperativaFlagsTest)
+ * NO deben llamar a esta función porque no necesitan base de datos.
  *
  * @throws RuntimeException si la base no es segura para pruebas
  */
@@ -91,34 +84,31 @@ function assertTestDatabase(): void
 {
     $dbSchema = defined('DB_SCHEMA') ? DB_SCHEMA : '';
 
+    if ($dbSchema === '') {
+        throw new RuntimeException(
+            'SEGURIDAD: DB_SCHEMA no está definida. ' .
+            'Configura phpunit.xml con <const name="DB_SCHEMA" value="paquetes_apppack_test"/>.'
+        );
+    }
+
     foreach (DB_SCHEMAS_PROHIBIDOS as $prohibido) {
         if (strtolower($dbSchema) === strtolower($prohibido)) {
             throw new RuntimeException(
-                "Las pruebas fueron detenidas porque la base configurada " .
-                "({$dbSchema}) no parece ser una base de pruebas. " .
-                "La base de datos de pruebas debe terminar en '_test'. " .
-                "Configura DB_SCHEMA con un nombre como 'paquetes_apppack_test'."
+                "SEGURIDAD: la base '{$dbSchema}' está en la lista negra y no puede " .
+                'usarse en pruebas. Configura DB_SCHEMA=paquetes_apppack_test en phpunit.xml.'
             );
         }
     }
 
-    if ($dbSchema !== '' && !str_ends_with(strtolower($dbSchema), '_test')) {
+    if (!str_ends_with(strtolower($dbSchema), '_test')) {
         throw new RuntimeException(
-            "Las pruebas fueron detenidas porque la base configurada " .
-            "({$dbSchema}) no parece ser una base de pruebas. " .
-            "El nombre de la base de datos debe terminar en '_test' " .
-            "para poder ejecutar pruebas de integración de forma segura."
-        );
-    }
-
-    if ($dbSchema === '') {
-        throw new RuntimeException(
-            "Las pruebas fueron detenidas porque DB_SCHEMA no está definida. " .
-            "Configura una base de datos de pruebas terminada en '_test'."
+            "SEGURIDAD: la base '{$dbSchema}' no termina en '_test'. " .
+            'Las pruebas de integración solo pueden usar bases con sufijo _test. ' .
+            'Configura DB_SCHEMA=paquetes_apppack_test en phpunit.xml.'
         );
     }
 }
 
 // ── 6. Bootstrap completado ───────────────────────────────────────────────
-// Las pruebas unitarias (sin BD) pueden ejecutarse normalmente.
-// Las pruebas de integración deben llamar a assertTestDatabase() en setUp().
+// Pruebas unitarias (sin BD): ejecutan normalmente sin llamar assertTestDatabase().
+// Pruebas de integración (con BD): deben llamar assertTestDatabase() en setUp().
