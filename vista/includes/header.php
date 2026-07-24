@@ -481,6 +481,21 @@
             </a>
             <?php endif; ?>
 
+            <!-- ═══ Logística Operativa ═══════════════════════════════════════
+                 PENDIENTE: agregar enlace al sidebar cuando exista el permiso
+                 formal `logistica_operativa_colectas` en la tabla `permisos` de BD.
+
+                 La ruta /logistica-operativa/colectas ya está protegida por:
+                   - Sesión activa (start_secure_session).
+                   - Feature flag LOGISTICA_OPERATIVA_ENABLED.
+                   - Roles permitidos: Administrador / Proveedor (require_roles en rutas/).
+
+                 Cuando el permiso exista, reemplazar la condición de $isAdmin
+                 por la verificación de permiso por nombre, ej.:
+                   $tienePermColectas = in_array('logistica_operativa_colectas',
+                                                  $_SESSION['permisos'] ?? [], true);
+                 ─────────────────────────────────────────────────────────────── -->
+
             <!-- ═══ Inventario ═══ -->
             <?php if ($isAdmin || $isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">

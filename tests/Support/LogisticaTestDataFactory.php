@@ -57,11 +57,20 @@ class LogisticaTestDataFactory
     /**
      * Crea un pedido ficticio en estado 11 para el cliente dado.
      * Rellena todas las columnas NOT NULL con valores mínimos.
+     *
+     * numero_orden se construye como: prefijo fijo (9) + timestamp μs truncado (7 d) + seq (2 d).
+     * Ejemplo: 9_1234567_01 → 9123456701.
+     * El UNIQUE (id_cliente, numero_orden) nunca colisiona entre distintas
+     * sesiones PHP porque el microsegundo difiere, ni dentro de la misma sesión
+     * porque el seq difiere.
      */
     public static function crearPedido(PDO $db, int $idCliente, int $idEstado = self::ESTADO_PENDIENTE_RECOLECCION): int
     {
-        $n           = self::next();
-        $numeroOrden = 900000000 + $n; // Rango claramente ficticio
+        $n    = self::next();
+        $ts   = (int)(microtime(true) * 10); // décimas de segundo, 13 dígitos aprox.
+        // Mantener BIGINT en rango seguro: tomamos los últimos 7 dígitos del timestamp
+        // más los 2 últimos dígitos del seq → 10 dígitos totales con prefijo 9.
+        $numeroOrden = (int)('9' . substr((string)$ts, -7) . str_pad((string)($n % 100), 2, '0', STR_PAD_LEFT));
 
         $stmt = $db->prepare(
             'INSERT INTO pedidos

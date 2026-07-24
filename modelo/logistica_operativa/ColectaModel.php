@@ -272,4 +272,84 @@ class ColectaModel
             ],
         ];
     }
+
+    // ── Listado con filtros (para la vista interna) ───────────────────────
+
+    /**
+     * Lista colectas con JOIN a usuarios (cliente / operador) y filtros opcionales.
+     *
+     * @param array{fecha?:string|null, turno?:string|null, estado?:string|null, cliente?:string|null} $filtros
+     * @return array<int,array>
+     */
+    public function listarConFiltros(array $filtros = []): array
+    {
+        $where  = [];
+        $params = [];
+
+        if (!empty($filtros['fecha'])) {
+            $where[]  = 'lc.fecha = :fecha';
+            $params[':fecha'] = $filtros['fecha'];
+        }
+        if (!empty($filtros['turno'])) {
+            $where[]  = 'lc.turno = :turno';
+            $params[':turno'] = $filtros['turno'];
+        }
+        if (!empty($filtros['estado'])) {
+            $where[]  = 'lc.estado = :estado';
+            $params[':estado'] = $filtros['estado'];
+        }
+        if (!empty($filtros['cliente'])) {
+            $where[]  = 'uc.nombre LIKE :cliente';
+            $params[':cliente'] = '%' . $filtros['cliente'] . '%';
+        }
+
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+        $stmt = $this->db->prepare("
+            SELECT
+                lc.id,
+                lc.fecha,
+                lc.turno,
+                lc.estado,
+                lc.id_cliente,
+                lc.cantidad_esperada,
+                lc.cantidad_escaneada,
+                lc.cantidad_faltante,
+                lc.created_at,
+                uc.nombre AS cliente_nombre,
+                uo.nombre AS operador_nombre
+              FROM logistica_colectas lc
+         LEFT JOIN usuarios uc ON uc.id = lc.id_cliente
+         LEFT JOIN usuarios uo ON uo.id = lc.id_abierta_por
+              {$whereSql}
+          ORDER BY lc.created_at DESC
+             LIMIT 200
+        ");
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Devuelve los pedidos de una colecta con datos del pedido real
+     * (numero_orden, destinatario) para la vista de detalle.
+     *
+     * @return array<int,array>
+     */
+    public function obtenerPedidosDetalle(int $idColecta): array
+    {
+        $stmt = $this->db->prepare("
+            SELECT
+                cp.id_pedido,
+                cp.resultado    AS resultado_pedido,
+                cp.escaneado_at,
+                p.numero_orden,
+                p.destinatario
+              FROM logistica_colecta_pedidos cp
+         LEFT JOIN pedidos p ON p.id = cp.id_pedido
+             WHERE cp.id_colecta = :id_colecta
+          ORDER BY cp.updated_at DESC
+        ");
+        $stmt->execute([':id_colecta' => $idColecta]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
