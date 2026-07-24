@@ -1,0 +1,275 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * ColectaModel
+ *
+ * Responsabilidad: persistencia y consultas sobre logistica_colectas
+ * y logistica_colecta_pedidos.
+ *
+ * Sin lógica HTTP. Sin conexión global. Sin echo/exit.
+ * Recibe PDO por constructor.
+ */
+class ColectaModel
+{
+    public function __construct(private PDO $db) {}
+
+    // ── Colectas ─────────────────────────────────────────────────────────
+
+    /**
+     * Inserta una nueva colecta y devuelve su ID.
+     */
+    public function insertar(
+        int    $idCliente,
+        string $fecha,
+        string $turno,
+        int    $cantidadEsperada,
+        int    $idAbiertaPor
+    ): int {
+        $stmt = $this->db->prepare(
+            'INSERT INTO logistica_colectas
+               (id_cliente, fecha, turno, estado,
+                cantidad_esperada, cantidad_escaneada, cantidad_faltante,
+                id_abierta_por, abierta_at, created_at, updated_at)
+             VALUES
+               (:id_cliente, :fecha, :turno, \'ABIERTA\',
+                :cantidad_esperada, 0, 0,
+                :id_abierta_por, NOW(), NOW(), NOW())'
+        );
+        $stmt->execute([
+            ':id_cliente'        => $idCliente,
+            ':fecha'             => $fecha,
+            ':turno'             => $turno,
+            ':cantidad_esperada' => $cantidadEsperada,
+            ':id_abierta_por'    => $idAbiertaPor,
+        ]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Busca una colecta por cliente, fecha y turno (para detectar duplicados).
+     */
+    public function buscarPorClienteFechaTurno(int $idCliente, string $fecha, string $turno): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT * FROM logistica_colectas
+              WHERE id_cliente = :id_cliente
+                AND fecha = :fecha
+                AND turno = :turno
+              LIMIT 1'
+        );
+        $stmt->execute([':id_cliente' => $idCliente, ':fecha' => $fecha, ':turno' => $turno]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row !== false ? $row : null;
+    }
+
+    /**
+     * Obtiene una colecta por ID, con bloqueo FOR UPDATE opcional.
+     */
+    public function obtenerPorId(int $id, bool $forUpdate = false): ?array
+    {
+        $lock = $forUpdate ? ' FOR UPDATE' : '';
+        $stmt = $this->db->prepare(
+            "SELECT * FROM logistica_colectas WHERE id = :id LIMIT 1{$lock}"
+        );
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row !== false ? $row : null;
+    }
+
+    /**
+     * Actualiza los contadores de una colecta recalculándolos desde los registros reales.
+     */
+    public function recalcularContadores(int $idColecta): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE logistica_colectas
+                SET cantidad_escaneada = (
+                        SELECT COUNT(*) FROM logistica_colecta_pedidos
+                        WHERE id_colecta = :id1 AND resultado = \'RECIBIDO\'
+                    ),
+                    cantidad_faltante  = (
+                        SELECT COUNT(*) FROM logistica_colecta_pedidos
+                        WHERE id_colecta = :id2 AND resultado = \'FALTANTE\'
+                    ),
+                    cantidad_esperada  = (
+                        SELECT COUNT(*) FROM logistica_colecta_pedidos
+                        WHERE id_colecta = :id3 AND resultado IN (\'ESPERADO\',\'RECIBIDO\',\'FALTANTE\')
+                    ),
+                    updated_at = NOW()
+              WHERE id = :id4'
+        );
+        $stmt->execute([
+            ':id1' => $idColecta,
+            ':id2' => $idColecta,
+            ':id3' => $idColecta,
+            ':id4' => $idColecta,
+        ]);
+    }
+
+    /**
+     * Cierra y concilia la colecta: marca faltantes, registra operador y timestamps.
+     */
+    public function cerrar(int $idColecta, int $idCerradaPor): void
+    {
+        // Marcar como FALTANTE los pedidos que siguen ESPERADO
+        $stmt = $this->db->prepare(
+            'UPDATE logistica_colecta_pedidos
+                SET resultado   = \'FALTANTE\',
+                    updated_at  = NOW()
+              WHERE id_colecta  = :id_colecta
+                AND resultado   = \'ESPERADO\''
+        );
+        $stmt->execute([':id_colecta' => $idColecta]);
+
+        // Recalcular contadores desde los registros reales
+        $this->recalcularContadores($idColecta);
+
+        // Cambiar estado a CONCILIADA
+        $stmt = $this->db->prepare(
+            'UPDATE logistica_colectas
+                SET estado         = \'CONCILIADA\',
+                    id_cerrada_por = :id_cerrada_por,
+                    cerrada_at     = NOW(),
+                    updated_at     = NOW()
+              WHERE id = :id'
+        );
+        $stmt->execute([':id_cerrada_por' => $idCerradaPor, ':id' => $idColecta]);
+    }
+
+    // ── Colecta–Pedidos ───────────────────────────────────────────────────
+
+    /**
+     * Inserta un pedido esperado en la colecta.
+     */
+    public function insertarPedidoEsperado(int $idColecta, int $idPedido): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO logistica_colecta_pedidos
+               (id_colecta, id_pedido, resultado, created_at, updated_at)
+             VALUES
+               (:id_colecta, :id_pedido, \'ESPERADO\', NOW(), NOW())'
+        );
+        $stmt->execute([':id_colecta' => $idColecta, ':id_pedido' => $idPedido]);
+    }
+
+    /**
+     * Obtiene el registro de un pedido dentro de una colecta.
+     */
+    public function obtenerPedidoEnColecta(int $idColecta, int $idPedido): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT * FROM logistica_colecta_pedidos
+              WHERE id_colecta = :id_colecta
+                AND id_pedido  = :id_pedido
+              LIMIT 1'
+        );
+        $stmt->execute([':id_colecta' => $idColecta, ':id_pedido' => $idPedido]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row !== false ? $row : null;
+    }
+
+    /**
+     * Actualiza el resultado de un pedido en la colecta.
+     */
+    public function actualizarResultadoPedido(
+        int    $idColecta,
+        int    $idPedido,
+        string $resultado,
+        string $escaneadoAt
+    ): void {
+        $stmt = $this->db->prepare(
+            'UPDATE logistica_colecta_pedidos
+                SET resultado    = :resultado,
+                    escaneado_at = :escaneado_at,
+                    updated_at   = NOW()
+              WHERE id_colecta  = :id_colecta
+                AND id_pedido   = :id_pedido'
+        );
+        $stmt->execute([
+            ':resultado'    => $resultado,
+            ':escaneado_at' => $escaneadoAt,
+            ':id_colecta'   => $idColecta,
+            ':id_pedido'    => $idPedido,
+        ]);
+    }
+
+    /**
+     * Inserta un pedido EXTRA (no estaba en los esperados).
+     */
+    public function insertarPedidoExtra(int $idColecta, int $idPedido, string $escaneadoAt): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO logistica_colecta_pedidos
+               (id_colecta, id_pedido, resultado, escaneado_at, created_at, updated_at)
+             VALUES
+               (:id_colecta, :id_pedido, \'EXTRA\', :escaneado_at, NOW(), NOW())'
+        );
+        $stmt->execute([
+            ':id_colecta'   => $idColecta,
+            ':id_pedido'    => $idPedido,
+            ':escaneado_at' => $escaneadoAt,
+        ]);
+    }
+
+    /**
+     * Obtiene los pedidos elegibles (estado 11) de un cliente,
+     * excluyendo los ya RECIBIDO en colectas anteriores no canceladas.
+     *
+     * @return array<int> Lista de IDs de pedido
+     */
+    public function obtenerPedidosElegibles(int $idCliente): array
+    {
+        // Estado 11 = "Pendiente recolección por mensajería"
+        $stmt = $this->db->prepare(
+            'SELECT p.id
+               FROM pedidos p
+              WHERE p.id_cliente = :id_cliente
+                AND p.id_estado  = 11
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM logistica_colecta_pedidos cp
+                      JOIN logistica_colectas c ON c.id = cp.id_colecta
+                     WHERE cp.id_pedido  = p.id
+                       AND cp.resultado  = \'RECIBIDO\'
+                       AND c.estado     != \'CANCELADA\'
+                )'
+        );
+        $stmt->execute([':id_cliente' => $idCliente]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+    }
+
+    /**
+     * Obtiene un resumen completo de la colecta con conteos por resultado.
+     */
+    public function obtenerResumen(int $idColecta): array
+    {
+        $colecta = $this->obtenerPorId($idColecta);
+        if ($colecta === null) {
+            return [];
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT resultado, COUNT(*) AS cantidad
+               FROM logistica_colecta_pedidos
+              WHERE id_colecta = :id_colecta
+              GROUP BY resultado'
+        );
+        $stmt->execute([':id_colecta' => $idColecta]);
+        $conteos = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $conteos[$row['resultado']] = (int) $row['cantidad'];
+        }
+
+        return [
+            'colecta' => $colecta,
+            'conteos' => [
+                'ESPERADO'  => $conteos['ESPERADO']  ?? 0,
+                'RECIBIDO'  => $conteos['RECIBIDO']  ?? 0,
+                'FALTANTE'  => $conteos['FALTANTE']  ?? 0,
+                'EXTRA'     => $conteos['EXTRA']      ?? 0,
+            ],
+        ];
+    }
+}
