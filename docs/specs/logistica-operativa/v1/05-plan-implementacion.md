@@ -5,9 +5,9 @@
 
 ---
 
-## Fase 0 — Línea Base *(FASE ACTUAL)*
+## Fase 0 — Línea Base *(COMPLETADA)*
 
-**Estado:** En ejecución
+**Estado:** Completada — commit `test: establish logistics operations SDD baseline`
 
 - [x] Documentación SDD (specs v1)
 - [x] Catálogo real de estados (`estados_pedidos`)
@@ -15,7 +15,7 @@
 - [x] Pruebas de regresión iniciales (`PedidoServiceStateTest`)
 - [x] Protección del ambiente de pruebas (bootstrap.php)
 - [x] Corrección de .gitignore para incluir `tests/`
-- [ ] Aprobación de hallazgos y autorización para Fase 1
+- [x] Aprobación de hallazgos y autorización para Fase 1
 
 **Entregables:**
 - `docs/specs/logistica-operativa/v1/` (7 archivos)
@@ -25,29 +25,33 @@
 
 ---
 
-## Fase 1 — Feature Flags
+## Fase 1 — Feature Flags *(IMPLEMENTADA EN CÓDIGO — pendiente de integración funcional)*
 
-**Prerequisito:** Aprobación de Fase 0
+**Estado:** Implementada — pendiente de autorización para Fase 2
 
 **Objetivo:** Introducir el mecanismo de control de activación antes de crear ninguna tabla.
 
-**Actividades:**
-- Agregar al final de `config/config.php`:
-  ```php
-  define('LOGISTICA_OPERATIVA_ENABLED',          false);
-  define('LOGISTICA_OPERATIVA_SHADOW_MODE',       true);
-  define('LOGISTICA_OPERATIVA_UPDATE_STATES',     false);
-  define('LOGISTICA_OPERATIVA_INVENTORY_ENABLED', false);
-  define('LOGISTICA_OPERATIVA_ROUTES_ENABLED',    false);
-  define('LOGISTICA_OPERATIVA_SETTLEMENT_ENABLED',false);
-  ```
-- Agregar prueba que valida que los flags existen y tienen valores seguros por defecto
-- Crear `services/LogisticaOperativaFlags.php` como helper de consulta de flags
+**Actividades completadas:**
+- [x] Inspección de patrones de configuración existentes (define, getenv, .env)
+- [x] Flags agregados en `config/config.php` con guards `defined()` y valores seguros
+- [x] Creado `services/LogisticaOperativaFlags.php` con lógica de dependencia entre flags
+- [x] Creado `tests/LogisticaOperativa/LogisticaOperativaFlagsTest.php` (13 pruebas unitarias)
+- [x] Documentación `docs/specs/logistica-operativa/v1/08-feature-flags.md`
+- [x] Plan de implementación actualizado (este archivo)
 
-**Restricciones:**
-- No crear tablas en esta fase
-- No crear rutas en esta fase
-- Los flags deben estar en `false` por defecto excepto `SHADOW_MODE = true`
+**Archivos creados/modificados:**
+- `config/config.php` (modificado — flags añadidos al final)
+- `services/LogisticaOperativaFlags.php` (nuevo)
+- `tests/LogisticaOperativa/LogisticaOperativaFlagsTest.php` (nuevo)
+- `docs/specs/logistica-operativa/v1/08-feature-flags.md` (nuevo)
+
+**Restricciones respetadas:**
+- No se crearon tablas
+- No se ejecutaron migraciones
+- No se modificaron datos
+- No se modificaron estados de pedidos
+- No se modificó inventario
+- No se hizo commit ni push
 
 ---
 
