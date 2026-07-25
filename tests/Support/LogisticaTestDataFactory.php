@@ -112,4 +112,75 @@ class LogisticaTestDataFactory
     {
         self::$seq = 0;
     }
+
+    /**
+     * Crea una bodega ficticia en paquetes_apppack_test y devuelve su ID.
+     *
+     * Los códigos son únicos y resistentes a ejecuciones repetidas:
+     * usan microsegundo + secuencia interna para evitar colisiones UNIQUE.
+     *
+     * @param PDO   $db       Conexión PDO a la base de pruebas.
+     * @param array $override Columnas a sobreescribir sobre los valores por defecto.
+     *                        Columnas válidas: codigo, nombre, tipo, activa, direccion.
+     * @return int ID de la bodega recién creada.
+     */
+    public static function crearBodega(PDO $db, array $override = []): int
+    {
+        $n      = self::next();
+        $ts     = (int)(microtime(true) * 1000); // milisegundos
+        $codigo = $override['codigo'] ?? ('BOD-TEST-' . substr((string)$ts, -6) . '-' . $n);
+
+        $stmt = $db->prepare(
+            'INSERT INTO logistica_bodegas
+               (codigo, nombre, tipo, activa, created_at, updated_at)
+             VALUES
+               (:codigo, :nombre, :tipo, :activa, NOW(), NOW())'
+        );
+        $stmt->execute([
+            ':codigo'  => $codigo,
+            ':nombre'  => $override['nombre']  ?? "Bodega de Prueba {$n}",
+            ':tipo'    => $override['tipo']    ?? 'CENTRAL',
+            ':activa'  => isset($override['activa']) ? (int) $override['activa'] : 1,
+        ]);
+        return (int) $db->lastInsertId();
+    }
+
+    /**
+     * Crea una ubicación ficticia dentro de la bodega indicada y devuelve su ID.
+     *
+     * @param PDO   $db       Conexión PDO a la base de pruebas.
+     * @param int   $idBodega ID de la bodega padre (debe existir en la misma conexión).
+     * @param array $override Columnas a sobreescribir sobre los valores por defecto.
+     *                        Columnas válidas: codigo, zona, pasillo, estante, cajon,
+     *                        nivel, tipo, capacidad, activa.
+     * @return int ID de la ubicación recién creada.
+     */
+    public static function crearUbicacion(PDO $db, int $idBodega, array $override = []): int
+    {
+        $n      = self::next();
+        $ts     = (int)(microtime(true) * 1000);
+        $codigo = $override['codigo'] ?? ('LOC-' . substr((string)$ts, -5) . '-' . $n);
+
+        $stmt = $db->prepare(
+            'INSERT INTO logistica_ubicaciones
+               (id_bodega, codigo, zona, pasillo, estante, cajon,
+                nivel, tipo, capacidad, activa, created_at, updated_at)
+             VALUES
+               (:id_bodega, :codigo, :zona, :pasillo, :estante, :cajon,
+                :nivel, :tipo, :capacidad, :activa, NOW(), NOW())'
+        );
+        $stmt->execute([
+            ':id_bodega' => $idBodega,
+            ':codigo'    => $codigo,
+            ':zona'      => $override['zona']      ?? null,
+            ':pasillo'   => $override['pasillo']   ?? null,
+            ':estante'   => $override['estante']   ?? null,
+            ':cajon'     => $override['cajon']     ?? null,
+            ':nivel'     => $override['nivel']     ?? null,
+            ':tipo'      => $override['tipo']      ?? 'GENERAL',
+            ':capacidad' => $override['capacidad'] ?? null,
+            ':activa'    => isset($override['activa']) ? (int) $override['activa'] : 1,
+        ]);
+        return (int) $db->lastInsertId();
+    }
 }
