@@ -51,13 +51,13 @@ class BodegaUbicacionService
         if (!LogisticaOperativaFlags::enabled()) {
             throw new LogisticaOperativaException(
                 'El módulo Logística Operativa no está habilitado.',
-                0
+                'MODULE_DISABLED'
             );
         }
         if (!LogisticaOperativaFlags::shadowMode()) {
             throw new LogisticaOperativaException(
                 'El módulo Logística Operativa debe estar en modo sombra.',
-                0
+                'SHADOW_MODE_REQUIRED'
             );
         }
     }
@@ -69,7 +69,7 @@ class BodegaUbicacionService
         if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $uuid)) {
             throw new LogisticaOperativaException(
                 "UUID inválido: '{$uuid}'.",
-                0
+                'UUID_INVALIDO'
             );
         }
     }
@@ -80,7 +80,7 @@ class BodegaUbicacionService
         if ($d === false || $d->format('Y-m-d H:i:s') !== $fecha) {
             throw new LogisticaOperativaException(
                 "Fecha inválida: '{$fecha}'. Use formato Y-m-d H:i:s.",
-                0
+                'FECHA_INVALIDA'
             );
         }
     }
@@ -197,20 +197,20 @@ class BodegaUbicacionService
         if (!in_array($tipo, $tiposPermitidos, true)) {
             throw new LogisticaOperativaException(
                 "Tipo de recepción inválido: '{$tipo}'.",
-                0
+                'TIPO_RECEPCION_INVALIDO'
             );
         }
 
         if (!$this->existeUsuario($idOperador)) {
             throw new LogisticaOperativaException(
                 "Operador no encontrado: ID {$idOperador}.",
-                0
+                'OPERADOR_NO_ENCONTRADO'
             );
         }
         if (!$this->existePedido($idPedido)) {
             throw new LogisticaOperativaException(
                 "Pedido no encontrado: ID {$idPedido}.",
-                0
+                'PEDIDO_NO_ENCONTRADO'
             );
         }
 
@@ -233,12 +233,12 @@ class BodegaUbicacionService
                 if ($hayBodega === null) {
                     throw new LogisticaOperativaException(
                         "Bodega no encontrada: ID {$idBodega}.",
-                        0
+                        'BODEGA_NO_ENCONTRADA'
                     );
                 }
                 throw new LogisticaOperativaException(
                     "Bodega inactiva: ID {$idBodega}.",
-                    0
+                    'BODEGA_INACTIVA'
                 );
             }
 
@@ -250,18 +250,18 @@ class BodegaUbicacionService
                     if ($uExiste === null) {
                         throw new LogisticaOperativaException(
                             "Ubicación no encontrada: ID {$idUbicacion}.",
-                            0
+                            'UBICACION_NO_ENCONTRADA'
                         );
                     }
                     if ((int) $uExiste['activa'] === 0) {
                         throw new LogisticaOperativaException(
                             "Ubicación inactiva: ID {$idUbicacion}.",
-                            0
+                            'UBICACION_INACTIVA'
                         );
                     }
                     throw new LogisticaOperativaException(
                         "La ubicación {$idUbicacion} no pertenece a la bodega {$idBodega}.",
-                        0
+                        'UBICACION_NO_PERTENECE_BODEGA'
                     );
                 }
             }
@@ -281,7 +281,7 @@ class BodegaUbicacionService
             if ($recepcionActiva !== null) {
                 throw new LogisticaOperativaException(
                     "El pedido {$idPedido} ya tiene una recepción activa (ID {$recepcionActiva['id']}).",
-                    0
+                    'RECEPCION_ACTIVA_EXISTENTE'
                 );
             }
 
@@ -360,7 +360,7 @@ class BodegaUbicacionService
         if (!$this->existeUsuario($idOperador)) {
             throw new LogisticaOperativaException(
                 "Operador no encontrado: ID {$idOperador}.",
-                0
+                'OPERADOR_NO_ENCONTRADO'
             );
         }
 
@@ -371,19 +371,19 @@ class BodegaUbicacionService
             if ($recepcion === null) {
                 throw new LogisticaOperativaException(
                     "Recepción no encontrada: ID {$idRecepcion}.",
-                    0
+                    'RECEPCION_NO_ENCONTRADA'
                 );
             }
             if ((int) $recepcion['id_pedido'] !== $idPedido) {
                 throw new LogisticaOperativaException(
                     "La recepción {$idRecepcion} no corresponde al pedido {$idPedido}.",
-                    0
+                    'RECEPCION_NO_CORRESPONDE_PEDIDO'
                 );
             }
             if ($recepcion['estado'] !== 'RECIBIDO') {
                 throw new LogisticaOperativaException(
                     "La recepción {$idRecepcion} no está en estado RECIBIDO (estado actual: {$recepcion['estado']}).",
-                    0
+                    'PAQUETE_YA_UBICADO'
                 );
             }
 
@@ -395,18 +395,18 @@ class BodegaUbicacionService
                 if ($uExiste === null) {
                     throw new LogisticaOperativaException(
                         "Ubicación no encontrada: ID {$idUbicacion}.",
-                        0
+                        'UBICACION_NO_ENCONTRADA'
                     );
                 }
                 if ((int) $uExiste['activa'] === 0) {
                     throw new LogisticaOperativaException(
                         "Ubicación inactiva: ID {$idUbicacion}.",
-                        0
+                        'UBICACION_INACTIVA'
                     );
                 }
                 throw new LogisticaOperativaException(
                     "La ubicación {$idUbicacion} no pertenece a la bodega {$idBodega}.",
-                    0
+                    'UBICACION_NO_PERTENECE_BODEGA'
                 );
             }
 
@@ -415,7 +415,7 @@ class BodegaUbicacionService
             if ($historialActivo !== null) {
                 throw new LogisticaOperativaException(
                     "El pedido {$idPedido} ya tiene una ubicación activa (historial ID {$historialActivo['id']}).",
-                    0
+                    'PAQUETE_YA_UBICADO'
                 );
             }
 
@@ -478,7 +478,7 @@ class BodegaUbicacionService
         if (!$this->existeUsuario($idOperador)) {
             throw new LogisticaOperativaException(
                 "Operador no encontrado: ID {$idOperador}.",
-                0
+                'OPERADOR_NO_ENCONTRADO'
             );
         }
 
@@ -489,7 +489,7 @@ class BodegaUbicacionService
             if ($historialActivo === null) {
                 throw new LogisticaOperativaException(
                     "El pedido {$idPedido} no tiene una ubicación activa.",
-                    0
+                    'PAQUETE_SIN_UBICACION'
                 );
             }
 
@@ -514,19 +514,19 @@ class BodegaUbicacionService
                 if ($uExiste === null) {
                     throw new LogisticaOperativaException(
                         "Ubicación no encontrada: ID {$idUbicacionDestino}.",
-                        0
+                        'UBICACION_NO_ENCONTRADA'
                     );
                 }
                 if ((int) $uExiste['activa'] === 0) {
                     throw new LogisticaOperativaException(
                         "Ubicación inactiva: ID {$idUbicacionDestino}.",
-                        0
+                        'UBICACION_INACTIVA'
                     );
                 }
                 // Pertenece a otra bodega
                 throw new LogisticaOperativaException(
                     "La ubicación {$idUbicacionDestino} pertenece a otra bodega. Los traslados entre bodegas no están permitidos en esta fase.",
-                    0
+                    'TRASLADO_ENTRE_BODEGAS_NO_PERMITIDO'
                 );
             }
 
@@ -609,7 +609,7 @@ class BodegaUbicacionService
         if (!$this->existeUsuario($idOperador)) {
             throw new LogisticaOperativaException(
                 "Operador no encontrado: ID {$idOperador}.",
-                0
+                'OPERADOR_NO_ENCONTRADO'
             );
         }
 
@@ -626,7 +626,7 @@ class BodegaUbicacionService
                     // El pedido está RECIBIDO pero sin ubicación → no hay nada que retirar
                     throw new LogisticaOperativaException(
                         "El pedido {$idPedido} no tiene una ubicación activa.",
-                        0
+                        'PAQUETE_SIN_UBICACION'
                     );
                 }
                 // Retiro repetido: ya fue retirado, devolver estado conocido
@@ -654,7 +654,7 @@ class BodegaUbicacionService
             if ($recepcionActiva === null) {
                 throw new LogisticaOperativaException(
                     "No se encontró recepción activa para el pedido {$idPedido}.",
-                    0
+                    'RECEPCION_NO_ENCONTRADA'
                 );
             }
 
