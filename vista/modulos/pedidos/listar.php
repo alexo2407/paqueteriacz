@@ -996,6 +996,16 @@ $(document).ready(function() {
             }
         },
         columns: [
+            {
+                data: 'numero_traking',
+                title: 'Tracking',
+                orderable: false,
+                render: function(data) {
+                    if (!data) return '<span class="text-muted">—</span>';
+                    return '<span class="badge fw-normal" style="background:#0d6efd;color:#fff;font-size:.7rem;letter-spacing:.02em;font-family:monospace">'
+                         + '<i class="bi bi-upc" style="font-size:.65rem;"></i> ' + data + '</span>';
+                }
+            },
             { data: 'Numero_Orden',   title: 'Nº Orden' },
             { data: 'Cliente',        title: 'Destinatario' },
             {

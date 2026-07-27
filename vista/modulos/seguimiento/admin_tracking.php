@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * vista/modulos/seguimiento/admin_tracking.php
  * Vista de Seguimiento Administrativo con la interfaz nativa del sistema (Bootstrap 5) y paginación.
@@ -463,6 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 orders[item.id_pedido] = {
                     id: item.id_pedido,
                     numero_orden: item.numero_orden,
+                    numero_traking: item.numero_traking || null,
                     history: []
                 };
             }
@@ -471,10 +472,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let html = '';
         Object.values(orders).forEach(order => {
+            const trackingBadge = order.numero_traking
+                ? `<span class="badge fw-normal me-2"
+                       style="background:#f59e0b;color:#1a1a1a;font-family:monospace;font-size:.68rem;letter-spacing:.03em;vertical-align:middle;"
+                       title="Número de Tracking">
+                       <i class="bi bi-upc" style="font-size:.65rem;"></i> ${order.numero_traking}
+                   </span>`
+                : '';
             html += `
                 <div class="order-group">
                     <div class="order-group-header">
-                        <h5><i class="bi bi-box-seam me-2"></i>Pedido # ${order.numero_orden}</h5>
+                        <h5>${trackingBadge}<i class="bi bi-box-seam me-2"></i>Pedido # ${order.numero_orden}</h5>
                         <a href="${RUTA_URL}pedidos/editar/${order.id}" target="_blank" class="btn btn-sm btn-light border rounded-pill px-4 fw-bold text-primary">
                             Ver Detalles <i class="bi bi-box-arrow-up-right ms-1" style="font-size: 0.8rem;"></i>
                         </a>

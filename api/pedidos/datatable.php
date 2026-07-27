@@ -129,6 +129,7 @@ try {
             p.numero_orden  AS Numero_Orden,
             p.destinatario  AS Cliente,
             p.courier_service,
+            p.numero_traking,
             p.comentario    AS Comentario,
             ST_Y(p.coordenadas) AS latitud,
             ST_X(p.coordenadas) AS longitud,

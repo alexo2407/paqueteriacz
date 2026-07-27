@@ -2751,7 +2751,7 @@ class PedidosModel
         // --- 3. Consulta de Datos ---
         // Aseguramos que $joins esté presente si se usa en $whereSql
         $sql = "SELECT 
-                    h.id, h.id_pedido, p.numero_orden,
+                    h.id, h.id_pedido, p.numero_orden, p.numero_traking,
                     h.id_estado_anterior, e_ant.nombre_estado AS estado_anterior,
                     h.id_estado_nuevo,    e_nvo.nombre_estado AS estado_nuevo,
                     h.observaciones AS comentario,
