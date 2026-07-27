@@ -168,6 +168,7 @@ $sqlPedidos = "
         p.zona,
         p.comentario,
         p.courier_service,
+        p.numero_traking,
         ep.nombre_estado  AS estado_actual,
         p.precio_total_local,
         m.nombre          AS moneda,
@@ -253,6 +254,7 @@ if ($export) {
             p.zona,
             p.comentario,
             p.courier_service,
+            p.numero_traking,
             ep.nombre_estado  AS estado_actual,
             p.precio_total_local,
             m.nombre          AS moneda,
@@ -283,7 +285,7 @@ if ($export && !empty($pedidosExport)) {
     // Cabeceras fijas
     $headersFixed = [
         'Núm. Orden', 'Fecha Ingreso', 'Destinatario', 'Teléfono',
-        'Dirección', 'Zona', 'Comentario', 'Courier Service', 'Estado Actual',
+        'Dirección', 'Zona', 'Comentario', 'Courier Service', 'Nº Tracking', 'Estado Actual',
         'Liquidación', 'Moneda', 'Fecha Creado',
     ];
 
@@ -354,6 +356,7 @@ if ($export && !empty($pedidosExport)) {
         $sheet->setCellValue($coord($c++, $excelRow), $ped['zona']);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['comentario']);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['courier_service'] ?? '');
+        $sheet->setCellValue($coord($c++, $excelRow), $ped['numero_traking'] ?? '');
 
         // Estado actual con color
         $cellEstado = $coord($c, $excelRow);
@@ -394,7 +397,7 @@ if ($export && !empty($pedidosExport)) {
     }
 
     // Auto-width en columnas fijas
-    for ($ci = 1; $ci <= 11; $ci++) {
+    for ($ci = 1; $ci <= 12; $ci++) {
         $sheet->getColumnDimension(
             \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($ci)
         )->setAutoSize(true);
@@ -667,6 +670,7 @@ if ($export && !empty($pedidosExport)) {
                             <th>Zona</th>
                             <th>Comentario</th>
                             <th>Courier Service</th>
+                            <th>Nº Tracking</th>
                             <th>Estado Actual</th>
                             <th>Liquidación</th>
                             <th>Moneda</th>
@@ -678,7 +682,7 @@ if ($export && !empty($pedidosExport)) {
                         </tr>
                         <?php if ($maxTransiciones > 0): ?>
                         <tr>
-                            <th colspan="12"></th>
+                            <th colspan="13"></th>
                             <?php for ($n = 1; $n <= $maxTransiciones; $n++): ?>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Estado</th>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Fecha / Hora</th>
@@ -710,7 +714,17 @@ if ($export && !empty($pedidosExport)) {
                                 <?php if (!empty($ped['courier_service'])): ?>
                                     <span class="badge" style="background:#0dcaf0;color:#000;"><?= htmlspecialchars($ped['courier_service']) ?></span>
                                 <?php else: ?>
-                                    —
+                                    &mdash;
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center font-monospace" style="font-size:.75rem;">
+                                <?php if (!empty($ped['numero_traking'])): ?>
+                                    <span class="badge" style="background:#0d6efd;color:#fff;letter-spacing:.03em;"
+                                          title="Número de Tracking">
+                                        <i class="bi bi-upc-scan me-1"></i><?= htmlspecialchars($ped['numero_traking']) ?>
+                                    </span>
+                                <?php else: ?>
+                                    <span class="text-muted">&mdash;</span>
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">

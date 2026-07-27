@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 start_secure_session();
 if (!isset($_SESSION['registrado'])) { header('location:' . RUTA_URL . 'login'); die(); }
 
@@ -195,9 +195,10 @@ include("vista/includes/header.php");
     .logistica-inbox-header {
         background: white;
         border-bottom: 1px solid #e9ecef;
-        padding: 1.5rem 0;
+        padding: 1.25rem 0;
         margin-bottom: 2rem;
-        margin-top: -1.5rem;
+        margin-top: 0;
+        border-top: 1px solid #e9ecef;
     }
 
     /* Pills tabs */

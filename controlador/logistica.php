@@ -887,17 +887,18 @@ class LogisticaController {
         fputs($out, "\xEF\xBB\xBF");
 
         // Encabezado: columnas reconocidas por BulkParser + referencias de solo lectura
-        fputcsv($out, ['numero_orden', 'estado_actual', 'estado', 'comentario', 'motivo', 'fecha_entrega', 'fecha_liquidacion']);
+        fputcsv($out, ['numero_orden', 'estado_actual', 'estado', 'comentario', 'motivo', 'fecha_entrega', 'fecha_liquidacion', 'numero_traking']);
 
         foreach ($pedidos as $p) {
             fputcsv($out, [
-                $p['numero_orden']  ?? '',
-                $p['estado']        ?? '',   // referencia — NO se sube de vuelta
-                '',                           // <-- nuevo estado
-                '',                           // <-- comentario opcional
-                '',                           // <-- motivo opcional
-                '',                           // <-- fecha_entrega (solo si estado = Reprogramado)
-                '',                           // <-- fecha_liquidacion (solo si estado = Entregado – liquidado)
+                $p['numero_orden']      ?? '',
+                $p['estado']            ?? '',   // referencia — NO se sube de vuelta
+                '',                               // <-- nuevo estado
+                '',                               // <-- comentario opcional
+                '',                               // <-- motivo opcional
+                '',                               // <-- fecha_entrega (solo si estado = Reprogramado)
+                '',                               // <-- fecha_liquidacion (solo si estado = Entregado - liquidado)
+                $p['numero_traking']    ?? '',    // <-- número de tracking (dejar vacío para no sobreescribir)
             ]);
         }
 

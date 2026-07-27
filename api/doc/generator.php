@@ -873,6 +873,7 @@ function buildCrear(c) {
     <p class="print-label" style="margin-top:12px">⚙️ Campos Opcionales</p>
     ${table(['Campo','Tipo','Descripción'],[
       ['<code>courier_service</code>', 'string', 'Nombre del servicio de mensajería / courier (ej: DHL, FedEx, UPS). Máx 100 chars.'],
+      ['<code>numero_traking</code>',  'string', 'Número de tracking o guía del operador logístico. Visible para el cliente y el proveedor. Puede actualizarse vía importación masiva Excel.'],
       ['<code>zona</code>',            'string', 'Zona de entrega'],
       ['<code>codigo_postal</code>',   'string', 'Código postal del destinatario'],
       ['<code>code_city</code>',       'string', 'Código de ciudad para HLExpress (se envía como <strong>city_dane_code</strong>). Tiene prioridad sobre codigo_postal al despachar a HLExpress. Ej: 100075918'],
@@ -882,7 +883,7 @@ function buildCrear(c) {
     ])}
     <p class="print-label">Ejemplo JSON de Petición</p>
     <div class="print-tip">⚠️ Nota: JSON no permite comentarios (//) ni comas extra. Usar el formato exacto.</div>
-    ${codeBlock(`{\n  "numero_orden": ${ex.numero_orden},\n  "destinatario": "${ex.destinatario}",\n  "id_cliente": ${ex.id_cliente},\n  "id_pais": ${ex.id_pais},\n  "telefono": "${ex.telefono}",\n  "direccion": "${ex.direccion}",\n  "comentario": "Dejar con el guardia si no hay nadie.",\n  "courier_service": "DHL",\n  "code_city": "100075918",\n  "id_proveedor": ${ex.id_proveedor},\n  "id_moneda": ${ex.id_moneda},\n  "precio_total_local": ${ex.precio},\n  "es_combo": ${ex.es_combo},\n  "fecha_entrega": "${ex.fecha_entrega}",\n  "productos": [\n    { "producto_id": 49, "cantidad": 3 },\n    { "producto_id": 50, "cantidad": 2 }\n  ]\n}`)}
+    ${codeBlock(`{\n  "numero_orden": ${ex.numero_orden},\n  "destinatario": "${ex.destinatario}",\n  "id_cliente": ${ex.id_cliente},\n  "id_pais": ${ex.id_pais},\n  "telefono": "${ex.telefono}",\n  "direccion": "${ex.direccion}",\n  "comentario": "Dejar con el guardia si no hay nadie.",\n  "courier_service": "DHL",\n  "numero_traking": "TRK-20260727-001",\n  "code_city": "100075918",\n  "id_proveedor": ${ex.id_proveedor},\n  "id_moneda": ${ex.id_moneda},\n  "precio_total_local": ${ex.precio},\n  "es_combo": ${ex.es_combo},\n  "fecha_entrega": "${ex.fecha_entrega}",\n  "productos": [\n    { "producto_id": 49, "cantidad": 3 },\n    { "producto_id": 50, "cantidad": 2 }\n  ]\n}`)}
     <p class="print-label">Respuesta <strong>200 OK</strong></p>
     ${codeBlock(`{\n  "success": true,\n  "message": "Pedido creado exitosamente",\n  "data": {\n    "pedido_id": 1245,\n    "numero_orden": ${ex.numero_orden}\n  }\n}`)}
     <p class="print-label">Errores Comunes</p>
@@ -995,6 +996,7 @@ function buildBuscar(c) {
       ['<code>direccion</code>',       'string',  'Dirección de entrega'],
       ['<code>comentario</code>',      'string',  'Notas de entrega'],
       ['<code>courier_service</code>', 'string',  'Servicio de mensajería asignado (puede ser null)'],
+      ['<code>numero_traking</code>',  'string',  'Número de tracking o guía del operador logístico (null si no asignado)'],
       ['<code>nombre_estado</code>',   'string',  'Estado actual del pedido'],
       ['<code>fecha_ingreso</code>',   'datetime','Fecha de creación'],
       ['<code>fecha_entrega</code>',   'date',    'Fecha estimada de entrega'],

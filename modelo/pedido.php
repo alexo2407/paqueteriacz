@@ -1226,6 +1226,10 @@ class PedidosModel
                 $fields[] = 'courier_service = :courier_service';
                 $params[':courier_service'] = $data['courier_service'] !== '' ? $data['courier_service'] : null;
             }
+            if (isset($data['numero_traking'])) {
+                $fields[] = 'numero_traking = :numero_traking';
+                $params[':numero_traking'] = $data['numero_traking'] !== '' ? trim($data['numero_traking']) : null;
+            }
             if (isset($data['code_city'])) {
                 $fields[] = 'code_city = :code_city';
                 // Código de ciudad para HLExpress (city_dane_code).
@@ -2497,6 +2501,7 @@ class PedidosModel
                     h_last.created_at AS fecha_observacion_estado,
                     u_last.nombre AS observacion_por,
                     p.fecha_ingreso,
+                    p.numero_traking,
                     p.updated_at      AS fecha_actualizacion
                 FROM pedidos p
                 LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado

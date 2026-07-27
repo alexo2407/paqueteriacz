@@ -203,6 +203,23 @@ include("vista/includes/header.php");
                             </div>
                         </div>
                         <?php endif; ?>
+
+                        <?php if (!empty($pedido['numero_traking'])): ?>
+                        <div class="col-md-6">
+                            <label class="small text-muted fw-bold text-uppercase">Número de Tracking</label>
+                            <div class="text-dark d-flex align-items-center gap-2">
+                                <i class="bi bi-upc-scan me-1 text-primary"></i>
+                                <span class="badge bg-primary fs-6 fw-semibold px-3 py-2 font-monospace">
+                                    <?= htmlspecialchars($pedido['numero_traking']) ?>
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+                                    onclick="navigator.clipboard.writeText('<?= htmlspecialchars($pedido['numero_traking'], ENT_QUOTES) ?>').then(()=>this.innerHTML='<i class=\'bi bi-check\' ></i>').catch(()=>{})"
+                                    title="Copiar número de tracking">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                         <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Fecha Creación</label>
                             <div><?= date('d/m/Y H:i', strtotime($pedido['fecha_ingreso'])) ?></div>

@@ -220,9 +220,10 @@ include "vista/includes/header.php";
     .crm-inbox-header {
         background: white;
         border-bottom: 1px solid #e9ecef;
-        padding: 1.5rem 0;
+        padding: 1.25rem 0;
         margin-bottom: 2rem;
-        margin-top: -1.5rem;
+        margin-top: 0;
+        border-top: 1px solid #e9ecef;
     }
 
     #pills-tab {
@@ -581,6 +582,14 @@ include "vista/includes/header.php";
                                     </div>
                                     <?php endif; ?>
 
+                                    <?php if (!empty($p['numero_traking'])): ?>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge bg-primary font-monospace" title="Número de Tracking">
+                                            <i class="bi bi-upc-scan me-1"></i><?= htmlspecialchars($p['numero_traking']) ?>
+                                        </span>
+                                    </div>
+                                    <?php endif; ?>
+
                                     <hr class="my-3 opacity-25">
 
                                     <div class="d-flex justify-content-between align-items-end">
@@ -870,6 +879,11 @@ include "vista/includes/header.php";
                                             <span class="badge bg-info text-dark"><?= htmlspecialchars($p['courier_service']) ?></span>
                                         <?php else: ?>
                                             <span class="text-muted small">—</span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($p['numero_traking'])): ?>
+                                            <span class="badge bg-primary font-monospace d-block mt-1" title="Tracking">
+                                                <i class="bi bi-upc-scan"></i> <?= htmlspecialchars($p['numero_traking']) ?>
+                                            </span>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= date('d/m/Y', strtotime($p['fecha_ingreso'])) ?></td>
@@ -1456,7 +1470,9 @@ include "vista/includes/header.php";
                             <code>comentario</code> y/o <code>estado</code> (al menos uno de los dos),
                             <code>motivo</code> (opcional),
                             <code>fecha_entrega</code> (opcional, requerida si estado = <em>Reprogramado</em>),
-                            <code>fecha_liquidacion</code> (opcional, requerida si estado = <em>Entregado – liquidado</em>). Formato de fechas: <code>YYYY-MM-DD</code>.
+                            <code>fecha_liquidacion</code> (opcional, requerida si estado = <em>Entregado &ndash; liquidado</em>),
+                            <code>numero_traking</code> (opcional, n&uacute;mero de gu&iacute;a o tracking del operador).
+                            Formato de fechas: <code>YYYY-MM-DD</code>.
                         </div>
 
                         <!-- Plantillas de descarga -->
@@ -1482,8 +1498,8 @@ include "vista/includes/header.php";
                                 <i class="bi bi-table me-1"></i>Descargar mis pedidos filtrados como plantilla:
                             </p>
                             <p class="small text-muted mb-2">
-                                Descarga un CSV con los pedidos que tienes filtrados actualmente (<code>numero_orden</code>, <code>estado_actual</code>)
-                                y columnas vacías para que solo edites los estados/comentarios que necesites cambiar.
+                                Descarga un CSV con los pedidos que tienes filtrados actualmente (<code>numero_orden</code>, <code>estado_actual</code>, <code>numero_traking</code>)
+                                y columnas vac&iacute;as para que solo edites los estados/comentarios/tracking que necesites cambiar.
                             </p>
                             <button type="button" class="btn btn-success btn-sm" onclick="descargarPlantillaFiltrada()">
                                 <i class="bi bi-cloud-download me-1"></i> Descargar pedidos actuales
@@ -1561,6 +1577,7 @@ include "vista/includes/header.php";
                                         <th>Nuevo Comentario</th>
                                         <th>Motivo</th>
                                         <th>Nuevo Estado ID</th>
+                                        <th>Nº Tracking</th>
                                     </tr>
                                 </thead>
                                 <tbody id="bulkPreviewBody"></tbody>
@@ -1604,31 +1621,31 @@ include "vista/includes/header.php";
                 comentario: {
                     nombre: 'plantilla_comentario.csv',
                     contenido: [
-                        'id_pedido,numero_orden,comentario,motivo',
-                        '101,,Paquete entregado al vecino,Ausencia del destinatario',
-                        ',280001234,En camino reprogramado,Dirección incorrecta',
-                        '102,,Devuelto al remitente,No se encontró la dirección',
+                        'id_pedido,numero_orden,comentario,motivo,numero_traking',
+                        '101,,Paquete entregado al vecino,Ausencia del destinatario,',
+                        ',280001234,En camino reprogramado,Dirección incorrecta,',
+                        '102,,Devuelto al remitente,No se encontró la dirección,TRK-987654',
                     ].join('\r\n')
                 },
                 estado: {
                     nombre: 'plantilla_estado.csv',
                     contenido: [
-                        'id_pedido,numero_orden,estado,motivo,fecha_entrega,fecha_liquidacion',
-                        '101,,<?= $__e0 ?>,Salió a ruta hoy,,',
-                        ',280001234,Reprogramado,Reagendado por cliente,2026-03-20,',
-                        '102,,Entregado – liquidado,Cobro confirmado,,2026-03-03',
-                        '103,,<?= $__e2 ?>,Solicitud del cliente,,',
+                        'id_pedido,numero_orden,estado,motivo,fecha_entrega,fecha_liquidacion,numero_traking',
+                        '101,,<?= $__e0 ?>,Salió a ruta hoy,,,TRK-001',
+                        ',280001234,Reprogramado,Reagendado por cliente,2026-03-20,,',
+                        '102,,Entregado – liquidado,Cobro confirmado,,2026-03-03,',
+                        '103,,<?= $__e2 ?>,Solicitud del cliente,,,',
                     ].join('\r\n')
                 },
                 completa: {
                     nombre: 'plantilla_completa.csv',
                     contenido: [
-                        'id_pedido,numero_orden,comentario,estado,motivo,fecha_entrega,fecha_liquidacion',
-                        '101,,Entregado con retraso,<?= $__e1 ?>,Tráfico en zona norte,,',
-                        ',280001234,Cliente ausente al primer intento,Reprogramado,Se reprogramó para mañana,2026-03-20,',
-                        '102,,,Entregado – liquidado,Cobro confirmado en efectivo,,2026-03-03',
-                        '103,,,<?= $__e2 ?>,Solicitud del cliente por teléfono,,',
-                        '104,,Dirección actualizada,,Cambió a Avenida 5 N°22,,',
+                        'id_pedido,numero_orden,comentario,estado,motivo,fecha_entrega,fecha_liquidacion,numero_traking',
+                        '101,,Entregado con retraso,<?= $__e1 ?>,Tráfico en zona norte,,,TRK-12345',
+                        ',280001234,Cliente ausente al primer intento,Reprogramado,Se reprogramó para mañana,2026-03-20,,',
+                        '102,,,Entregado – liquidado,Cobro confirmado en efectivo,,2026-03-03,TRK-67890',
+                        '103,,,<?= $__e2 ?>,Solicitud del cliente por teléfono,,,',
+                        '104,,Dirección actualizada,,,,,',
                     ].join('\r\n')
                 }
             };
@@ -1785,7 +1802,8 @@ include "vista/includes/header.php";
                         '<td>' + escHtml(row.numero_orden) + '</td>' +
                         '<td>' + escHtml(row.nuevo_comentario || '—') + '</td>' +
                         '<td>' + escHtml(row.motivo || '—') + '</td>' +
-                        '<td>' + escHtml(row.nuevo_id_estado !== null ? row.nuevo_id_estado : '—') + '</td>';
+                        '<td>' + escHtml(row.nuevo_id_estado !== null ? row.nuevo_id_estado : '—') + '</td>' +
+                        '<td>' + escHtml(row.nuevo_traking || '—') + '</td>';
                     tbody.appendChild(tr);
                 });
 

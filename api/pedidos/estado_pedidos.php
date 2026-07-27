@@ -41,6 +41,7 @@
  *       "fecha_observacion_estado": "2026-03-10 10:15:00",
  *       "observacion_por": "María López",
  *       "fecha_ingreso": "2026-03-10 09:00:00",
+ *       "numero_traking": "TRK-20260310-001",
  *       "fecha_actualizacion": "2026-03-10 09:00:00"
  *     }
  *   ],

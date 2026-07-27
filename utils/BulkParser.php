@@ -13,7 +13,7 @@ class BulkParser
     const MAX_ROWS = 10000;
 
     /** Columnas reconocidas (normalizadas a minúsculas) */
-    const KNOWN_COLS = ['id_pedido', 'numero_orden', 'comentario', 'estado', 'id_estado', 'motivo', 'fecha_entrega', 'fecha_liquidacion'];
+    const KNOWN_COLS = ['id_pedido', 'numero_orden', 'comentario', 'estado', 'id_estado', 'motivo', 'fecha_entrega', 'fecha_liquidacion', 'numero_traking'];
 
     /**
      * Punto de entrada principal.
@@ -221,11 +221,12 @@ class BulkParser
             return 'El archivo debe tener al menos una columna: id_pedido o numero_orden.';
         }
 
-        $hasComentario = in_array('comentario', $headers, true);
-        $hasEstado     = in_array('estado', $headers, true) || in_array('id_estado', $headers, true);
+        $hasComentario  = in_array('comentario',    $headers, true);
+        $hasEstado      = in_array('estado',         $headers, true) || in_array('id_estado', $headers, true);
+        $hasTraking     = in_array('numero_traking', $headers, true);
 
-        if (!$hasComentario && !$hasEstado) {
-            return 'El archivo debe tener al menos una columna para actualizar: comentario, estado o id_estado.';
+        if (!$hasComentario && !$hasEstado && !$hasTraking) {
+            return 'El archivo debe tener al menos una columna para actualizar: comentario, estado, id_estado o numero_traking.';
         }
 
         return null;

@@ -98,6 +98,7 @@ class LogisticaModel {
                         p.municipalitiesName,
                         p.postalCode,
                         p.courier_service,
+                        p.numero_traking,
                         ep.nombre_estado AS estado,
                         m.codigo AS moneda,
                         pa.nombre AS nombre_pais,
@@ -598,7 +599,7 @@ class LogisticaModel {
 
         if (!empty($idPedidos)) {
             $ph   = implode(',', array_fill(0, count($idPedidos), '?'));
-            $stmt = $db->prepare("SELECT id, numero_orden, id_proveedor, id_cliente, id_estado, comentario FROM pedidos WHERE id IN ($ph)");
+            $stmt = $db->prepare("SELECT id, numero_orden, id_proveedor, id_cliente, id_estado, comentario, numero_traking FROM pedidos WHERE id IN ($ph)");
             $stmt->execute($idPedidos);
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
                 $pedidosById[(int)$p['id']] = $p;
@@ -607,7 +608,7 @@ class LogisticaModel {
 
         if (!empty($numOrden)) {
             $ph   = implode(',', array_fill(0, count($numOrden), '?'));
-            $sql  = "SELECT id, numero_orden, id_proveedor, id_cliente, id_estado, comentario FROM pedidos WHERE CAST(numero_orden AS CHAR) IN ($ph)";
+            $sql  = "SELECT id, numero_orden, id_proveedor, id_cliente, id_estado, comentario, numero_traking FROM pedidos WHERE CAST(numero_orden AS CHAR) IN ($ph)";
             if ($isProveedor) {
                 $sql .= ' AND id_proveedor = ?';
                 $params = array_merge($numOrden, [$userId]);
@@ -657,6 +658,8 @@ class LogisticaModel {
             $motivo        = $row['motivo']          ?? null;
             $fechaEntrega     = isset($row['fecha_entrega'])     && $row['fecha_entrega']     !== null ? trim((string)$row['fecha_entrega'])     : null;
             $fechaLiquidacion = isset($row['fecha_liquidacion']) && $row['fecha_liquidacion'] !== null ? trim((string)$row['fecha_liquidacion']) : null;
+            $numeroTraking    = isset($row['numero_traking'])    && $row['numero_traking']    !== null ? trim((string)$row['numero_traking'])    : null;
+            if ($numeroTraking === '') $numeroTraking = null;
 
             // Validar formato de fechas (acepta YYYY-MM-DD)
             if ($fechaEntrega !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaEntrega)) {
@@ -675,8 +678,8 @@ class LogisticaModel {
             }
 
             // Sin campo a actualizar
-            if ($comentario === null && $estadoNombre === null && $idEstadoRaw === null) {
-                $errores[] = "Línea {$line}: Debe incluir al menos comentario, estado o id_estado.";
+            if ($comentario === null && $estadoNombre === null && $idEstadoRaw === null && $numeroTraking === null) {
+                $errores[] = "Línea {$line}: Debe incluir al menos comentario, estado, id_estado o numero_traking.";
                 continue;
             }
 
@@ -748,8 +751,10 @@ class LogisticaModel {
                 'numero_orden'      => $pedido['numero_orden'],
                 'comentario_anterior' => $pedido['comentario'],
                 'estado_anterior_id'  => $pedido['id_estado'],
+                'traking_anterior'    => $pedido['numero_traking'] ?? null,
                 'nuevo_comentario'    => $nuevoComentario,
                 'nuevo_id_estado'     => $nuevoIdEstado,
+                'nuevo_traking'       => $numeroTraking,
                 'motivo'              => $motivo,
                 'fecha_entrega'       => $fechaEntrega,
                 'fecha_liquidacion'   => $fechaLiquidacion,
@@ -799,12 +804,14 @@ class LogisticaModel {
                 $idPedido         = (int)$row['id_pedido'];
                 $nuevoComentario  = $row['nuevo_comentario'];
                 $nuevoIdEstado    = $row['nuevo_id_estado'];
+                $nuevoTraking     = $row['nuevo_traking'] ?? null;   // null = no se toca el campo
                 $fechaEntrega     = $row['fecha_entrega']     ?? null;
                 $fechaLiquidacion = $row['fecha_liquidacion'] ?? null;
 
                 // Determinar si hay cambios reales
                 $hayCambio = ($nuevoComentario !== null && $nuevoComentario !== (string)($row['comentario_anterior'] ?? ''))
                           || ($nuevoIdEstado  !== null && $nuevoIdEstado  !== (int)($row['estado_anterior_id'] ?? 0))
+                          || ($nuevoTraking   !== null && $nuevoTraking   !== (string)($row['traking_anterior'] ?? ''))
                           || $fechaEntrega     !== null
                           || $fechaLiquidacion !== null;
 
@@ -824,6 +831,10 @@ class LogisticaModel {
                 if ($nuevoIdEstado !== null) {
                     $sets[]              = 'id_estado = :id_estado';
                     $params[':id_estado'] = $nuevoIdEstado;
+                }
+                if ($nuevoTraking !== null) {
+                    $sets[]                   = 'numero_traking = :numero_traking';
+                    $params[':numero_traking'] = $nuevoTraking;
                 }
                 if ($fechaEntrega !== null) {
                     $sets[]                 = 'fecha_entrega = :fecha_entrega';
@@ -872,6 +883,10 @@ class LogisticaModel {
                     if ($nuevoIdEstado !== null) {
                         $antes['id_estado']  = $row['estado_anterior_id'];
                         $nuevos['id_estado'] = $nuevoIdEstado;
+                    }
+                    if ($nuevoTraking !== null) {
+                        $antes['numero_traking']  = $row['traking_anterior'];
+                        $nuevos['numero_traking'] = $nuevoTraking;
                     }
                     if ($fechaEntrega !== null) {
                         $nuevos['fecha_entrega'] = $fechaEntrega;
