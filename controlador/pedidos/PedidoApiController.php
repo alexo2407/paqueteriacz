@@ -725,10 +725,10 @@ class PedidoApiController
 
     private function extraerPrecioLocal(array $data): ?float
     {
-        if (isset($data['precio_local']) && $data['precio_local'] !== '') {
+        if (array_key_exists('precio_local', $data) && is_numeric($data['precio_local'])) {
             return (float)$data['precio_local'];
         }
-        if (isset($data['precio']) && $data['precio'] !== '') {
+        if (array_key_exists('precio', $data) && is_numeric($data['precio'])) {
             return (float)$data['precio'];
         }
         return null;
@@ -782,9 +782,9 @@ class PedidoApiController
         $idCliente = isset($data['id_cliente']) && is_numeric($data['id_cliente']) ? (int)$data['id_cliente'] : null;
 
         // Combo pricing fields
-        $precioTotalLocal = isset($data['precio_total_local']) && $data['precio_total_local'] !== '' ? (float)$data['precio_total_local'] : null;
-        $precioTotalUsd = isset($data['precio_total_usd']) && $data['precio_total_usd'] !== '' ? (float)$data['precio_total_usd'] : null;
-        $tasaConversionUsd = isset($data['tasa_conversion_usd']) && $data['tasa_conversion_usd'] !== '' ? (float)$data['tasa_conversion_usd'] : null;
+        $precioTotalLocal = (array_key_exists('precio_total_local', $data) && is_numeric($data['precio_total_local'])) ? (float)$data['precio_total_local'] : null;
+        $precioTotalUsd = (array_key_exists('precio_total_usd', $data) && is_numeric($data['precio_total_usd'])) ? (float)$data['precio_total_usd'] : null;
+        $tasaConversionUsd = (array_key_exists('tasa_conversion_usd', $data) && is_numeric($data['tasa_conversion_usd'])) ? (float)$data['tasa_conversion_usd'] : null;
         
         // Auto-calculate precio_total_usd if only local price is provided
         if ($precioTotalLocal !== null && $precioTotalUsd === null && $monedaId !== null) {

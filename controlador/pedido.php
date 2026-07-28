@@ -663,18 +663,18 @@ class PedidosController
         $esCombo = false;
 
         // Precios legacy (opcionales, para compatibilidad)
-        if (isset($data['precio_local']) && $data['precio_local'] !== '') {
+        if (array_key_exists('precio_local', $data) && is_numeric($data['precio_local'])) {
             $precioLocal = (float)str_replace(',', '.', (string)$data['precio_local']);
         }
-        if (isset($data['precio_usd']) && $data['precio_usd'] !== '') {
+        if (array_key_exists('precio_usd', $data) && is_numeric($data['precio_usd'])) {
             $precioUsdEntrada = (float)str_replace(',', '.', (string)$data['precio_usd']);
         }
 
         // Nuevos campos de combo pricing
-        if (isset($data['precio_total_local']) && $data['precio_total_local'] !== '') {
+        if (array_key_exists('precio_total_local', $data) && is_numeric($data['precio_total_local'])) {
             $precioTotalLocal = (float)str_replace(',', '.', (string)$data['precio_total_local']);
         }
-        if (isset($data['precio_total_usd']) && $data['precio_total_usd'] !== '') {
+        if (array_key_exists('precio_total_usd', $data) && is_numeric($data['precio_total_usd'])) {
             $precioTotalUsd = (float)str_replace(',', '.', (string)$data['precio_total_usd']);
         }
         if (isset($data['tasa_conversion_usd']) && $data['tasa_conversion_usd'] !== '') {

@@ -364,10 +364,10 @@ class ProductoModel
             } else {
                 $stmt->bindValue(':descripcion', $descripcion, PDO::PARAM_STR);
             }
-            if ($precioUsd === null || $precioUsd === '') {
-                $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
+            if (is_numeric($precioUsd)) {
+                $stmt->bindValue(':precio_usd', (float)$precioUsd);
             } else {
-                $stmt->bindValue(':precio_usd', $precioUsd);
+                $stmt->bindValue(':precio_usd', null, PDO::PARAM_NULL);
             }
             if ($idUsuarioCreador === null) {
                 $stmt->bindValue(':id_usuario_creador', null, PDO::PARAM_NULL);
@@ -414,7 +414,7 @@ class ProductoModel
             $nombre      = trim($datos['nombre'] ?? '');
             $sku         = isset($datos['sku'])         && $datos['sku']         !== '' ? $datos['sku']         : null;
             $descripcion = isset($datos['descripcion']) && $datos['descripcion'] !== '' ? $datos['descripcion'] : null;
-            $precioUsd   = isset($datos['precio_usd'])  && $datos['precio_usd']  !== '' ? $datos['precio_usd']  : null;
+            $precioUsd   = (array_key_exists('precio_usd', $datos) && is_numeric($datos['precio_usd'])) ? (float)$datos['precio_usd'] : null;
             $categoriaId = isset($datos['categoria_id']) && $datos['categoria_id'] !== '' ? (int)$datos['categoria_id'] : null;
             $marca       = isset($datos['marca'])       && $datos['marca']       !== '' ? $datos['marca']       : null;
             $unidad      = isset($datos['unidad'])      && $datos['unidad']      !== '' ? $datos['unidad']      : 'unidad';

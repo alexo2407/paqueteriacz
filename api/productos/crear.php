@@ -44,7 +44,7 @@ if (!is_array($body)) {
 $nombre = trim($body['nombre'] ?? '');
 $sku = isset($body['sku']) ? trim($body['sku']) : null;
 $descripcion = isset($body['descripcion']) ? trim($body['descripcion']) : null;
-$precioUsd = isset($body['precio_usd']) && $body['precio_usd'] !== '' ? $body['precio_usd'] : null;
+$precioUsd = (array_key_exists('precio_usd', $body) && is_numeric($body['precio_usd'])) ? (float)$body['precio_usd'] : null;
 // Optional initial stock provided in payload
 $initialStock = isset($body['stock']) && $body['stock'] !== '' ? $body['stock'] : null;
 

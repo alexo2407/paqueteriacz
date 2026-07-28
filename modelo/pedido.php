@@ -1100,21 +1100,21 @@ class PedidosModel
             // Prices (legacy fields)
             if (isset($data['precio_local'])) {
                 $fields[] = 'precio_local = :precio_local';
-                $params[':precio_local'] = $data['precio_local'] !== '' ? (float)$data['precio_local'] : null;
+                $params[':precio_local'] = is_numeric($data['precio_local']) ? (float)$data['precio_local'] : null;
             }
             if (isset($data['precio_usd'])) {
                 $fields[] = 'precio_usd = :precio_usd';
-                $params[':precio_usd'] = $data['precio_usd'] !== '' ? (float)$data['precio_usd'] : null;
+                $params[':precio_usd'] = is_numeric($data['precio_usd']) ? (float)$data['precio_usd'] : null;
             }
 
             // New combo pricing fields
             if (isset($data['precio_total_local'])) {
                 $fields[] = 'precio_total_local = :precio_total_local';
-                $params[':precio_total_local'] = $data['precio_total_local'] !== '' ? (float)$data['precio_total_local'] : null;
+                $params[':precio_total_local'] = is_numeric($data['precio_total_local']) ? (float)$data['precio_total_local'] : null;
             }
             if (isset($data['precio_total_usd'])) {
                 $fields[] = 'precio_total_usd = :precio_total_usd';
-                $params[':precio_total_usd'] = $data['precio_total_usd'] !== '' ? (float)$data['precio_total_usd'] : null;
+                $params[':precio_total_usd'] = is_numeric($data['precio_total_usd']) ? (float)$data['precio_total_usd'] : null;
             }
             if (isset($data['tasa_conversion_usd'])) {
                 $fields[] = 'tasa_conversion_usd = :tasa_conversion_usd';

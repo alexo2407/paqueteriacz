@@ -48,16 +48,16 @@ class Validator
         }
         
         // Precio local (optional, numeric)
-        if (isset($data['precio_local']) && $data['precio_local'] !== '' && $data['precio_local'] !== null) {
-            if (!is_numeric($data['precio_local']) || $data['precio_local'] < 0) {
-                $errors['precio_local'] = 'El precio local debe ser un número positivo';
+        if (isset($data['precio_local']) && is_numeric($data['precio_local'])) {
+            if ((float)$data['precio_local'] < 0) {
+                $errors['precio_local'] = 'El precio local debe ser un número mayor o igual a cero';
             }
         }
         
         // Precio USD (optional, numeric)
-        if (isset($data['precio_usd']) && $data['precio_usd'] !== '' && $data['precio_usd'] !== null) {
-            if (!is_numeric($data['precio_usd']) || $data['precio_usd'] < 0) {
-                $errors['precio_usd'] = 'El precio USD debe ser un número positivo';
+        if (isset($data['precio_usd']) && is_numeric($data['precio_usd'])) {
+            if ((float)$data['precio_usd'] < 0) {
+                $errors['precio_usd'] = 'El precio USD debe ser un número mayor o igual a cero';
             }
         }
         

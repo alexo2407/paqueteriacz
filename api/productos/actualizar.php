@@ -77,7 +77,7 @@ foreach ($camposTexto as $campo) {
 }
 
 // Campos numéricos
-if (isset($datos['precio_usd']) && $datos['precio_usd'] !== '') {
+if (array_key_exists('precio_usd', $datos) && is_numeric($datos['precio_usd'])) {
     $datosActualizar['precio_usd'] = (float)$datos['precio_usd'];
 }
 
