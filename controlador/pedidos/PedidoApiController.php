@@ -77,8 +77,18 @@ class PedidoApiController
         // Procesar coordenadas
         list($latitud, $longitud) = $this->procesarCoordenadas($data);
 
-        // Validar y procesar relaciones
-        $this->validarRelaciones($data);
+        // Validar existencia de FKs (moneda, proveedor, vendedor, municipio, barrio)
+        // validarRelaciones() retorna un array de errores por campo, o [] si todo OK.
+        $erroresRelaciones = $this->validarRelaciones($data);
+        if (!empty($erroresRelaciones)) {
+            $response = [
+                'success' => false,
+                'message' => 'VALIDATION_ERROR',
+                'fields'  => $erroresRelaciones,
+            ];
+            $this->registrarAuditoriaAPI($requestOriginal, $response);
+            return $response;
+        }
 
         // Calcular precios
         $precioLocal = $this->extraerPrecioLocal($data);
@@ -90,8 +100,21 @@ class PedidoApiController
         // Construir payload
         $pedidoPayload = $this->construirPayload($data, $latitud, $longitud, $precioLocal, $precioUsd, $monedaId);
 
-        // Crear pedido
-        $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
+        // Crear pedido — capturar errores de negocio del modelo (stock, producto)
+        // para devolver mensajes claros al cliente en lugar de un 500 genérico.
+        try {
+            $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
+        } catch (Exception $modelEx) {
+            $msg = $modelEx->getMessage();
+            error_log('[PedidoApiController::crear] Error modelo: ' . $msg);
+            $response = [
+                'success' => false,
+                'message' => 'STOCK_ERROR',
+                'data'    => $msg,
+            ];
+            $this->registrarAuditoriaAPI($requestOriginal, $response);
+            return $response;
+        }
         
         // Notificación logística al crear
         if ($nuevoId) {
@@ -201,6 +224,16 @@ class PedidoApiController
             if (PedidosModel::existeNumeroOrden($pedido["numero_orden"], $pedido['id_cliente'])) {
                 $itemResult['error'] = "VALIDATION_ERROR";
                 $itemResult['fields'] = ["numero_orden" => "El número de orden ya existe para este cliente."];
+                $this->registrarAuditoriaAPI($requestOriginal, $itemResult);
+                $results[] = $itemResult;
+                continue;
+            }
+
+            // Validar existencia de FKs (moneda, proveedor, vendedor, municipio, barrio)
+            $erroresRel = $this->validarRelaciones($pedido);
+            if (!empty($erroresRel)) {
+                $itemResult['error']  = 'VALIDATION_ERROR';
+                $itemResult['fields'] = $erroresRel;
                 $this->registrarAuditoriaAPI($requestOriginal, $itemResult);
                 $results[] = $itemResult;
                 continue;
@@ -675,14 +708,25 @@ class PedidoApiController
         return [null, null];
     }
 
-    private function validarRelaciones(array $data): void
+    /**
+     * Validar existencia de FKs en BD: moneda, vendedor, proveedor, municipio, barrio.
+     *
+     * Retorna un array asociativo de errores por campo (field => mensaje), o [] si todo OK.
+     * No lanza excepciones: los errores se devuelven para que el llamador decida cómo responder.
+     *
+     * @param array $data
+     * @return array  ['id_moneda' => 'mensaje', ...] | []
+     */
+    private function validarRelaciones(array $data): array
     {
+        $errores = [];
+
         // Validar moneda
         $monedaId = isset($data['id_moneda']) ? (int)$data['id_moneda'] : null;
         if ($monedaId !== null && $monedaId !== 0) {
             $m = MonedaModel::obtenerPorId($monedaId);
             if (!$m) {
-                throw new Exception("La moneda especificada no existe.", 400);
+                $errores['id_moneda'] = "La moneda con id_moneda={$monedaId} no existe en el sistema. Verifica el ID o contacta al administrador.";
             }
         }
 
@@ -691,7 +735,7 @@ class PedidoApiController
         if ($vendedorId !== null) {
             $uv = (new UsuarioModel())->obtenerPorId($vendedorId);
             if (!$uv) {
-                throw new Exception("El vendedor especificado no existe.", 400);
+                $errores['id_vendedor'] = "El vendedor con id_vendedor={$vendedorId} no existe en el sistema.";
             }
         }
 
@@ -700,7 +744,7 @@ class PedidoApiController
         if ($proveedorId !== null) {
             $up = (new UsuarioModel())->obtenerPorId($proveedorId);
             if (!$up) {
-                throw new Exception("El proveedor especificado no existe.", 400);
+                $errores['id_proveedor'] = "El proveedor con id_proveedor={$proveedorId} no existe en el sistema. Verifica el ID o contacta al administrador.";
             }
         }
 
@@ -709,7 +753,7 @@ class PedidoApiController
         if ($municipioId !== null) {
             $mm = MunicipioModel::obtenerPorId($municipioId);
             if (!$mm) {
-                throw new Exception("El municipio especificado no existe.", 400);
+                $errores['id_municipio'] = "El municipio con id_municipio={$municipioId} no existe en el sistema.";
             }
         }
 
@@ -718,9 +762,11 @@ class PedidoApiController
         if ($barrioId !== null) {
             $bb = BarrioModel::obtenerPorId($barrioId);
             if (!$bb) {
-                throw new Exception("El barrio especificado no existe.", 400);
+                $errores['id_barrio'] = "El barrio con id_barrio={$barrioId} no existe en el sistema.";
             }
         }
+
+        return $errores;
     }
 
     private function extraerPrecioLocal(array $data): ?float

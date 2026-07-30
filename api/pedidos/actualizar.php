@@ -57,5 +57,6 @@ try {
         responder(false, $result['message'], null, 400);
     }
 } catch (Exception $e) {
-    responder(false, "Error: " . $e->getMessage(), null, 500);
+    error_log('[api/pedidos/actualizar] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+    responder(false, 'Error interno al actualizar el pedido. Contacta al administrador si el problema persiste.', $e->getMessage(), 500);
 }

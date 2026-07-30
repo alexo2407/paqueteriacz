@@ -86,7 +86,8 @@ try {
 
     responder(true, 'Listado de productos', $productos, 200, $pagination);
 } catch (Exception $e) {
-    responder(false, 'Error al listar productos: ' . $e->getMessage(), null, 500);
+    error_log('[api/productos/listar] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+    responder(false, 'Error interno del servidor al listar productos.', null, 500);
 }
 
 ?>

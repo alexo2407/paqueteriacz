@@ -49,6 +49,7 @@ try {
         responder(false, "Error al desactivar el pedido", null, 500);
     }
 } catch (Exception $e) {
-    responder(false, "Error: " . $e->getMessage(), null, 500);
+    error_log('[api/pedidos/desactivar] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
+    responder(false, 'Error interno al desactivar el pedido. Contacta al administrador si el problema persiste.', $e->getMessage(), 500);
 }
 ?>

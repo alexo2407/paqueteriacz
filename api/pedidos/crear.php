@@ -84,17 +84,35 @@ try {
     $response = $pedidoController->crearPedidoAPI($data, $autoEnqueue, $userId, $userRole);
 
     // El controlador ya devuelve el sobre { success, message, data, fields }
+    // Mapeo de message → HTTP code:
+    //   VALIDATION_ERROR → 422 Unprocessable Entity  (datos mal formados o IDs inexistentes)
+    //   STOCK_ERROR      → 409 Conflict              (recurso existe pero no puede cumplirse)
+    //   éxito            → 200 OK
+    //   cualquier otro error → 400 Bad Request
     $isValidationError = !$response['success'] && ($response['message'] === 'VALIDATION_ERROR' || isset($response['fields']));
-    $httpCode = $response['success'] ? 200 : ($isValidationError ? 422 : 400);
+    $isStockError      = !$response['success'] && $response['message'] === 'STOCK_ERROR';
+    if ($response['success']) {
+        $httpCode = 200;
+    } elseif ($isValidationError) {
+        $httpCode = 422;
+    } elseif ($isStockError) {
+        $httpCode = 409;
+    } else {
+        $httpCode = 400;
+    }
     $extra = isset($response['fields']) ? ['fields' => $response['fields']] : [];
     responder($response['success'], $response['message'], $response['data'] ?? null, $httpCode, $extra);
 } catch (Throwable $e) {
+    // Loguear el error completo para diagnóstico interno
     error_log('[api/pedidos/crear] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
     echo json_encode([
         'success' => false,
-        'message' => 'Error interno del servidor.'
-    ]);
+        'message' => 'Error interno del servidor.',
+        // El campo 'data' incluye el mensaje del error para facilitar diagnóstico.
+        // En producción con DEBUG=false solo se muestra el mensaje sin stack trace.
+        'data'    => (defined('DEBUG') && DEBUG) ? $e->getMessage() . ' en ' . basename($e->getFile()) . ':' . $e->getLine() : $e->getMessage(),
+    ], JSON_UNESCAPED_UNICODE);
 }
 
 ?>

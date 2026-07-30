@@ -54,14 +54,14 @@ $datos = json_decode(file_get_contents('php://input'), true) ?: $_POST;
 // Validar ID
 $id = isset($datos['id']) ? (int)$datos['id'] : 0;
 if ($id <= 0) {
-    echo json_encode(['success' => false, 'message' => 'ID de producto inválido']);
+    responder(false, 'El parámetro "id" es requerido y debe ser un entero positivo. Ejemplo: ?id=42', null, 400);
     exit;
 }
 
 // Validar que el producto existe
 $productoExistente = ProductoModel::obtenerPorId($id);
 if (!$productoExistente) {
-    echo json_encode(['success' => false, 'message' => 'Producto no encontrado']);
+    responder(false, "Producto con id={$id} no encontrado. Verifica que el ID sea correcto.", null, 404);
     exit;
 }
 
@@ -102,7 +102,7 @@ if (isset($datos['activo'])) {
 if (empty($datosActualizar['nombre']) && !isset($datosActualizar['nombre'])) {
     // Si no se envió nombre, usar el existente
     if (!isset($datos['nombre'])) {
-        echo json_encode(['success' => false, 'message' => 'El nombre del producto es requerido']);
+        responder(false, 'El campo "nombre" del producto es requerido cuando no existía previamente.', null, 400);
         exit;
     }
 }
@@ -111,14 +111,7 @@ if (empty($datosActualizar['nombre']) && !isset($datosActualizar['nombre'])) {
 $resultado = ProductoModel::actualizar($id, $datosActualizar);
 
 if ($resultado) {
-    echo json_encode([
-        'success' => true,
-        'message' => 'Producto actualizado correctamente',
-        'id' => $id
-    ]);
+    responder(true, 'Producto actualizado correctamente.', ['id' => $id], 200);
 } else {
-    echo json_encode([
-        'success' => false,
-        'message' => 'No se pudo actualizar el producto. Verifica los datos e intenta nuevamente.'
-    ]);
+    responder(false, 'No se realizaron cambios en el producto. Verifica que los datos sean distintos a los actuales e intenta nuevamente.', null, 400);
 }

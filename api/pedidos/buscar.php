@@ -32,7 +32,7 @@ if (!$validacion['success']) {
 $numeroOrden = $_GET['numero_orden'] ?? null;
 
 if (!$numeroOrden) {
-    responder(false, 'Order number is required', null, 400);
+    responder(false, 'El parámetro numero_orden es requerido. Ejemplo: ?numero_orden=9548346', null, 400);
     exit;
 }
 
