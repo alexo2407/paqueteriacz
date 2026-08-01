@@ -3,7 +3,7 @@ ob_start();
 /**
  * Informe: Tendencia Semanal de Órdenes
  * Ruta: GET /pedidos/informes/semana
- * Muestra tabla semanal (Lunes–Sábado) con cantidades y porcentajes por estado
+ * Muestra tabla semanal (Lunes–Domingo) con cantidades y porcentajes por estado
  */
 
 require_once __DIR__ . '/../../../../config/config.php';
@@ -70,7 +70,7 @@ $currUserNombre     = $tokenRow['nombre'] ?? ($_SESSION['nombre'] ?? '');
 // ── Filtros ───────────────────────────────────────────────────────────────────
 // Por defecto: últimas 12 semanas
 $defaultDesde = date('Y-m-d', strtotime('-11 weeks monday this week'));
-$defaultHasta = date('Y-m-d', strtotime('saturday this week'));
+$defaultHasta = date('Y-m-d', strtotime('monday this week +6 days'));
 $fechaDesde  = $_GET['fecha_desde'] ?? $defaultDesde;
 $fechaHasta  = $_GET['fecha_hasta'] ?? $defaultHasta;
 $idProveedor = (!$isAdmin && $isProveedorExt) ? $currUserId : (int)($_GET['id_proveedor'] ?? 0);
@@ -103,7 +103,7 @@ if ($isAdmin && $idProveedor > 0) {
 }
 $whereStr = 'WHERE ' . implode(' AND ', $where);
 
-// ── Query semanal (Lunes–Sábado) ──────────────────────────────────────────────
+// ── Query semanal (Lunes–Domingo) ──────────────────────────────────────────────
 // YEARWEEK(..., 1) = semana ISO, empieza lunes
 $sqlSemana = "
     SELECT
@@ -118,8 +118,8 @@ $sqlSemana = "
             DATE_SUB(
                 DATE(MIN(p.fecha_ingreso)),
                 INTERVAL WEEKDAY(MIN(p.fecha_ingreso)) DAY
-            ), INTERVAL 5 DAY
-        )                               AS sabado,
+            ), INTERVAL 6 DAY
+        )                               AS domingo,
         COUNT(*)                        AS cantidad,
         SUM(CASE
             WHEN LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 0
@@ -237,7 +237,7 @@ if ($export) {
             $xlsIdxMes++;
         }
 
-        $label = 'Semana ' . $xlsIdxMes . ' — ' . date('d/m/Y', strtotime($sem['lunes'])) . ' al ' . date('d/m/Y', strtotime($sem['sabado']));
+        $label = 'Semana ' . $xlsIdxMes . ' — ' . date('d/m/Y', strtotime($sem['lunes'])) . ' al ' . date('d/m/Y', strtotime($sem['domingo']));
 
         // Fila de cantidades (A=label, B=total, C=entregados, D=rechazados, E=devueltos, F=en_proceso, G=reprogramados)
         $sheet->setCellValue("A{$row}", $label);
@@ -452,7 +452,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
         <div>
             <h4><i class="bi bi-calendar-week-fill me-2"></i>Tendencia Semanal</h4>
             <small class="opacity-75">
-                Desempeño por semana (Lun–Sáb) · <?= htmlspecialchars($fechaDesde) ?> → <?= htmlspecialchars($fechaHasta) ?>
+                Desempeño por semana (Lun–Dom) · <?= htmlspecialchars($fechaDesde) ?> → <?= htmlspecialchars($fechaHasta) ?>
             </small>
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -647,7 +647,7 @@ $chartReprogramadosJson = json_encode($chartReprogramados);
                     <td>
                         <span class="sem-label">Semana <?= $semIdxMes ?> &mdash; <?= $nomMes ?></span><br>
                         <span class="sem-rango">
-                            <?= date('d/m/Y', strtotime($sem['lunes'])) ?> &ndash; <?= date('d/m/Y', strtotime($sem['sabado'])) ?>
+                            <?= date('d/m/Y', strtotime($sem['lunes'])) ?> &ndash; <?= date('d/m/Y', strtotime($sem['domingo'])) ?>
                         </span>
                     </td>
                     <td class="cell-num"><?= number_format($sem['cantidad']) ?></td>
