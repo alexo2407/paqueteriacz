@@ -289,9 +289,139 @@ class WebhookModel
     }
 
     /**
+     * DataTables server-side processing.
+     *
+     * Devuelve un array compatible con la respuesta que espera DataTables
+     * (draw, recordsTotal, recordsFiltered, data).
+     *
+     * @param array $params  Parámetros recibidos del request de DataTables ($_GET o $_POST)
+     * @param array $filtros Filtros extra: fecha_desde, fecha_hasta, id_webhook, status
+     */
+    public static function serverSide(array $params, array $filtros = []): array
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            // ── Parámetros DataTables ────────────────────────────────────────
+            $draw   = (int)($params['draw']   ?? 1);
+            $start  = (int)($params['start']  ?? 0);
+            $length = (int)($params['length'] ?? 50);
+            $search = trim($params['search']['value'] ?? '');
+
+            // Mapeo de columnas por índice (deben coincidir con columnDefs en JS)
+            $columnas = [
+                0 => 'l.id',
+                1 => 'l.created_at',
+                2 => 'c.nombre',      // webhook/cliente
+                3 => 'l.numero_orden',
+                4 => 'l.estado_enviado',
+                5 => 'l.status',
+                6 => 'l.response_code',
+            ];
+            $orderColIdx = (int)($params['order'][0]['column'] ?? 1);
+            $orderDir    = strtoupper($params['order'][0]['dir'] ?? 'DESC') === 'DESC' ? 'DESC' : 'ASC';
+            $orderCol    = $columnas[$orderColIdx] ?? 'l.created_at';
+
+            // ── Cláusula WHERE — filtros personalizados ──────────────────────
+            $where  = ['1=1'];
+            $bind   = [];
+
+            if (!empty($filtros['fecha_desde'])) {
+                $where[]               = 'DATE(l.created_at) >= :fecha_desde';
+                $bind[':fecha_desde']  = $filtros['fecha_desde'];
+            }
+            if (!empty($filtros['fecha_hasta'])) {
+                $where[]               = 'DATE(l.created_at) <= :fecha_hasta';
+                $bind[':fecha_hasta']  = $filtros['fecha_hasta'];
+            }
+            if (!empty($filtros['id_webhook'])) {
+                $where[]              = 'l.id_webhook_cliente = :id_webhook';
+                $bind[':id_webhook']  = (int)$filtros['id_webhook'];
+            }
+            if (!empty($filtros['status']) && in_array($filtros['status'], ['ok', 'error', 'pending'])) {
+                $where[]        = 'l.status = :status';
+                $bind[':status'] = $filtros['status'];
+            }
+
+            // ── Búsqueda global (search box de DataTables) ──────────────────
+            if ($search !== '') {
+                $where[]          = '(l.numero_orden LIKE :search
+                                      OR c.nombre      LIKE :search2
+                                      OR l.estado_enviado LIKE :search3)';
+                $bind[':search']  = "%$search%";
+                $bind[':search2'] = "%$search%";
+                $bind[':search3'] = "%$search%";
+            }
+
+            $whereSQL = 'WHERE ' . implode(' AND ', $where);
+
+            $baseSQL = 'FROM webhooks_log l
+                        JOIN webhooks_clientes c ON c.id = l.id_webhook_cliente
+                        ' . $whereSQL;
+
+            // ── Total sin filtros (solo filtros personalizados, sin search) ──
+            $stmtTotal = $db->prepare('SELECT COUNT(*) ' . 'FROM webhooks_log l JOIN webhooks_clientes c ON c.id = l.id_webhook_cliente WHERE 1=1'
+                . (!empty($filtros['fecha_desde']) ? ' AND DATE(l.created_at) >= :fd'  : '')
+                . (!empty($filtros['fecha_hasta']) ? ' AND DATE(l.created_at) <= :fh'  : '')
+                . (!empty($filtros['id_webhook'])  ? ' AND l.id_webhook_cliente = :iw' : '')
+                . (!empty($filtros['status']) && in_array($filtros['status'], ['ok','error','pending']) ? ' AND l.status = :st' : '')
+            );
+            $bindTotal = [];
+            if (!empty($filtros['fecha_desde'])) $bindTotal[':fd'] = $filtros['fecha_desde'];
+            if (!empty($filtros['fecha_hasta'])) $bindTotal[':fh'] = $filtros['fecha_hasta'];
+            if (!empty($filtros['id_webhook']))  $bindTotal[':iw'] = (int)$filtros['id_webhook'];
+            if (!empty($filtros['status']) && in_array($filtros['status'], ['ok','error','pending'])) $bindTotal[':st'] = $filtros['status'];
+            $stmtTotal->execute($bindTotal);
+            $recordsTotal = (int)$stmtTotal->fetchColumn();
+
+            // ── Total filtrado (incluyendo search) ───────────────────────────
+            $stmtFiltered = $db->prepare('SELECT COUNT(*) ' . $baseSQL);
+            $stmtFiltered->execute($bind);
+            $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+
+            // ── Datos paginados ──────────────────────────────────────────────
+            $sql = 'SELECT l.id, l.created_at, l.id_webhook_cliente,
+                           l.id_pedido, l.numero_orden, l.estado_enviado,
+                           l.status, l.response_code, l.request_body,
+                           l.response_body, l.error_message, l.intentos, l.enviado_at,
+                           c.nombre AS cliente_nombre
+                    ' . $baseSQL . "
+                    ORDER BY $orderCol $orderDir
+                    LIMIT :limit OFFSET :offset";
+
+            $stmtData = $db->prepare($sql);
+            foreach ($bind as $k => $v) {
+                $stmtData->bindValue($k, $v);
+            }
+            $stmtData->bindValue(':limit',  $length, PDO::PARAM_INT);
+            $stmtData->bindValue(':offset', $start,  PDO::PARAM_INT);
+            $stmtData->execute();
+            $rows = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'draw'            => $draw,
+                'recordsTotal'    => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $rows,
+            ];
+
+        } catch (Exception $e) {
+            error_log('[Webhook] serverSide error: ' . $e->getMessage());
+            return [
+                'draw'            => (int)($params['draw'] ?? 1),
+                'recordsTotal'    => 0,
+                'recordsFiltered' => 0,
+                'data'            => [],
+                'error'           => 'Error interno del servidor',
+            ];
+        }
+    }
+
+
+    /**
      * Obtener todos los logs de webhook (para UI de administración).
      */
-    public static function obtenerLogs(int $limite = 100): array
+    public static function obtenerLogs(int $limite = 500): array
     {
         try {
             $db = (new Conexion())->conectar();
@@ -306,6 +436,64 @@ class WebhookModel
             $stmt->execute();
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    /**
+     * Obtener logs con filtros avanzados: rango de fechas, webhook específico y estado.
+     *
+     * @param string|null $fechaDesde  Fecha inicio (Y-m-d)
+     * @param string|null $fechaHasta  Fecha fin    (Y-m-d)
+     * @param int|null    $idWebhook   ID del webhook (webhooks_clientes.id)
+     * @param string|null $status      'ok' | 'error' | 'pending'
+     * @param int         $limite      Máximo de registros a retornar
+     */
+    public static function obtenerLogsConFiltros(
+        ?string $fechaDesde = null,
+        ?string $fechaHasta = null,
+        ?int    $idWebhook  = null,
+        ?string $status     = null,
+        int     $limite     = 1000
+    ): array {
+        try {
+            $db     = (new Conexion())->conectar();
+            $where  = ['1=1'];
+            $params = [];
+
+            if ($fechaDesde) {
+                $where[]              = 'DATE(l.created_at) >= :fecha_desde';
+                $params[':fecha_desde'] = $fechaDesde;
+            }
+            if ($fechaHasta) {
+                $where[]              = 'DATE(l.created_at) <= :fecha_hasta';
+                $params[':fecha_hasta'] = $fechaHasta;
+            }
+            if ($idWebhook) {
+                $where[]          = 'l.id_webhook_cliente = :id_webhook';
+                $params[':id_webhook'] = $idWebhook;
+            }
+            if ($status && in_array($status, ['ok', 'error', 'pending'])) {
+                $where[]        = 'l.status = :status';
+                $params[':status'] = $status;
+            }
+
+            $sql  = 'SELECT l.*, c.nombre AS cliente_nombre
+                     FROM webhooks_log l
+                     JOIN webhooks_clientes c ON c.id = l.id_webhook_cliente
+                     WHERE ' . implode(' AND ', $where) . '
+                     ORDER BY l.created_at DESC
+                     LIMIT :limite';
+
+            $stmt = $db->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v);
+            }
+            $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('[Webhook] obtenerLogsConFiltros: ' . $e->getMessage());
             return [];
         }
     }
