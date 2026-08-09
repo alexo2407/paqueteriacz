@@ -124,7 +124,7 @@ class EnlacesController
                 'seguimiento'     => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE, ROL_NOMBRE_PROVEEDOR],
                 'auditoria'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'crm'             => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'],
-                'logistica'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'logistica'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 // logistica-operativa: protegida por permisos formales (tabla permisos, migración 022).
                 // require_permission() en la ruta ya verifica acceso; aquí se añade
                 // al mapa para que el dispatcher no la rechace antes de llegar a la ruta.

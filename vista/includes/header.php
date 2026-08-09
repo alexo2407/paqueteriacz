@@ -39,7 +39,7 @@
     $unreadCount        = 0;
     $showProviderLeads  = false;
     $notifUrl           = RUTA_URL . 'crm/notificaciones'; // default
-    $isLogisticaCliente = ($isProveedor || $isCliente) && !$isAdmin && !$isProveedorCRM && !$isClienteCRM;
+    $isLogisticaCliente = $isProveedor && !$isAdmin && !$isProveedorCRM && !$isClienteCRM;
     $navNotifPreview    = []; // Para el dropdown preview (últimas 5)
     $navNotifModulo     = 'crm'; // 'logistica' | 'crm'
 
@@ -425,7 +425,7 @@
             <?php endif; ?>
 
             <!-- ═══ Logística ═══ -->
-            <?php if ($isAdmin || $isCliente || $isProveedor): ?>
+            <?php if ($isAdmin || $isProveedor): ?>
             <a href="<?= RUTA_URL ?>logistica/dashboard" class="nav-link">
                 <i class="bi bi-truck-front"></i> Mis Pedidos
             </a>

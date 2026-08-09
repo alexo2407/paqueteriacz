@@ -14,6 +14,12 @@ class LogisticaController {
         
         // isProveedor() verifica ROL_PROVEEDOR (ID 5 = operador logístico / courier)
         $isProveedor = isProveedor();
+
+        // Logística es exclusivo de Proveedores y Admin (Cliente no ingresa a este dashboard)
+        if (!$isProveedor && !isSuperAdmin()) {
+            header("Location: " . RUTA_URL . "pedidos/listar");
+            exit;
+        }
         
         // Paginación — tab "En Proceso"
         $page    = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
