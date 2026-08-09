@@ -510,29 +510,24 @@ include "vista/includes/header.php";
 
                         <!-- Fila 2: Botones de acción -->
                         <div class="row g-2 flex-wrap align-items-center">
-                            <div class="col-6 col-sm-4 col-md-2">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <button type="submit" class="btn btn-primary btn-sm w-100">
                                     <i class="bi bi-search me-1"></i> Aplicar filtros
                                 </button>
                             </div>
-                            <div class="col-6 col-sm-4 col-md-2">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=pedidos"
                                     class="btn btn-outline-secondary btn-sm w-100">
                                     <i class="bi bi-x-circle me-1"></i> Limpiar
                                 </a>
                             </div>
-                            <div class="col-6 col-sm-4 col-md-3">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=pedidos&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>"
                                     class="btn btn-success btn-sm w-100">
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
-                            <div class="col-6 col-sm-6 col-md-2">
-                                <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-info btn-sm w-100 text-white fw-semibold" style="background:#0B4EA2;border-color:#0B4EA2;">
-                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar CSV
-                                </a>
-                            </div>
-                            <div class="col-6 col-sm-6 col-md-3">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <button type="button" class="btn btn-warning btn-sm w-100 fw-semibold text-dark" id="btnAbrirBulk" onclick="abrirModalBulk()">
                                     <i class="bi bi-arrow-repeat me-1"></i> Actualizar masivo
                                 </button>
@@ -803,29 +798,24 @@ include "vista/includes/header.php";
 
                         <!-- Fila 2: Botones de acción -->
                         <div class="row g-2 flex-wrap align-items-center">
-                            <div class="col-6 col-sm-4 col-md-2">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <button type="submit" class="btn btn-primary btn-sm w-100">
                                     <i class="bi bi-search me-1"></i> Aplicar filtros
                                 </button>
                             </div>
-                            <div class="col-6 col-sm-4 col-md-2">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all"
                                     class="btn btn-outline-secondary btn-sm w-100">
                                     <i class="bi bi-x-circle me-1"></i> Limpiar
                                 </a>
                             </div>
-                            <div class="col-6 col-sm-4 col-md-3">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtrosHistorial['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtrosHistorial['fecha_hasta']) ?>&id_cliente=<?= (int)$filtrosHistorial['id_cliente'] ?>&id_estado=<?= (int)$filtrosHistorial['id_estado'] ?>&search=<?= urlencode($filtrosHistorial['search']) ?>"
                                     class="btn btn-success btn-sm w-100">
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
-                            <div class="col-6 col-sm-6 col-md-2">
-                                <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-info btn-sm w-100 text-white fw-semibold" style="background:#0B4EA2;border-color:#0B4EA2;">
-                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar CSV
-                                </a>
-                            </div>
-                            <div class="col-6 col-sm-6 col-md-3">
+                            <div class="col-6 col-sm-3 col-md-3">
                                 <button type="button" class="btn btn-warning btn-sm w-100 fw-semibold text-dark" onclick="abrirModalBulk()">
                                     <i class="bi bi-arrow-repeat me-1"></i> Actualizar masivo
                                 </button>
@@ -1427,7 +1417,7 @@ include "vista/includes/header.php";
     }
 </script>
 
-<?php if (isCliente() || isSuperAdmin()): ?>
+<?php if (isProveedor() || isSuperAdmin()): ?>
     <!-- ===== MODAL: ACTUALIZACIÓN MASIVA ===== -->
     <div class="modal fade" id="modalBulkUpdate" tabindex="-1" aria-labelledby="modalBulkLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
