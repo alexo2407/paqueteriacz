@@ -37,20 +37,21 @@
  * @returns {Promise<{success:boolean, data?:any, code?:string, message?:string}>}
  */
 async function apiPost(endpoint, payload) {
-    const res = await fetch(RUTA_URL + endpoint, {
-        method:  'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-        },
-        body: JSON.stringify(payload),
-    });
+    try {
+        const res = await fetch(RUTA_URL + endpoint, {
+            method:  'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(payload),
+        });
 
-    if (!res.ok && res.status !== 400 && res.status !== 409 && res.status !== 422) {
-        throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        return data;
+    } catch (e) {
+        return { success: false, message: 'Error de red o respuesta no válida del servidor.' };
     }
-
-    return res.json();
 }
 
 /**
@@ -64,15 +65,16 @@ function uuidv4() {
 }
 
 /**
- * Genera un hash QR mock para pruebas (sha256-like placeholder).
+ * Genera un hash QR mock para pruebas (sha256-like 64 hex characters).
  * En producción, el hash real vendría del QR escaneado.
  */
 function hashMock(valor) {
-    let h = 0;
-    for (let i = 0; i < valor.length; i++) {
-        h = ((h << 5) - h + valor.charCodeAt(i)) | 0;
+    let hex = '';
+    const str = String(valor);
+    for (let i = 0; i < str.length; i++) {
+        hex += str.charCodeAt(i).toString(16);
     }
-    return Math.abs(h).toString(16).padStart(8, '0') + 'mock';
+    return hex.padStart(64, '0').substring(0, 64);
 }
 
 
@@ -506,3 +508,51 @@ function badgeResultadoJS(resultado) {
     });
 
 })();
+
+/**
+ * Elimina un pedido con resultado EXTRA de la colecta activa.
+ */
+async function eliminarPedidoExtra(idPedido, numeroOrden) {
+    if (typeof COLECTA_ID === 'undefined') return;
+
+    const confirmacion = await Swal.fire({
+        title: '¿Quitar paquete extra?',
+        text: `¿Deseas remover el pedido #${numeroOrden} de los extras de esta colecta?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, quitar extra',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    try {
+        const resp = await apiPost('api/logistica-operativa/colectas/eliminar-extra', {
+            id_colecta: COLECTA_ID,
+            id_pedido:  idPedido
+        });
+
+        if (resp.success) {
+            const fila = document.getElementById(`fila-pedido-${idPedido}`);
+            if (fila) fila.remove();
+
+            if (resp.data?.conteos) {
+                actualizarContadores(resp.data.conteos);
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Extra removido',
+                text: `El paquete #${numeroOrden} fue retirado de la colecta.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else {
+            Swal.fire('Error', resp.message || 'No se pudo eliminar el extra.', 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Error de comunicación con el servidor.', 'error');
+    }
+}

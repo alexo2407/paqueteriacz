@@ -23,7 +23,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 // Verificar sesión activa
 $rolesNombresCheck = $_SESSION['roles_nombres'] ?? [];
-$rolesPermitidos   = [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR];
+$rolesPermitidos   = [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_CLIENTE];
 $tieneAcceso = !empty(array_intersect($rolesPermitidos, $rolesNombresCheck));
 // Admitir también Proveedor real (id 4 en BD = 'Cliente') y Cliente real
 // ya manejamos filtros por rol abajo, así que aceptamos cualquier sesión válida

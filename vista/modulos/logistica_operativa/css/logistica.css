@@ -1,0 +1,193 @@
+/* =============================================================================
+   logistica.css — Estilos centralizados Módulo Logística Operativa (RutaEx Latam)
+   ============================================================================= */
+
+:root {
+  --lo-navy-dark: #0f172a;
+  --lo-navy-blue: #0b4ea2;
+  --lo-navy-header: #061c4c;
+  --lo-gold-yellow: #f59e0b;
+  --lo-gold-hover: #d97706;
+  --lo-bg-light: #f8fafc;
+  --lo-border-color: #e2e8f0;
+}
+
+/* ── Tarjetas KPI ───────────────────────────────────────────────────────────── */
+.card-kpi {
+  border: 0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+.card-kpi .kpi-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+}
+.kpi-icon-blue { background-color: #eff6ff; color: #2563eb; }
+.kpi-icon-green { background-color: #f0fdf4; color: #16a34a; }
+.kpi-icon-purple { background-color: #faf5ff; color: #9333ea; }
+.kpi-icon-red { background-color: #fef2f2; color: #dc2626; }
+.kpi-icon-yellow { background-color: #fefce8; color: #d97706; }
+
+/* ── Tarjetas KPI con Borde Superior (Detalle) ──────────────────────────────── */
+.card-kpi-topborder {
+  border-top-width: 4px !important;
+  border-top-style: solid !important;
+}
+.border-top-blue { border-top-color: #2563eb !important; }
+.border-top-green { border-top-color: #16a34a !important; }
+.border-top-red { border-top-color: #dc2626 !important; }
+.border-top-yellow { border-top-color: #f59e0b !important; }
+
+/* ── Encabezado de Tabla Navy ────────────────────────────────────────────────── */
+.table-navy thead {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+}
+.table-navy thead th {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 0.825rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: none;
+  padding: 0.75rem 1rem;
+}
+
+/* ── Badges Personalizados ──────────────────────────────────────────────────── */
+.badge-outline-success {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+  font-weight: 600;
+}
+.badge-outline-secondary {
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  font-weight: 600;
+}
+.badge-outline-warning {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fef3c7;
+  font-weight: 600;
+}
+.badge-outline-danger {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  font-weight: 600;
+}
+
+/* ── Turnos ─────────────────────────────────────────────────────────────────── */
+.badge-turno-manana {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #ffedd5;
+  font-weight: 600;
+  padding: 0.35em 0.65em;
+}
+.badge-turno-tarde {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #dbeafe;
+  font-weight: 600;
+  padding: 0.35em 0.65em;
+}
+
+/* ── Selector de Turno en Tarjeta (Modal Abrir) ─────────────────────────────── */
+.shift-select-card {
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.shift-select-card:hover {
+  border-color: #93c5fd;
+  background-color: #f8fafc;
+}
+.shift-select-card.active {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+}
+
+/* ── Botones de Selección Rápida de Ubicación ─────────────────────────────── */
+.btn-quick-location {
+  border: 1px solid #3b82f6;
+  color: #2563eb;
+  background-color: #eff6ff;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+.btn-quick-location:hover {
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+/* ── Timeline Vertical de Movimientos (Bodega) ──────────────────────────────── */
+.timeline-vertical {
+  position: relative;
+  padding-left: 28px;
+}
+.timeline-vertical::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 12px;
+  width: 2px;
+  background-color: #e2e8f0;
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 20px;
+}
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+.timeline-icon {
+  position: absolute;
+  left: -28px;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: #fff;
+  z-index: 1;
+}
+.timeline-icon-green { background-color: #22c55e; }
+.timeline-icon-blue  { background-color: #3b82f6; }
+.timeline-icon-orange{ background-color: #f97316; }
+.timeline-icon-current { background-color: #2563eb; box-shadow: 0 0 0 4px #dbeafe; }
+
+/* ── Insignia Staging ───────────────────────────────────────────────────────── */
+.badge-staging-local {
+  background-color: #f59e0b;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}

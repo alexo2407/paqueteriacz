@@ -509,31 +509,34 @@ include "vista/includes/header.php";
                         </div>
 
                         <!-- Fila 2: Botones de acción -->
-                        <div class="row g-2">
-                            <div class="col-sm-3 col-md-3">
+                        <div class="row g-2 flex-wrap align-items-center">
+                            <div class="col-6 col-sm-4 col-md-2">
                                 <button type="submit" class="btn btn-primary btn-sm w-100">
                                     <i class="bi bi-search me-1"></i> Aplicar filtros
                                 </button>
                             </div>
-                            <div class="col-sm-3 col-md-3">
+                            <div class="col-6 col-sm-4 col-md-2">
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=pedidos"
                                     class="btn btn-outline-secondary btn-sm w-100">
                                     <i class="bi bi-x-circle me-1"></i> Limpiar
                                 </a>
                             </div>
-                            <div class="col-sm-3 col-md-3">
+                            <div class="col-6 col-sm-4 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=pedidos&fecha_desde=<?= urlencode($filtros['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtros['fecha_hasta']) ?>&id_cliente=<?= (int)$filtros['id_cliente'] ?>&id_estado=<?= (int)$filtros['id_estado'] ?>&search=<?= urlencode($filtros['search']) ?>"
                                     class="btn btn-success btn-sm w-100">
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
-                            <?php if (isCliente() || isSuperAdmin()): ?>
-                                <div class="col-sm-3 col-md-3">
-                                    <button type="button" class="btn btn-warning btn-sm w-100" id="btnAbrirBulk" onclick="abrirModalBulk()">
-                                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
-                                    </button>
-                                </div>
-                            <?php endif; ?>
+                            <div class="col-6 col-sm-6 col-md-2">
+                                <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-info btn-sm w-100 text-white fw-semibold" style="background:#0B4EA2;border-color:#0B4EA2;">
+                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar CSV
+                                </a>
+                            </div>
+                            <div class="col-6 col-sm-6 col-md-3">
+                                <button type="button" class="btn btn-warning btn-sm w-100 fw-semibold text-dark" id="btnAbrirBulk" onclick="abrirModalBulk()">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Actualizar masivo
+                                </button>
+                            </div>
                         </div>
 
                     </form>
@@ -799,31 +802,34 @@ include "vista/includes/header.php";
                         </div>
 
                         <!-- Fila 2: Botones de acción -->
-                        <div class="row g-2">
-                            <div class="col-sm-3 col-md-3">
+                        <div class="row g-2 flex-wrap align-items-center">
+                            <div class="col-6 col-sm-4 col-md-2">
                                 <button type="submit" class="btn btn-primary btn-sm w-100">
                                     <i class="bi bi-search me-1"></i> Aplicar filtros
                                 </button>
                             </div>
-                            <div class="col-sm-3 col-md-3">
+                            <div class="col-6 col-sm-4 col-md-2">
                                 <a href="<?= RUTA_URL ?>logistica/dashboard?tab=all"
                                     class="btn btn-outline-secondary btn-sm w-100">
                                     <i class="bi bi-x-circle me-1"></i> Limpiar
                                 </a>
                             </div>
-                            <div class="col-sm-3 col-md-3">
+                            <div class="col-6 col-sm-4 col-md-3">
                                 <a href="<?= RUTA_URL ?>logistica/export_pedidos_excel?tab=all&fecha_desde=<?= urlencode($filtrosHistorial['fecha_desde']) ?>&fecha_hasta=<?= urlencode($filtrosHistorial['fecha_hasta']) ?>&id_cliente=<?= (int)$filtrosHistorial['id_cliente'] ?>&id_estado=<?= (int)$filtrosHistorial['id_estado'] ?>&search=<?= urlencode($filtrosHistorial['search']) ?>"
                                     class="btn btn-success btn-sm w-100">
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
-                            <?php if (isCliente() || isSuperAdmin()): ?>
-                                <div class="col-sm-3 col-md-3">
-                                    <button type="button" class="btn btn-warning btn-sm w-100" onclick="abrirModalBulk()">
-                                        <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
-                                    </button>
-                                </div>
-                            <?php endif; ?>
+                            <div class="col-6 col-sm-6 col-md-2">
+                                <a href="<?= RUTA_URL ?>pedidos/listar" class="btn btn-info btn-sm w-100 text-white fw-semibold" style="background:#0B4EA2;border-color:#0B4EA2;">
+                                    <i class="bi bi-file-earmark-arrow-up me-1"></i> Importar CSV
+                                </a>
+                            </div>
+                            <div class="col-6 col-sm-6 col-md-3">
+                                <button type="button" class="btn btn-warning btn-sm w-100 fw-semibold text-dark" onclick="abrirModalBulk()">
+                                    <i class="bi bi-arrow-repeat me-1"></i> Actualizar masivo
+                                </button>
+                            </div>
                         </div>
 
                     </form>
@@ -1590,6 +1596,32 @@ include "vista/includes/header.php";
     </div>
 
     <script>
+        window.abrirModalBulk = function() {
+            const modalEl = document.getElementById('modalBulkUpdate');
+            if (!modalEl) return;
+            const p1 = document.getElementById('bulkPaso1');
+            const p2 = document.getElementById('bulkPaso2');
+            const p3 = document.getElementById('bulkPaso3');
+            const btnPrev = document.getElementById('bulkBtnPreview');
+            const btnConf = document.getElementById('bulkBtnConfirmar');
+            const fInput = document.getElementById('bulkFileInput');
+            const errDiv = document.getElementById('bulkUploadError');
+            if (p1) p1.classList.remove('d-none');
+            if (p2) p2.classList.add('d-none');
+            if (p3) p3.classList.add('d-none');
+            if (btnPrev) btnPrev.classList.remove('d-none');
+            if (btnConf) btnConf.classList.add('d-none');
+            if (fInput) fInput.value = '';
+            if (errDiv) errDiv.classList.add('d-none');
+            if (typeof actualizarPasoIndicador === 'function') {
+                actualizarPasoIndicador(1);
+            }
+            if (typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        };
+
         (function() {
             let _bulkJobId = null;
 

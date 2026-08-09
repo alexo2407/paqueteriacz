@@ -265,10 +265,10 @@ class UsuariosController
             $isClienteCRM = in_array(ROL_NOMBRE_CLIENTE_CRM, $rolesNombres, true);  // CRM
             $isProveedorCRM = in_array(ROL_NOMBRE_PROVEEDOR_CRM, $rolesNombres, true);  // CRM
             
-            // NutraTrade (ID 4, name "Cliente") -> ROL_NOMBRE_PROVEEDOR maps to "Cliente" string
-            $isNutraTradeClient = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) || ($_SESSION['rol'] == (defined('ROL_PROVEEDOR') ? ROL_PROVEEDOR : 4));
-            // RutaEX (ID 5, name "Proveedor") -> ROL_NOMBRE_CLIENTE maps to "Proveedor" string
-            $isMensajero = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true) || ($_SESSION['rol'] == (defined('ROL_CLIENTE') ? ROL_CLIENTE : 5));
+            // Cliente (ID 4, nombre 'Cliente') = comercio emisor → portal de tracking
+            $isClienteLog = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true) || ($_SESSION['rol'] == ROL_CLIENTE);
+            // Proveedor (ID 5, nombre 'Proveedor') = courier logístico → dashboard operativo
+            $isProveedorLog = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) || ($_SESSION['rol'] == ROL_PROVEEDOR);
 
             // Dependiendo del rol, lo redirigimos a donde corresponde
             if ($isRepartidor && !$isAdmin) {
@@ -285,16 +285,16 @@ class UsuariosController
                 exit;
             }
 
-            // Clientes Logísticos (ej. NutraTrade) van directo a su Tracking
-            if ($isNutraTradeClient && !$isAdmin) {
+            // Clientes (comercio emisor) van al portal de seguimiento de sus pedidos
+            if ($isClienteLog && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'seguimiento/admin_tracking' : 'index.php?enlace=seguimiento/admin_tracking';
                 header('Location: ' . $redirectUrl);
                 exit;
             }
             
-            // Proveedores Logísticos / Mensajeros (ej. RutaEX) van a logística
-            if ($isMensajero && !$isAdmin) {
+            // Proveedores logísticos / couriers van al dashboard de logística operativa
+            if ($isProveedorLog && !$isAdmin) {
                 set_flash('success', 'Bienvenido ' . ($user['Usuario'] ?? '')); 
                 $redirectUrl = defined('RUTA_URL') ? RUTA_URL . 'logistica/dashboard' : 'index.php?enlace=logistica/dashboard';
                 header('Location: ' . $redirectUrl);

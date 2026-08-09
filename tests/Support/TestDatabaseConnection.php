@@ -39,7 +39,7 @@ class TestDatabaseConnection
      */
     public static function nueva(): PDO
     {
-        return self::crear();
+        return self::get();
     }
 
     private static function crear(): PDO

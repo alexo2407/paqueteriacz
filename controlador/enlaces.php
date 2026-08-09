@@ -94,22 +94,42 @@ class EnlacesController
                 }
             }
 
+            // 3) Hidratar permisos de Logística Operativa desde BD (migración 022 y 023)
+            // Guarda en $_SESSION['permisos'] un array de códigos de permiso (strings).
+            // current_user_has_permission() usará este caché sin consultar BD.
+            if (!empty($_SESSION['roles'])) {
+                require_once __DIR__ . '/../utils/logistica_permissions.php';
+                $rolIds = array_values(array_unique(array_filter(array_map('intval', $_SESSION['roles']))));
+                $codigosModulo = ['logistica_operativa_bodega', 'logistica_operativa_colectas', 'logistica_operativa_rutas'];
+                $_SESSION['permisos'] = [];
+                foreach ($codigosModulo as $cod) {
+                    if (_logistica_perm_consultar_bd($rolIds, $cod)) {
+                        $_SESSION['permisos'][] = $cod;
+                    }
+                }
+            }
+
             // Políticas de acceso por módulo basadas en nombre de rol
             $allowedByModule = [
                 'pedidos'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'usuarios'        => [ROL_NOMBRE_ADMIN],
-                'stock'           => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'stock'           => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'productos'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'categorias'      => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
-                'monedas'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'paises'          => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'departamentos'   => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'municipios'      => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
-                'barrios'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'monedas'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'paises'          => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'departamentos'   => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'municipios'      => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'barrios'         => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 'seguimiento'     => [ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE, ROL_NOMBRE_PROVEEDOR],
-                'auditoria'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                'auditoria'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'crm'             => [ROL_NOMBRE_ADMIN, 'Proveedor CRM', 'Cliente CRM'],
-                'logistica'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_CLIENTE],
+                'logistica'       => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
+                // logistica-operativa: protegida por permisos formales (tabla permisos, migración 022).
+                // require_permission() en la ruta ya verifica acceso; aquí se añade
+                // al mapa para que el dispatcher no la rechace antes de llegar a la ruta.
+                // Solo usuarios con al menos un permiso de LO pasan esta guardia.
+                'logistica-operativa' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
                 'codigos_postales' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_VENDEDOR, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 // Dashboard principal: solo Admin y Proveedor
                 // Clientes tienen su propio tracking de estados

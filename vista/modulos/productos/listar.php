@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -33,9 +33,16 @@ $listaProveedores = [];
 if (isSuperAdmin()) {
     require_once __DIR__ . '/../../../modelo/usuario.php';
     $usuarioModel = new UsuarioModel();
-    // Proveedor en la base de datos de paqueteriacz (ID 4 o ROL_NOMBRE_PROVEEDOR = 'Cliente') 
-    // almacena a los clientes de e-commerce.
-    $listaProveedores = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
+    // Obtener clientes de e-commerce (ID 4) y proveedores logísticos (ID 5)
+    $clientesList   = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_CLIENTE);
+    $proveedoresList = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
+    
+    $uniqueUsers = [];
+    foreach (array_merge($clientesList, $proveedoresList) as $u) {
+        $uniqueUsers[$u['id']] = $u;
+    }
+    usort($uniqueUsers, fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+    $listaProveedores = array_values($uniqueUsers);
 }
 
 // Construir filtros

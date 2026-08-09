@@ -70,9 +70,13 @@ class ColectaModel
     public function obtenerPorId(int $id, bool $forUpdate = false): ?array
     {
         $lock = $forUpdate ? ' FOR UPDATE' : '';
-        $stmt = $this->db->prepare(
-            "SELECT * FROM logistica_colectas WHERE id = :id LIMIT 1{$lock}"
-        );
+        $stmt = $this->db->prepare("
+            SELECT lc.*, uc.nombre AS cliente_nombre, uo.nombre AS operador_nombre
+              FROM logistica_colectas lc
+         LEFT JOIN usuarios uc ON uc.id = lc.id_cliente
+         LEFT JOIN usuarios uo ON uo.id = lc.id_abierta_por
+             WHERE lc.id = :id LIMIT 1{$lock}
+        ");
         $stmt->execute([':id' => $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row !== false ? $row : null;
@@ -214,6 +218,21 @@ class ColectaModel
     }
 
     /**
+     * Elimina un pedido con resultado EXTRA de una colecta.
+     */
+    public function eliminarPedidoExtra(int $idColecta, int $idPedido): bool
+    {
+        $stmt = $this->db->prepare(
+            "DELETE FROM logistica_colecta_pedidos
+              WHERE id_colecta = :id_colecta
+                AND id_pedido  = :id_pedido
+                AND resultado  = 'EXTRA'"
+        );
+        $stmt->execute([':id_colecta' => $idColecta, ':id_pedido' => $idPedido]);
+        return $stmt->rowCount() > 0;
+    }
+
+    /**
      * Obtiene los pedidos elegibles (estado 11) de un cliente,
      * excluyendo los ya RECIBIDO en colectas anteriores no canceladas.
      *
@@ -225,7 +244,7 @@ class ColectaModel
         $stmt = $this->db->prepare(
             'SELECT p.id
                FROM pedidos p
-              WHERE p.id_cliente = :id_cliente
+              WHERE (p.id_cliente = :id_cliente1 OR p.id_proveedor = :id_cliente2)
                 AND p.id_estado  = 11
                 AND NOT EXISTS (
                     SELECT 1
@@ -236,7 +255,7 @@ class ColectaModel
                        AND c.estado     != \'CANCELADA\'
                 )'
         );
-        $stmt->execute([':id_cliente' => $idCliente]);
+        $stmt->execute([':id_cliente1' => $idCliente, ':id_cliente2' => $idCliente]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
@@ -297,6 +316,11 @@ class ColectaModel
         if (!empty($filtros['estado'])) {
             $where[]  = 'lc.estado = :estado';
             $params[':estado'] = $filtros['estado'];
+        }
+        if (!empty($filtros['id_cliente'])) {
+            $where[]  = '(lc.id_cliente = :id_cliente1 OR lc.id_abierta_por = :id_cliente2)';
+            $params[':id_cliente1'] = (int)$filtros['id_cliente'];
+            $params[':id_cliente2'] = (int)$filtros['id_cliente'];
         }
         if (!empty($filtros['cliente'])) {
             $where[]  = 'uc.nombre LIKE :cliente';

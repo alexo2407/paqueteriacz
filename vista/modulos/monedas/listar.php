@@ -5,9 +5,11 @@ $usaDataTables = true;
 $ctrl = new MonedasController();
 $monedas = $ctrl->listar();
 
-// Check if user is admin
+// Check roles
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
 $isAdmin = in_array('Administrador', $rolesNombres, true);
+$isVendedor = in_array('Vendedor', $rolesNombres, true);
+$canManageGeo = $isAdmin || $isVendedor;
 $deleteDisabled = !$isAdmin ? 'disabled' : '';
 ?>
 
@@ -38,11 +40,13 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
             <h2 class="mb-1 fw-bold"><i class="bi bi-currency-exchange me-2"></i> Monedas</h2>
             <p class="mb-0 opacity-75">Gestión de tipos de cambio y divisas</p>
         </div>
+        <?php if ($canManageGeo): ?>
         <div>
             <a href="<?= RUTA_URL ?>monedas/crear" class="btn btn-light text-warning fw-bold shadow-sm">
                 <i class="bi bi-plus-circle me-1"></i> Nueva Moneda
             </a>
         </div>
+        <?php endif; ?>
     </div>
 
     <div class="card table-card">
@@ -73,9 +77,11 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                                 </td>
                                 <td class="text-end">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <a href="<?= RUTA_URL ?>monedas/editar/<?= $value["id"] ?>" class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
+                                        <?php if ($canManageGeo): ?>
+                                         <a href="<?= RUTA_URL ?>monedas/editar/<?= $value["id"] ?>" class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                             <i class="bi bi-pencil"></i>
+                                         </a>
+                                         <?php endif; ?>
                                         <?php if ($isAdmin): ?>
                                             <form method="post" action="<?= RUTA_URL ?>monedas/eliminar/<?= $value["id"] ?>" style="display:inline" class="d-inline" onsubmit="return confirm('¿Estás seguro de eliminar esta moneda?');">
                                                 <button class="btn btn-danger btn-square btn-delete" type="submit" title="Eliminar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">

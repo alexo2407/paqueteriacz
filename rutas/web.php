@@ -17,6 +17,7 @@ start_secure_session();
 // ─────────────────────────────────────────────────────────────────────────────
 require_once __DIR__ . '/logistica_operativa.php';
 
+
 // Manejo de importación masiva y creación de pedidos
 if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Acción secundaria indicada en la URL: /?enlace=pedidos/<accion>

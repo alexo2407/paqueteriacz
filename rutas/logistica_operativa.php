@@ -8,16 +8,14 @@
  *   GET  /logistica-operativa/colectas          → index de colectas
  *   GET  /logistica-operativa/colectas/ver/{id} → detalle de colecta
  *
- * Seguridad:
- *   - Requiere sesión activa (require_login).
- *   - Permite acceso a Administrador y Proveedor (internos autorizados).
- *   - Bloquea si LOGISTICA_OPERATIVA_ENABLED=false.
+ * Seguridad (en orden):
+ *   1. Sesión activa (require_login vía require_permission).
+ *   2. Permiso formal 'logistica_operativa_colectas' (tabla permisos, migración 022).
+ *   3. LOGISTICA_OPERATIVA_ENABLED=true.
  *
- * PROPUESTA DE PERMISO (no implementada en BD todavía):
- *   logistica_operativa_colectas
- *   → Se sugiere crear una entrada en la tabla de permisos con este código
- *     y asignarlo a los roles que deben operar colectas (ej: Administrador, Supervisor).
- *     Por ahora se usa la validación de rol por nombre como el resto del sistema.
+ * Fase 4 implementada: permiso formal en BD.
+ * @see database/migrations/022_create_logistica_operativa_permisos.sql
+ * @see utils/logistica_permissions.php
  */
 
 declare(strict_types=1);
@@ -28,39 +26,16 @@ if (!isset($ruta[0]) || $ruta[0] !== 'logistica-operativa') {
 }
 
 require_once __DIR__ . '/../utils/session.php';
-require_once __DIR__ . '/../utils/authorization.php';
-require_once __DIR__ . '/../utils/permissions.php';
+require_once __DIR__ . '/../utils/logistica_permissions.php';
 require_once __DIR__ . '/../services/LogisticaOperativaFlags.php';
 
-start_secure_session();
+// ── 1. Autenticación + permiso formal ─────────────────────────────────────────
+// require_permission() verifica sesión activa y el permiso 'logistica_operativa_colectas'
+// en la tabla permisos (migración 022). Sin permiso → 302 /dashboard + flash error.
+// Deny by default: si la consulta BD falla, deniega el acceso.
+require_permission('logistica_operativa_colectas');
 
-// ── 1. Autenticación ──────────────────────────────────────────────────────────
-require_login();
-
-// ── 2. Permiso (internos autorizados) ─────────────────────────────────────────
-//
-// Propuesta: crear permiso 'logistica_operativa_colectas' en BD.
-// Por ahora: solo Administrador y Proveedor (usuarios internos operativos).
-// No se usan IDs de rol, solo nombres según el patrón del sistema.
-//
-$_rolesPermitidosLO = [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR];
-$_userRolesLO       = $_SESSION['roles_nombres'] ?? [];
-$_tienePermisoLO    = false;
-
-foreach ($_rolesPermitidosLO as $_r) {
-    if (in_array($_r, $_userRolesLO, true)) {
-        $_tienePermisoLO = true;
-        break;
-    }
-}
-
-if (!$_tienePermisoLO) {
-    set_flash('error', 'No tienes permisos para acceder al módulo de Logística Operativa.');
-    header('Location: ' . RUTA_URL . 'dashboard');
-    exit;
-}
-
-// ── 3. Feature flag ───────────────────────────────────────────────────────────
+// ── 2. Feature flag ───────────────────────────────────────────────────────────
 if (!LogisticaOperativaFlags::enabled()) {
     set_flash('error', 'El módulo Logística Operativa no está habilitado actualmente.');
     header('Location: ' . RUTA_URL . 'dashboard');
@@ -84,6 +59,54 @@ if ($_submodulo === 'colectas') {
 
     // GET /logistica-operativa/colectas  (index, con filtros)
     require __DIR__ . '/../vista/modulos/logistica_operativa/colectas/index.php';
+    exit;
+}
+
+// ── Sub-módulo bodega (FASE 3D) ───────────────────────────────────────────────
+// Delega a logistica_bodega.php para que maneje /logistica-operativa/bodega
+if ($_submodulo === 'bodega') {
+    require __DIR__ . '/logistica_bodega.php';
+    exit;
+}
+
+// ── Sub-módulo rutas (FASE 5) ────────────────────────────────────────────────
+if ($_submodulo === 'rutas') {
+    require_permission('logistica_operativa_rutas');
+
+    if ($_accion === 'crear') {
+        require __DIR__ . '/../vista/modulos/logistica_operativa/rutas/crear.php';
+        exit;
+    }
+    if ($_accion === 'ver' && !empty($ruta[3])) {
+        $parametros = [$ruta[3]];
+        require __DIR__ . '/../vista/modulos/logistica_operativa/rutas/ver.php';
+        exit;
+    }
+    require __DIR__ . '/../vista/modulos/logistica_operativa/rutas/index.php';
+    exit;
+}
+
+// ── Sub-módulos de Configuración / Maestros ──────────────────────────────────
+if ($_submodulo === 'bodegas') {
+    require_permission('admin');
+    require __DIR__ . '/../vista/modulos/logistica_operativa/bodegas/index.php';
+    exit;
+}
+
+if ($_submodulo === 'zonas') {
+    require_permission('admin');
+    require __DIR__ . '/../vista/modulos/logistica_operativa/zonas/index.php';
+    exit;
+}
+
+if ($_submodulo === 'repartidores') {
+    require_permission('admin');
+    require __DIR__ . '/../vista/modulos/logistica_operativa/repartidores/index.php';
+    exit;
+}
+
+if ($_submodulo === 'etiquetas') {
+    require __DIR__ . '/../vista/modulos/logistica_operativa/etiquetas/index.php';
     exit;
 }
 

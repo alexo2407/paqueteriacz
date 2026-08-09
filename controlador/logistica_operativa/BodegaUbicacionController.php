@@ -29,6 +29,7 @@ require_once __DIR__ . '/../../api/utils/autenticacion.php';
 require_once __DIR__ . '/../../services/LogisticaOperativaFlags.php';
 require_once __DIR__ . '/../../services/logistica_operativa/LogisticaOperativaException.php';
 require_once __DIR__ . '/../../services/logistica_operativa/BodegaUbicacionService.php';
+require_once __DIR__ . '/../../utils/logistica_permissions.php';
 
 class BodegaUbicacionController
 {
@@ -120,6 +121,20 @@ class BodegaUbicacionController
         $token = AuthMiddleware::obtenerTokenDeHeaders();
 
         if ($token === null || $token === '') {
+            // Fallback a sesión PHP activa para llamadas AJAX internas de la interfaz web
+            require_once __DIR__ . '/../../utils/session.php';
+            start_secure_session();
+
+            $userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? null;
+            if (!empty($userId)) {
+                $rolId = (int)($_SESSION['rol'] ?? (is_array($_SESSION['roles'] ?? null) && !empty($_SESSION['roles']) ? $_SESSION['roles'][0] : 1));
+                return [
+                    'id'     => (int) $userId,
+                    'nombre' => $_SESSION['nombre'] ?? '',
+                    'rol'    => $rolId,
+                ];
+            }
+
             $this->error('UNAUTHENTICATED', 'Se requiere autenticación.', 401);
         }
 
@@ -142,34 +157,21 @@ class BodegaUbicacionController
     }
 
     /**
-     * Verifica que el usuario autenticado esté autorizado para el módulo
-     * de bodega (permiso: logistica_operativa_bodega).
+     * Verifica que el usuario autenticado tenga el permiso formal
+     * 'logistica_operativa_bodega' (tabla permisos, migración 022).
      *
-     * Criterio centralizado reutilizado de ColectaController:
-     *   - No usa IDs de roles hardcodeados.
-     *   - Se basa en el campo 'rol' del token (mismo mecanismo que colectas).
-     *   - El permiso formal "logistica_operativa_bodega" se valida igual
-     *     que el permiso de colectas; aún no existe en tabla de permisos.
+     * Fase 4 implementada: consulta real a roles_permisos JOIN permisos.
+     * Deny by default: si la consulta BD falla o el rol no existe → 403.
+     * No expone SQL, DSN ni traza en la respuesta JSON.
      *
-     * TODO (Fase 4): migrar a tabla permisos cuando exista el registro
-     *   'logistica_operativa_bodega' en dicha tabla.
-     *
+     * @see utils/logistica_permissions.php
      * @param array{id:int, nombre:string, rol:int} $usuario  Datos del JWT.
      */
     public function verificarAutorizacion(array $usuario): void
     {
-        // El rol viene del token; no hardcodeamos su valor.
-        // Usamos la presencia del campo 'rol' como indicador de identidad
-        // válida, igual que ColectaController.
-        // Roles válidos: cualquier usuario con campo 'rol' definido y > 0.
-        $rol = (int) ($usuario['rol'] ?? 0);
-        if ($rol <= 0) {
-            $this->error(
-                'FORBIDDEN',
-                'No tiene permiso para acceder al módulo de bodega (logistica_operativa_bodega).',
-                403
-            );
-        }
+        // api_require_permission() responde 403 JSON y sale si falla.
+        // Nunca devuelve false — o pasa o termina la ejecución.
+        api_require_permission('logistica_operativa_bodega', $usuario);
     }
 
     /**

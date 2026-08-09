@@ -9,9 +9,11 @@ $paises = $paisCtrl->listar();
 $ctrl = new DepartamentosController();
 $departamentos = $ctrl->listar();
 
-// Check if user is admin
+// Check roles
 $rolesNombres = $_SESSION['roles_nombres'] ?? [];
 $isAdmin = in_array('Administrador', $rolesNombres, true);
+$isVendedor = in_array('Vendedor', $rolesNombres, true);
+$canManageGeo = $isAdmin || $isVendedor;
 $deleteDisabled = !$isAdmin ? 'disabled' : '';
 ?>
 
@@ -42,11 +44,13 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
             <h2 class="mb-1 fw-bold"><i class="bi bi-map me-2"></i> Departamentos</h2>
             <p class="mb-0 opacity-75">Gestión de divisiones administrativas (Nivel 2)</p>
         </div>
+        <?php if ($canManageGeo): ?>
         <div>
             <a href="<?= RUTA_URL ?>departamentos/crear" class="btn btn-light text-info fw-bold shadow-sm">
                 <i class="bi bi-plus-circle me-1"></i> Nuevo Departamento
             </a>
         </div>
+        <?php endif; ?>
     </div>
 
     <div class="card table-card">
@@ -85,9 +89,11 @@ $deleteDisabled = !$isAdmin ? 'disabled' : '';
                                         <a href="<?= RUTA_URL ?>departamentos/ver/<?= urlencode($value['id']) ?>" class="btn btn-info btn-square text-white" title="Ver detalles" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a href="<?= RUTA_URL ?>departamentos/editar/<?= urlencode($value['id']) ?>" class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
+                                        <?php if ($canManageGeo): ?>
+                                         <a href="<?= RUTA_URL ?>departamentos/editar/<?= urlencode($value['id']) ?>" class="btn btn-primary btn-square" title="Editar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                                             <i class="bi bi-pencil"></i>
+                                         </a>
+                                         <?php endif; ?>
                                         <?php if ($isAdmin): ?>
                                             <form method="post" action="<?= RUTA_URL ?>departamentos/eliminar/<?= urlencode($value['id']) ?>" style="display:inline" class="d-inline" onsubmit="return confirm('¿Eliminar departamento?');">
                                                 <button class="btn btn-danger btn-square btn-delete" type="submit" title="Eliminar" style="width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">

@@ -12,8 +12,8 @@ class LogisticaController {
         
         $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         
-        // IMPORTANTE: isCliente() verifica ROL_CLIENTE (ID 5) que en BD se llama "Proveedor"
-        $isProveedor = isCliente();
+        // isProveedor() verifica ROL_PROVEEDOR (ID 5 = operador logístico / courier)
+        $isProveedor = isProveedor();
         
         // Paginación — tab "En Proceso"
         $page    = isset($_GET['page']) && is_numeric($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
@@ -71,14 +71,13 @@ class LogisticaController {
         $estados  = LogisticaModel::obtenerEstados();
         $clientes = LogisticaModel::obtenerClientesDelProveedor($userId, $isProveedor);
 
-        // 5. BI: Efectividad de proveedores de mensajería (filtrado por este cliente)
-        // NOTA: $isProveedor = isCliente() tiene naming legacy confuso.
-        // isCliente() devuelve TRUE para ROL_CLIENTE (NutraTrade = quien crea pedidos = id_cliente en pedidos)
-        // isCliente() devuelve FALSE para ROL_PROVEEDOR (quien distribuye = id_proveedor en pedidos)
-        // Para el BI de proveedores mensajería:
-        //   - Si el usuario es ROL_CLIENTE ($isProveedor=true): filtrar por id_cliente = $userId
-        //   - Si el usuario es ROL_PROVEEDOR ($isProveedor=false): no aplica filtro de cliente en BI
-        $clienteIdParaBI = $isProveedor ? (int)$userId : null;
+        // Si el usuario es Proveedor (operador logístico), filtrar bi por su id_proveedor
+        // Si el usuario es Admin, $clienteIdParaBI = null (sin filtro)
+        $clienteIdParaBI = $isProveedor ? null : (isCliente() ? (int)$userId : null);
+        // Comercio (Cliente, ID 4): filtrar bi por id_cliente = $userId
+        if (!$isProveedor && isCliente()) {
+            $clienteIdParaBI = (int)$userId;
+        }
         $fechaBIDesde    = date('Y-m-01');
         $fechaBIHasta    = date('Y-m-t');
         $proveedoresMensajeriaBI = [];
@@ -143,7 +142,7 @@ class LogisticaController {
         require_once __DIR__ . '/../helpers/helpers.php';
 
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
-        $isProveedor = isCliente();
+        $isProveedor = isProveedor();
 
         // Sanitizar filtros
         $tab = $_GET['tab'] ?? 'all';
@@ -490,16 +489,19 @@ class LogisticaController {
         
         $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $id     = (int)$id;
-        $isProveedor = isCliente();
 
         require_once "modelo/pedido.php";
         $pedido = PedidosModel::obtenerPedidoPorId($id);
 
         if (!$pedido) return null;
         
-        $hasAccess = $isProveedor
-            ? ($pedido['id_proveedor'] == $userId)
-            : ($pedido['id_cliente']   == $userId);
+        $isProv = isProveedor();
+        $isCli  = isCliente();
+        $isAdm  = isSuperAdmin();
+
+        $hasAccess = $isAdm
+            || ($isProv && (int)($pedido['id_proveedor'] ?? 0) === (int)$userId)
+            || ($isCli && (int)($pedido['id_cliente'] ?? 0) === (int)$userId);
         
         if (!$hasAccess) return null;
 
@@ -526,9 +528,8 @@ class LogisticaController {
         require_once "modelo/pedido.php";
         require_once __DIR__ . '/../utils/permissions.php';
 
-        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
-        $id          = (int)$id;
-        $isProveedor = isCliente();
+        $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $id     = (int)$id;
 
         $pedido = PedidosModel::obtenerPedidoPorId($id);
         if (!$pedido) {
@@ -536,9 +537,13 @@ class LogisticaController {
             exit;
         }
         
-        $hasAccess = $isProveedor
-            ? ($pedido['id_proveedor'] == $userId)
-            : ($pedido['id_cliente']   == $userId);
+        $isProv = isProveedor();
+        $isCli  = isCliente();
+        $isAdm  = isSuperAdmin();
+
+        $hasAccess = $isAdm
+            || ($isProv && (int)($pedido['id_proveedor'] ?? 0) === (int)$userId)
+            || ($isCli && (int)($pedido['id_cliente'] ?? 0) === (int)$userId);
         
         if (!$hasAccess) {
             header('Location: ' . RUTA_URL . 'logistica/dashboard');
@@ -583,7 +588,7 @@ class LogisticaController {
         header('Content-Type: application/json');
 
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
-        $isProveedor = isCliente(); // ROL_CLIENTE = proveedor logístico
+        $isProveedor = isProveedor(); // ROL_PROVEEDOR (ID 5) = operador logístico
 
         // Solo Cliente (proveedor) o Admin
         if (!$isProveedor && !isSuperAdmin()) {
@@ -662,7 +667,7 @@ class LogisticaController {
         header('Content-Type: application/json');
 
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
-        $isProveedor = isCliente();
+        $isProveedor = isProveedor();
 
         if (!$isProveedor && !isSuperAdmin()) {
             ob_clean();
@@ -732,7 +737,7 @@ class LogisticaController {
         require_once __DIR__ . '/../helpers/helpers.php';
 
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
-        $isProveedor = isCliente();
+        $isProveedor = isProveedor();
 
         // Sanitizar filtros (idéntico al controlador dashboard)
         $liqDesde  = isset($_GET['liq_desde']) && $_GET['liq_desde'] !== '' ? $_GET['liq_desde'] : '';
@@ -843,7 +848,7 @@ class LogisticaController {
         require_once __DIR__ . '/../utils/permissions.php';
 
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
-        $isProveedor = isCliente();
+        $isProveedor = isProveedor();
 
         // Sólo cliente logístico o admin
         if (!$isProveedor && !isSuperAdmin()) {
@@ -1981,10 +1986,10 @@ class LogisticaController {
         if ($isAdmin) {
             $hasAccess = true;
         } else {
-            $isProveedor = isCliente();
-            $hasAccess = $isProveedor
-                ? ($pedido['id_proveedor'] == $userId)
-                : ($pedido['id_cliente']   == $userId);
+            $isProv = isProveedor();
+            $isCli  = isCliente();
+            $hasAccess = ($isProv && (int)($pedido['id_proveedor'] ?? 0) === (int)$userId)
+                      || ($isCli  && (int)($pedido['id_cliente'] ?? 0) === (int)$userId);
         }
 
         if (!$hasAccess) {
@@ -2084,15 +2089,13 @@ class LogisticaController {
         if ($isAdmin) {
             $hasAccess = true;
         } else {
-            $isProveedor = isCliente();
-            if ($isProveedor) {
+            $isProv = isProveedor();
+            if ($isProv) {
                 // Los usuarios con rol Proveedor pueden resolver cualquier novedad de HL Express
-                // ya que el tab Novedades muestra TODOS los pedidos de HL Express sin filtrar
-                // por propietario. La seguridad real la aplica la API de HL Express.
                 $hasAccess = true;
             } else {
                 // Clientes: solo sus propios pedidos
-                $hasAccess = ($pedido['id_cliente'] == $userId);
+                $hasAccess = ((int)($pedido['id_cliente'] ?? 0) === (int)$userId);
             }
         }
 
@@ -2274,8 +2277,8 @@ class LogisticaController {
         if ($isAdmin) {
             $hasAccess = true;
         } else {
-            $isProveedor = isCliente();
-            $hasAccess   = $isProveedor ? true : ($pedido['id_cliente'] == $userId);
+            $isProv = isProveedor();
+            $hasAccess = $isProv ? true : ((int)($pedido['id_cliente'] ?? 0) === (int)$userId);
         }
 
         if (!$hasAccess) {

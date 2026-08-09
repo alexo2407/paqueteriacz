@@ -51,8 +51,8 @@ if ($isPublicLink) {
     $pubRol  = (int)$stmtRol->fetchColumn();
 
     $isAdmin        = false;
-    $isProveedorExt = ($pubRol == ROL_CLIENTE);   // rol 5 en BD → aparece en id_proveedor
-    $isClienteExt   = ($pubRol == ROL_PROVEEDOR); // rol 4 en BD → aparece en id_cliente
+    $isProveedorExt = ($pubRol == ROL_PROVEEDOR); // rol 5 en BD → aparece en id_proveedor
+    $isClienteExt   = ($pubRol == ROL_CLIENTE);   // rol 4 en BD → aparece en id_cliente
     $currUserId     = $pubU;
     $db             = $dbPub;
 
@@ -61,8 +61,8 @@ if ($isPublicLink) {
     require_login();
     $isAdmin        = isSuperAdmin();
     $currRol        = $_SESSION['rol'] ?? 0;
-    $isProveedorExt = ($currRol == ROL_CLIENTE);   // rol 5 en BD ("Proveedor") → id_proveedor en pedidos
-    $isClienteExt   = ($currRol == ROL_PROVEEDOR); // rol 4 en BD ("Cliente")   → id_cliente en pedidos
+    $isProveedorExt = ($currRol == ROL_PROVEEDOR); // rol 5 en BD ('Proveedor') → id_proveedor en pedidos
+    $isClienteExt   = ($currRol == ROL_CLIENTE);   // rol 4 en BD ('Cliente')   → id_cliente en pedidos
     $currUserId     = getCurrentUserId();
     $db             = (new Conexion())->conectar();
 }

@@ -6,35 +6,40 @@
     $isRepartidor = in_array(ROL_NOMBRE_REPARTIDOR, $rolesNombres, true);
     $isAdmin      = in_array(ROL_NOMBRE_ADMIN,      $rolesNombres, true);
     $isVendedor   = in_array(ROL_NOMBRE_VENDEDOR,   $rolesNombres, true);
-    $isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR,  $rolesNombres, true);
+    $isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR,  $rolesNombres, true)  // nombre 'Proveedor' = ID 5
+                    || (($_SESSION['rol'] ?? null) == ROL_PROVEEDOR);
+    $isCliente    = in_array(ROL_NOMBRE_CLIENTE,    $rolesNombres, true)  // nombre 'Cliente' = ID 4
+                    || (($_SESSION['rol'] ?? null) == ROL_CLIENTE);
 
     $rolProveedorCRM = defined('ROL_NOMBRE_PROVEEDOR_CRM') ? ROL_NOMBRE_PROVEEDOR_CRM : 'Proveedor CRM';
     $rolClienteCRM   = defined('ROL_NOMBRE_CLIENTE_CRM')   ? ROL_NOMBRE_CLIENTE_CRM   : 'Cliente CRM';
     $isProveedorCRM  = in_array($rolProveedorCRM, $rolesNombres, true);
     $isClienteCRM    = in_array($rolClienteCRM,   $rolesNombres, true);
-    $isNutraTradeClient = in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true) || ($_SESSION['rol'] ?? null) == (defined('ROL_PROVEEDOR') ? ROL_PROVEEDOR : 4);
-    $isMensajero     = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true) || ($_SESSION['rol'] ?? null) == (defined('ROL_CLIENTE') ? ROL_CLIENTE : 5);
-    
-    $isClienteId     = in_array(ROL_CLIENTE, $_SESSION['roles'] ?? [], true) || ($_SESSION['rol'] ?? null) == ROL_CLIENTE;
-    $isCliente       = $isClienteId || in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true);
+
+    // IDs por array de roles numéricos (para compatibilidad con módulos que usan ID directo)
+    $isClienteId  = in_array(ROL_CLIENTE,   $_SESSION['roles'] ?? [], true) || (($_SESSION['rol'] ?? null) == ROL_CLIENTE);
+    $isProveedorId = in_array(ROL_PROVEEDOR, $_SESSION['roles'] ?? [], true) || (($_SESSION['rol'] ?? null) == ROL_PROVEEDOR);
 
     if ($isRepartidor && !$isAdmin) {
         $homeUrl = RUTA_URL . 'seguimiento/listar';
     } elseif (($isProveedorCRM || $isClienteCRM) && !$isAdmin) {
         $homeUrl = RUTA_URL . 'crm/notificaciones';
-    } elseif ($isNutraTradeClient && !$isAdmin) {
+    } elseif ($isCliente && !$isAdmin) {
+        // Cliente (comercio emisor) → portal de seguimiento de sus pedidos
         $homeUrl = RUTA_URL . 'seguimiento/admin_tracking';
-    } elseif ($isMensajero && !$isAdmin) {
+    } elseif ($isProveedor && !$isAdmin) {
+        // Proveedor (courier logístico) → dashboard operativo de logística
         $homeUrl = RUTA_URL . 'logistica/dashboard';
     } else {
         $homeUrl = RUTA_URL . 'dashboard';
     }
 
+
     // ── Notificaciones ──────────────────────────────────────────────────────
     $unreadCount        = 0;
     $showProviderLeads  = false;
     $notifUrl           = RUTA_URL . 'crm/notificaciones'; // default
-    $isLogisticaCliente = $isCliente && !$isAdmin && !$isProveedorCRM && !$isClienteCRM;
+    $isLogisticaCliente = ($isProveedor || $isCliente) && !$isAdmin && !$isProveedorCRM && !$isClienteCRM;
     $navNotifPreview    = []; // Para el dropdown preview (últimas 5)
     $navNotifModulo     = 'crm'; // 'logistica' | 'crm'
 
@@ -101,6 +106,8 @@
     <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos_bs.css?v=<?= filemtime(__DIR__.'/../css/estilos_bs.css') ?>">
     <!-- Estilos propios de la app -->
     <link rel="stylesheet" href="<?= RUTA_URL ?>vista/css/estilos.css">
+    <!-- Logística Operativa UI Styles -->
+    <link rel="stylesheet" href="<?= RUTA_URL ?>vista/modulos/logistica_operativa/css/logistica.css">
     <!-- Variables JS globales disponibles para todos los scripts de la app -->
     <meta name="base-url" content="<?= RUTA_URL ?>">
     <script>
@@ -129,6 +136,12 @@
             <span style="font-family:'Inter',sans-serif;font-size:1.2rem;font-weight:200;color:rgba(255,255,255,0.35);margin:0 7px;line-height:1;">|</span>
             <span style="font-family:'Inter',sans-serif;font-size:1.38rem;font-weight:400;color:rgba(255,255,255,0.85);letter-spacing:0.2px;line-height:1;">Latam</span>
         </a>
+
+        <?php if (defined('APP_ENV') && APP_ENV === 'local_staging'): ?>
+        <span class="badge bg-warning text-dark ms-2" style="font-family:'Inter',sans-serif;font-size:0.72rem;font-weight:700;letter-spacing:0.5px;padding:5px 9px;border-radius:6px;" title="STAGING LOCAL — COPIA DE PRODUCCIÓN">
+            <i class="bi bi-display me-1"></i>STAGING LOCAL — COPIA DE PRODUCCIÓN
+        </span>
+        <?php endif; ?>
 
         <!-- Derecha: notificaciones + usuario -->
         <ul class="navbar-nav ms-auto flex-row align-items-center gap-2">
@@ -411,14 +424,14 @@
             </a>
             <?php endif; ?>
 
-            <!-- ═══ Logística Cliente ═══ -->
-            <?php if ($isMensajero): ?>
+            <!-- ═══ Logística ═══ -->
+            <?php if ($isAdmin || $isCliente || $isProveedor): ?>
             <a href="<?= RUTA_URL ?>logistica/dashboard" class="nav-link">
                 <i class="bi bi-truck-front"></i> Mis Pedidos
             </a>
             <a href="<?= RUTA_URL ?>logistica/notificaciones" class="nav-link d-flex align-items-center justify-content-between">
                 <span><i class="bi bi-bell-fill me-1"></i> Notificaciones</span>
-                <?php if ($isLogisticaCliente && $unreadCount > 0): ?>
+                <?php if ($unreadCount > 0): ?>
                 <span class="badge bg-danger"><?= $unreadCount ?></span>
                 <?php endif; ?>
             </a>
@@ -428,17 +441,19 @@
             <?php if ($isAdmin || $isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Operaciones</div>
+            <?php if ($isAdmin || $isCliente): ?>
             <a href="<?= RUTA_URL ?>pedidos/listar" class="nav-link">
                 <i class="bi bi-box-seam"></i> Pedidos
             </a>
-            <?php if ($isAdmin): ?>
+            <?php endif; ?>
+            <?php if ($isAdmin || $isCliente || $isProveedor): ?>
             <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="nav-link">
                 <i class="bi bi-plus-circle"></i> Nuevo Pedido
             </a>
             <?php endif; ?>
             <?php 
-            // Tracking de Estados
-            if ($isAdmin || $isNutraTradeClient || $isCliente || $sessionRol == 4 || in_array('Cliente', $rolesNombres) || in_array('cliente', $rolesNombres)): 
+            // Tracking de Estados: visible para Admin, Cliente (comercio) y Proveedor (courier)
+            if ($isAdmin || $isCliente || $isProveedor): 
             ?>
             <a href="<?= RUTA_URL ?>seguimiento/admin_tracking" class="nav-link">
                 <i class="bi bi-crosshair"></i>
@@ -448,8 +463,8 @@
             <a href="<?= RUTA_URL ?>pedidos/reportes" class="nav-link">
                 <i class="bi bi-bar-chart-line"></i> Reporte de Pedidos
             </a>
-            <!-- ═══ Grupo Informes ═══ -->
-            <?php if ($isAdmin || !$isProveedor): ?>
+            <!-- ═══ Grupo Informes (Exclusivo para Admin y Proveedores) ═══ -->
+            <?php if ($isAdmin || $isProveedor): ?>
             <a href="#navInformes" class="nav-link d-flex align-items-center justify-content-between"
                data-bs-toggle="collapse" role="button"
                aria-expanded="<?= (strpos($_SERVER['REQUEST_URI'] ?? '', 'informes') !== false) ? 'true' : 'false' ?>"
@@ -472,7 +487,7 @@
                     <i class="bi bi-calendar3-week me-1"></i> Tendencia Semanal
                 </a>
             </div>
-            <?php endif; // Admin || !$isProveedor (Informes) ?>
+            <?php endif; // Admin || isProveedor (Informes) ?>
             <?php endif; // isAdmin || isProveedor || isCliente (Operaciones) ?>
 
             <?php if ($isRepartidor || $isAdmin): ?>
@@ -480,29 +495,73 @@
                 <i class="bi bi-geo-alt-fill"></i> Seguimiento
             </a>
             <?php endif; ?>
+            <?php
+            // Permisos & Roles de Logística Operativa
+            require_once __DIR__ . '/../../utils/logistica_permissions.php';
+            $tienePermBodega   = current_user_has_permission('logistica_operativa_bodega');
+            $tienePermColectas = current_user_has_permission('logistica_operativa_colectas');
+            $tienePermRutas    = current_user_has_permission('logistica_operativa_rutas');
+            
+            // Proveedor (ID 5) = operador logístico con colectas y etiquetas
+            // Cliente (ID 4) = comercio emisor → NO tiene acceso a LO
+            $esOperadorLogistico = $isProveedor && !$isAdmin && !$isRepartidor;
 
-            <!-- ═══ Logística Operativa ═══════════════════════════════════════
-                 PENDIENTE: agregar enlace al sidebar cuando exista el permiso
-                 formal `logistica_operativa_colectas` en la tabla `permisos` de BD.
+            // Determinar si muestra el encabezado del módulo
+            if ($isAdmin || $tienePermBodega || $tienePermColectas || $tienePermRutas || $esOperadorLogistico || $isRepartidor):
+            ?>
+            <hr class="sidebar-divider">
+            <div class="sidebar-label">Logística Operativa</div>
+            
+            <!-- Colectas: Visible para Administradores y Proveedores (operador logístico) -->
+            <?php if (($isAdmin || $esOperadorLogistico || $tienePermColectas) && !$isRepartidor): ?>
+            <a href="<?= RUTA_URL ?>logistica-operativa/colectas" class="nav-link">
+                <i class="bi bi-collection"></i> Colectas
+            </a>
+            <?php endif; ?>
+            
+            <!-- Bodega y Ubicación: Visible para Administradores y Proveedores (operador logístico) -->
+            <?php if (($isAdmin || $esOperadorLogistico || $tienePermBodega) && !$isRepartidor): ?>
+            <a href="<?= RUTA_URL ?>logistica-operativa/bodega" class="nav-link">
+                <i class="bi bi-archive"></i> Bodega y Ubicación
+            </a>
+            <?php endif; ?>
+            
+            <!-- Rutas y Despacho: Visible para Administradores, Proveedores (operador logístico) y Repartidores -->
+            <?php if ($isAdmin || $esOperadorLogistico || $tienePermRutas || $isRepartidor): ?>
+            <a href="<?= RUTA_URL ?>logistica-operativa/rutas" class="nav-link">
+                <i class="bi bi-diagram-3"></i> Rutas y Despacho
+            </a>
+            <?php endif; ?>
+            
+            <!-- Impresión de Etiquetas: Para Administradores y Proveedores/Operadores logísticos -->
+            <?php if (($isAdmin || $esOperadorLogistico) && !$isRepartidor): ?>
+            <a href="<?= RUTA_URL ?>logistica-operativa/etiquetas" class="nav-link">
+                <i class="bi bi-tag"></i> Impresión de Etiquetas
+            </a>
+            <?php endif; ?>
+            
+            <!-- Configuración & Maestros: Exclusivo para Administradores -->
+            <?php if ($isAdmin): ?>
+            <a href="<?= RUTA_URL ?>logistica-operativa/bodegas" class="nav-link">
+                <i class="bi bi-buildings"></i> Bodegas y Estanterías
+            </a>
+            <a href="<?= RUTA_URL ?>logistica-operativa/zonas" class="nav-link">
+                <i class="bi bi-map"></i> Zonas de Reparto
+            </a>
+            <a href="<?= RUTA_URL ?>logistica-operativa/repartidores" class="nav-link">
+                <i class="bi bi-bicycle"></i> Mensajeros y Flota
+            </a>
+            <?php endif; ?>
+            <?php endif; // Logística Operativa ?>
 
-                 La ruta /logistica-operativa/colectas ya está protegida por:
-                   - Sesión activa (start_secure_session).
-                   - Feature flag LOGISTICA_OPERATIVA_ENABLED.
-                   - Roles permitidos: Administrador / Proveedor (require_roles en rutas/).
-
-                 Cuando el permiso exista, reemplazar la condición de $isAdmin
-                 por la verificación de permiso por nombre, ej.:
-                   $tienePermColectas = in_array('logistica_operativa_colectas',
-                                                  $_SESSION['permisos'] ?? [], true);
-                 ─────────────────────────────────────────────────────────────── -->
 
             <!-- ═══ Inventario ═══ -->
             <?php if ($isAdmin || $isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Inventario</div>
             <a href="<?= RUTA_URL ?>productos/listar" class="nav-link"><i class="bi bi-box"></i> Productos</a>
-            <?php if ($isAdmin || !$isProveedor): // ocultar gestión de stock al rol Cliente ?>
             <a href="<?= RUTA_URL ?>categorias/listar" class="nav-link"><i class="bi bi-tag"></i> Categorías</a>
+            <?php if ($isAdmin || $isProveedor): // Movimientos de stock únicamente para Admin y Proveedor ?>
             <a href="<?= RUTA_URL ?>stock/listar" class="nav-link"><i class="bi bi-arrow-left-right"></i> Mov. de Stock</a>
             <a href="<?= RUTA_URL ?>stock/kardex" class="nav-link"><i class="bi bi-file-ruled"></i> Kardex</a>
             <?php if ($isAdmin): ?>
@@ -515,7 +574,7 @@
             <?php endif; ?>
 
             <!-- ═══ Geografía ═══ -->
-            <?php if ($isAdmin || $isVendedor): ?>
+            <?php if ($isAdmin || $isVendedor || $isProveedor || $isCliente): ?>
             <hr class="sidebar-divider">
             <div class="sidebar-label">Geografía</div>
             <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-mailbox"></i> Códigos Postales</a>
@@ -524,10 +583,6 @@
             <a href="<?= RUTA_URL ?>municipios/listar" class="nav-link"><i class="bi bi-geo"></i> Municipios</a>
             <a href="<?= RUTA_URL ?>barrios/listar" class="nav-link"><i class="bi bi-building"></i> Barrios</a>
             <a href="<?= RUTA_URL ?>monedas/listar" class="nav-link"><i class="bi bi-currency-dollar"></i> Monedas</a>
-            <?php elseif ($isProveedor || $isCliente): ?>
-            <hr class="sidebar-divider">
-            <div class="sidebar-label">Geografía</div>
-            <a href="<?= RUTA_URL ?>codigos_postales" class="nav-link"><i class="bi bi-mailbox"></i> Códigos Postales</a>
             <?php endif; ?>
 
 

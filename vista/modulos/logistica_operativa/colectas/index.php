@@ -36,6 +36,12 @@ $filtroCliente = trim($_GET['cliente']  ?? '');
 $filtroTurno   = strtoupper(trim($_GET['turno']  ?? ''));
 $filtroEstado  = strtoupper(trim($_GET['estado'] ?? ''));
 
+// ── Rol y permisos ──────────────────────────────────────────────────────────────
+$rolesSession = $_SESSION['roles_nombres'] ?? [];
+$isCliente    = in_array(ROL_NOMBRE_CLIENTE, $rolesSession, true) || in_array('Cliente', $rolesSession, true);
+$isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR, $rolesSession, true) || in_array('Proveedor', $rolesSession, true);
+$isAdmin      = in_array(ROL_NOMBRE_ADMIN, $rolesSession, true) || in_array('Administrador', $rolesSession, true);
+
 // ── Lista de colectas desde BD ────────────────────────────────────────────────
 $colectas    = [];
 $clientes    = [];
@@ -45,25 +51,54 @@ try {
     $db    = (new Conexion())->conectar();
     $colModel = new ColectaModel($db);
 
-    // Obtener colectas con filtros básicos
-    $colectas = $colModel->listarConFiltros([
+    $filtrosQuery = [
         'fecha'   => $filtroFecha   ?: null,
         'turno'   => $filtroTurno   ?: null,
         'estado'  => $filtroEstado  ?: null,
         'cliente' => $filtroCliente ?: null,
-    ]);
+    ];
+
+    // Si es cliente o proveedor y no admin, filtrar solo sus colectas
+    if (($isCliente || $isProveedor) && !$isAdmin) {
+        $filtrosQuery['id_cliente'] = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+    }
+
+    // Obtener colectas con filtros
+    $colectas = $colModel->listarConFiltros($filtrosQuery);
 
     // Obtener clientes disponibles para el select del modal
-    $stmtClientes = $db->query(
-        "SELECT u.id, u.nombre
-           FROM usuarios u
-          INNER JOIN pedidos p ON p.id_cliente = u.id
-                              AND p.id_estado = 11
-          GROUP BY u.id, u.nombre
-          ORDER BY u.nombre ASC
-         LIMIT 200"
-    );
-    $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
+    if (($isCliente || $isProveedor) && !$isAdmin) {
+        $userIdSelf = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+        $stmtClientes = $db->prepare("SELECT id, nombre FROM usuarios WHERE id = :id");
+        $stmtClientes->execute(['id' => $userIdSelf]);
+        $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $stmtClientes = $db->query(
+            "SELECT u.id, u.nombre
+               FROM usuarios u
+              INNER JOIN pedidos p ON (p.id_cliente = u.id OR p.id_proveedor = u.id)
+                                  AND p.id_estado = 11
+              GROUP BY u.id, u.nombre
+              ORDER BY u.nombre ASC
+             LIMIT 200"
+        );
+        $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // Calcular contadores KPI para el header
+    $countAbiertas = 0;
+    $countConciliadas = 0;
+    $totalEsperados = 0;
+    $totalFaltantes = 0;
+    foreach ($colectas as $c) {
+        if (($c['estado'] ?? '') === 'ABIERTA') {
+            $countAbiertas++;
+            $totalEsperados += (int)($c['cantidad_esperada'] ?? 0);
+            $totalFaltantes += (int)($c['cantidad_faltante'] ?? 0);
+        } elseif (($c['estado'] ?? '') === 'CONCILIADA') {
+            $countConciliadas++;
+        }
+    }
 
 } catch (Throwable $e) {
     error_log('[colectas/index] Error al cargar datos: ' . $e->getMessage());
@@ -71,22 +106,26 @@ try {
 }
 
 // ── Helpers de badge ──────────────────────────────────────────────────────────
-function badgeEstado(string $estado): string
-{
-    return match ($estado) {
-        'ABIERTA'     => '<span class="badge bg-success">ABIERTA</span>',
-        'CONCILIADA'  => '<span class="badge bg-secondary">CONCILIADA</span>',
-        default       => '<span class="badge bg-light text-dark">' . htmlspecialchars($estado) . '</span>',
-    };
+if (!function_exists('badgeEstado')) {
+    function badgeEstado(string $estado): string
+    {
+        return match ($estado) {
+            'ABIERTA'     => '<span class="badge badge-outline-success">ABIERTA</span>',
+            'CONCILIADA'  => '<span class="badge badge-outline-secondary">✓ CONCILIADA</span>',
+            default       => '<span class="badge bg-light text-dark">' . htmlspecialchars($estado) . '</span>',
+        };
+    }
 }
 
-function badgeTurno(string $turno): string
-{
-    return match ($turno) {
-        'MANANA' => '<span class="badge" style="background:#FF8A00;color:#fff"><i class="bi bi-sun me-1"></i>Mañana</span>',
-        'TARDE'  => '<span class="badge" style="background:#0B4EA2;color:#fff"><i class="bi bi-moon me-1"></i>Tarde</span>',
-        default  => '<span class="badge bg-light text-dark">' . htmlspecialchars($turno) . '</span>',
-    };
+if (!function_exists('badgeTurno')) {
+    function badgeTurno(string $turno): string
+    {
+        return match ($turno) {
+            'MANANA' => '<span class="badge badge-turno-manana"><i class="bi bi-sun me-1"></i>Mañana</span>',
+            'TARDE'  => '<span class="badge badge-turno-tarde"><i class="bi bi-moon me-1"></i>Tarde</span>',
+            default  => '<span class="badge bg-light text-dark">' . htmlspecialchars($turno) . '</span>',
+        };
+    }
 }
 
 $pageTitle = 'Colectas — Logística Operativa';
@@ -96,16 +135,76 @@ $pageTitle = 'Colectas — Logística Operativa';
 <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
     <div>
         <h1 class="h4 fw-bold mb-0">
-            <i class="bi bi-collection me-2 text-warning"></i>Colectas
+            <i class="bi bi-folder-fill me-2 text-warning"></i>Colectas
         </h1>
-        <small class="text-muted">Logística Operativa &mdash; Modo sombra activo</small>
+        <small class="text-muted">Logística Operativa &mdash; Modo sombra activo <i class="bi bi-info-circle ms-1" title="Registra sin modificar pedidos, inventario ni stock"></i></small>
     </div>
-    <button class="btn btn-warning fw-semibold"
+    <button class="btn btn-warning fw-bold px-3 shadow-sm text-dark"
             data-bs-toggle="modal"
             data-bs-target="#modalAbrirColecta"
             id="btnAbrirColecta">
         <i class="bi bi-plus-circle me-1"></i>Abrir colecta
     </button>
+</div>
+
+<!-- ═══ 4 Tarjetas KPI Superiores ═══ -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon-circle kpi-icon-blue me-3">
+                    <i class="bi bi-inbox"></i>
+                </div>
+                <div>
+                    <div class="h3 mb-0 fw-bold"><?= $countAbiertas ?></div>
+                    <div class="fw-semibold text-primary small">Abiertas</div>
+                    <div class="text-muted small" style="font-size:0.75rem;">Colectas activas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon-circle kpi-icon-green me-3">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <div>
+                    <div class="h3 mb-0 fw-bold"><?= $countConciliadas ?></div>
+                    <div class="fw-semibold text-success small">Conciliadas</div>
+                    <div class="text-muted small" style="font-size:0.75rem;">Completadas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon-circle kpi-icon-purple me-3">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div>
+                    <div class="h3 mb-0 fw-bold"><?= number_format($totalEsperados) ?></div>
+                    <div class="fw-semibold text-purple small" style="color:#9333ea;">Paquetes esperados</div>
+                    <div class="text-muted small" style="font-size:0.75rem;">Total en colectas abiertas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="card card-kpi p-3">
+            <div class="d-flex align-items-center">
+                <div class="kpi-icon-circle kpi-icon-red me-3">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div>
+                    <div class="h3 mb-0 fw-bold text-danger"><?= $totalFaltantes ?></div>
+                    <div class="fw-semibold text-danger small">Faltantes</div>
+                    <div class="text-muted small" style="font-size:0.75rem;">En colectas abiertas</div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?php if ($errorCarga): ?>
@@ -118,12 +217,12 @@ $pageTitle = 'Colectas — Logística Operativa';
         <form method="GET" action="" class="row g-2 align-items-end">
             <input type="hidden" name="enlace" value="logistica-operativa/colectas">
             <div class="col-6 col-md-3">
-                <label class="form-label form-label-sm fw-semibold">Fecha</label>
+                <label class="form-label form-label-sm fw-semibold mb-1">Fecha</label>
                 <input type="date" name="fecha" class="form-control form-control-sm"
                        value="<?= htmlspecialchars($filtroFecha) ?>">
             </div>
             <div class="col-6 col-md-3">
-                <label class="form-label form-label-sm fw-semibold">Turno</label>
+                <label class="form-label form-label-sm fw-semibold mb-1">Turno</label>
                 <select name="turno" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     <option value="MANANA" <?= $filtroTurno === 'MANANA' ? 'selected' : '' ?>>Mañana</option>
@@ -131,7 +230,7 @@ $pageTitle = 'Colectas — Logística Operativa';
                 </select>
             </div>
             <div class="col-6 col-md-3">
-                <label class="form-label form-label-sm fw-semibold">Estado</label>
+                <label class="form-label form-label-sm fw-semibold mb-1">Estado</label>
                 <select name="estado" class="form-select form-select-sm">
                     <option value="">Todos</option>
                     <option value="ABIERTA"    <?= $filtroEstado === 'ABIERTA'    ? 'selected' : '' ?>>Abierta</option>
@@ -139,14 +238,14 @@ $pageTitle = 'Colectas — Logística Operativa';
                 </select>
             </div>
             <div class="col-6 col-md-2">
-                <label class="form-label form-label-sm fw-semibold">Cliente</label>
+                <label class="form-label form-label-sm fw-semibold mb-1">Cliente</label>
                 <input type="text" name="cliente" class="form-control form-control-sm"
-                       placeholder="Nombre..."
+                       placeholder="Nombre o ID..."
                        value="<?= htmlspecialchars($filtroCliente) ?>">
             </div>
             <div class="col-12 col-md-1 d-flex gap-1">
-                <button type="submit" class="btn btn-sm btn-primary w-100">
-                    <i class="bi bi-search"></i>
+                <button type="submit" class="btn btn-sm btn-primary w-100 fw-semibold">
+                    <i class="bi bi-search me-1"></i>Buscar
                 </button>
                 <a href="?enlace=logistica-operativa/colectas" class="btn btn-sm btn-outline-secondary w-100">
                     <i class="bi bi-x"></i>
@@ -160,11 +259,11 @@ $pageTitle = 'Colectas — Logística Operativa';
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="tablaColectas">
-                <thead class="table-dark">
+            <table class="table table-hover table-navy align-middle mb-0" id="tablaColectas">
+                <thead>
                     <tr>
                         <th style="width:50px">#</th>
-                        <th>Fecha</th>
+                        <th>Fecha <i class="bi bi-arrow-down-up ms-1 small opacity-50"></i></th>
                         <th>Turno</th>
                         <th>Cliente</th>
                         <th>Estado</th>
@@ -173,7 +272,7 @@ $pageTitle = 'Colectas — Logística Operativa';
                         <th class="text-center">Faltantes</th>
                         <th>Operador</th>
                         <th>Apertura</th>
-                        <th style="width:80px"></th>
+                        <th style="width:80px" class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -188,14 +287,14 @@ $pageTitle = 'Colectas — Logística Operativa';
                     <?php foreach ($colectas as $c): ?>
                     <tr>
                         <td class="text-muted small"><?= (int)$c['id'] ?></td>
-                        <td><?= htmlspecialchars($c['fecha'] ?? '') ?></td>
+                        <td><?= htmlspecialchars((string)($c['fecha'] ?? '')) ?></td>
                         <td><?= badgeTurno($c['turno'] ?? '') ?></td>
-                        <td><?= htmlspecialchars($c['cliente_nombre'] ?? $c['id_cliente'] ?? '—') ?></td>
+                        <td><?= htmlspecialchars((string)($c['cliente_nombre'] ?? $c['id_cliente'] ?? '—')) ?></td>
                         <td><?= badgeEstado($c['estado'] ?? '') ?></td>
                         <td class="text-center fw-semibold"><?= (int)($c['cantidad_esperada']  ?? 0) ?></td>
                         <td class="text-center text-success fw-semibold"><?= (int)($c['cantidad_escaneada'] ?? 0) ?></td>
                         <td class="text-center text-danger fw-semibold"><?= (int)($c['cantidad_faltante']  ?? 0) ?></td>
-                        <td class="small text-muted"><?= htmlspecialchars($c['operador_nombre'] ?? '—') ?></td>
+                        <td class="small text-muted"><?= htmlspecialchars((string)($c['operador_nombre'] ?? '—')) ?></td>
                         <td class="small text-muted"><?= isset($c['created_at']) ? date('d/m/y H:i', strtotime($c['created_at'])) : '—' ?></td>
                         <td>
                             <a href="<?= RUTA_URL ?>logistica-operativa/colectas/ver/<?= (int)$c['id'] ?>"

@@ -2105,9 +2105,9 @@ class PedidosModel
         $isAdmin = ($userRole === ROL_ADMIN);
 
         // 1. Validar estados permitidos
-        // Si es Admin o Mensajería (ID 5), permitimos todos los estados. 
+        // Si es Admin o Mensajería (Proveedor ID 5), permitimos todos los estados. 
         // Si es Cliente (ID 4), restringimos a Reprogramado o Devuelto.
-        if (!$isAdmin && $userRole !== ROL_CLIENTE) {
+        if (!$isAdmin && $userRole !== ROL_PROVEEDOR) {
             if (!in_array($nuevo_estado, [$ID_REPROGRAMADO, $ID_DEVUELTO])) {
                 return ["success" => false, "message" => "ERROR_PERMISOS", "detail" => "Tu rol solo puede reprogramar o devolver pedidos.", "code" => 403];
             }
@@ -2161,10 +2161,9 @@ class PedidosModel
             }
 
             // 5. Validar estado actual y destino.
-            // NOTA: En config.php los nombres están intercambiados:
-            //   ROL_PROVEEDOR=4 → cliente externo (dueño del ecommerce) → RESTRINGIDO
-            //   ROL_CLIENTE=5   → mensajería/logística                   → sin restricción
-            $isExternalCliente = ($userRole === ROL_PROVEEDOR); // JWT rol=4
+            // ROL_CLIENTE=4 → cliente externo (dueño del ecommerce) → RESTRINGIDO
+            // ROL_PROVEEDOR=5 → mensajería/logística             → sin restricción
+            $isExternalCliente = ($userRole === ROL_CLIENTE); // ROL_CLIENTE = 4
             $estadoAnterior = (int)$pedido['id_estado'];
 
             if (!$isAdmin && $isExternalCliente) {
@@ -2302,12 +2301,11 @@ class PedidosModel
             $estadoActual  = (int)$pedido['id_estado'];
 
             // 2. Validar estado actual y destino según rol
-            // NOTA: En config.php los nombres están intercambiados:
-            //   ROL_PROVEEDOR=4 → cliente externo (dueño del ecommerce) → RESTRINGIDO
-            //   ROL_CLIENTE=5   → mensajería/logística                   → sin restricción
+            // ROL_CLIENTE=4   → cliente externo (dueño del ecommerce) → RESTRINGIDO
+            // ROL_PROVEEDOR=5 → mensajería/logística                 → sin restricción
             $ID_DEVUELTO  = 7;
-            $isExternalCliente = ($actorUserRole === ROL_PROVEEDOR); // JWT rol=4 = cliente externo
-            $isMensajeria      = ($actorUserRole === ROL_CLIENTE);   // JWT rol=5 = mensajería
+            $isExternalCliente = ($actorUserRole === ROL_CLIENTE);   // ROL_CLIENTE = 4 (cliente externo)
+            $isMensajeria      = ($actorUserRole === ROL_PROVEEDOR); // ROL_PROVEEDOR = 5 (mensajería)
 
             // Bloquear si el pedido ya está en estado terminal y el actor es cliente externo
             if ($isExternalCliente && ($estadoActual === $ID_ENTREGADO || $estadoActual === $ID_DEVUELTO)) {

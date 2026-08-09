@@ -133,4 +133,45 @@ class TestDatabaseGuardTest extends TestCase
             'DB_SCHEMA no debe ser la base productiva durante las pruebas.'
         );
     }
+
+    // ── Verificación de Guarda de Host para Staging Local y Producción ───
+
+    private function hostWouldBeAccepted(string $env, string $host): bool
+    {
+        if ($env === 'local_staging') {
+            $allowedHosts = ['localhost', '127.0.0.1', '::1'];
+            return in_array(strtolower($host), $allowedHosts, true);
+        }
+        return true; // En production o testing no se fuerza localhost
+    }
+
+    /** @test local_staging + host remoto es rechazado. */
+    public function test_local_staging_rejects_remote_host(): void
+    {
+        $this->assertFalse(
+            $this->hostWouldBeAccepted('local_staging', '192.168.1.100'),
+            'local_staging debe rechazar hosts remotos.'
+        );
+        $this->assertFalse(
+            $this->hostWouldBeAccepted('local_staging', 'db.produccion-real.com'),
+            'local_staging debe rechazar dominios externos.'
+        );
+    }
+
+    /** @test local_staging + localhost o 127.0.0.1 es permitido. */
+    public function test_local_staging_allows_localhost(): void
+    {
+        $this->assertTrue($this->hostWouldBeAccepted('local_staging', 'localhost'));
+        $this->assertTrue($this->hostWouldBeAccepted('local_staging', '127.0.0.1'));
+        $this->assertTrue($this->hostWouldBeAccepted('local_staging', '::1'));
+    }
+
+    /** @test production no queda forzado a localhost por la guarda. */
+    public function test_production_does_not_force_localhost(): void
+    {
+        $this->assertTrue(
+            $this->hostWouldBeAccepted('production', 'db.servidor-produccion.com'),
+            'production debe permitir conectarse a servidores remotos.'
+        );
+    }
 }

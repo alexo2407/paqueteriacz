@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -24,11 +24,19 @@ if ($esAdmin && $proveedorFiltro !== '') {
     $filtroUsuario = (int)$proveedorFiltro;
 }
 
-// Obtener lista de proveedores para el dropdown (solo para admin)
+// Obtener lista de clientes/proveedores para el dropdown (solo para admin)
 $proveedores = [];
 if ($esAdmin) {
     $usuarioModel = new UsuarioModel();
-    $proveedores = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
+    $clientesList    = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_CLIENTE);
+    $proveedoresList = $usuarioModel->obtenerUsuariosPorRolNombre(ROL_NOMBRE_PROVEEDOR);
+    
+    $uniqueUsers = [];
+    foreach (array_merge($clientesList, $proveedoresList) as $u) {
+        $uniqueUsers[$u['id']] = $u;
+    }
+    usort($uniqueUsers, fn($a, $b) => strcmp($a['nombre'], $b['nombre']));
+    $proveedores = array_values($uniqueUsers);
 }
 
 // Obtener filtros de la URL

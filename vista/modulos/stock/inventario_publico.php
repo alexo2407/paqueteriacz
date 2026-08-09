@@ -97,8 +97,8 @@ $stmt->execute([':id' => $u]);
 $rol = $stmt->fetchColumn();
 
 $currRol = $rol ? (int)$rol : 0;
-$isRealCliente   = ($currRol == ROL_PROVEEDOR); // 4
-$isRealProveedor = ($currRol == ROL_CLIENTE);   // 5
+$isRealCliente   = ($currRol == ROL_CLIENTE);   // 4 = comercio emisor (id_cliente)
+$isRealProveedor = ($currRol == ROL_PROVEEDOR); // 5 = courier logístico (id_proveedor)
 $currUserId      = $u;
 
 // Inyectar en variable global para que permisos.php lo tome

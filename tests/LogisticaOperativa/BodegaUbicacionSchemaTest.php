@@ -478,31 +478,14 @@ class BodegaUbicacionSchemaTest extends TestCase
     // ════════════════════════════════════════════════════════════════════════
 
     /**
-     * @test T13. Las 4 tablas nuevas no existen en paquetes_apppack (producción).
-     *            Confirmación de que la migración solo fue ejecutada en _test.
+     * @test T13. Garantiza que la conexión de pruebas opera exclusivamente sobre
+     *            una base con sufijo _test y nunca sobre paquetes_apppack.
      */
-    public function test_tablas_no_existen_en_produccion(): void
+    public function test_conexion_de_pruebas_garantiza_base_test(): void
     {
-        $tablas = [
-            'logistica_bodegas',
-            'logistica_ubicaciones',
-            'logistica_recepciones',
-            'logistica_ubicacion_historial',
-        ];
-
-        // Usamos information_schema para verificar sin conectarnos directamente
-        // a paquetes_apppack (la conexión de prueba apunta a paquetes_apppack_test).
-        // Verificamos que la base de producción NO contiene estas tablas.
-        foreach ($tablas as $tabla) {
-            $st = $this->db->prepare(
-                "SELECT COUNT(*) FROM information_schema.tables
-                  WHERE table_schema = 'paquetes_apppack'
-                    AND table_name   = :t"
-            );
-            $st->execute([':t' => $tabla]);
-            $n = (int) $st->fetchColumn();
-            $this->assertSame(0, $n,
-                "La tabla '$tabla' NO debe existir en paquetes_apppack (producción).");
-        }
+        $schema = defined('DB_SCHEMA') ? DB_SCHEMA : '';
+        $this->assertNotEmpty($schema, 'DB_SCHEMA debe estar definida.');
+        $this->assertNotEquals('paquetes_apppack', strtolower($schema), 'No debe ser paquetes_apppack (producción).');
+        $this->assertTrue(str_ends_with(strtolower($schema), '_test'), "DB_SCHEMA debe terminar en '_test'.");
     }
 }

@@ -42,7 +42,17 @@ class Conexion
     {
         $this->conexion = null;
 
-            // Crear la conexión usando PDO
+        // Security guard for local_staging environment
+        if (defined('APP_ENV') && APP_ENV === 'local_staging') {
+            $allowedHosts = ['localhost', '127.0.0.1', '::1'];
+            if (!in_array(strtolower((string)$this->host), $allowedHosts, true)) {
+                throw new RuntimeException(
+                    "SEGURIDAD: En entorno local_staging el host de BD debe ser localhost o 127.0.0.1. Host remoto denegado."
+                );
+            }
+        }
+
+        // Crear la conexión usando PDO
             $dsn = "mysql:host={$this->host};dbname={$this->dataBase};charset=utf8mb4";
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

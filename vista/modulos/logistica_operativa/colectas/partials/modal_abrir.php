@@ -14,16 +14,14 @@
 <div class="modal fade" id="modalAbrirColecta" tabindex="-1"
      aria-labelledby="modalAbrirColectaLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-md">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px; overflow:hidden;">
 
             <!-- Header -->
-            <div class="modal-header"
-                 style="background:linear-gradient(135deg,#061C4C,#0B4EA2);">
-                <h5 class="modal-title text-white fw-semibold" id="modalAbrirColectaLabel">
-                    <i class="bi bi-plus-circle me-2"></i>Abrir Colecta
+            <div class="modal-header bg-white border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center" id="modalAbrirColectaLabel">
+                    <i class="bi bi-plus-circle-fill me-2 text-primary"></i>Abrir colecta
                 </h5>
-                <button type="button" class="btn-close btn-close-white"
-                        data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
 
             <!-- Body -->
@@ -36,34 +34,33 @@
 
                     <!-- Cliente -->
                     <div class="mb-3">
-                        <label for="abrirIdCliente" class="form-label fw-semibold">
+                        <label for="abrirIdCliente" class="form-label fw-semibold small">
                             Cliente <span class="text-danger">*</span>
                         </label>
                         <?php if (!empty($clientes)): ?>
                         <select id="abrirIdCliente" name="id_cliente"
-                                class="form-select" required>
-                            <option value="">— Seleccionar cliente —</option>
+                                class="form-select form-select-lg fs-6" required>
+                            <option value="">Buscar por nombre o ID del cliente...</option>
                             <?php foreach ($clientes as $cli): ?>
                             <option value="<?= (int)$cli['id'] ?>">
-                                <?= htmlspecialchars($cli['nombre']) ?>
+                                🏢 <?= htmlspecialchars($cli['nombre']) ?> (ID: <?= (int)$cli['id'] ?>)
                             </option>
                             <?php endforeach; ?>
                         </select>
                         <?php else: ?>
                         <input type="number" id="abrirIdCliente" name="id_cliente"
-                               class="form-control" placeholder="ID del cliente" required min="1">
-                        <div class="form-text text-muted">
-                            <i class="bi bi-info-circle me-1"></i>
-                            No hay clientes con pedidos en estado "Pendiente recolección" (estado 11).
-                            Ingresa el ID manualmente.
-                        </div>
+                               class="form-control form-control-lg fs-6" placeholder="Buscar por nombre o ID del cliente..." required min="1">
                         <?php endif; ?>
-                        <div class="invalid-feedback">Selecciona un cliente.</div>
+                        <div class="form-text text-muted small mt-1">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Solo se muestran clientes con pedidos en estado "Pendiente recolección".
+                        </div>
+                        <div class="invalid-feedback">Selecciona un cliente válido.</div>
                     </div>
 
                     <!-- Fecha -->
                     <div class="mb-3">
-                        <label for="abrirFecha" class="form-label fw-semibold">
+                        <label for="abrirFecha" class="form-label fw-semibold small">
                             Fecha <span class="text-danger">*</span>
                         </label>
                         <input type="date" id="abrirFecha" name="fecha"
@@ -74,44 +71,49 @@
 
                     <!-- Turno -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">
+                        <label class="form-label fw-semibold small">
                             Turno <span class="text-danger">*</span>
                         </label>
-                        <div class="d-flex gap-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio"
-                                       name="turno" id="turnoManana" value="MANANA" checked>
-                                <label class="form-check-label" for="turnoManana">
-                                    <i class="bi bi-sun text-warning me-1"></i>Mañana
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="shift-select-card active d-flex align-items-center w-100" id="cardTurnoManana">
+                                    <input type="radio" name="turno" id="turnoManana" value="MANANA" checked class="d-none">
+                                    <i class="bi bi-sun fs-4 text-warning me-2"></i>
+                                    <div>
+                                        <div class="fw-bold small">Mañana</div>
+                                        <div class="text-muted" style="font-size:0.7rem;">06:00 - 12:00</div>
+                                    </div>
                                 </label>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio"
-                                       name="turno" id="turnoTarde" value="TARDE">
-                                <label class="form-check-label" for="turnoTarde">
-                                    <i class="bi bi-moon text-primary me-1"></i>Tarde
+                            <div class="col-6">
+                                <label class="shift-select-card d-flex align-items-center w-100" id="cardTurnoTarde">
+                                    <input type="radio" name="turno" id="turnoTarde" value="TARDE" class="d-none">
+                                    <i class="bi bi-moon fs-4 text-primary me-2"></i>
+                                    <div>
+                                        <div class="fw-bold small">Tarde</div>
+                                        <div class="text-muted" style="font-size:0.7rem;">12:00 - 18:00</div>
+                                    </div>
                                 </label>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Nota modo sombra -->
-                    <div class="alert alert-light border border-warning-subtle py-2 px-3 mb-0">
-                        <small class="text-muted">
-                            <i class="bi bi-shield-check text-warning me-1"></i>
-                            <strong>Modo sombra activo:</strong> la apertura registra la colecta sin
-                            modificar estados de pedidos, inventario ni stock.
-                        </small>
+                    <!-- Banner Modo Sombra -->
+                    <div class="alert alert-warning border-warning-subtle text-dark py-2 px-3 mb-3 d-flex align-items-center rounded-3 small">
+                        <i class="bi bi-shield-lock fs-5 me-2 text-warning"></i>
+                        <div>
+                            <strong>Modo sombra activo:</strong> esta acción no modifica pedidos, inventario ni stock.
+                        </div>
                     </div>
 
                 </form>
             </div>
 
             <!-- Footer -->
-            <div class="modal-footer border-0 pt-0">
-                <button type="button" class="btn btn-outline-secondary"
+            <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
+                <button type="button" class="btn btn-outline-secondary px-3"
                         data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-warning fw-semibold"
+                <button type="button" class="btn btn-warning fw-bold text-dark px-4 shadow-sm"
                         id="btnConfirmarAbrir">
                     <span id="spinnerAbrir" class="spinner-border spinner-border-sm me-1 d-none"
                           role="status" aria-hidden="true"></span>
@@ -123,3 +125,25 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const rManana = document.getElementById('turnoManana');
+    const rTarde  = document.getElementById('turnoTarde');
+    const cManana = document.getElementById('cardTurnoManana');
+    const cTarde  = document.getElementById('cardTurnoTarde');
+
+    if (cManana && cTarde) {
+        cManana.addEventListener('click', function() {
+            rManana.checked = true;
+            cManana.classList.add('active');
+            cTarde.classList.remove('active');
+        });
+        cTarde.addEventListener('click', function() {
+            rTarde.checked = true;
+            cTarde.classList.add('active');
+            cManana.classList.remove('active');
+        });
+    }
+});
+</script>

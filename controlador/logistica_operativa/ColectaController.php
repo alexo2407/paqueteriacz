@@ -20,6 +20,10 @@ declare(strict_types=1);
  *   - Registra errores internos solo con error_log().
  *   - Bloquea si LOGISTICA_OPERATIVA_ENABLED=false.
  *   - Mantiene shadowMode=true (no modifica pedidos.id_estado, stock, inventario).
+ *
+ * Fase 4 implementada: verificarAutorizacion() usa el permiso formal
+ *   'logistica_operativa_colectas' (tabla permisos, migración 022).
+ * @see utils/logistica_permissions.php
  */
 
 require_once __DIR__ . '/../../config/config.php';
@@ -28,6 +32,7 @@ require_once __DIR__ . '/../../api/utils/autenticacion.php';
 require_once __DIR__ . '/../../services/LogisticaOperativaFlags.php';
 require_once __DIR__ . '/../../services/logistica_operativa/LogisticaOperativaException.php';
 require_once __DIR__ . '/../../services/logistica_operativa/ColectaService.php';
+require_once __DIR__ . '/../../utils/logistica_permissions.php';
 
 class ColectaController
 {
@@ -120,6 +125,20 @@ class ColectaController
         $token = AuthMiddleware::obtenerTokenDeHeaders();
 
         if ($token === null || $token === '') {
+            // Fallback a sesión PHP activa para llamadas AJAX internas de la interfaz web
+            require_once __DIR__ . '/../../utils/session.php';
+            start_secure_session();
+
+            $userId = $_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? null;
+            if (!empty($userId)) {
+                $rolId = (int)($_SESSION['rol'] ?? (is_array($_SESSION['roles'] ?? null) && !empty($_SESSION['roles']) ? $_SESSION['roles'][0] : 1));
+                return [
+                    'id'     => (int) $userId,
+                    'nombre' => $_SESSION['nombre'] ?? '',
+                    'rol'    => $rolId,
+                ];
+            }
+
             $this->error('UNAUTHENTICATED', 'Se requiere autenticación.', 401);
         }
 
@@ -141,6 +160,24 @@ class ColectaController
         if (!LogisticaOperativaFlags::enabled()) {
             $this->error('MODULE_DISABLED', 'El módulo Logística Operativa no está habilitado.', 403);
         }
+    }
+
+    /**
+     * Verifica que el usuario autenticado tenga el permiso formal
+     * 'logistica_operativa_colectas' (tabla permisos, migración 022).
+     *
+     * Fase 4 implementada: consulta real a roles_permisos JOIN permisos.
+     * Deny by default: si la consulta BD falla o el rol no existe → 403 JSON.
+     * No expone SQL, DSN ni traza en la respuesta.
+     *
+     * @see utils/logistica_permissions.php
+     * @param array{id:int, nombre:string, rol:int} $usuario  Datos del JWT.
+     */
+    public function verificarAutorizacion(array $usuario): void
+    {
+        // api_require_permission() responde 403 JSON y sale si falla.
+        // Nunca devuelve false — o pasa o termina la ejecución.
+        api_require_permission('logistica_operativa_colectas', $usuario);
     }
 
     // ── Conexión a la base de datos ───────────────────────────────────────
@@ -346,6 +383,48 @@ class ColectaController
             $this->mapearExcepcion($e);
         } catch (Throwable $e) {
             error_log('[ColectaController::cerrar] Error interno: ' . $e->getMessage());
+            $this->error('INTERNAL_ERROR', 'Error interno del servidor.', 500);
+        }
+    }
+
+    /**
+     * POST /api/logistica-operativa/colectas/eliminar-extra
+     *
+     * Elimina un paquete EXTRA de la colecta.
+     */
+    public function eliminarExtra(): void
+    {
+        $this->aplicarHeaders('POST, OPTIONS');
+        $this->requerirMetodo('POST');
+        $this->verificarModulo();
+        $this->requerirJsonContentType();
+
+        $usuario    = $this->autenticar();
+        $idOperador = (int) ($usuario['id'] ?? 0);
+
+        if ($idOperador <= 0) {
+            $this->error('INVALID_OPERATOR', 'No se pudo obtener el operador del token.', 401);
+        }
+
+        $body = $this->leerJson();
+
+        if (empty($body['id_colecta']) || empty($body['id_pedido'])) {
+            $this->error('MISSING_FIELD', 'Los campos id_colecta e id_pedido son requeridos.', 400);
+        }
+
+        $idColecta = (int) $body['id_colecta'];
+        $idPedido  = (int) $body['id_pedido'];
+
+        try {
+            $db       = $this->crearConexion();
+            $servicio = new ColectaService($db);
+            $resultado = $servicio->eliminarExtra($idColecta, $idPedido, $idOperador);
+            $this->ok($resultado);
+        } catch (LogisticaOperativaException $e) {
+            error_log('[ColectaController::eliminarExtra] ' . $e->getMessage());
+            $this->mapearExcepcion($e);
+        } catch (Throwable $e) {
+            error_log('[ColectaController::eliminarExtra] Error interno: ' . $e->getMessage());
             $this->error('INTERNAL_ERROR', 'Error interno del servidor.', 500);
         }
     }

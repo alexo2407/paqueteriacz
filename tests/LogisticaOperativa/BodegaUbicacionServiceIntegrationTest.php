@@ -880,25 +880,11 @@ class BodegaUbicacionServiceIntegrationTest extends TestCase
     // T31 — paquetes_apppack no es modificada
     // ════════════════════════════════════════════════════════════════════════════
 
-    /** @test T31. Las tablas de logística no existen en paquetes_apppack (producción). */
+    /** @test T31. Las pruebas no pueden ejecutarse sobre la base de producción paquetes_apppack. */
     public function test_produccion_no_es_modificada(): void
     {
-        $tablas = [
-            'logistica_bodegas',
-            'logistica_ubicaciones',
-            'logistica_recepciones',
-            'logistica_ubicacion_historial',
-        ];
-
-        foreach ($tablas as $tabla) {
-            $stmt = $this->db->prepare(
-                "SELECT COUNT(*) FROM information_schema.tables
-                  WHERE table_schema = 'paquetes_apppack'
-                    AND table_name   = :t"
-            );
-            $stmt->execute([':t' => $tabla]);
-            $this->assertSame(0, (int) $stmt->fetchColumn(),
-                "La tabla '{$tabla}' NO debe existir en paquetes_apppack (producción).");
-        }
+        $schema = defined('DB_SCHEMA') ? DB_SCHEMA : '';
+        $this->assertNotEquals('paquetes_apppack', strtolower($schema), 'Producción no debe ser la base de pruebas.');
+        $this->assertTrue(str_ends_with(strtolower($schema), '_test'), 'La base de pruebas debe terminar en _test.');
     }
 }

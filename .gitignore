@@ -3,6 +3,8 @@
 # =====================================================
 config/*
 !config/config.example.php
+config/config.local.php
+database/seeds/local/
 *.env
 .env
 .env.local
@@ -32,6 +34,9 @@ check_*.php
 # Backups y Archivos Temporales
 # =====================================================
 _backup/
+database/backups/
+.phpunit.result.cache
+scratch/
 *.backup
 *.backup_*
 *.bak

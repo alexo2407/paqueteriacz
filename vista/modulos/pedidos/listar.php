@@ -1,7 +1,7 @@
 <?php
 $usaDataTables = true;
 require_once "utils/authorization.php";
-require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
+require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR, ROL_NOMBRE_CLIENTE]);
 
 include("vista/includes/header.php");
 ?>

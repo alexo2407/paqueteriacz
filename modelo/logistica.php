@@ -154,9 +154,8 @@ class LogisticaModel {
             }
             
             if ($excluirEstadosFinales) {
-                // Tab "En Proceso": mostrar pedidos activos reales
-                // Incluir: En bodega (1), En ruta o proceso (2) y Reprogramado (4)
-                $sql .= " AND p.id_estado IN (1, 2, 4)";
+                // Tab "En Proceso": mostrar pedidos activos reales (excluye entregado, devuelto, liquidado, cancelado)
+                $sql .= " AND p.id_estado IN (1, 2, 4, 11, 12, 13, 16, 18)";
             }
 
             $sql .= " ORDER BY p.fecha_ingreso DESC";
@@ -228,9 +227,8 @@ class LogisticaModel {
             }
             
             if ($excluirEstadosFinales) {
-                // Tab "En Proceso": mostrar pedidos activos reales
-                // Incluir: En bodega (1), En ruta o proceso (2) y Reprogramado (4)
-                $sql .= " AND p.id_estado IN (1, 2, 4)";
+                // Tab "En Proceso": mostrar pedidos activos reales (excluye entregado, devuelto, liquidado, cancelado)
+                $sql .= " AND p.id_estado IN (1, 2, 4, 11, 12, 13, 16, 18)";
             }
 
             $stmt = $db->prepare($sql);

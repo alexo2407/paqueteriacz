@@ -92,11 +92,43 @@ class ColectaService
         return $stmt->fetch() !== false;
     }
 
+    private function resolverIdPedido(int $codigo, int $idColecta = 0): ?int
+    {
+        // 1. Si hay colecta activa, priorizar los pedidos esperados en esta colecta por numero_orden o id
+        if ($idColecta > 0) {
+            $stmtCol = $this->db->prepare('
+                SELECT p.id
+                  FROM logistica_colecta_pedidos cp
+                  JOIN pedidos p ON p.id = cp.id_pedido
+                 WHERE cp.id_colecta = :id_colecta
+                   AND (p.numero_orden = :c1 OR p.id = :c2)
+                 LIMIT 1
+            ');
+            $stmtCol->execute([':id_colecta' => $idColecta, ':c1' => $codigo, ':c2' => $codigo]);
+            $rowCol = $stmtCol->fetch();
+            if ($rowCol !== false) {
+                return (int)$rowCol['id'];
+            }
+        }
+
+        // 2. Buscar globalmente por numero_orden
+        $stmtNum = $this->db->prepare('SELECT id FROM pedidos WHERE numero_orden = :codigo LIMIT 1');
+        $stmtNum->execute([':codigo' => $codigo]);
+        $rowNum = $stmtNum->fetch();
+        if ($rowNum !== false) {
+            return (int)$rowNum['id'];
+        }
+
+        // 3. Buscar por ID primario
+        $stmtId = $this->db->prepare('SELECT id FROM pedidos WHERE id = :codigo LIMIT 1');
+        $stmtId->execute([':codigo' => $codigo]);
+        $rowId = $stmtId->fetch();
+        return $rowId !== false ? (int)$rowId['id'] : null;
+    }
+
     private function existePedido(int $id): bool
     {
-        $stmt = $this->db->prepare('SELECT id FROM pedidos WHERE id = :id LIMIT 1');
-        $stmt->execute([':id' => $id]);
-        return $stmt->fetch() !== false;
+        return $this->resolverIdPedido($id) !== null;
     }
 
     // ── Apertura ──────────────────────────────────────────────────────────
@@ -205,7 +237,7 @@ class ColectaService
         $this->validarQrHash($datos['qr_hash'] ?? '');
 
         $idColecta  = (int) ($datos['id_colecta'] ?? 0);
-        $idPedido   = (int) ($datos['id_pedido']  ?? 0);
+        $idPedidoRaw = (int) ($datos['id_pedido']  ?? 0);
         $idOperador = (int) ($datos['id_operador'] ?? 0);
         $tipoEvento = $datos['tipo_evento'] ?? '';
         $escaneadoAt = $datos['escaneado_at'] ?? date('Y-m-d H:i:s');
@@ -213,9 +245,12 @@ class ColectaService
         if (!$this->existeUsuario($idOperador)) {
             throw new LogisticaOperativaException("Operador no encontrado: ID {$idOperador}.");
         }
-        if (!$this->existePedido($idPedido)) {
-            throw new LogisticaOperativaException("Pedido no encontrado: ID {$idPedido}.");
+        
+        $idPedido = $this->resolverIdPedido($idPedidoRaw, $idColecta);
+        if ($idPedido === null) {
+            throw new LogisticaOperativaException("Pedido no encontrado: ID/Orden {$idPedidoRaw}.");
         }
+        $datos['id_pedido'] = $idPedido;
 
         $this->db->beginTransaction();
         try {
@@ -361,6 +396,39 @@ class ColectaService
                 'Error al cerrar colecta: ' . $e->getMessage(), 0, $e
             );
         }
+    }
+
+    // ── Eliminar Extra ───────────────────────────────────────────────────
+
+    /**
+     * Elimina un paquete registrado como EXTRA en una colecta ABIERTA.
+     */
+    public function eliminarExtra(int $idColecta, int $idPedido, int $idOperador): array
+    {
+        $this->verificarFlags();
+
+        if (!$this->existeUsuario($idOperador)) {
+            throw new LogisticaOperativaException("Operador no encontrado: ID {$idOperador}.");
+        }
+
+        $colecta = $this->colectaModel->obtenerPorId($idColecta);
+        if ($colecta === null) {
+            throw new LogisticaOperativaException("Colecta no encontrada: ID {$idColecta}.");
+        }
+        if ($colecta['estado'] !== 'ABIERTA') {
+            throw new LogisticaOperativaException("No se pueden eliminar extras de una colecta {$colecta['estado']}.");
+        }
+
+        $eliminado = $this->colectaModel->eliminarPedidoExtra($idColecta, $idPedido);
+        if (!$eliminado) {
+            throw new LogisticaOperativaException("El pedido #{$idPedido} no está registrado como EXTRA en esta colecta.");
+        }
+
+        // Eliminar escaneos de logistica_escaneos para este pedido en esta colecta
+        $stmtEsc = $this->db->prepare("DELETE FROM logistica_escaneos WHERE id_colecta = :idc AND id_pedido = :idp");
+        $stmtEsc->execute([':idc' => $idColecta, ':idp' => $idPedido]);
+
+        return $this->obtenerResumen($idColecta);
     }
 
     // ── Resumen ───────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * vista/modulos/seguimiento/admin_tracking.php
  * Vista de Seguimiento Administrativo con la interfaz nativa del sistema (Bootstrap 5) y paginación.
@@ -52,7 +52,7 @@ if ($isPublicLink) {
     }
 
     // Determinar rol real del usuario del token
-    // ROL_ADMIN=1, ROL_CLIENTE=4 (NutraTrade en UI), ROL_PROVEEDOR=5 (Mensajería en UI)
+    // ROL_ADMIN=1, ROL_CLIENTE=4 (comercio emisor), ROL_PROVEEDOR=5 (courier/mensajería)
     $isAdmin       = ($pubRol == ROL_ADMIN);
     $isCliente     = ($pubRol == ROL_CLIENTE || $pubRol == ROL_PROVEEDOR); // cualquier rol no-admin con pedidos
     $currentUserId = $pubU;
@@ -62,7 +62,7 @@ if ($isPublicLink) {
     $rolesNames    = $_SESSION['roles_nombres'] ?? [];
     $isAdmin       = in_array(ROL_NOMBRE_ADMIN, $rolesNames, true);
     $sessionRol    = $_SESSION['rol'] ?? 0;
-    $isCliente     = isCliente() || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
+    $isCliente     = isCliente() || isProveedor() || $sessionRol == 4 || $sessionRol == 5 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames) || in_array('Proveedor', $rolesNames) || in_array('proveedor', $rolesNames);
     $currentUserId = getCurrentUserId();
     $db            = (new Conexion())->conectar();
 }

@@ -41,9 +41,14 @@ if ($isPublicLink) {
     $db             = $dbPub;
 } else {
     require_login();
-    $isAdmin        = isSuperAdmin();
+    $isAdmin     = isSuperAdmin();
+    $isProveedor = isProveedor();
+    if (!$isAdmin && !$isProveedor) {
+        header("Location: " . RUTA_URL . "pedidos/listar");
+        exit;
+    }
     $currRol        = $_SESSION['rol'] ?? 0;
-    $isProveedorExt = ($currRol == ROL_CLIENTE || $currRol == ROL_PROVEEDOR);
+    $isProveedorExt = ($currRol == ROL_PROVEEDOR);
     $currUserId     = getCurrentUserId();
     $db             = (new Conexion())->conectar();
 }

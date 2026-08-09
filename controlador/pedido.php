@@ -1532,8 +1532,19 @@ class PedidosController
             // Guardamos null = no forzar (respetar CSV o 0 por defecto del modelo).
             $defaultValues['es_combo'] = isset($_POST['default_es_combo']) ? 1 : null;
 
-            // Cliente creador: asociar por defecto al usuario actual en sesión
-            $defaultValues['id_cliente'] = (int)($_SESSION['user_id'] ?? ($_SESSION['idUsuario'] ?? 0));
+            // Asignar rol por defecto según usuario en sesión (Cliente vs Proveedor)
+            $currentUserId = (int)($_SESSION['user_id'] ?? ($_SESSION['idUsuario'] ?? 0));
+            require_once __DIR__ . '/../utils/permissions.php';
+
+            if (isCliente()) {
+                $defaultValues['id_cliente'] = $currentUserId;
+            } elseif (isProveedor()) {
+                if (empty($defaultValues['proveedor'])) {
+                    $defaultValues['proveedor'] = $currentUserId;
+                }
+            } else {
+                $defaultValues['id_cliente'] = $currentUserId;
+            }
 
             // Productos inexistentes SIEMPRE rechazan la fila
             $autoCreateProducts = false;
@@ -1931,24 +1942,23 @@ class PedidosController
             }
 
             // Determinar permisos reales del usuario del token
-            // NOTA: Las constantes están invertidas en permissions.php:
-            //   ROL_CLIENTE  = 4 → "Cliente" en UI = NutraTrade (crea pedidos, va en id_proveedor)
-            //   ROL_PROVEEDOR = 5 → "Proveedor" en UI = Mensajería (va en id_cliente)
+            //   ROL_CLIENTE  = 4 → Comercio e-commerce (crea pedidos, va en id_cliente)
+            //   ROL_PROVEEDOR = 5 → Operador Logístico / Courier (transporta pedidos, va en id_proveedor)
             $currentUserId = $pubU;
             $isAdmin      = ($pubRol == ROL_ADMIN);
-            $isNutraTrade = ($pubRol == ROL_CLIENTE);   // ID 4 = "Cliente" UI = NutraTrade
-            $isMensajeria = ($pubRol == ROL_PROVEEDOR); // ID 5 = "Proveedor" UI = Mensajería
+            $isNutraTrade = ($pubRol == ROL_CLIENTE);   // ID 4 = Cliente / Comercio
+            $isMensajeria = ($pubRol == ROL_PROVEEDOR); // ID 5 = Proveedor / Mensajería
         } else {
             // Acceso normal por sesión
             $rolesNames    = $_SESSION['roles_nombres'] ?? [];
             $sessionRol    = $_SESSION['rol'] ?? 0;
             $currentUserId = getCurrentUserId();
 
-            // Nota sobre inversión:
-            // ID 4 (ROL_PROVEEDOR en código) = NutraTrade (Nombre "Cliente" en UI) -> Almacenado en id_proveedor
-            // ID 5 (ROL_CLIENTE en código)   = Mensajería (Nombre "Proveedor" en UI) -> Almacenado en id_cliente
-            $isNutraTrade = isProveedor() || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
-            $isMensajeria = isCliente()   || $sessionRol == 5 || in_array('Proveedor', $rolesNames) || in_array('proveedor', $rolesNames);
+            // Mapeo consistente:
+            // ID 4 (ROL_CLIENTE)   = Comercio e-commerce emisor (almacenado en id_cliente)
+            // ID 5 (ROL_PROVEEDOR) = Operador Logístico / Courier (almacenado en id_proveedor)
+            $isNutraTrade = isCliente()   || $sessionRol == 4 || in_array('Cliente', $rolesNames) || in_array('cliente', $rolesNames);
+            $isMensajeria = isProveedor() || $sessionRol == 5 || in_array('Proveedor', $rolesNames) || in_array('proveedor', $rolesNames);
             $isAdmin      = isAdmin();
 
             if (!$isAdmin && !$isNutraTrade && !$isMensajeria) {
@@ -1965,12 +1975,11 @@ class PedidosController
         // Seguridad: Filtrado dinámico según el rol
         if (!$isAdmin) {
             if ($isNutraTrade) {
-                // NutraTrade puede ser cliente o proveedor dependiendo del pedido (Inconsistencia DB)
-                // Usamos un filtro especial que busque en ambas columnas
+                // Cliente de e-commerce: buscar por id_cliente o pertenencia
                 $filtros['id_usuario_pertenencia'] = $currentUserId;
             } else if ($isMensajeria) {
-                // Mensajería/RutaEX se guarda usualmente como id_cliente
-                $filtros['id_cliente'] = $currentUserId;
+                // Mensajería/Courier: buscar por id_proveedor o pertenencia
+                $filtros['id_usuario_pertenencia'] = $currentUserId;
             }
             // Si ningún rol coincide (caso raro), restringir por pertenencia para evitar fuga de datos
             if (!$isNutraTrade && !$isMensajeria) {

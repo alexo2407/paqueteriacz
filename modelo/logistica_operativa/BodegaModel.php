@@ -45,4 +45,21 @@ class BodegaModel
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row !== false ? $row : null;
     }
+
+    /**
+     * Devuelve todas las bodegas activas ordenadas por nombre.
+     * No incluye columnas que puedan no existir en la BD.
+     *
+     * @return array<int,array{id:int,nombre:string,codigo:string}>
+     */
+    public function listarActivas(): array
+    {
+        $stmt = $this->db->query(
+            'SELECT id, nombre, codigo
+               FROM logistica_bodegas
+              WHERE activa = 1
+           ORDER BY nombre ASC'
+        );
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }

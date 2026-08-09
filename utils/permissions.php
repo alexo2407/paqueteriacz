@@ -4,10 +4,8 @@
 if (!defined('ROL_ADMIN')) define('ROL_ADMIN', 1);
 if (!defined('ROL_VENDEDOR')) define('ROL_VENDEDOR', 2);
 if (!defined('ROL_REPARTIDOR')) define('ROL_REPARTIDOR', 3);
-// NOTA: Los IDs 4 y 5 están intercambiados para coincidir con la semántica del negocio
-// después de la migración 008 que corrigió las columnas id_cliente/id_proveedor
-if (!defined('ROL_CLIENTE')) define('ROL_CLIENTE', 4);      // Logística - quien crea pedidos
-if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 5);  // Logística - quien rastrea pedidos
+if (!defined('ROL_CLIENTE')) define('ROL_CLIENTE', 4);      // Comercio e-commerce emisor (id_cliente en pedidos)
+if (!defined('ROL_PROVEEDOR')) define('ROL_PROVEEDOR', 5);  // Operador logístico / courier (id_proveedor en pedidos)
 if (!defined('ROL_PROVEEDOR_CRM')) define('ROL_PROVEEDOR_CRM', 6);  // CRM (verificado en BD)
 if (!defined('ROL_CLIENTE_CRM')) define('ROL_CLIENTE_CRM', 7);      // CRM (verificado en BD)
 
@@ -17,10 +15,8 @@ if (!defined('ROL_CLIENTE_CRM')) define('ROL_CLIENTE_CRM', 7);      // CRM (veri
 if (!defined('ROL_NOMBRE_ADMIN')) define('ROL_NOMBRE_ADMIN', 'Administrador');
 if (!defined('ROL_NOMBRE_VENDEDOR')) define('ROL_NOMBRE_VENDEDOR', 'Vendedor');
 if (!defined('ROL_NOMBRE_REPARTIDOR')) define('ROL_NOMBRE_REPARTIDOR', 'Repartidor');
-// NOTA: Los nombres siguen siendo los originales de la BD, pero ahora las constantes
-// ROL_CLIENTE y ROL_PROVEEDOR apuntan a los IDs correctos según la semántica del negocio
-if (!defined('ROL_NOMBRE_CLIENTE')) define('ROL_NOMBRE_CLIENTE', 'Cliente');      // ID 4 en BD
-if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Proveedor');  // ID 5 en BD
+if (!defined('ROL_NOMBRE_CLIENTE')) define('ROL_NOMBRE_CLIENTE', 'Cliente');       // ID 4 en BD: comercio emisor
+if (!defined('ROL_NOMBRE_PROVEEDOR')) define('ROL_NOMBRE_PROVEEDOR', 'Proveedor'); // ID 5 en BD: operador logístico
 if (!defined('ROL_NOMBRE_PROVEEDOR_CRM')) define('ROL_NOMBRE_PROVEEDOR_CRM', 'Proveedor CRM');  // CRM
 if (!defined('ROL_NOMBRE_CLIENTE_CRM')) define('ROL_NOMBRE_CLIENTE_CRM', 'Cliente CRM');      // CRM
 
@@ -303,8 +299,8 @@ function canEditProduct($producto) {
 /**
  * Obtiene el ID de usuario para usar como filtro de productos.
  * Admin: null (sin filtro, ve todos)
- * Proveedor/Dueño tienda: su user_id (solo ve los suyos)
- * Cliente/Repartidor Logística: array de user_ids incluyendo los suyos y los de sus clientes asignados
+ * Cliente (Comercio e-commerce): su user_id (solo ve sus propios productos/stock)
+ * Proveedor (Operador Logístico / Courier): array de user_ids incluyendo los suyos y los de sus clientes asignados
  * 
  * @return int|array|null ID(s) de usuario para filtrar, o null para ver todos
  */
@@ -317,9 +313,15 @@ function getIdUsuarioCreadorFilter() {
     $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? $GLOBALS['API_USER_ID'] ?? null;
     if (!$userId) return null;
 
-    // Cliente de Logística (es el verdadero "Proveedor/Mensajería" en el negocio)
-    // Ven los productos de los clientes a los que les manejan envíos.
+    // Cliente (Comercio e-commerce emisor, ID 4)
+    // Solo ve sus propios productos.
     if (isCliente()) {
+        return (int)$userId;
+    }
+    
+    // Proveedor (Operador Logístico / Courier, ID 5)
+    // Ve sus propios productos y los productos de los clientes a los que les maneja envíos.
+    if (isProveedor()) {
         try {
             require_once __DIR__ . '/../modelo/conexion.php';
             $db = (new Conexion())->conectar();
@@ -327,22 +329,16 @@ function getIdUsuarioCreadorFilter() {
             $stmt->execute([':id' => $userId]);
             $clientesAsignados = $stmt->fetchAll(PDO::FETCH_COLUMN);
             
-            $listaIds = array_map('intval', $clientesAsignados);
+            $listaIds = array_map('intval', array_filter($clientesAsignados));
             $listaIds[] = (int)$userId;
-            return array_unique($listaIds);
+            return array_values(array_unique($listaIds));
             
         } catch (Exception $e) {
             return (int)$userId;
         }
     }
     
-    // Proveedor (es el verdadero "Dueño del Ecommerce/Cliente" en el negocio)
-    // Solo ve sus propios productos.
-    if (isProveedor()) {
-        return (int)$userId;
-    }
-    
-    return null;
+    return (int)$userId;
 }
 
 /**
