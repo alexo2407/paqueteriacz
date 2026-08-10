@@ -105,12 +105,20 @@ $whereStr = 'WHERE ' . implode(' AND ', $where);
 $sqlEstatus = "
     SELECT
         CASE
-            WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%' THEN 'RECHAZADO'
+            WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
+              OR LOWER(ep.nombre_estado) LIKE '%cancelado%'
+              OR LOWER(ep.nombre_estado) LIKE '%domicilio cerrado%'
+              OR LOWER(ep.nombre_estado) LIKE '%domicilio no encontrado%'
+              OR LOWER(ep.nombre_estado) LIKE '%incidencia%'
+              OR LOWER(ep.nombre_estado) LIKE '%no hay quien reciba%'
+              OR LOWER(ep.nombre_estado) LIKE '%no puede pagar%'
+                             THEN 'RECHAZADO'
             WHEN LOWER(ep.nombre_estado) LIKE '%devuelto%'
               OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
               OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 'DEVUELTO'
             WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 'ENTREGADO'
             WHEN LOWER(ep.nombre_estado) LIKE '%reprogramado%' THEN 'REPROGRAMADO'
+            WHEN LOWER(ep.nombre_estado) LIKE '%correo%'     THEN 'CORREO'
             ELSE 'EN PROCESO'
         END AS categoria,
         COUNT(*) AS total
@@ -125,8 +133,8 @@ foreach ($params as $k => $v) $stmtEst->bindValue($k, $v);
 $stmtEst->execute();
 $rows = $stmtEst->fetchAll(PDO::FETCH_ASSOC);
 
-// Normalizar a las 5 categorías (aunque alguna tenga 0)
-$data = ['ENTREGADO' => 0, 'EN PROCESO' => 0, 'RECHAZADO' => 0, 'DEVUELTO' => 0, 'REPROGRAMADO' => 0];
+// Normalizar a las 6 categorías (aunque alguna tenga 0)
+$data = ['ENTREGADO' => 0, 'EN PROCESO' => 0, 'RECHAZADO' => 0, 'DEVUELTO' => 0, 'REPROGRAMADO' => 0, 'CORREO' => 0];
 foreach ($rows as $r) {
     $data[$r['categoria']] = (int)$r['total'];
 }
@@ -170,6 +178,7 @@ if ($export) {
         'RECHAZADO'    => ['bg' => '8E44AD', 'text' => 'FFFFFF'],
         'DEVUELTO'     => ['bg' => 'B71C1C', 'text' => 'FFFFFF'],
         'REPROGRAMADO' => ['bg' => 'F97316', 'text' => 'FFFFFF'],
+        'CORREO'       => ['bg' => '3498DB', 'text' => 'FFFFFF'],  // Azul logística postal
     ];
 
     $row = 3;
@@ -230,6 +239,7 @@ if ($export) {
             --clr-rechazado:    #8e44ad;
             --clr-devuelto:     #b71c1c;
             --clr-reprogramado: #f97316;
+            --clr-correo:       #3498db;
             --clr-dark:         #0f172a;
             --clr-card:         #1e293b;
             --clr-surface:      #f8fafc;
@@ -248,8 +258,8 @@ if ($export) {
         .rpt-header h4 { font-weight: 800; font-size: 1.25rem; margin-bottom: .25rem; }
 
         /* KPI Cards */
-        .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+        .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        @media (max-width: 1300px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 700px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 480px)  { .kpi-grid { grid-template-columns: 1fr; } }
         .kpi-card {
@@ -275,6 +285,7 @@ if ($export) {
         .kpi-card.rechazado     { background: #8e44ad; color: #fff; }
         .kpi-card.devuelto      { background: #b71c1c; color: #fff; }
         .kpi-card.reprogramado  { background: #f97316; color: #fff; }
+        .kpi-card.correo        { background: #3498db; color: #fff; }
         .kpi-num  { font-size: 2.5rem; font-weight: 800; line-height: 1; }
         .kpi-pct  { font-size: 1rem; font-weight: 600; opacity: .85; }
         .kpi-lbl  { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; opacity: .75; margin-top: .35rem; }
@@ -325,6 +336,7 @@ if ($export) {
         .badge-rechazado     { background: #f3e5f5; color: #4a148c; }
         .badge-devuelto      { background: #fee2e2; color: #7f1d1d; }
         .badge-reprogramado  { background: #ffedd5; color: #9a3412; }
+        .badge-correo        { background: #dbeafe; color: #1e40af; }
 
         /* Progress bar */
         .prog-bar-wrap { height: 10px; background: #e2e8f0; border-radius: 99px; overflow: hidden; min-width: 80px; }
@@ -334,6 +346,7 @@ if ($export) {
         .prog-rechazado     { background: var(--clr-rechazado); }
         .prog-devuelto      { background: var(--clr-devuelto); }
         .prog-reprogramado  { background: var(--clr-reprogramado); }
+        .prog-correo        { background: var(--clr-correo); }
 
         /* Filtros */
         .filter-card { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 1.25rem; }
@@ -472,6 +485,7 @@ if ($export) {
         ['key' => 'RECHAZADO',    'cls' => 'rechazado',    'icon' => 'bi-x-circle-fill'],
         ['key' => 'DEVUELTO',     'cls' => 'devuelto',     'icon' => 'bi-arrow-return-left'],
         ['key' => 'REPROGRAMADO', 'cls' => 'reprogramado', 'icon' => 'bi-calendar2-check-fill'],
+        ['key' => 'CORREO',       'cls' => 'correo',       'icon' => 'bi-envelope-check-fill'],
     ];
     ?>
     <div class="kpi-grid">
@@ -526,6 +540,7 @@ if ($export) {
                             elseif ($cat['key'] === 'EN PROCESO')  { $clsB = 'proceso'; }
                             elseif ($cat['key'] === 'RECHAZADO')   { $clsB = 'rechazado'; }
                             elseif ($cat['key'] === 'DEVUELTO')    { $clsB = 'devuelto'; }
+                            elseif ($cat['key'] === 'CORREO')      { $clsB = 'correo'; }
                             else                                    { $clsB = 'reprogramado'; }
                             $progCls = 'prog-' . $clsB;
                         ?>
@@ -570,10 +585,10 @@ if ($export) {
     const ctx = document.getElementById('donaChart');
     if (!ctx) return;
 
-    const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'DEVUELTO', 'REPROGRAMADO'];
-    const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>, <?= $data['DEVUELTO'] ?>, <?= $data['REPROGRAMADO'] ?>];
+    const labels = ['ENTREGADO', 'EN PROCESO', 'RECHAZADO', 'DEVUELTO', 'REPROGRAMADO', 'CORREO'];
+    const values = [<?= $data['ENTREGADO'] ?>, <?= $data['EN PROCESO'] ?>, <?= $data['RECHAZADO'] ?>, <?= $data['DEVUELTO'] ?>, <?= $data['REPROGRAMADO'] ?>, <?= $data['CORREO'] ?>];
     const total  = values.reduce((a, b) => a + b, 0);
-    const colors = ['#3cb043', '#f5e400', '#8e44ad', '#b71c1c', '#f97316'];
+    const colors = ['#3cb043', '#f5e400', '#8e44ad', '#b71c1c', '#f97316', '#3498db'];
 
     new Chart(ctx, {
         type: 'doughnut',

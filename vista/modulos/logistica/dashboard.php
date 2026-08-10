@@ -125,6 +125,8 @@ $estadoColores = [
     'LIQUIDADO'             => CLR_COMPLETADO, // #14 cierre contable
     'INCIDENCIA'            => CLR_CRITICO,    // #16 Incidencia
     'CANCELADO'             => CLR_FALLO,      // #17 Cancelado
+    // Estado especial de cliente — Correo postal (#18)
+    'CORREO'                => CLR_LOGISTICA,  // #18 Correo — despachado por correo postal
     // Fallbacks legacy
     'DOMICILIO'             => CLR_EXCEPCION,
     'PENDIENTE'             => CLR_EXCEPCION,
@@ -2371,9 +2373,9 @@ include "vista/includes/header.php";
                 if ([4].includes(id))           cls = 'badge-envio-entregado';
                 else if ([3,8,12].includes(id)) cls = 'badge-envio-en-ruta';
                 else if ([2,13,18].includes(id))cls = 'badge-envio-bodega';
-                else if ([5,17,20].includes(id))cls = 'badge-envio-novedad';
+                else if ([5,17,19,20].includes(id)) cls = 'badge-envio-novedad';
                 else if ([6,14,15,25].includes(id)) cls = 'badge-envio-cancelado';
-                else if ([9,16,19,21,22,23].includes(id)) cls = 'badge-envio-devolucion';
+                else if ([9,16,21,22,23].includes(id)) cls = 'badge-envio-devolucion';
                 return `<span class="badge ${cls} small">${escE(name)}</span>`;
             }
 

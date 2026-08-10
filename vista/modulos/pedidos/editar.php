@@ -743,6 +743,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (s.includes('CANCELADO') || s.includes('RECHAZADO') || s.includes('DEVUELTO')) return 'danger';
                     if (s.includes('RUTA') || s.includes('TRANSITO')) return 'info text-dark';
                     if (s.includes('BODEGA')) return 'primary';
+                    if (s.includes('AGENCIA') || s.includes('RETIRAR')) return 'warning text-dark';
                     if (s.includes('DEVOLUCION') || s.includes('PENDIENTE') || s.includes('DOMICILIO')) return 'warning text-dark';
                     if (s.includes('LIQUIDADO')) return 'dark';
                     return 'secondary';

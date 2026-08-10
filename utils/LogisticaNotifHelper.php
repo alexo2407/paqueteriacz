@@ -222,6 +222,7 @@ class LogisticaNotifHelper
         if (str_contains($e, 'liquidado'))   return '💰';
         if (str_contains($e, 'incidencia'))  return '⚠️';
         if (str_contains($e, 'pendiente'))   return '⏳';
+        if (str_contains($e, 'agencia') || str_contains($e, 'retirar')) return '🏪';
         return '🔔';
     }
 }

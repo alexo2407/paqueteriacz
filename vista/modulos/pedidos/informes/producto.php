@@ -95,7 +95,13 @@ $sqlProducto = "
         COUNT(DISTINCT p.id)                                               AS cantidad,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 0
                   WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0 END) AS entregados,
-        SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%' THEN 1 ELSE 0 END) AS rechazados,
+        SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%rechazado%'
+                   OR LOWER(ep.nombre_estado) LIKE '%cancelado%'
+                   OR LOWER(ep.nombre_estado) LIKE '%domicilio cerrado%'
+                   OR LOWER(ep.nombre_estado) LIKE '%domicilio no encontrado%'
+                   OR LOWER(ep.nombre_estado) LIKE '%incidencia%'
+                   OR LOWER(ep.nombre_estado) LIKE '%no hay quien reciba%'
+                   OR LOWER(ep.nombre_estado) LIKE '%no puede pagar%' THEN 1 ELSE 0 END) AS rechazados,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%devuelto%'
                    OR LOWER(ep.nombre_estado) LIKE '%devoluci%'
                    OR LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 1 ELSE 0 END) AS devueltos,

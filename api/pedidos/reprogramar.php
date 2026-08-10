@@ -109,10 +109,10 @@ try {
         responder(false, 'El campo id_estado debe ser un entero positivo.', null, 400);
     }
 
-    // Solo se permiten los estados del 1 al 13 y del 15 al 17
-    $estadosPermitidos = array_merge(range(1, 13), range(15, 17));
+    // Solo se permiten los estados del 1 al 13, del 15 al 17, más 18 (Correo) y 19 (Disponible para retirar en Agencia)
+    $estadosPermitidos = array_merge(range(1, 13), [15, 16, 17, 18, 19]);
     if (!in_array($idEstado, $estadosPermitidos, true)) {
-        responder(false, "El id_estado {$idEstado} no está permitido. Use un valor entre 1-13 o 15-17.", null, 400);
+        responder(false, "El id_estado {$idEstado} no está permitido. Valores válidos: 1-13, 15-19.", null, 400);
     }
 
     // fecha_entrega: obligatoria solo cuando el estado es Reprogramado (ID 4)

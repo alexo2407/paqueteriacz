@@ -660,7 +660,9 @@
         {"id": 14, "nombre_estado": "Entregado-liquidado"},
         {"id": 15, "nombre_estado": "Devuelto a bodega"},
         {"id": 16, "nombre_estado": "Incidencia"},
-        {"id": 17, "nombre_estado": "Cancelado"}
+        {"id": 17, "nombre_estado": "Cancelado"},
+        {"id": 18, "nombre_estado": "Correo"},
+        {"id": 19, "nombre_estado": "Disponible para retirar en Agencia"}
     ]
 }</code></pre>
 
@@ -714,6 +716,8 @@
                             <tr><td><code>15</code></td><td>Devuelto a bodega</td><td><span data-lang="en">Delivered back to main warehouse.</span><span data-lang="es">Entregado de vuelta en bodega.</span></td></tr>
                             <tr><td><code>16</code></td><td>Incidencia</td><td><span data-lang="en">General delivery issue.</span><span data-lang="es">Incidencia general en la entrega.</span></td></tr>
                             <tr><td><code>17</code></td><td>Cancelado</td><td><span data-lang="en">Order cancelled.</span><span data-lang="es">Pedido cancelado.</span></td></tr>
+                            <tr><td><code>18</code></td><td>Correo</td><td><span data-lang="en">Order dispatched via postal mail, delivery pending confirmation.</span><span data-lang="es">Pedido despachado por correo postal, entrega pendiente de confirmación.</span></td></tr>
+                            <tr><td><code>19</code></td><td>Disponible para retirar en Agencia</td><td><span data-lang="en">Package available for pickup at the agency branch.</span><span data-lang="es">Paquete disponible para retiro en agencia.</span></td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2555,6 +2559,18 @@ foreach ($response['data'] as $cambio) {
                                     <td>Cancelado</td>
                                     <td><span class="badge" style="background:#1f2937"><span data-lang="en">Cancelled</span><span data-lang="es">Cancelado</span></span></td>
                                     <td><span data-lang="en">Order cancelled</span><span data-lang="es">Pedido cancelado</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>18</code></td>
+                                    <td>Correo</td>
+                                    <td><span class="badge" style="background:#3b82f6"><span data-lang="en">In Transit</span><span data-lang="es">En tránsito</span></span></td>
+                                    <td><span data-lang="en">Order dispatched via postal mail, delivery pending confirmation</span><span data-lang="es">Pedido despachado por correo postal, entrega pendiente de confirmación</span></td>
+                                </tr>
+                                <tr>
+                                    <td><code>19</code></td>
+                                    <td>Disponible para retirar en Agencia</td>
+                                    <td><span class="badge" style="background:#f59e0b"><span data-lang="en">Pending Pickup</span><span data-lang="es">Pendiente retiro</span></span></td>
+                                    <td><span data-lang="en">Package could not be delivered to address; available for pickup at agency branch</span><span data-lang="es">El paquete no pudo entregarse en domicilio; disponible para retiro en agencia</span></td>
                                 </tr>
                             </tbody>
                         </table>
