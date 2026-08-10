@@ -103,12 +103,26 @@ class HLExpressProvider extends BaseProvider
             }
         }
 
+        // city_dane_code: código de ciudad requerido por HL Express.
+        // Prioridad: code_city → postalCode → codigo_postal
+        // Si ninguno está disponible se lanza excepción — NO se asume ningún valor por defecto.
+        $cityCode = !empty($pedido['code_city'])
+            ? $pedido['code_city']
+            : (!empty($pedido['postalCode'])
+                ? $pedido['postalCode']
+                : ($pedido['codigo_postal'] ?? ''));
+
+        if (empty($cityCode)) {
+            throw new Exception(
+                "HL Express: el pedido #{$pedido['numero_orden']} no tiene código de ciudad (code_city / codigo_postal). " .
+                "Asigna un código de ciudad antes de generar la guía."
+            );
+        }
+
         $destination = [
             'address'        => $destDir,
             'address_line'   => $pedido['comentario'] ?? '',
-            // code_city = código de ciudad específico para HLExpress (campo de la tabla pedidos).
-            // Prioridad: code_city → postalCode → codigo_postal → default Panamá Centro.
-            'city_dane_code' => !empty($pedido['code_city']) ? $pedido['code_city'] : (!empty($pedido['postalCode']) ? $pedido['postalCode'] : ($pedido['codigo_postal'] ?? '100075918')),
+            'city_dane_code' => $cityCode,
             'full_name'      => $destNombre,
             'phone_number'   => $destTel,
             'lat'            => $lat,
