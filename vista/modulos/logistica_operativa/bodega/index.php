@@ -258,4 +258,5 @@ const RUTA_BODEGA_BASE = '<?= RUTA_URL ?>api/logistica-operativa/bodega/';
 </script>
 <script src="<?= RUTA_URL ?>vista/modulos/logistica_operativa/bodega/js/bodega.js?v=<?= filemtime(__FILE__) ?>"></script>
 
+<?php require_once __DIR__ . '/../partials/qr_scanner_modal.php'; ?>
 <?php require_once __DIR__ . '/../../../../vista/includes/footer.php'; ?>

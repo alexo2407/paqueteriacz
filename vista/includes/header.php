@@ -512,6 +512,10 @@
             <hr class="sidebar-divider">
             <div class="sidebar-label">Logística Operativa</div>
             
+            <a href="<?= RUTA_URL ?>logistica-operativa/dashboard" class="nav-link">
+                <i class="bi bi-speedometer2"></i> Dashboard Logística
+            </a>
+
             <!-- Colectas: Visible para Administradores y Proveedores (operador logístico) -->
             <?php if (($isAdmin || $esOperadorLogistico || $tienePermColectas) && !$isRepartidor): ?>
             <a href="<?= RUTA_URL ?>logistica-operativa/colectas" class="nav-link">
@@ -531,7 +535,20 @@
             <a href="<?= RUTA_URL ?>logistica-operativa/rutas" class="nav-link">
                 <i class="bi bi-diagram-3"></i> Rutas y Despacho
             </a>
+            <a href="<?= RUTA_URL ?>logistica-operativa/liquidaciones" class="nav-link">
+                <i class="bi bi-calculator"></i> Liquidación de Rutas
+            </a>
+            <a href="<?= RUTA_URL ?>logistica-operativa/campo" class="nav-link">
+                <i class="bi bi-phone"></i> Repartidor en Campo
+            </a>
             <?php endif; ?>
+
+            <a href="<?= RUTA_URL ?>logistica-operativa/custodias" class="nav-link">
+                <i class="bi bi-building"></i> Custodia Departamental
+            </a>
+            <a href="<?= RUTA_URL ?>logistica-operativa/devoluciones" class="nav-link">
+                <i class="bi bi-arrow-return-left"></i> Devoluciones
+            </a>
             
             <!-- Impresión de Etiquetas: Para Administradores y Proveedores/Operadores logísticos -->
             <?php if (($isAdmin || $esOperadorLogistico) && !$isRepartidor): ?>

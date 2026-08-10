@@ -93,111 +93,139 @@ $pageTitle = 'Colecta #' . $idColecta . ' — Detalle';
 </nav>
 
 <!-- ═══ Encabezado ═══ -->
-<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
-    <div>
-        <h1 class="h4 fw-bold mb-0">
-            <i class="bi bi-folder-fill me-2 text-warning"></i>Colecta #<?= $idColecta ?>
-        </h1>
-        <?php if ($colecta): ?>
-        <small class="text-muted">
-            <?= htmlspecialchars($colecta['fecha'] ?? '') ?>
-            &mdash;
-            <?= $colecta['turno'] === 'MANANA' ? '<span class="badge badge-turno-manana"><i class="bi bi-sun me-1"></i>Mañana</span>' : '<span class="badge badge-turno-tarde"><i class="bi bi-moon me-1"></i>Tarde</span>' ?>
-            &mdash;
-            Cliente: <strong><?= htmlspecialchars((string)($colecta['cliente_nombre'] ?? $colecta['id_cliente'] ?? '—')) ?></strong>
-        </small>
-        <?php endif; ?>
-    </div>
-    <div class="d-flex gap-2 align-items-center">
-        <?php if ($esAbierta): ?>
-        <span class="badge badge-outline-success px-3 py-2 fs-6">ABIERTA</span>
-        <?php else: ?>
-        <span class="badge badge-outline-secondary px-3 py-2 fs-6">✓ CONCILIADA</span>
-        <?php endif; ?>
-        <a href="<?= RUTA_URL ?>logistica-operativa/colectas"
-           class="btn btn-sm btn-outline-secondary px-3">
-            <i class="bi bi-arrow-left me-1"></i>Volver
-        </a>
+<div class="card border-0 shadow-sm rounded-4 mb-4 bg-white overflow-hidden">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    <h1 class="h3 fw-bold text-dark mb-0">
+                        <i class="bi bi-box-seam-fill me-2 text-primary"></i>Colecta #<?= $idColecta ?>
+                    </h1>
+                    <?php if ($esAbierta): ?>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-bold fs-7">🟢 ABIERTA</span>
+                    <?php else: ?>
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-1 rounded-pill fw-bold fs-7">✓ CONCILIADA</span>
+                    <?php endif; ?>
+                </div>
+                <?php if ($colecta): ?>
+                <div class="d-flex align-items-center gap-3 text-muted small flex-wrap">
+                    <span><i class="bi bi-building me-1 text-primary"></i>Cliente: <strong class="text-dark"><?= htmlspecialchars((string)($colecta['cliente_nombre'] ?? $colecta['id_cliente'] ?? '—')) ?></strong></span>
+                    <span><i class="bi bi-calendar3 me-1 text-primary"></i><?= htmlspecialchars($colecta['fecha'] ?? '') ?></span>
+                    <span>
+                        <?= $colecta['turno'] === 'MANANA' ? '<span class="badge badge-turno-manana"><i class="bi bi-sun me-1"></i>Turno Mañana</span>' : '<span class="badge badge-turno-tarde"><i class="bi bi-moon me-1"></i>Turno Tarde</span>' ?>
+                    </span>
+                </div>
+                <?php endif; ?>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-primary px-3 rounded-3" onclick="location.reload();" title="Recargar estado">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Actualizar
+                </button>
+                <a href="<?= RUTA_URL ?>logistica-operativa/colectas" class="btn btn-sm btn-outline-secondary px-3 rounded-3">
+                    <i class="bi bi-arrow-left me-1"></i>Volver a Lista
+                </a>
+            </div>
+        </div>
+
+        <?php 
+        $espTotal = (int)($conteos['ESPERADO'] ?? 0);
+        $recTotal = (int)($conteos['RECIBIDO'] ?? 0);
+        $pctProgreso = $espTotal > 0 ? min(100, round(($recTotal / $espTotal) * 100)) : 0;
+        ?>
+        <!-- Barra de Progreso de Recolección -->
+        <div class="mt-3 pt-3 border-top">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="small fw-semibold text-muted">Progreso de Recolección</span>
+                <span class="small font-monospace fw-bold text-primary" id="lblPorcentajeRecoleccion">
+                    <span id="lblConteoProgreso"><?= $recTotal ?></span> de <?= $espTotal ?> esperados (<?= $pctProgreso ?>%)
+                </span>
+            </div>
+            <div class="progress rounded-pill bg-light" style="height: 10px;">
+                <div class="progress-bar bg-success progress-bar-striped progress-bar-animated rounded-pill" 
+                     id="progressBarRecoleccion"
+                     role="progressbar" 
+                     style="width: <?= $pctProgreso ?>%;" 
+                     aria-valuenow="<?= $pctProgreso ?>" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100"></div>
+            </div>
+        </div>
     </div>
 </div>
 
 <?php if (!$esAbierta): ?>
-<div class="alert alert-success border-success-subtle d-flex align-items-center mb-4 rounded-3 shadow-sm">
-    <i class="bi bi-check-circle-fill fs-3 me-3 text-success"></i>
+<div class="alert alert-success border-0 shadow-sm d-flex align-items-center mb-4 rounded-4 p-3 bg-success bg-opacity-10 text-success">
+    <i class="bi bi-check-circle-fill fs-3 me-3"></i>
     <div>
-        <h6 class="fw-bold mb-0 text-success">La colecta fue cerrada y conciliada exitosamente.</h6>
-        <small class="text-muted">No se pueden realizar más escaneos ni modificar esta información.</small>
+        <h6 class="fw-bold mb-0">La colecta fue cerrada y conciliada exitosamente.</h6>
+        <small class="opacity-75">No se pueden realizar más escaneos ni modificar los registros de esta colecta.</small>
     </div>
 </div>
 <?php endif; ?>
 
 <?php if ($errorCarga): ?>
-<div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i><?= htmlspecialchars($errorCarga) ?></div>
+<div class="alert alert-danger border-0 shadow-sm rounded-4 p-3"><i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($errorCarga) ?></div>
 <?php endif; ?>
 
-<!-- ═══ Cards de resumen KPI con Borde Superior ═══ -->
+<!-- ═══ Cards de resumen KPI ═══ -->
 <div class="row g-3 mb-4">
     <!-- Esperados -->
     <div class="col-6 col-md-3">
-        <div class="card card-kpi card-kpi-topborder border-top-blue p-3 h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="h2 mb-0 fw-bold text-primary" id="cntEsperado">
-                        <?= (int)($conteos['ESPERADO'] ?? 0) ?>
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white card-kpi-hover">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold small text-uppercase" style="font-size: 0.75rem;">ESPERADOS</span>
+                    <div class="rounded-circle bg-primary bg-opacity-10 p-2.5 text-primary d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
+                        <i class="bi bi-inbox fs-5"></i>
                     </div>
-                    <small class="text-muted fw-bold text-uppercase">ESPERADOS</small>
                 </div>
-                <div class="kpi-icon-circle kpi-icon-blue">
-                    <i class="bi bi-inbox"></i>
-                </div>
+                <h2 class="fw-bold text-primary mb-0" id="cntEsperado"><?= (int)($conteos['ESPERADO'] ?? 0) ?></h2>
+                <small class="text-muted" style="font-size: 0.75rem;">Paquetes manifestados</small>
             </div>
         </div>
     </div>
     <!-- Recibidos -->
     <div class="col-6 col-md-3">
-        <div class="card card-kpi card-kpi-topborder border-top-green p-3 h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="h2 mb-0 fw-bold text-success" id="cntRecibido">
-                        <?= (int)($conteos['RECIBIDO'] ?? 0) ?>
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white card-kpi-hover">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold small text-uppercase" style="font-size: 0.75rem;">RECIBIDOS</span>
+                    <div class="rounded-circle bg-success bg-opacity-10 p-2.5 text-success d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
+                        <i class="bi bi-check-circle-fill fs-5"></i>
                     </div>
-                    <small class="text-muted fw-bold text-uppercase">RECIBIDOS</small>
                 </div>
-                <div class="kpi-icon-circle kpi-icon-green">
-                    <i class="bi bi-check-circle"></i>
-                </div>
+                <h2 class="fw-bold text-success mb-0" id="cntRecibido"><?= (int)($conteos['RECIBIDO'] ?? 0) ?></h2>
+                <small class="text-muted" style="font-size: 0.75rem;">Confirmados en escaneo</small>
             </div>
         </div>
     </div>
     <!-- Faltantes -->
     <div class="col-6 col-md-3">
-        <div class="card card-kpi card-kpi-topborder border-top-red p-3 h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="h2 mb-0 fw-bold text-danger" id="cntFaltante">
-                        <?= (int)($conteos['FALTANTE'] ?? 0) ?>
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white card-kpi-hover">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold small text-uppercase" style="font-size: 0.75rem;">FALTANTES</span>
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-2.5 text-danger d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
+                        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
                     </div>
-                    <small class="text-muted fw-bold text-uppercase">FALTANTES</small>
                 </div>
-                <div class="kpi-icon-circle kpi-icon-red">
-                    <i class="bi bi-exclamation-triangle"></i>
-                </div>
+                <h2 class="fw-bold text-danger mb-0" id="cntFaltante"><?= (int)($conteos['FALTANTE'] ?? 0) ?></h2>
+                <small class="text-muted" style="font-size: 0.75rem;">Pendientes de recojo</small>
             </div>
         </div>
     </div>
     <!-- Extras -->
     <div class="col-6 col-md-3">
-        <div class="card card-kpi card-kpi-topborder border-top-yellow p-3 h-100">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <div class="h2 mb-0 fw-bold text-warning" id="cntExtra">
-                        <?= (int)($conteos['EXTRA'] ?? 0) ?>
+        <div class="card border-0 shadow-sm rounded-4 h-100 bg-white card-kpi-hover">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted fw-bold small text-uppercase" style="font-size: 0.75rem;">EXTRAS</span>
+                    <div class="rounded-circle bg-warning bg-opacity-15 p-2.5 text-warning d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
+                        <i class="bi bi-plus-circle-fill fs-5"></i>
                     </div>
-                    <small class="text-muted fw-bold text-uppercase">EXTRAS</small>
                 </div>
-                <div class="kpi-icon-circle kpi-icon-yellow">
-                    <i class="bi bi-plus-circle"></i>
-                </div>
+                <h2 class="fw-bold text-warning mb-0" id="cntExtra"><?= (int)($conteos['EXTRA'] ?? 0) ?></h2>
+                <small class="text-muted" style="font-size: 0.75rem;">No pertenecientes a ruta</small>
             </div>
         </div>
     </div>
@@ -208,11 +236,16 @@ $pageTitle = 'Colecta #' . $idColecta . ' — Detalle';
     <!-- ═══ Columna izq: escaneo ═══ -->
     <div class="col-12 col-lg-5">
 
-        <!-- Área de escaneo -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header fw-bold bg-dark text-white d-flex align-items-center justify-content-between" style="background:#0f172a !important;">
-                <span><i class="bi bi-upc-scan me-2"></i>Escaneo de paquetes</span>
-                <span class="badge bg-secondary font-monospace" style="font-size:0.7rem;">Teclado rápido: Enter</span>
+        <!-- Área de escaneo ultra-fácil y limpia -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden bg-white">
+            <div class="card-header text-white fw-bold py-3 px-4 d-flex align-items-center justify-content-between" style="background: #0f172a !important;">
+                <span class="d-flex align-items-center gap-2">
+                    <i class="bi bi-upc-scan text-info fs-5"></i>
+                    <span>Escaneo de paquetes</span>
+                </span>
+                <span class="badge bg-secondary text-white font-monospace px-2.5 py-1" style="font-size:0.75rem;">
+                    Auto-Enter
+                </span>
             </div>
             <div class="card-body p-4">
                 <?php if (!$esAbierta): ?>
@@ -223,29 +256,39 @@ $pageTitle = 'Colecta #' . $idColecta . ' — Detalle';
                 </div>
                 <?php else: ?>
 
-                <!-- Campo de escaneo -->
-                <div class="input-group input-group-lg mb-3">
-                    <span class="input-group-text bg-light text-muted">
-                        <i class="bi bi-barcode"></i>
-                    </span>
-                    <input type="text"
-                           id="inputEscaneo"
-                           class="form-control form-control-lg font-monospace fs-6"
-                           placeholder="Escanea o escribe el código del paquete"
-                           autocomplete="off"
-                           autofocus>
-                    <button class="btn btn-primary fw-bold px-3"
-                            type="button"
-                            id="btnEscanear">
-                        <i class="bi bi-lightning-fill me-1"></i>Registrar
-                    </button>
+                <!-- Bar de escaneo principal -->
+                <div class="mb-3">
+                    <div class="input-group input-group-lg shadow-sm rounded-3 overflow-hidden">
+                        <span class="input-group-text bg-light border-end-0 px-3">
+                            <i class="bi bi-barcode text-primary fs-3"></i>
+                        </span>
+                        <input type="text"
+                               id="inputEscaneo"
+                               class="form-control font-monospace border-start-0 border-end-0 fs-6 py-2.5"
+                               placeholder="Escanea o escribe el código..."
+                               autocomplete="off"
+                               autofocus
+                               style="box-shadow: none !important;">
+                        <button class="btn btn-primary fw-bold px-4 d-inline-flex align-items-center gap-2"
+                                type="button"
+                                id="btnEscanear">
+                            <i class="bi bi-lightning-fill text-warning fs-5"></i>
+                            <span>Registrar</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Estado del lector -->
-                <div class="d-flex align-items-center justify-content-between mb-3 bg-light p-2 rounded-3 border">
-                    <span class="small fw-semibold text-muted d-flex align-items-center">
-                        <span class="badge bg-success-subtle text-success border border-success-subtle me-2">🟢 Lector conectado</span>
-                        USB Keyboard
+                <!-- Botón de Cámara y Estado del Lector -->
+                <div class="d-flex align-items-center justify-content-between gap-2 mb-3 flex-wrap">
+                    <button class="btn btn-outline-dark fw-bold btn-sm rounded-pill px-3 py-1.5 d-inline-flex align-items-center gap-2 shadow-xs"
+                            type="button"
+                            id="btnAbrirCamaraQR"
+                            title="Escanear con Cámara de Celular / Laptop">
+                        <i class="bi bi-camera-video-fill text-info fs-6"></i>
+                        <span>Abrir Cámara QR</span>
+                    </button>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1.5 rounded-pill small">
+                        🟢 Lector conectado (Pistola USB / Bluetooth)
                     </span>
                 </div>
 
@@ -253,12 +296,13 @@ $pageTitle = 'Colecta #' . $idColecta . ' — Detalle';
                 <div id="resultadoEscaneo" class="mt-3 d-none"></div>
 
                 <!-- Historial de escaneos recientes -->
-                <div id="historialEscaneo" class="mt-3">
+                <div id="historialEscaneo" class="mt-4 pt-3 border-top">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <small class="text-muted fw-bold text-uppercase" style="font-size:0.75rem;">Escaneos recientes (últimos 10)</small>
+                        <small class="text-muted fw-bold text-uppercase" style="font-size:0.75rem;"><i class="bi bi-clock-history me-1 text-primary"></i>Escaneos recientes en esta sesión</small>
                     </div>
-                    <ul class="list-group list-group-flush border rounded-3" id="listaHistorial" style="max-height:220px;overflow-y:auto">
+                    <ul class="list-group list-group-flush border rounded-3 overflow-hidden" id="listaHistorial" style="max-height:220px;overflow-y:auto">
                         <li class="list-group-item text-muted small text-center py-3">
+                            <i class="bi bi-qr-code text-muted opacity-50 d-block fs-4 mb-1"></i>
                             Escanea un paquete para iniciar el registro.
                         </li>
                     </ul>
@@ -269,18 +313,18 @@ $pageTitle = 'Colecta #' . $idColecta . ' — Detalle';
 
         <!-- Botón cerrar colecta -->
         <?php if ($esAbierta): ?>
-        <div class="card border-0 shadow-sm border-start border-4 border-danger bg-white p-3">
-            <div class="d-flex align-items-center justify-content-between">
+        <div class="card border-0 shadow-sm border-start border-4 border-danger bg-white p-3.5 rounded-4">
+            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
                 <div class="d-flex align-items-center">
-                    <div class="kpi-icon-circle kpi-icon-red me-3">
-                        <i class="bi bi-shield-lock"></i>
+                    <div class="rounded-circle bg-danger bg-opacity-10 p-3 text-danger me-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                        <i class="bi bi-shield-lock-fill fs-4"></i>
                     </div>
                     <div>
-                        <h6 class="fw-bold text-dark mb-0">Cerrar y conciliar</h6>
-                        <small class="text-muted">Al cerrar se calcula el estado final de cada pedido (Recibido / Faltante).</small>
+                        <h6 class="fw-bold text-dark mb-0">Cerrar y conciliar colecta</h6>
+                        <small class="text-muted">Calcula el estado final (Recibido / Faltante) de cada pedido.</small>
                     </div>
                 </div>
-                <button class="btn btn-danger fw-bold px-3 ms-2 shadow-sm text-nowrap"
+                <button class="btn btn-danger fw-bold px-4 py-2.5 rounded-3 shadow-sm text-nowrap ms-auto"
                         id="btnCerrarColecta">
                     <i class="bi bi-lock-fill me-1"></i>Cerrar y conciliar
                 </button>
@@ -292,58 +336,70 @@ $pageTitle = 'Colecta #' . $idColecta . ' — Detalle';
 
     <!-- ═══ Columna der: tabla de pedidos ═══ -->
     <div class="col-12 col-lg-7">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-light fw-bold d-flex align-items-center justify-content-between py-3">
-                <span><i class="bi bi-list-task me-2 text-primary"></i>Pedidos de la colecta</span>
+        <div class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+            <div class="card-header bg-white fw-bold d-flex align-items-center justify-content-between py-3 px-4 border-bottom">
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-light text-dark border font-monospace" id="lblTotalPedidos">
+                    <i class="bi bi-list-task me-1 text-primary fs-5"></i>
+                    <span class="text-dark">Pedidos de la Colecta</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill font-monospace ms-1" id="lblTotalPedidos">
                         <?= count($pedidos) ?> pedidos
                     </span>
                 </div>
+                <div>
+                    <!-- Buscador en tiempo real de la tabla -->
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text"
+                               id="inputFiltroTablaPedidos"
+                               class="form-control font-monospace border-start-0 bg-light"
+                               placeholder="Filtrar pedidos..."
+                               style="max-width: 180px;">
+                    </div>
+                </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
+                <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
                     <table class="table table-hover align-middle mb-0" id="tablaPedidos">
-                        <thead class="table-light">
+                        <thead class="bg-light sticky-top" style="z-index: 5;">
                             <tr class="small text-muted text-uppercase">
-                                <th>Pedido</th>
+                                <th class="ps-4">Pedido / Orden</th>
                                 <th>Destinatario</th>
                                 <th>Resultado</th>
                                 <th>Escaneado</th>
                                 <th>Hora</th>
-                                <?php if ($esAbierta): ?><th>Acción</th><?php endif; ?>
+                                <?php if ($esAbierta): ?><th class="text-end pe-4">Acción</th><?php endif; ?>
                             </tr>
                         </thead>
                         <tbody id="tbodyPedidos">
                         <?php if (empty($pedidos)): ?>
                             <tr id="trSinPedidos">
-                                <td colspan="<?= $esAbierta ? '6' : '5' ?>" class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox display-6 opacity-25 d-block mb-2"></i>
+                                <td colspan="<?= $esAbierta ? '6' : '5' ?>" class="text-center text-muted py-5">
+                                    <i class="bi bi-inbox display-5 opacity-25 d-block mb-2"></i>
                                     Sin pedidos en esta colecta.
                                 </td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($pedidos as $p): ?>
-                            <tr id="fila-pedido-<?= (int)$p['id_pedido'] ?>">
-                                <td class="fw-bold font-monospace">
+                            <tr id="fila-pedido-<?= (int)$p['id_pedido'] ?>" class="fila-pedido-item">
+                                <td class="fw-bold font-monospace ps-4">
                                     <?= htmlspecialchars((string)($p['numero_orden'] ?? '#' . $p['id_pedido'])) ?>
                                 </td>
-                                <td class="small">
+                                <td class="small fw-semibold text-dark">
                                     <?= htmlspecialchars((string)($p['destinatario'] ?? '—')) ?>
                                 </td>
                                 <td>
                                     <?= badgeResultado($p['resultado_pedido'] ?? 'ESPERADO') ?>
                                 </td>
                                 <td>
-                                    <?= isset($p['escaneado_at']) ? '<span class="text-success fw-bold">Si</span>' : '<span class="text-muted">No</span>' ?>
+                                    <?= isset($p['escaneado_at']) ? '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check me-1"></i>Sí</span>' : '<span class="badge bg-light text-muted border">No</span>' ?>
                                 </td>
                                 <td class="small text-muted font-monospace">
                                     <?= isset($p['escaneado_at']) ? date('d/m/Y H:i:s', strtotime($p['escaneado_at'])) : '—' ?>
                                 </td>
                                 <?php if ($esAbierta): ?>
-                                <td>
+                                <td class="text-end pe-4">
                                     <?php if (($p['resultado_pedido'] ?? '') === 'EXTRA'): ?>
-                                    <button class="btn btn-sm btn-outline-danger py-0 px-2 text-nowrap"
+                                    <button class="btn btn-sm btn-outline-danger py-1 px-2.5 text-nowrap rounded-3"
                                             onclick="eliminarPedidoExtra(<?= (int)$p['id_pedido'] ?>, '<?= htmlspecialchars((string)($p['numero_orden'] ?? $p['id_pedido']), ENT_QUOTES) ?>')"
                                             title="Quitar este paquete extra">
                                         <i class="bi bi-trash me-1"></i>Quitar
@@ -406,4 +462,5 @@ let contadores = {
 </script>
 <script src="<?= RUTA_URL ?>vista/modulos/logistica_operativa/colectas/js/colectas.js?v=<?= time() ?>"></script>
 
+<?php require_once __DIR__ . '/../partials/qr_scanner_modal.php'; ?>
 <?php require_once __DIR__ . '/../../../../vista/includes/footer.php'; ?>

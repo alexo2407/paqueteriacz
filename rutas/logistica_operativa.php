@@ -110,6 +110,31 @@ if ($_submodulo === 'etiquetas') {
     exit;
 }
 
+if ($_submodulo === 'liquidaciones') {
+    require __DIR__ . '/../vista/modulos/logistica_operativa/liquidaciones/index.php';
+    exit;
+}
+
+if ($_submodulo === 'campo') {
+    require __DIR__ . '/../vista/modulos/logistica_operativa/campo/index.php';
+    exit;
+}
+
+if ($_submodulo === 'custodias') {
+    require __DIR__ . '/../vista/modulos/logistica_operativa/custodias/index.php';
+    exit;
+}
+
+if ($_submodulo === 'devoluciones') {
+    require __DIR__ . '/../vista/modulos/logistica_operativa/devoluciones/index.php';
+    exit;
+}
+
+if ($_submodulo === 'dashboard') {
+    require __DIR__ . '/../vista/modulos/logistica_operativa/dashboard/index.php';
+    exit;
+}
+
 // Sub-módulo no reconocido → 404
 http_response_code(404);
 require __DIR__ . '/../vista/modulos/404.php';

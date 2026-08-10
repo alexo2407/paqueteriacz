@@ -587,6 +587,23 @@
                 input.focus();
             });
         }
+
+        // Botón escáner por Cámara QR en Bodega
+        const btnScanQRBodega = document.getElementById('btnScanQRBodega');
+        if (btnScanQRBodega) {
+            btnScanQRBodega.addEventListener('click', () => {
+                if (typeof window.abrirScannerQR === 'function') {
+                    window.abrirScannerQR({
+                        targetInputId: 'inputBusqueda',
+                        onScanSuccess: (codigoLeido) => {
+                            if (form) {
+                                form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                            }
+                        }
+                    });
+                }
+            });
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════

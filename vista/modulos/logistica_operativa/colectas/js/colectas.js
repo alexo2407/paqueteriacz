@@ -85,20 +85,42 @@ function hashMock(valor) {
 function actualizarContadores(nuevos) {
     if (!nuevos) return;
     if (nuevos.ESPERADO !== undefined) {
-        document.getElementById('cntEsperado').textContent = nuevos.ESPERADO;
+        const el = document.getElementById('cntEsperado');
+        if (el) el.textContent = nuevos.ESPERADO;
         contadores.ESPERADO = nuevos.ESPERADO;
     }
     if (nuevos.RECIBIDO !== undefined) {
-        document.getElementById('cntRecibido').textContent = nuevos.RECIBIDO;
+        const el = document.getElementById('cntRecibido');
+        if (el) el.textContent = nuevos.RECIBIDO;
         contadores.RECIBIDO = nuevos.RECIBIDO;
     }
     if (nuevos.FALTANTE !== undefined) {
-        document.getElementById('cntFaltante').textContent = nuevos.FALTANTE;
+        const el = document.getElementById('cntFaltante');
+        if (el) el.textContent = nuevos.FALTANTE;
         contadores.FALTANTE = nuevos.FALTANTE;
     }
     if (nuevos.EXTRA !== undefined) {
-        document.getElementById('cntExtra').textContent = nuevos.EXTRA;
+        const el = document.getElementById('cntExtra');
+        if (el) el.textContent = nuevos.EXTRA;
         contadores.EXTRA = nuevos.EXTRA;
+    }
+
+    // Actualizar barra de progreso de recolección
+    const esp = contadores.ESPERADO || 0;
+    const rec = contadores.RECIBIDO || 0;
+    const pct = esp > 0 ? Math.min(100, Math.round((rec / esp) * 100)) : 0;
+
+    const bar = document.getElementById('progressBarRecoleccion');
+    const lblProg = document.getElementById('lblConteoProgreso');
+    const lblPct = document.getElementById('lblPorcentajeRecoleccion');
+
+    if (bar) {
+        bar.style.width = pct + '%';
+        bar.setAttribute('aria-valuenow', pct);
+    }
+    if (lblProg) lblProg.textContent = rec;
+    if (lblPct) {
+        lblPct.innerHTML = `<span id="lblConteoProgreso">${rec}</span> de ${esp} esperados (${pct}%)`;
     }
 }
 
@@ -263,6 +285,21 @@ function badgeResultadoJS(resultado) {
         btnEscanear.addEventListener('click', enviarEscaneo);
     }
 
+    // Escáner por Cámara QR
+    const btnAbrirCamaraQR = document.getElementById('btnAbrirCamaraQR');
+    if (btnAbrirCamaraQR) {
+        btnAbrirCamaraQR.addEventListener('click', () => {
+            if (typeof window.abrirScannerQR === 'function') {
+                window.abrirScannerQR({
+                    targetInputId: 'inputEscaneo',
+                    onScanSuccess: (codigoLeido) => {
+                        enviarEscaneo();
+                    }
+                });
+            }
+        });
+    }
+
     async function enviarEscaneo() {
         if (processing || !COLECTA_ABIERTA) return;
 
@@ -371,7 +408,8 @@ function badgeResultadoJS(resultado) {
 
     function mostrarResultado(tipo, html) {
         if (!resultadoDiv) return;
-        resultadoDiv.className = `alert alert-${tipo} py-2`;
+        const textClass = (tipo === 'warning' || tipo === 'info') ? 'text-dark fw-semibold' : 'fw-semibold';
+        resultadoDiv.className = `alert alert-${tipo} ${textClass} py-2.5 px-3 rounded-3 shadow-sm border-0 d-flex align-items-center mb-3`;
         resultadoDiv.innerHTML = html;
         resultadoDiv.classList.remove('d-none');
     }
@@ -507,6 +545,18 @@ function badgeResultadoJS(resultado) {
         }
     });
 
+    // Filtro en tiempo real para la tabla de pedidos
+    const inputFiltro = document.getElementById('inputFiltroTablaPedidos');
+    if (inputFiltro) {
+        inputFiltro.addEventListener('input', function () {
+            const val = this.value.toLowerCase().trim();
+            const filas = document.querySelectorAll('#tbodyPedidos .fila-pedido-item');
+            filas.forEach(f => {
+                const text = f.textContent.toLowerCase();
+                f.style.display = text.includes(val) ? '' : 'none';
+            });
+        });
+    }
 })();
 
 /**
