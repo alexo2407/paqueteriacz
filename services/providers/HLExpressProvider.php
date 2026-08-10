@@ -116,17 +116,16 @@ class HLExpressProvider extends BaseProvider
         ];
 
         // 4. Mapear contenidos (productos)
-        // Enviamos el formato estructurado con nombre y cantidad
-        $contains = [];
+        // Arreglo de items: cada producto con su SKU, nombre y cantidad neta
+        $items = [];
         foreach ($productos as $p) {
             $cantidad = max(0, (int)($p['cantidad'] ?? 0) - (int)($p['cantidad_devuelta'] ?? 0));
             if ($cantidad <= 0) continue;
 
-            $nombreProd = $p['producto_nombre'] ?? 'Producto';
-            $contains[] = [
-                'Id'       => (string)($p['id_producto'] ?? ''),
-                'name'     => $nombreProd,
-                'quantity' => $cantidad,
+            $items[] = [
+                'sku'      => (string)($p['sku'] ?? $p['id_producto'] ?? ''),
+                'nombre'   => $p['producto_nombre'] ?? 'Producto',
+                'cantidad' => $cantidad,
             ];
         }
 
@@ -138,7 +137,7 @@ class HLExpressProvider extends BaseProvider
             'shipment_payment_method_id' => $paymentMethodId,
             'total'                      => $declaredValue,
             'total_cod'                  => $isCod ? $declaredValue : 0,
-            'contains'                   => $contains,
+            'items'                      => $items,
             'order_number'               => (string)$pedido['numero_orden'],
         ];
     }
