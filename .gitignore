@@ -50,6 +50,7 @@ exports/
 # =====================================================
 run_migration.sh
 *.migration.done
+db_migrations/
 
 # =====================================================
 # Cache (ya manejado en cache/.gitignore)
