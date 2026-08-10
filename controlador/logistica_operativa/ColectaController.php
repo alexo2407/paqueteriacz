@@ -28,6 +28,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/config.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/../../utils/permissions.php';
 require_once __DIR__ . '/../../api/utils/autenticacion.php';
 require_once __DIR__ . '/../../services/LogisticaOperativaFlags.php';
 require_once __DIR__ . '/../../services/logistica_operativa/LogisticaOperativaException.php';
@@ -228,13 +229,36 @@ class ColectaController
         return $data;
     }
 
+    /**
+     * Verifica que el usuario autenticado (si no es Admin) sea el propietario (id_proveedor) de la colecta.
+     * id_abierta_por NO otorga ningún permiso de acceso.
+     */
+    public function verificarPropiedadColecta(PDO $db, int $idColecta, array $usuario): array
+    {
+        $model = new ColectaModel($db);
+        $colecta = $model->obtenerPorId($idColecta);
+        if ($colecta === null) {
+            $this->error('NOT_FOUND', 'Colecta no encontrada.', 404);
+        }
+
+        $currentUserId = (int)($usuario['id'] ?? 0);
+        $isAdmin       = isSuperAdmin();
+        $isProveedorDueno = ($currentUserId > 0 && (int)$colecta['id_proveedor'] === $currentUserId);
+
+        if (!$isAdmin && !$isProveedorDueno) {
+            $this->error('FORBIDDEN', 'Acceso denegado: Esta colecta pertenece a otro Proveedor.', 403);
+        }
+
+        return $colecta;
+    }
+
     // ── Acciones de dominio ───────────────────────────────────────────────
 
     /**
      * POST /api/logistica-operativa/colectas/abrir
      *
-     * Abre una nueva colecta para un cliente en una fecha y turno.
-     * El operador se obtiene del usuario autenticado, no del JSON.
+     * Abre una nueva colecta para un cliente y proveedor en una fecha y turno.
+     * El id_operador se obtiene del usuario autenticado.
      *
      * Respuesta 201: { success: true, data: { id_colecta, cantidad_esperada, pedidos_ids } }
      */
@@ -269,10 +293,18 @@ class ColectaController
         $fecha     = trim($body['fecha']);
         $turno     = strtoupper(trim($body['turno']));
 
+        // id_proveedor viene en el payload si lo selecciona un Admin o el modal, o defaultea al operador
+        $isAdmin = isSuperAdmin();
+        if (!empty($body['id_proveedor']) && is_numeric($body['id_proveedor'])) {
+            $idProveedor = (int) $body['id_proveedor'];
+        } else {
+            $idProveedor = $idOperador;
+        }
+
         try {
-            $db      = $this->crearConexion();
+            $db       = $this->crearConexion();
             $servicio = new ColectaService($db);
-            $resultado = $servicio->abrirColecta($idCliente, $fecha, $turno, $idOperador);
+            $resultado = $servicio->abrirColecta($idCliente, $idProveedor, $fecha, $turno, $idOperador);
             $this->ok($resultado, 201);
         } catch (LogisticaOperativaException $e) {
             error_log('[ColectaController::abrir] ' . $e->getMessage());
@@ -316,23 +348,26 @@ class ColectaController
             $this->error('INVALID_FIELD', 'id_colecta e id_pedido deben ser numéricos.', 400);
         }
 
-        // Construir datos para el servicio; id_operador viene del token, nunca del cliente
-        $datos = [
-            'uuid'          => trim((string) $body['uuid']),
-            'id_colecta'    => (int) $body['id_colecta'],
-            'id_pedido'     => (int) $body['id_pedido'],
-            'tipo_evento'   => strtoupper(trim((string) $body['tipo_evento'])),
-            'qr_hash'       => strtolower(trim((string) $body['qr_hash'])),
-            'id_operador'   => $idOperador,                          // ← del token
-            'dispositivo'   => isset($body['dispositivo']) ? trim((string) $body['dispositivo']) : null,
-            'escaneado_at'  => trim((string) $body['escaneado_at']),
-            'metadata_json' => isset($body['metadata_json']) && is_array($body['metadata_json'])
-                                    ? json_encode($body['metadata_json'])
-                                    : null,
-        ];
+        $idColecta = (int)$body['id_colecta'];
 
         try {
-            $db       = $this->crearConexion();
+            $db = $this->crearConexion();
+            $this->verificarPropiedadColecta($db, $idColecta, $usuario);
+
+            $datos = [
+                'uuid'          => trim((string) $body['uuid']),
+                'id_colecta'    => $idColecta,
+                'id_pedido'     => (int) $body['id_pedido'],
+                'tipo_evento'   => strtoupper(trim((string) $body['tipo_evento'])),
+                'qr_hash'       => strtolower(trim((string) $body['qr_hash'])),
+                'id_operador'   => $idOperador,
+                'dispositivo'   => isset($body['dispositivo']) ? trim((string) $body['dispositivo']) : null,
+                'escaneado_at'  => trim((string) $body['escaneado_at']),
+                'metadata_json' => isset($body['metadata_json']) && is_array($body['metadata_json'])
+                                        ? json_encode($body['metadata_json'])
+                                        : null,
+            ];
+
             $servicio = new ColectaService($db);
             $resultado = $servicio->registrarEscaneo($datos);
             $this->ok($resultado);
@@ -375,6 +410,8 @@ class ColectaController
 
         try {
             $db       = $this->crearConexion();
+            $this->verificarPropiedadColecta($db, $idColecta, $usuario);
+
             $servicio = new ColectaService($db);
             $resultado = $servicio->cerrarYConciliar($idColecta, $idOperador);
             $this->ok($resultado);
@@ -417,6 +454,8 @@ class ColectaController
 
         try {
             $db       = $this->crearConexion();
+            $this->verificarPropiedadColecta($db, $idColecta, $usuario);
+
             $servicio = new ColectaService($db);
             $resultado = $servicio->eliminarExtra($idColecta, $idPedido, $idOperador);
             $this->ok($resultado);
@@ -439,7 +478,7 @@ class ColectaController
         $this->aplicarHeaders('GET, OPTIONS');
         $this->requerirMetodo('GET');
         $this->verificarModulo();
-        $this->autenticar();
+        $usuario = $this->autenticar();
 
         $idColectaRaw = $_GET['id_colecta'] ?? '';
 
@@ -451,6 +490,8 @@ class ColectaController
 
         try {
             $db       = $this->crearConexion();
+            $this->verificarPropiedadColecta($db, $idColecta, $usuario);
+
             $servicio = new ColectaService($db);
             $resultado = $servicio->obtenerResumen($idColecta);
             $this->ok($resultado);

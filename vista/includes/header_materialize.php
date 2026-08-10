@@ -87,19 +87,20 @@ $userName = $_SESSION['nombre'] ?? null;
     <?php if ((!$isRepartidor || $isAdmin) && !$isCliente): ?>
     <li><a href="<?= RUTA_URL ?>dashboard"><i class="material-icons">dashboard</i>Dashboard</a></li>
     <?php endif; ?>
-    <?php if ($isCliente): ?>
+
+    <!-- Logística -->
+    <?php if ($isAdmin || $isProveedor): ?>
     <li><a href="<?= RUTA_URL ?>logistica/dashboard"><i class="material-icons">local_shipping</i>Mis Pedidos</a></li>
-    <li><a href="<?= RUTA_URL ?>productos/listar"><i class="material-icons">inventory_2</i>Mis Productos</a></li>
     <?php endif; ?>
 
-    <!-- Pedidos -->
-    <?php if ($isAdmin || $isProveedor): ?>
+    <!-- Pedidos / Operaciones -->
+    <?php if ($isAdmin || $isCliente || $isProveedor): ?>
     <li><div class="divider"></div></li>
     <li><a class="subheader">Operaciones</a></li>
+    <?php if ($isAdmin || $isCliente): ?>
     <li><a href="<?= RUTA_URL ?>pedidos/listar"><i class="material-icons">assignment</i>Pedidos</a></li>
-    <?php if ($isAdmin): ?>
-    <li><a href="<?= RUTA_URL ?>pedidos/crearPedido"><i class="material-icons">add_circle</i>Nuevo Pedido</a></li>
     <?php endif; ?>
+    <li><a href="<?= RUTA_URL ?>pedidos/crearPedido"><i class="material-icons">add_circle</i>Nuevo Pedido</a></li>
     <?php endif; ?>
     <?php if ($isRepartidor || $isAdmin): ?>
     <li><a href="<?= RUTA_URL ?>seguimiento/listar"><i class="material-icons">location_on</i>Seguimiento</a></li>

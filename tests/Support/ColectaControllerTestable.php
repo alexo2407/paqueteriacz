@@ -83,9 +83,12 @@ if (!class_exists('ColectaControllerTestable')) {
                 $this->error('MISSING_FIELD', 'El campo turno es requerido.', 400);
             }
 
+            $idProveedor = !empty($body['id_proveedor']) ? (int)$body['id_proveedor'] : $idOperador;
+
             try {
                 $resultado = $this->servicio()->abrirColecta(
                     (int)$body['id_cliente'],
+                    $idProveedor,
                     trim($body['fecha']),
                     strtoupper(trim($body['turno'])),
                     $idOperador

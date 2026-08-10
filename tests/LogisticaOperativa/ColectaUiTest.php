@@ -292,7 +292,7 @@ class ColectaUiTest extends TestCase
     public function test_vista_detalle_muestra_contadores(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cli6');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorId);
 
         // Abrir colecta
         $r = $this->callAction('abrir', [
@@ -356,7 +356,7 @@ class ColectaUiTest extends TestCase
     public function test_colecta_cerrada_bloquea_escaneo(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cli7');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorId);
 
         $r          = $this->callAction('abrir', [
             'id_cliente' => $cliente, 'fecha' => '2099-09-02', 'turno' => 'TARDE',
@@ -411,7 +411,7 @@ class ColectaUiTest extends TestCase
     public function test_flujo_completo_no_cambia_id_estado(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cli9');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorId);
 
         $stmt = $this->db->prepare('SELECT id_estado FROM pedidos WHERE id = :id');
         $stmt->execute([':id' => $pedido]);
@@ -457,7 +457,7 @@ class ColectaUiTest extends TestCase
         $antesInv   = (int)$this->db->query('SELECT COUNT(*) FROM inventario')->fetchColumn();
 
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cli10');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorId);
 
         $rAbrir    = $this->callAction('abrir', [
             'id_cliente' => $cliente, 'fecha' => '2099-11-01', 'turno' => 'TARDE',

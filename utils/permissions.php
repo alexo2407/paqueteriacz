@@ -95,18 +95,27 @@ function canCreateCatalogData() {
  */
 function isSuperAdmin() {
     // Verificar en el rol principal
-    if (isset($_SESSION['rol']) && $_SESSION['rol'] == ROL_ADMIN) {
+    if (isset($_SESSION['rol']) && ($_SESSION['rol'] == ROL_ADMIN || $_SESSION['rol'] === 'Administrador')) {
         return true;
     }
 
     // Verificar en variables globales de API (JWT)
-    if (isset($GLOBALS['API_USER_ROLE']) && $GLOBALS['API_USER_ROLE'] == ROL_ADMIN) {
+    if (isset($GLOBALS['API_USER_ROLE']) && ($GLOBALS['API_USER_ROLE'] == ROL_ADMIN || $GLOBALS['API_USER_ROLE'] === 'Administrador')) {
         return true;
     }
     
     // Verificar en el array de roles (multi-rol)
     if (isset($_SESSION['roles']) && is_array($_SESSION['roles'])) {
-        return in_array(ROL_ADMIN, $_SESSION['roles']);
+        if (in_array(ROL_ADMIN, $_SESSION['roles']) || in_array('1', $_SESSION['roles']) || in_array('Administrador', $_SESSION['roles'], true)) {
+            return true;
+        }
+    }
+
+    // Verificar en roles_nombres (sesión web)
+    if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
+        if (in_array('Administrador', $_SESSION['roles_nombres'], true) || (defined('ROL_NOMBRE_ADMIN') && in_array(ROL_NOMBRE_ADMIN, $_SESSION['roles_nombres'], true))) {
+            return true;
+        }
     }
     
     return false;

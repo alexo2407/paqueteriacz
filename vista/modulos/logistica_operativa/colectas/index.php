@@ -21,6 +21,7 @@ declare(strict_types=1);
 // ── Dependencias ──────────────────────────────────────────────────────────────
 require_once __DIR__ . '/../../../../config/config.php';
 require_once __DIR__ . '/../../../../modelo/conexion.php';
+require_once __DIR__ . '/../../../../utils/permissions.php';
 require_once __DIR__ . '/../../../../modelo/logistica_operativa/ColectaModel.php';
 require_once __DIR__ . '/../../../../services/logistica_operativa/ColectaService.php';
 
@@ -38,14 +39,18 @@ $filtroEstado  = strtoupper(trim($_GET['estado'] ?? ''));
 
 // ── Rol y permisos ──────────────────────────────────────────────────────────────
 $rolesSession = $_SESSION['roles_nombres'] ?? [];
-$isCliente    = in_array(ROL_NOMBRE_CLIENTE, $rolesSession, true) || in_array('Cliente', $rolesSession, true);
 $isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR, $rolesSession, true) || in_array('Proveedor', $rolesSession, true);
 $isAdmin      = in_array(ROL_NOMBRE_ADMIN, $rolesSession, true) || in_array('Administrador', $rolesSession, true);
 
 // ── Lista de colectas desde BD ────────────────────────────────────────────────
-$colectas    = [];
-$clientes    = [];
-$errorCarga  = null;
+$colectas        = [];
+$clientes        = [];
+$proveedores     = [];
+$errorCarga      = null;
+$countAbiertas   = 0;
+$countConciliadas = 0;
+$totalEsperados  = 0;
+$totalFaltantes  = 0;
 
 try {
     $db    = (new Conexion())->conectar();
@@ -58,38 +63,59 @@ try {
         'cliente' => $filtroCliente ?: null,
     ];
 
-    // Si es cliente o proveedor y no admin, filtrar solo sus colectas
-    if (($isCliente || $isProveedor) && !$isAdmin) {
-        $filtrosQuery['id_cliente'] = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+    // Si es proveedor de logística y no admin, filtrar por su id_proveedor
+    $currentUserId = getCurrentUserId();
+    if ($isProveedor && !$isAdmin && $currentUserId !== null) {
+        $filtrosQuery['id_proveedor'] = (int)$currentUserId;
     }
 
     // Obtener colectas con filtros
     $colectas = $colModel->listarConFiltros($filtrosQuery);
 
-    // Obtener clientes disponibles para el select del modal
-    if (($isCliente || $isProveedor) && !$isAdmin) {
-        $userIdSelf = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
-        $stmtClientes = $db->prepare("SELECT id, nombre FROM usuarios WHERE id = :id");
-        $stmtClientes->execute(['id' => $userIdSelf]);
+    // Obtener clientes (Rol 4) disponibles con pedidos en estado 11 (Pendiente recolección)
+    if ($isProveedor && !$isAdmin && $currentUserId !== null) {
+        $stmtClientes = $db->prepare(
+            "SELECT u.id, u.nombre
+               FROM usuarios u
+               JOIN usuarios_roles ur ON ur.id_usuario = u.id
+               JOIN pedidos p ON p.id_cliente = u.id
+              WHERE ur.id_rol = 4
+                AND p.id_proveedor = :id_proveedor
+                AND p.id_estado = 11
+              GROUP BY u.id, u.nombre
+              ORDER BY u.nombre ASC"
+        );
+        $stmtClientes->execute([':id_proveedor' => $currentUserId]);
         $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $stmtClientes = $db->query(
             "SELECT u.id, u.nombre
                FROM usuarios u
-              INNER JOIN pedidos p ON (p.id_cliente = u.id OR p.id_proveedor = u.id)
-                                  AND p.id_estado = 11
+               JOIN usuarios_roles ur ON ur.id_usuario = u.id
+               JOIN pedidos p ON p.id_cliente = u.id
+              WHERE ur.id_rol = 4
+                AND p.id_estado = 11
               GROUP BY u.id, u.nombre
-              ORDER BY u.nombre ASC
-             LIMIT 200"
+              ORDER BY u.nombre ASC"
         );
         $clientes = $stmtClientes->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Obtener lista de proveedores (Rol 5) para el desplegable del Admin
+    $proveedores = [];
+    if ($isAdmin) {
+        $stmtProveedores = $db->query(
+            "SELECT u.id, u.nombre
+               FROM usuarios u
+               JOIN usuarios_roles ur ON ur.id_usuario = u.id
+              WHERE ur.id_rol = 5
+                AND u.activo = 1
+              ORDER BY u.nombre ASC"
+        );
+        $proveedores = $stmtProveedores->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // Calcular contadores KPI para el header
-    $countAbiertas = 0;
-    $countConciliadas = 0;
-    $totalEsperados = 0;
-    $totalFaltantes = 0;
     foreach ($colectas as $c) {
         if (($c['estado'] ?? '') === 'ABIERTA') {
             $countAbiertas++;

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -10,15 +10,12 @@ start_secure_session();
 require_login();
 
 // Determinar rol del usuario
-// NOTA LEGACY: ROL_NOMBRE_PROVEEDOR='Cliente', ROL_NOMBRE_CLIENTE='Proveedor' (invertidos en BD)
-// isCliente() = TRUE para quien CREA pedidos (id_cliente en pedidos) = "Proveedor logístico"
-// ROL_NOMBRE_PROVEEDOR en sesión = distribuidor (id_proveedor en pedidos)
 $esAdmin     = isSuperAdmin();
-$esProveedorLogistico = !$esAdmin && isCliente(); // Quien crea pedidos (id_cliente)
-$esDistribuidor       = !$esAdmin && !$esProveedorLogistico && in_array(ROL_NOMBRE_PROVEEDOR, $_SESSION['roles_nombres'] ?? [], true);
+$esProveedor = !$esAdmin && isProveedor(); // Operador logístico / courier (id_proveedor en pedidos)
+$esCliente   = !$esAdmin && !$esProveedor && isCliente(); // Comercio emisor (id_cliente en pedidos)
 
-// Si no es admin, ni proveedor logístico, ni distribuidor → denegar
-if (!$esAdmin && !$esProveedorLogistico && !$esDistribuidor) {
+// Si no es admin, ni proveedor, ni cliente registrado → denegar
+if (!$esAdmin && !$esProveedor && !$esCliente) {
     header('Location: ' . RUTA_URL . 'dashboard');
     exit;
 }
@@ -27,10 +24,11 @@ if (!$esAdmin && !$esProveedorLogistico && !$esDistribuidor) {
 $userId = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
 $filtroPropietario = null; // null = sin restricción (admin)
 
-if ($esProveedorLogistico) {
-    // isCliente()=TRUE = rol "Proveedor" en BD = distribuidor = id_proveedor en pedidos
+if ($esProveedor) {
+    // Proveedor: filtra auditoría de sus pedidos asignados (id_proveedor)
     $filtroPropietario = ['campo' => 'id_proveedor', 'uid' => (int)$userId];
-} elseif ($esDistribuidor) {
+} elseif ($esCliente) {
+    // Cliente: filtra auditoría de sus pedidos creados (id_cliente)
     $filtroPropietario = ['campo' => 'id_cliente', 'uid' => (int)$userId];
 }
 

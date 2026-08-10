@@ -204,8 +204,8 @@ class ColectaApiTest extends TestCase
     public function test_abrir_colecta_devuelve_201(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
-        $p1      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
-        $p2      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $p1      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
+        $p2      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
 
         $r = $this->callController('abrir', 'POST', [
             'id_cliente' => $cliente,
@@ -254,7 +254,7 @@ class ColectaApiTest extends TestCase
     public function test_escaneo_esperado_devuelve_recibido(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
 
         $colecta   = $this->callController('abrir', 'POST', [
             'id_cliente' => $cliente, 'fecha' => '2099-06-03', 'turno' => 'MANANA',
@@ -285,7 +285,7 @@ class ColectaApiTest extends TestCase
     {
         $cliente  = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
         $clienteB = \LogisticaTestDataFactory::crearUsuario($this->db, 'clienteB');
-        $extra    = \LogisticaTestDataFactory::crearPedido($this->db, $clienteB);
+        $extra    = \LogisticaTestDataFactory::crearPedido($this->db, $clienteB, $this->operadorActivo);
 
         $colecta   = $this->callController('abrir', 'POST', [
             'id_cliente' => $cliente, 'fecha' => '2099-06-04', 'turno' => 'TARDE',
@@ -313,7 +313,7 @@ class ColectaApiTest extends TestCase
     public function test_uuid_repetido_es_idempotente(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
 
         $colecta   = $this->callController('abrir', 'POST', [
             'id_cliente' => $cliente, 'fecha' => '2099-06-05', 'turno' => 'MANANA',
@@ -352,8 +352,8 @@ class ColectaApiTest extends TestCase
     public function test_cierre_devuelve_resumen_conciliado(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
-        $p1      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
-        $p2      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $p1      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
+        $p2      = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
 
         $colecta   = $this->callController('abrir', 'POST', [
             'id_cliente' => $cliente, 'fecha' => '2099-06-06', 'turno' => 'MANANA',
@@ -439,7 +439,7 @@ class ColectaApiTest extends TestCase
     public function test_pedido_id_estado_no_cambia(): void
     {
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
 
         $stmt = $this->db->prepare('SELECT id_estado FROM pedidos WHERE id = :id');
         $stmt->execute([':id' => $pedido]);
@@ -476,7 +476,7 @@ class ColectaApiTest extends TestCase
         $antesInv   = (int) $this->db->query('SELECT COUNT(*) FROM inventario')->fetchColumn();
 
         $cliente = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
-        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente);
+        $pedido  = \LogisticaTestDataFactory::crearPedido($this->db, $cliente, $this->operadorActivo);
 
         $colecta   = $this->callController('abrir', 'POST', [
             'id_cliente' => $cliente, 'fecha' => '2099-07-02', 'turno' => 'TARDE',

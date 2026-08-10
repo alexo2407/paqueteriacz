@@ -32,10 +32,9 @@ class LogisticaTestDataFactory
     }
 
     /**
-     * Crea un usuario ficticio y devuelve su ID.
-     * El email usa un sufijo único para evitar colisiones dentro de la misma transacción.
+     * Crea un usuario ficticio y le asigna un rol en usuarios_roles. Devuelve su ID.
      */
-    public static function crearUsuario(PDO $db, string $prefijo = 'operador'): int
+    public static function crearUsuario(PDO $db, string $prefijo = 'operador', ?int $idRol = null): int
     {
         $n     = self::next();
         $ts    = microtime(true);
@@ -51,39 +50,53 @@ class LogisticaTestDataFactory
             ':email'     => $email,
             ':contrasena' => '$2y$10$invalidhashfortest000000000000000000000000000000000000000',
         ]);
-        return (int) $db->lastInsertId();
+        $idUsuario = (int) $db->lastInsertId();
+
+        // Determinar rol por omisión según el prefijo
+        if ($idRol === null) {
+            if (str_contains(strtolower($prefijo), 'cli')) {
+                $idRol = 4;
+            } else {
+                $idRol = 5;
+            }
+        }
+
+        if ($idRol > 0) {
+            $stmtRol = $db->prepare(
+                'INSERT INTO usuarios_roles (id_usuario, id_rol) VALUES (:uid, :rid)'
+            );
+            $stmtRol->execute([':uid' => $idUsuario, ':rid' => $idRol]);
+        }
+
+        return $idUsuario;
     }
 
     /**
-     * Crea un pedido ficticio en estado 11 para el cliente dado.
-     * Rellena todas las columnas NOT NULL con valores mínimos.
-     *
-     * numero_orden se construye como: prefijo fijo (9) + timestamp μs truncado (7 d) + seq (2 d).
-     * Ejemplo: 9_1234567_01 → 9123456701.
-     * El UNIQUE (id_cliente, numero_orden) nunca colisiona entre distintas
-     * sesiones PHP porque el microsegundo difiere, ni dentro de la misma sesión
-     * porque el seq difiere.
+     * Crea un pedido ficticio en estado 11 para el cliente y proveedor dados.
      */
-    public static function crearPedido(PDO $db, int $idCliente, int $idEstado = self::ESTADO_PENDIENTE_RECOLECCION): int
+    public static function crearPedido(PDO $db, int $idCliente, int $idProveedor = 0, int $idEstado = self::ESTADO_PENDIENTE_RECOLECCION): int
     {
         $n    = self::next();
-        $ts   = (int)(microtime(true) * 10); // décimas de segundo, 13 dígitos aprox.
-        // Mantener BIGINT en rango seguro: tomamos los últimos 7 dígitos del timestamp
-        // más los 2 últimos dígitos del seq → 10 dígitos totales con prefijo 9.
+        $ts   = (int)(microtime(true) * 10);
         $numeroOrden = (int)('9' . substr((string)$ts, -7) . str_pad((string)($n % 100), 2, '0', STR_PAD_LEFT));
+
+        if ($idProveedor <= 0) {
+            $idProveedor = self::crearUsuario($db, 'proveedor', 5);
+        }
 
         $stmt = $db->prepare(
             'INSERT INTO pedidos
-               (numero_orden, fecha_ingreso, id_estado, id_cliente,
+               (numero_orden, fecha_ingreso, id_estado, id_cliente, id_proveedor,
                 code_city, created_at, updated_at)
              VALUES
-               (:numero_orden, NOW(), :id_estado, :id_cliente,
+               (:numero_orden, NOW(), :id_estado, :id_cliente, :id_proveedor,
                 0, NOW(), NOW())'
         );
         $stmt->execute([
             ':numero_orden' => $numeroOrden,
             ':id_estado'    => $idEstado,
             ':id_cliente'   => $idCliente,
+            ':id_proveedor' => $idProveedor,
         ]);
         return (int) $db->lastInsertId();
     }

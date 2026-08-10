@@ -11,7 +11,6 @@ require_once __DIR__ . '/../../../../config/config.php';
 require_once __DIR__ . '/../../../../modelo/conexion.php';
 
 $rolesSession = $_SESSION['roles_nombres'] ?? [];
-$isCliente    = in_array(ROL_NOMBRE_CLIENTE, $rolesSession, true) || in_array('Cliente', $rolesSession, true);
 $isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR, $rolesSession, true) || in_array('Proveedor', $rolesSession, true);
 $isAdmin      = in_array(ROL_NOMBRE_ADMIN, $rolesSession, true) || in_array('Administrador', $rolesSession, true);
 
@@ -23,8 +22,8 @@ try {
     
     $filtroCliente = isset($_GET['cliente']) ? (int)$_GET['cliente'] : 0;
 
-    // Si es cliente o proveedor y no admin, forzar su propio id_cliente
-    if (($isCliente || $isProveedor) && !$isAdmin) {
+    // Si es proveedor de logística y no admin, filtrar por su ID
+    if ($isProveedor && !$isAdmin) {
         $filtroCliente = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
     }
     
@@ -37,7 +36,7 @@ try {
     ";
     
     if ($filtroCliente > 0) {
-        $sql .= " AND p.id_cliente = " . $filtroCliente;
+        $sql .= " AND (p.id_cliente = " . $filtroCliente . " OR p.id_proveedor = " . $filtroCliente . ")";
     }
     
     $sql .= " ORDER BY p.id DESC LIMIT 50";
@@ -46,7 +45,7 @@ try {
     $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Obtener lista de clientes
-    if (($isCliente || $isProveedor) && !$isAdmin) {
+    if ($isProveedor && !$isAdmin) {
         $stmtCli = $db->prepare("SELECT id, nombre FROM usuarios WHERE id = :id");
         $stmtCli->execute(['id' => $filtroCliente]);
         $clientes = $stmtCli->fetchAll(PDO::FETCH_ASSOC);

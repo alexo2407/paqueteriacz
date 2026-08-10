@@ -81,13 +81,11 @@
 
 ---
 
-### ⚠️ INCONSISTENCIA 3 — Roles intercambiados en BD
+### ✅ RESOLUCIÓN ROLES — Alineación de Roles y Permisos en BD
 
-Documentado en `config/config.php`:
-> El ID 4 en BD se llama "Cliente" pero tiene permisos de Proveedor.
-> El ID 5 en BD se llama "Proveedor" pero tiene permisos de Cliente.
-
-Las constantes PHP ya compensan la inversión. Documentado pero sin impacto en esta fase.
+Resuelto formalmente mediante la migración `025_align_logistica_operativa_roles.sql`:
+> `ROL_CLIENTE = 4`: Comercio emisor (creador de pedidos, sin acceso a logística operativa).
+> `ROL_PROVEEDOR = 5`: Operador Logístico / Courier (acceso completo a bodega, colectas, rutas y dashboard).
 
 ---
 

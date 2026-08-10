@@ -1226,8 +1226,7 @@ class PedidosController
         $isAdmin       = isSuperAdmin();
         $isRepartidor  = isRepartidor(); // ya excluye Admin internamente
         // Identificar cliente externo por nombre de rol en BD ("Cliente" = ID 4).
-        // NO usar isCliente() aquí: retorna true también para mensajería (ROL_CLIENTE=5 en config)
-        // lo que bloquearía incorrectamente a mensajería en la interfaz web.
+        // ROL_CLIENTE = 4 (comercio emisor) / ROL_PROVEEDOR = 5 (operador logístico).
         $rolesNombres  = $_SESSION['roles_nombres'] ?? [];
         $isClienteRole = (
             in_array('Cliente', $rolesNombres, true) ||

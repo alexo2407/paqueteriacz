@@ -50,7 +50,7 @@ class RutaServiceTest extends TestCase
     private function crearPedidoDummy(float $montoCod = 150.00): int
     {
         $clienteId = \LogisticaTestDataFactory::crearUsuario($this->db, 'cliente');
-        $pedId = \LogisticaTestDataFactory::crearPedido($this->db, $clienteId, 4);
+        $pedId = \LogisticaTestDataFactory::crearPedido($this->db, $clienteId, 0, 4);
         $stmt = $this->db->prepare("UPDATE pedidos SET precio_total_local = :cod, destinatario = 'Cliente Test' WHERE id = :id");
         $stmt->execute([':cod' => $montoCod, ':id' => $pedId]);
         return $pedId;

@@ -92,6 +92,15 @@ class ColectaService
         return $stmt->fetch() !== false;
     }
 
+    private function tieneRolUsuario(int $idUsuario, int $idRol): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1 FROM usuarios_roles WHERE id_usuario = :uid AND id_rol = :rid LIMIT 1'
+        );
+        $stmt->execute([':uid' => $idUsuario, ':rid' => $idRol]);
+        return $stmt->fetch() !== false;
+    }
+
     private function resolverIdPedido(int $codigo, int $idColecta = 0): ?int
     {
         // 1. Si hay colecta activa, priorizar los pedidos esperados en esta colecta por numero_orden o id
@@ -134,20 +143,19 @@ class ColectaService
     // ── Apertura ──────────────────────────────────────────────────────────
 
     /**
-     * Abre una nueva colecta para un cliente en una fecha y turno.
+     * Abre una nueva colecta para un cliente y proveedor en una fecha y turno.
      *
-     * - Valida flags, turno, fecha, existencia de cliente y operador.
-     * - Detecta duplicado (mismo cliente + fecha + turno).
+     * - Valida flags, turno, fecha, roles de cliente (Rol 4) y proveedor (Rol 5).
+     * - Detecta duplicado (mismo cliente + proveedor + fecha + turno).
      * - Obtiene la fotografía de pedidos elegibles (estado 11).
      * - Crea la colecta e inserta los pedidos esperados.
-     * - Todo dentro de una única transacción.
-     * - No modifica pedidos.id_estado ni stock.
      *
      * @return array{id_colecta: int, cantidad_esperada: int, pedidos_ids: int[]}
      * @throws LogisticaOperativaException
      */
     public function abrirColecta(
         int    $idCliente,
+        int    $idProveedor,
         string $fecha,
         string $turno,
         int    $idOperador
@@ -159,27 +167,42 @@ class ColectaService
         if (!$this->existeUsuario($idCliente)) {
             throw new LogisticaOperativaException("Cliente no encontrado: ID {$idCliente}.");
         }
+        if (!$this->tieneRolUsuario($idCliente, 4)) {
+            throw new LogisticaOperativaException("El usuario ID {$idCliente} no posee el Rol Cliente (ID 4).");
+        }
+
+        if (!$this->existeUsuario($idProveedor)) {
+            throw new LogisticaOperativaException("Proveedor no encontrado: ID {$idProveedor}.");
+        }
+        if (!$this->tieneRolUsuario($idProveedor, 5)) {
+            throw new LogisticaOperativaException("El usuario ID {$idProveedor} no posee el Rol Proveedor (ID 5).");
+        }
+
+        if ($idCliente === $idProveedor) {
+            throw new LogisticaOperativaException("El cliente y el proveedor no pueden ser el mismo usuario.");
+        }
+
         if (!$this->existeUsuario($idOperador)) {
             throw new LogisticaOperativaException("Operador no encontrado: ID {$idOperador}.");
         }
 
         $this->db->beginTransaction();
         try {
-            // Detectar duplicado
-            $existente = $this->colectaModel->buscarPorClienteFechaTurno($idCliente, $fecha, $turno);
+            // Detectar duplicado por (cliente, proveedor, fecha, turno)
+            $existente = $this->colectaModel->buscarPorClienteProveedorFechaTurno($idCliente, $idProveedor, $fecha, $turno);
             if ($existente !== null) {
                 throw new LogisticaOperativaException(
-                    "Ya existe una colecta para el cliente {$idCliente} en {$fecha} turno {$turno}."
+                    "Ya existe una colecta para el cliente {$idCliente} y proveedor {$idProveedor} en {$fecha} turno {$turno}."
                 );
             }
 
-            // Fotografía de pedidos elegibles
-            $pedidosIds = $this->colectaModel->obtenerPedidosElegibles($idCliente);
+            // Fotografía de pedidos elegibles para esta tupla (cliente, proveedor)
+            $pedidosIds = $this->colectaModel->obtenerPedidosElegibles($idCliente, $idProveedor);
             $cantidadEsperada = count($pedidosIds);
 
             // Crear colecta
             $idColecta = $this->colectaModel->insertar(
-                $idCliente, $fecha, $turno, $cantidadEsperada, $idOperador
+                $idCliente, $idProveedor, $fecha, $turno, $cantidadEsperada, $idOperador
             );
 
             // Insertar pedidos esperados

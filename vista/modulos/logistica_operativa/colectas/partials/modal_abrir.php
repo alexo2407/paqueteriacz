@@ -58,6 +58,25 @@
                         <div class="invalid-feedback">Selecciona un cliente válido.</div>
                     </div>
 
+                    <?php if (!empty($isAdmin) && $isAdmin): ?>
+                    <!-- Proveedor (Solo Admin) -->
+                    <div class="mb-3">
+                        <label for="abrirIdProveedor" class="form-label fw-semibold small">
+                            Proveedor / Courier <span class="text-danger">*</span>
+                        </label>
+                        <select id="abrirIdProveedor" name="id_proveedor"
+                                class="form-select form-select-lg fs-6" required>
+                            <option value="">Seleccionar Proveedor...</option>
+                            <?php foreach ($proveedores as $prov): ?>
+                            <option value="<?= (int)$prov['id'] ?>">
+                                🚚 <?= htmlspecialchars($prov['nombre']) ?> (ID: <?= (int)$prov['id'] ?>)
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="invalid-feedback">Selecciona un proveedor válido.</div>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Fecha -->
                     <div class="mb-3">
                         <label for="abrirFecha" class="form-label fw-semibold small">

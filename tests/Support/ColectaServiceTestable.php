@@ -66,7 +66,7 @@ class ColectaServiceTestable extends ColectaService
 
     // ── Métodos de dominio (sin verificación de flags) ────────────────────
 
-    public function abrirColecta(int $idCliente, string $fecha, string $turno, int $idOperador): array
+    public function abrirColecta(int $idCliente, int $idProveedor, string $fecha, string $turno, int $idOperador): array
     {
         $this->validarFechaLocal($fecha);
         $this->validarTurnoLocal($turno);
@@ -74,22 +74,34 @@ class ColectaServiceTestable extends ColectaService
         if (!$this->existeUsuarioLocal($idCliente)) {
             throw new \LogisticaOperativaException("Cliente no encontrado: ID {$idCliente}.");
         }
+        if (!$this->tieneRolUsuarioLocal($idCliente, 4)) {
+            throw new \LogisticaOperativaException("El usuario ID {$idCliente} no posee el Rol Cliente (ID 4).");
+        }
+        if (!$this->existeUsuarioLocal($idProveedor)) {
+            throw new \LogisticaOperativaException("Proveedor no encontrado: ID {$idProveedor}.");
+        }
+        if (!$this->tieneRolUsuarioLocal($idProveedor, 5)) {
+            throw new \LogisticaOperativaException("El usuario ID {$idProveedor} no posee el Rol Proveedor (ID 5).");
+        }
+        if ($idCliente === $idProveedor) {
+            throw new \LogisticaOperativaException("El cliente y el proveedor no pueden ser el mismo usuario.");
+        }
         if (!$this->existeUsuarioLocal($idOperador)) {
             throw new \LogisticaOperativaException("Operador no encontrado: ID {$idOperador}.");
         }
 
         $sp = $this->begin();
         try {
-            $existente = $this->colModel->buscarPorClienteFechaTurno($idCliente, $fecha, $turno);
+            $existente = $this->colModel->buscarPorClienteProveedorFechaTurno($idCliente, $idProveedor, $fecha, $turno);
             if ($existente !== null) {
                 throw new \LogisticaOperativaException(
-                    "Ya existe una colecta para el cliente {$idCliente} en {$fecha} turno {$turno}."
+                    "Ya existe una colecta para el cliente {$idCliente} y proveedor {$idProveedor} en {$fecha} turno {$turno}."
                 );
             }
 
-            $pedidosIds       = $this->colModel->obtenerPedidosElegibles($idCliente);
+            $pedidosIds       = $this->colModel->obtenerPedidosElegibles($idCliente, $idProveedor);
             $cantidadEsperada = count($pedidosIds);
-            $idColecta        = $this->colModel->insertar($idCliente, $fecha, $turno, $cantidadEsperada, $idOperador);
+            $idColecta        = $this->colModel->insertar($idCliente, $idProveedor, $fecha, $turno, $cantidadEsperada, $idOperador);
 
             foreach ($pedidosIds as $idPedido) {
                 $this->colModel->insertarPedidoEsperado($idColecta, (int) $idPedido);
@@ -270,6 +282,15 @@ class ColectaServiceTestable extends ColectaService
     {
         $stmt = $this->pdo->prepare('SELECT id FROM usuarios WHERE id = :id LIMIT 1');
         $stmt->execute([':id' => $id]);
+        return $stmt->fetch() !== false;
+    }
+
+    private function tieneRolUsuarioLocal(int $idUsuario, int $idRol): bool
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT 1 FROM usuarios_roles WHERE id_usuario = :uid AND id_rol = :rid LIMIT 1'
+        );
+        $stmt->execute([':uid' => $idUsuario, ':rid' => $idRol]);
         return $stmt->fetch() !== false;
     }
 
