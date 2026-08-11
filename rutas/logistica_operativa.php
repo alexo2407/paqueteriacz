@@ -29,26 +29,25 @@ require_once __DIR__ . '/../utils/session.php';
 require_once __DIR__ . '/../utils/logistica_permissions.php';
 require_once __DIR__ . '/../services/LogisticaOperativaFlags.php';
 
-// ── 1. Autenticación + permiso formal ─────────────────────────────────────────
-// require_permission() verifica sesión activa y el permiso 'logistica_operativa_colectas'
-// en la tabla permisos (migración 022). Sin permiso → 302 /dashboard + flash error.
-// Deny by default: si la consulta BD falla, deniega el acceso.
-require_permission('logistica_operativa_colectas');
+// ── 1. Autenticación (verificar sesión) ───────────────────────────────────────
+require_login();
 
 // ── 2. Feature flag ───────────────────────────────────────────────────────────
 if (!LogisticaOperativaFlags::enabled()) {
     set_flash('error', 'El módulo Logística Operativa no está habilitado actualmente.');
-    header('Location: ' . RUTA_URL . 'dashboard');
+    $target = isRepartidor() ? 'seguimiento/listar' : 'dashboard';
+    header('Location: ' . RUTA_URL . $target);
     exit;
 }
 
-// ── 4. Enrutamiento interno ───────────────────────────────────────────────────
+// ── 3. Enrutamiento interno ───────────────────────────────────────────────────
 
 $_submodulo = $ruta[1] ?? '';     // 'colectas'
 $_accion    = $ruta[2] ?? '';     // 'ver' | ''
 $parametros = array_slice($ruta, 3); // [id, ...]
 
 if ($_submodulo === 'colectas') {
+    require_permission('logistica_operativa_colectas');
 
     if ($_accion === 'ver' && !empty($ruta[3])) {
         // GET /logistica-operativa/colectas/ver/{id}

@@ -47,6 +47,7 @@ declare(strict_types=1);
 // ── Dependencias ──────────────────────────────────────────────────────────────
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/session.php';
+require_once __DIR__ . '/permissions.php';
 
 // ── Caché estático por request ────────────────────────────────────────────────
 // Evita múltiples queries a BD por cada llamada a current_user_has_permission().
@@ -102,23 +103,37 @@ function _logistica_perm_consultar_bd(array $rolIds, string $codigo): bool
         return false;
     }
 
-    $rolIdsInt = array_map('intval', $rolIds);
-    $hasAdmin    = in_array(ROL_ADMIN,    $rolIdsInt, true) || in_array(1, $rolIdsInt, true);
-    $hasProveedor = in_array(ROL_PROVEEDOR, $rolIdsInt, true) || in_array(5, $rolIdsInt, true);
+    $rolIdsInt     = array_map('intval', $rolIds);
+    $hasAdmin      = in_array(ROL_ADMIN,      $rolIdsInt, true) || in_array(1, $rolIdsInt, true);
+    $hasProveedor  = in_array(ROL_PROVEEDOR,  $rolIdsInt, true) || in_array(5, $rolIdsInt, true);
+    $hasRepartidor = in_array(ROL_REPARTIDOR, $rolIdsInt, true) || in_array(3, $rolIdsInt, true);
 
-    // Los permisos de Logística Operativa son exclusivos de Administrador y Proveedor.
+    // Super Administrador siempre tiene acceso total ilimitado a todos los permisos
+    if ($hasAdmin) {
+        return true;
+    }
+
+    // Repartidores tienen permiso inherente sobre las rutas de reparto en campo (logistica_operativa_rutas)
+    if ($hasRepartidor && $codigo === 'logistica_operativa_rutas') {
+        return true;
+    }
+
+    // Los permisos de Logística Operativa son para Administrador, Proveedor y Repartidor (rutas).
     // El rol Cliente (ID 4) NO tiene acceso a Logística Operativa.
-    if (!$hasAdmin && !$hasProveedor) {
+    if (!$hasAdmin && !$hasProveedor && !$hasRepartidor) {
         return false;
     }
 
-    // Construir lista de IDs de rol a consultar (Admin y/o Proveedor)
+    // Construir lista de IDs de rol a consultar (Admin, Proveedor, Repartidor)
     $rolIdsConsulta = [];
     if ($hasProveedor) {
         $rolIdsConsulta[] = ROL_PROVEEDOR; // 5
     }
     if ($hasAdmin) {
         $rolIdsConsulta[] = ROL_ADMIN; // 1
+    }
+    if ($hasRepartidor) {
+        $rolIdsConsulta[] = ROL_REPARTIDOR; // 3
     }
 
     $db = _logistica_perm_db();
@@ -200,10 +215,26 @@ function current_user_has_permission(string $codigo, bool $resetCache = false): 
         return $cache[$codigo];
     }
 
+    // 1. Super Administrador siempre tiene acceso total e incondicional a todos los permisos
+    if (function_exists('isSuperAdmin') && isSuperAdmin()) {
+        $cache[$codigo] = true;
+        return true;
+    }
+
     // Verificar que hay sesión activa o datos en $_SESSION (entorno CLI/tests)
     if (session_status() !== PHP_SESSION_ACTIVE && empty($_SESSION)) {
         $cache[$codigo] = false;
         return false;
+    }
+
+    // 2. Si el permiso solicitado es 'admin', verificar rol de Administrador
+    if ($codigo === 'admin') {
+        $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+        $esAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true) 
+                   || in_array(ROL_ADMIN, $_SESSION['roles'] ?? [], true) 
+                   || (($_SESSION['rol'] ?? null) == ROL_ADMIN);
+        $cache[$codigo] = $esAdmin;
+        return $esAdmin;
     }
 
     // Si está precargado en sesión (hidratado por EnlacesController), usarlo
@@ -254,8 +285,9 @@ function require_permission(string $codigo): void
         $baseUrl = defined('RUTA_URL') ? RUTA_URL : '/paqueteriacz/';
         set_flash('error', 'No tienes permiso para acceder a esta sección.');
 
-        // Redirigir a dashboard (nunca al login — la sesión sí existe)
-        header('Location: ' . $baseUrl . 'dashboard');
+        // Redirigir según el rol del usuario para evitar bucles infinitos en /dashboard
+        $target = isRepartidor() ? 'seguimiento/listar' : 'dashboard';
+        header('Location: ' . $baseUrl . $target);
         exit;
     }
 }

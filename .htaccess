@@ -35,8 +35,8 @@ Options -MultiViews
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
     # Permissions-Policy (antes Feature-Policy)
-    # Controla qué características del navegador pueden usarse
-    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+    # Permitir cámara y geolocalización para el origen de la app (requerido para escáner QR y entrega en campo)
+    Header always set Permissions-Policy "geolocation=(self), camera=(self), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
 
     # Remove server signature
     Header always unset X-Powered-By

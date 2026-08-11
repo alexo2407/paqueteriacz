@@ -129,7 +129,7 @@ class EnlacesController
                 // require_permission() en la ruta ya verifica acceso; aquí se añade
                 // al mapa para que el dispatcher no la rechace antes de llegar a la ruta.
                 // Solo usuarios con al menos un permiso de LO pasan esta guardia.
-                'logistica-operativa' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR],
+                'logistica-operativa' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR],
                 'codigos_postales' => [ROL_NOMBRE_ADMIN, ROL_NOMBRE_VENDEDOR, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_CLIENTE],
                 // Dashboard principal: solo Admin y Proveedor
                 // Clientes tienen su propio tracking de estados
@@ -148,16 +148,27 @@ class EnlacesController
             if (!$isAdmin && !$isPerfilRoute && isset($allowedByModule[$modulo])) {
                 $permitidos = $allowedByModule[$modulo];
                 if (!is_array($userRoleNames) || count(array_intersect($permitidos, $userRoleNames)) === 0) {
-                    // Si es cliente intentando acceder a una ruta sin permiso → redirigir a su tracking
+                    // Determinar destino de redirección según el rol para evitar bucles infinitos
                     if (in_array(ROL_NOMBRE_CLIENTE, $userRoleNames, true)) {
-                        if ($modulo !== 'dashboard') {
-                            set_flash('error', 'Acceso denegado para tu rol.');
-                        }
-                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'seguimiento/admin_tracking' : 'index.php?enlace=seguimiento/admin_tracking'));
+                        $target = 'seguimiento/admin_tracking';
+                    } elseif (in_array(ROL_NOMBRE_REPARTIDOR, $userRoleNames, true)) {
+                        $target = 'seguimiento/listar';
                     } else {
-                        set_flash('error', 'Acceso denegado para tu rol.');
-                        header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . 'dashboard' : 'index.php?enlace=dashboard'));
+                        $target = 'dashboard';
                     }
+
+                    // Evitar bucle de redirección si ya estamos intentando acceder al módulo destino
+                    $targetModulo = explode('/', $target)[0];
+                    if ($modulo === $targetModulo) {
+                        include "vista/modulos/404.php";
+                        exit;
+                    }
+
+                    if ($modulo !== 'dashboard') {
+                        set_flash('error', 'Acceso denegado para tu rol.');
+                    }
+
+                    header('Location: ' . (defined('RUTA_URL') ? RUTA_URL . $target : 'index.php?enlace=' . $target));
                     exit;
                 }
             }

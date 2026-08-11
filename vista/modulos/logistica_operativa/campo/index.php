@@ -27,17 +27,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($accion === 'marcar_entregado') {
         $firma = $_POST['firma_base64'] ?? null;
-        $foto = $_POST['foto_url'] ?? null;
+        $foto = trim($_POST['foto_url'] ?? '');
         $lat = !empty($_POST['lat']) ? (float)$_POST['lat'] : null;
         $lng = !empty($_POST['lng']) ? (float)$_POST['lng'] : null;
         $notas = trim($_POST['notas'] ?? '');
+
+        // Subida de imagen evidencia desde archivo / cámara
+        if (isset($_FILES['foto_archivo']) && $_FILES['foto_archivo']['error'] === UPLOAD_ERR_OK) {
+            $dirEvidencias = __DIR__ . '/../../../../uploads/evidencias/';
+            if (!is_dir($dirEvidencias)) {
+                mkdir($dirEvidencias, 0755, true);
+            }
+            $ext = strtolower(pathinfo($_FILES['foto_archivo']['name'], PATHINFO_EXTENSION));
+            $extsPermitidas = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+            if (in_array($ext, $extsPermitidas, true)) {
+                $nombreFoto = 'evidencia_' . $idPedido . '_' . time() . '_' . rand(1000, 9999) . '.' . $ext;
+                $dest = $dirEvidencias . $nombreFoto;
+                if (move_uploaded_file($_FILES['foto_archivo']['tmp_name'], $dest)) {
+                    $foto = RUTA_URL . 'uploads/evidencias/' . $nombreFoto;
+                }
+            }
+        }
 
         $campoService->completarEntrega($idRuta, $idPedido, $firma, $foto, $lat, $lng, $notas);
         set_flash('success', 'Pedido #' . $idPedido . ' marcado como ENTREGADO en campo.');
         header('Location: ' . RUTA_URL . 'logistica-operativa/campo?ruta_id=' . $idRuta);
         exit;
     }
-
     if ($accion === 'marcar_incidencia') {
         $tipo = $_POST['tipo_incidencia'] ?? 'Otro';
         $notas = trim($_POST['notas'] ?? '');
@@ -175,7 +191,7 @@ require_once __DIR__ . '/../../../../vista/includes/header.php';
 <!-- Modal Entregar en Campo -->
 <div class="modal fade" id="modalEntregarCampo" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form method="POST" class="modal-content border-0 shadow rounded-4">
+        <form method="POST" enctype="multipart/form-data" class="modal-content border-0 shadow rounded-4" id="formEntregarCampo">
             <input type="hidden" name="accion" value="marcar_entregado">
             <input type="hidden" name="id_ruta" id="ent_id_ruta">
             <input type="hidden" name="id_pedido" id="ent_id_pedido">
@@ -192,16 +208,31 @@ require_once __DIR__ . '/../../../../vista/includes/header.php';
 
                 <!-- Panel de Firma Digital Canvas -->
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Firma Digital del Cliente:</label>
-                    <div class="border rounded-3 bg-white text-center position-relative overflow-hidden" style="height: 160px; touch-action: none;">
-                        <canvas id="canvasFirma" style="width: 100%; height: 100%; cursor: crosshair;"></canvas>
-                        <button type="button" class="btn btn-sm btn-outline-secondary position-absolute bottom-0 end-0 m-2" id="btnLimpiarFirma">Limpiar</button>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-semibold mb-0"><i class="fas fa-signature text-primary me-1"></i>Firma Digital del Cliente:</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" id="btnLimpiarFirma"><i class="fas fa-eraser me-1"></i>Limpiar</button>
                     </div>
+                    <div class="border rounded-3 bg-white text-center position-relative overflow-hidden" style="height: 170px; touch-action: none; border-style: dashed !important; border-color: #0d6efd !important;">
+                        <canvas id="canvasFirma" style="width: 100%; height: 100%; cursor: crosshair; display: block;"></canvas>
+                    </div>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.75rem;"><i class="fas fa-info-circle me-1"></i>Firme con el dedo o mouse sobre el recuadro.</small>
                 </div>
 
+                <!-- Subida de Foto Evidencia -->
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">URL Foto Evidencia (Opcional):</label>
-                    <input type="url" class="form-control" name="foto_url" placeholder="https://...">
+                    <label class="form-label fw-semibold"><i class="fas fa-camera text-primary me-1"></i>Foto Evidencia de Entrega:</label>
+                    <input type="file" id="inputFotoEvidencia" name="foto_archivo" accept="image/*" capture="environment" class="d-none">
+                    
+                    <button type="button" class="btn btn-outline-primary w-100 rounded-3 py-2 fw-bold" id="btnTomarFoto">
+                        <i class="fas fa-camera me-2"></i>Tomar Foto / Subir Imagen
+                    </button>
+
+                    <div id="wrapperPreviewFoto" class="mt-2 text-center position-relative d-none">
+                        <img id="previewFotoImg" src="" class="img-thumbnail rounded-3 shadow-sm" style="max-height: 160px; object-fit: cover;">
+                        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle shadow-sm" id="btnQuitarFoto" title="Quitar foto" style="width: 28px; height: 28px; padding: 0; line-height: 1;">&times;</button>
+                    </div>
+
+                    <input type="hidden" name="foto_url" id="ent_foto_url">
                 </div>
 
                 <div class="mb-3">
@@ -255,33 +286,116 @@ require_once __DIR__ . '/../../../../vista/includes/header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const modalEnt = new bootstrap.Modal(document.getElementById('modalEntregarCampo'));
+    const modalEntEl = document.getElementById('modalEntregarCampo');
+    const modalEnt = new bootstrap.Modal(modalEntEl);
     const modalInc = new bootstrap.Modal(document.getElementById('modalIncidenciaCampo'));
 
     // Canvas Firma
     const canvas = document.getElementById('canvasFirma');
     const ctx = canvas.getContext('2d');
-    let dibu = false;
+    let dibujando = false;
+    let firmaRealizada = false;
+    let ultimaPos = { x: 0, y: 0 };
 
-    function resizeCanvas() {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight;
-        ctx.lineWidth = 2;
+    function inicializarCanvas() {
+        const container = canvas.parentElement;
+        canvas.width = container.clientWidth || 350;
+        canvas.height = container.clientHeight || 170;
+        ctx.lineWidth = 2.5;
         ctx.strokeStyle = '#0d6efd';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
     }
-    resizeCanvas();
 
-    canvas.addEventListener('mousedown', () => dibu = true);
-    canvas.addEventListener('mouseup', () => { dibu = false; ctx.beginPath(); });
-    canvas.addEventListener('mousemove', (e) => {
-        if (!dibu) return;
-        const rect = canvas.getBoundingClientRect();
-        ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-        ctx.stroke();
+    // Al abrir el modal se ajusta el tamaño real del canvas visible
+    modalEntEl.addEventListener('shown.bs.modal', () => {
+        inicializarCanvas();
     });
+
+    function obtenerCoordenadas(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    function comenzarDibujo(e) {
+        e.preventDefault();
+        dibujando = true;
+        firmaRealizada = true;
+        ultimaPos = obtenerCoordenadas(e);
+    }
+
+    function moverDibujo(e) {
+        if (!dibujando) return;
+        e.preventDefault();
+        const posActual = obtenerCoordenadas(e);
+        ctx.beginPath();
+        ctx.moveTo(ultimaPos.x, ultimaPos.y);
+        ctx.lineTo(posActual.x, posActual.y);
+        ctx.stroke();
+        ultimaPos = posActual;
+    }
+
+    function finalizarDibujo(e) {
+        if (dibujando) {
+            dibujando = false;
+        }
+    }
+
+    // Eventos Mouse
+    canvas.addEventListener('mousedown', comenzarDibujo);
+    canvas.addEventListener('mousemove', moverDibujo);
+    canvas.addEventListener('mouseup', finalizarDibujo);
+    canvas.addEventListener('mouseleave', finalizarDibujo);
+
+    // Eventos Touch (Móviles y Tablets)
+    canvas.addEventListener('touchstart', comenzarDibujo, { passive: false });
+    canvas.addEventListener('touchmove', moverDibujo, { passive: false });
+    canvas.addEventListener('touchend', finalizarDibujo);
 
     document.getElementById('btnLimpiarFirma').addEventListener('click', () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        firmaRealizada = false;
+        document.getElementById('ent_firma_base64').value = '';
+    });
+
+    // Lógica de Foto Evidencia
+    const btnTomarFoto = document.getElementById('btnTomarFoto');
+    const inputFotoEvidencia = document.getElementById('inputFotoEvidencia');
+    const wrapperPreviewFoto = document.getElementById('wrapperPreviewFoto');
+    const previewFotoImg = document.getElementById('previewFotoImg');
+    const btnQuitarFoto = document.getElementById('btnQuitarFoto');
+
+    btnTomarFoto.addEventListener('click', () => {
+        inputFotoEvidencia.click();
+    });
+
+    inputFotoEvidencia.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                previewFotoImg.src = evt.target.result;
+                wrapperPreviewFoto.classList.remove('d-none');
+                btnTomarFoto.classList.remove('btn-outline-primary');
+                btnTomarFoto.classList.add('btn-outline-success');
+                btnTomarFoto.innerHTML = '<i class="fas fa-sync me-2"></i>Cambiar Foto';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    btnQuitarFoto.addEventListener('click', () => {
+        inputFotoEvidencia.value = '';
+        previewFotoImg.src = '';
+        wrapperPreviewFoto.classList.add('d-none');
+        btnTomarFoto.classList.remove('btn-outline-success');
+        btnTomarFoto.classList.add('btn-outline-primary');
+        btnTomarFoto.innerHTML = '<i class="fas fa-camera me-2"></i>Tomar Foto / Subir Imagen';
     });
 
     document.querySelectorAll('.btn-entregar-modal').forEach(b => {
@@ -289,13 +403,27 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('ent_id_ruta').value = b.dataset.ruta;
             document.getElementById('ent_id_pedido').value = b.dataset.pedido;
             document.getElementById('ent_destinatario').textContent = b.dataset.destinatario;
+            
+            // Resetear canvas de firma
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            firmaRealizada = false;
+            document.getElementById('ent_firma_base64').value = '';
+
+            // Resetear foto evidencia
+            inputFotoEvidencia.value = '';
+            previewFotoImg.src = '';
+            wrapperPreviewFoto.classList.add('d-none');
+            btnTomarFoto.classList.remove('btn-outline-success');
+            btnTomarFoto.classList.add('btn-outline-primary');
+            btnTomarFoto.innerHTML = '<i class="fas fa-camera me-2"></i>Tomar Foto / Subir Imagen';
 
             // Obtener GPS
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(pos => {
                     document.getElementById('ent_lat').value = pos.coords.latitude;
                     document.getElementById('ent_lng').value = pos.coords.longitude;
+                }, err => {
+                    console.warn('GPS no disponible:', err);
                 });
             }
             modalEnt.show();
@@ -311,7 +439,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btnSubmitEntregar').addEventListener('click', () => {
-        document.getElementById('ent_firma_base64').value = canvas.toDataURL();
+        if (firmaRealizada) {
+            document.getElementById('ent_firma_base64').value = canvas.toDataURL('image/png');
+        }
     });
 
     const btnScanCampoQR = document.getElementById('btnScanCampoQR');
