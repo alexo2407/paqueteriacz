@@ -33,6 +33,28 @@
         const ESTADO_DEVUELTO_BODEGA = 15; // Llegada física a bodega → suma stock
 
         /**
+         * Cambia el estado de un pedido registrando movimientos de stock e historial.
+         *
+         * @param int         $idPedido      ID del pedido
+         * @param int         $nuevoEstado   ID del nuevo estado
+         * @param int|string  $actorUserId   ID del usuario responsable (o string si es observaciones)
+         * @param string|null $observaciones Observaciones del cambio
+         * @return bool
+         */
+        public static function cambiarEstado(int $idPedido, int $nuevoEstado, int|string $actorUserId = 1, ?string $observaciones = null): bool
+        {
+            require_once __DIR__ . '/../modelo/pedido.php';
+
+            if (is_string($actorUserId) && $observaciones === null) {
+                $observaciones = $actorUserId;
+                $actorUserId = 1;
+            }
+
+            $userId = is_numeric($actorUserId) ? (int)$actorUserId : 1;
+            return PedidosModel::cambiarEstado($idPedido, $nuevoEstado, $observaciones, $userId);
+        }
+
+        /**
          * Aplica movimientos de stock según el nuevo estado del pedido.
          * Debe llamarse dentro de la transacción del método que cambia estado.
          *
