@@ -15,6 +15,10 @@ class BulkParser
     /** Columnas reconocidas (normalizadas a minúsculas) */
     const KNOWN_COLS = ['id_pedido', 'numero_orden', 'comentario', 'estado', 'id_estado', 'motivo', 'fecha_entrega', 'fecha_liquidacion', 'numero_traking'];
 
+    /** Columnas para la carga masiva de code_city (HL Express) */
+    const KNOWN_COLS_HL = ['id_pedido', 'numero_orden', 'code_city'];
+
+
     /**
      * Punto de entrada principal.
      *
@@ -227,6 +231,30 @@ class BulkParser
 
         if (!$hasComentario && !$hasEstado && !$hasTraking) {
             return 'El archivo debe tener al menos una columna para actualizar: comentario, estado, id_estado o numero_traking.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Verifica que el archivo de carga masiva HL Express tenga las columnas requeridas:
+     *   - id_pedido o numero_orden (para identificar el pedido)
+     *   - code_city (el código de ciudad a asignar)
+     *
+     * @param string[] $headers
+     * @return string|null Mensaje de error, o null si es válido
+     */
+    public static function validateHeadersHL(array $headers): ?string
+    {
+        $hasId    = in_array('id_pedido',    $headers, true);
+        $hasOrden = in_array('numero_orden', $headers, true);
+
+        if (!$hasId && !$hasOrden) {
+            return 'El archivo debe tener al menos una columna de identificación: id_pedido o numero_orden.';
+        }
+
+        if (!in_array('code_city', $headers, true)) {
+            return 'El archivo debe tener la columna: code_city (Código de Ciudad para HL Express).';
         }
 
         return null;

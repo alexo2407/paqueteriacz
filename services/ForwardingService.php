@@ -57,6 +57,31 @@ class ForwardingService
         $resultados = [];
 
         foreach ($reglas as $regla) {
+            // Skip limpio: HL Express requiere code_city para crear el envío.
+            // Si todavía no está asignado, se difiere sin registrar error en el log.
+            if (($regla['slug'] ?? '') === 'hlexpress' && empty($pedido['code_city'])) {
+                error_log("ForwardingService: pedido {$idPedido} diferido para hlexpress (sin code_city).");
+                $resultados[] = [
+                    'provider' => 'hlexpress',
+                    'success'  => false,
+                    'skipped'  => true,
+                    'message'  => 'Forwarding diferido: se enviará cuando el proveedor asigne el código de ciudad (code_city).',
+                ];
+                continue;
+            }
+
+            // Evitar doble envío: si ya existe un log exitoso para este pedido+regla, omitir.
+            if (ForwardingModel::yaFueEnviadoExitosamente((int)$idPedido, (int)$regla['id'])) {
+                error_log("ForwardingService: pedido {$idPedido} ya fue enviado exitosamente a {$regla['slug']} (regla {$regla['id']}). Omitido.");
+                $resultados[] = [
+                    'provider' => $regla['slug'],
+                    'success'  => true,
+                    'skipped'  => true,
+                    'message'  => 'Forwarding omitido: el pedido ya fue enviado exitosamente anteriormente.',
+                ];
+                continue;
+            }
+
             $resultado = self::ejecutarForwarding($pedido, $regla, $fromQueue);
             $resultados[] = $resultado;
         }

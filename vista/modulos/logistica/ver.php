@@ -24,6 +24,29 @@ require_once "modelo/forwarding.php";
 $forwardingHL = ForwardingModel::obtenerLogForwardingExitoso($pedido['id'], 'hlexpress');
 $esHLExpress = ($forwardingHL !== null);
 
+// Detectar si el último intento de forwarding a HL Express falló (para mostrar botón de reintento)
+$hlUltimoLogFallido = null;
+if (!$esHLExpress) {
+    // Solo mostrar reintento si hay al menos una regla HL activa para el cliente del pedido
+    try {
+        $dbVer = (new Conexion())->conectar();
+        $stmtUlt = $dbVer->prepare("
+            SELECT fl.status, fl.error_message, fl.created_at
+            FROM forwarding_log fl
+            INNER JOIN forwarding_rules fr ON fr.id = fl.id_rule
+            INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
+            WHERE fl.id_pedido = :pid AND fp.slug = 'hlexpress'
+            ORDER BY fl.created_at DESC
+            LIMIT 1
+        ");
+        $stmtUlt->execute([':pid' => (int)$pedido['id']]);
+        $lastLog = $stmtUlt->fetch(PDO::FETCH_ASSOC);
+        if ($lastLog && $lastLog['status'] !== 'success') {
+            $hlUltimoLogFallido = $lastLog;
+        }
+    } catch (Exception $eVer) { /* silently */ }
+}
+
 // Crear un mapa de ID => Nombre para registros antiguos
 $mapaEstados = [];
 foreach ($estadosDisponibles as $e) {
@@ -59,6 +82,8 @@ $estadoColores = [
     'LIQUIDADO'             => CLR_COMPLETADO, // #14 cierre contable
     'INCIDENCIA'            => CLR_CRITICO,    // #16 Incidencia
     'CANCELADO'             => CLR_FALLO,      // #17 Cancelado
+    // Estado especial de cliente — Correo postal (#18)
+    'CORREO'                => CLR_LOGISTICA,  // #18 Correo — despachado por correo postal
     'DOMICILIO'             => CLR_EXCEPCION,
     'PENDIENTE'             => CLR_EXCEPCION,
     'EN_ESPERA'             => CLR_GRIS,
@@ -146,6 +171,15 @@ include("vista/includes/header.php");
                     <i class="bi bi-truck me-1 text-warning"></i> HL Express
                 </span>
             <?php endif; ?>
+
+            <?php if ($hlUltimoLogFallido && (isCliente() || isSuperAdmin())): ?>
+                <button type="button" class="btn btn-danger align-self-center" id="btnReintentarHL"
+                        onclick="reintentarForwardingHL()"
+                        title="Último envío a HL Express falló: <?= htmlspecialchars($hlUltimoLogFallido['error_message'] ?? 'Error desconocido') ?>">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Reintentar HL Express
+                </button>
+            <?php endif; ?>
+
 
            <?php if ($hasCoords): ?>
                <button type="button" class="btn btn-success align-self-center" data-bs-toggle="modal" data-bs-target="#mapaModal">
@@ -1501,6 +1535,47 @@ function cargarNovedadesHLExpress() {
     animation: spin 1s linear infinite;
 }
 </style>
+<?php endif; ?>
+
+<?php if ($hlUltimoLogFallido && (isCliente() || isSuperAdmin())): ?>
+<script>
+function reintentarForwardingHL() {
+    const btn = document.getElementById('btnReintentarHL');
+    if (!btn) return;
+
+    if (!confirm('¿Deseas reintentar el envío de este pedido a HL Express?\n\nEsto volverá a intentar crear la guía con los datos actuales del pedido.')) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Reintentando...';
+
+    fetch('<?= RUTA_URL ?>logistica/reintentarHL', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_pedido: <?= (int)$pedido['id'] ?> })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.ok) {
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> ¡Enviado!';
+            btn.classList.remove('btn-danger');
+            btn.classList.add('btn-success');
+            setTimeout(() => window.location.reload(), 1200);
+        } else {
+            const msg = data.error || 'Error al reintentar.';
+            alert('❌ ' + msg);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Reintentar HL Express';
+        }
+    })
+    .catch(() => {
+        alert('Error de red al reintentar.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Reintentar HL Express';
+    });
+}
+</script>
 <?php endif; ?>
 
 <?php include("vista/includes/footer.php"); ?>

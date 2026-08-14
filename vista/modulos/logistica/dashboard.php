@@ -56,17 +56,35 @@ try {
         $stmtHl->execute();
         $tieneHLExpress = (bool)$stmtHl->fetchColumn();
     } else {
-        // Solo mostrar si el usuario tiene una regla activa con HL Express
+        // Mostrar si el usuario tiene regla propia HL Express (caso: usuario es cliente/empresa)
+        // O si como proveedor de mensajería atiende pedidos de clientes que sí tienen regla HL Express.
         $stmtHl = $dbTmp->prepare("
-            SELECT COUNT(*)
-            FROM forwarding_rules r
-            INNER JOIN forwarding_providers p ON p.id = r.id_provider
-            WHERE p.slug = 'hlexpress'
-              AND p.activo = 1
-              AND r.activo = 1
-              AND r.id_cliente = :id_cliente
+            SELECT COUNT(*) FROM (
+                -- Caso 1: el usuario mismo es el cliente con regla HL Express
+                SELECT 1
+                FROM forwarding_rules r
+                INNER JOIN forwarding_providers p ON p.id = r.id_provider
+                WHERE p.slug = 'hlexpress'
+                  AND p.activo = 1
+                  AND r.activo = 1
+                  AND r.id_cliente = :id_usuario1
+
+                UNION
+
+                -- Caso 2: el usuario es proveedor de mensajería que atiende
+                --         pedidos de un cliente que tiene regla HL Express activa
+                SELECT 1
+                FROM pedidos ped
+                INNER JOIN forwarding_rules r2 ON r2.id_cliente = ped.id_cliente
+                INNER JOIN forwarding_providers p2 ON p2.id = r2.id_provider
+                WHERE p2.slug = 'hlexpress'
+                  AND p2.activo = 1
+                  AND r2.activo = 1
+                  AND ped.id_proveedor = :id_usuario2
+                LIMIT 1
+            ) sub
         ");
-        $stmtHl->execute([':id_cliente' => (int)$userId]);
+        $stmtHl->execute([':id_usuario1' => (int)$userId, ':id_usuario2' => (int)$userId]);
         $tieneHLExpress = (bool)$stmtHl->fetchColumn();
     }
 
@@ -536,6 +554,13 @@ include "vista/includes/header.php";
                                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
                                     </button>
                                 </div>
+                                <?php if ($tieneHLExpress): ?>
+                                <div class="col-sm-3 col-md-3">
+                                    <button type="button" class="btn btn-outline-warning btn-sm w-100" onclick="abrirModalBulkHL()" title="Cargar códigos de ciudad para HL Express">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Code City (HL)
+                                    </button>
+                                </div>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
 
@@ -834,6 +859,13 @@ include "vista/includes/header.php";
                                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
                                     </button>
                                 </div>
+                                <?php if ($tieneHLExpress): ?>
+                                <div class="col-sm-3 col-md-3">
+                                    <button type="button" class="btn btn-outline-warning btn-sm w-100" onclick="abrirModalBulkHL()" title="Cargar códigos de ciudad para HL Express">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Code City (HL)
+                                    </button>
+                                </div>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
 
@@ -1901,6 +1933,349 @@ include "vista/includes/header.php";
         })();
     </script>
 <?php endif; ?>
+
+<?php if ($tieneHLExpress): ?>
+    <!-- ===== MODAL: CARGA MASIVA CODE_CITY HL EXPRESS ===== -->
+    <div class="modal fade" id="modalBulkHL" tabindex="-1" aria-labelledby="modalBulkHLLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+
+                <div class="modal-header" style="background: linear-gradient(135deg,#ff8d33,#e65c00); color:#fff;">
+                    <h5 class="modal-title" id="modalBulkHLLabel">
+                        <i class="bi bi-file-earmark-spreadsheet me-2"></i>Carga Masiva de C&oacute;digo de Ciudad &mdash; HL Express
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Indicador de pasos -->
+                    <div class="d-flex align-items-center mb-4" id="hlStepsIndicator">
+                        <span class="badge rounded-pill bg-warning text-dark me-2" id="hlStep1Badge">1</span>
+                        <span class="fw-semibold me-3" id="hlStep1Label">Subir archivo</span>
+                        <div class="flex-grow-1 border-top mx-2"></div>
+                        <span class="badge rounded-pill bg-secondary me-2" id="hlStep2Badge">2</span>
+                        <span class="text-muted me-3" id="hlStep2Label">Vista previa</span>
+                        <div class="flex-grow-1 border-top mx-2"></div>
+                        <span class="badge rounded-pill bg-secondary me-2" id="hlStep3Badge">3</span>
+                        <span class="text-muted" id="hlStep3Label">Confirmado</span>
+                    </div>
+
+                    <!-- PASO 1: Subir archivo -->
+                    <div id="hlPaso1">
+                        <div class="alert alert-warning">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <strong>&iquest;Para qu&eacute; sirve esto?</strong> Sube un archivo Excel/CSV con los <strong>n&uacute;meros de orden</strong> y el <strong>c&oacute;digo de ciudad</strong> (<code>code_city</code>) de cada pedido. Al confirmar, se actualizar&aacute;n los pedidos y se disparar&aacute; autom&aacute;ticamente el env&iacute;o a HL Express en los que a&uacute;n no hayan sido procesados.
+                        </div>
+
+                        <!-- Plantilla descargable -->
+                        <div class="mb-3">
+                            <p class="fw-bold mb-1"><i class="bi bi-download me-1"></i>Descargar plantilla de ejemplo:</p>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="descargarPlantillaHL()">
+                                <i class="bi bi-file-earmark-text"></i> Plantilla code_city.csv
+                            </button>
+                            <small class="text-muted d-block mt-1">Columnas: <code>numero_orden</code>, <code>code_city</code></small>
+                        </div>
+
+                        <!-- Plantilla con pedidos sin code_city -->
+                        <div class="mb-3 p-3 border rounded bg-light">
+                            <p class="fw-bold mb-1 text-success">
+                                <i class="bi bi-table me-1"></i>Descargar mis pedidos <strong>sin code_city</strong> como plantilla:
+                            </p>
+                            <p class="small text-muted mb-2">
+                                Descarga un CSV con los pedidos que a&uacute;n <strong>no tienen</strong> c&oacute;digo de ciudad asignado, listos para completar.
+                            </p>
+                            <button type="button" class="btn btn-success btn-sm" onclick="descargarPedidosSinCodeCity()">
+                                <i class="bi bi-cloud-download me-1"></i> Descargar pedidos sin code_city
+                            </button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="hlFileInput" class="form-label fw-bold">Seleccionar archivo (.csv o .xlsx)</label>
+                            <input type="file" class="form-control" id="hlFileInput" accept=".csv,.xlsx,.xls">
+                            <div class="form-text">M&aacute;ximo 10,000 filas. Columnas requeridas: <code>numero_orden</code> o <code>id_pedido</code>, y <code>code_city</code>.</div>
+                        </div>
+                        <div id="hlUploadError" class="alert alert-danger d-none"></div>
+                    </div>
+
+                    <!-- PASO 2: Vista previa -->
+                    <div id="hlPaso2" class="d-none">
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#f0f0f0">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold text-dark" id="hlTotalCount">0</div><small class="text-secondary">Total</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#d6f0e0">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold" style="color:#1a6e3c" id="hlValidCount">0</div><small style="color:#1a6e3c">V&aacute;lidas</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#fadadd">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold" style="color:#8b1a2a" id="hlErrorCount">0</div><small style="color:#8b1a2a">Errores</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0" style="background:#fff4cc">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold" style="color:#7a5c00" id="hlWarnCount">0</div><small style="color:#7a5c00">Advertencias</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="hlErrorList" class="mb-3"></div>
+                        <div id="hlWarnList" class="mb-3"></div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover" id="hlPreviewTable">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>#L&iacute;nea</th>
+                                        <th># Orden</th>
+                                        <th>Destinatario</th>
+                                        <th>Code City Actual</th>
+                                        <th>Code City Nuevo</th>
+                                        <th>&iquest;Ya enviado a HL?</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hlPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PASO 3: Resultado -->
+                    <div id="hlPaso3" class="d-none">
+                        <div id="hlResultContent"></div>
+                    </div>
+
+                </div><!-- /modal-body -->
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-warning" id="hlBtnPreview" onclick="enviarPreviewHL()">
+                        <i class="bi bi-eye"></i> Vista previa
+                    </button>
+                    <button type="button" class="btn btn-success d-none" id="hlBtnConfirmar" onclick="confirmarBulkHL()" disabled>
+                        <i class="bi bi-check-circle"></i> Confirmar y aplicar
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            let _hlJobId = null;
+
+            // ── Plantilla descargable ──────────────────────────────────────────
+            window.descargarPlantillaHL = function() {
+                const contenido = [
+                    'numero_orden,code_city',
+                    '280001234,100075918',
+                    '280001235,100075920',
+                    '280001236,110016272',
+                ].join('\r\n');
+                const blob = new Blob(['\uFEFF' + contenido], { type: 'text/csv;charset=utf-8;' });
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href = url; a.download = 'plantilla_code_city_hl.csv';
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+            };
+
+            // ── Descargar pedidos sin code_city ───────────────────────────────
+            window.descargarPedidosSinCodeCity = function() {
+                window.location.href = '<?= RUTA_URL ?>logistica/plantilla_csv_hl_sin_code_city';
+            };
+
+            // ── Abrir modal ───────────────────────────────────────────────────
+            window.abrirModalBulkHL = function() {
+                _hlJobId = null;
+                document.getElementById('hlPaso1').classList.remove('d-none');
+                document.getElementById('hlPaso2').classList.add('d-none');
+                document.getElementById('hlPaso3').classList.add('d-none');
+                document.getElementById('hlBtnPreview').classList.remove('d-none');
+                document.getElementById('hlBtnConfirmar').classList.add('d-none');
+                document.getElementById('hlFileInput').value = '';
+                document.getElementById('hlUploadError').classList.add('d-none');
+                actualizarPasoHL(1);
+                new bootstrap.Modal(document.getElementById('modalBulkHL')).show();
+            };
+
+            // ── Enviar archivo para preview ───────────────────────────────────
+            window.enviarPreviewHL = function() {
+                const fileInput = document.getElementById('hlFileInput');
+                const errDiv    = document.getElementById('hlUploadError');
+                errDiv.classList.add('d-none');
+
+                if (!fileInput.files.length) {
+                    errDiv.textContent = 'Selecciona un archivo primero.';
+                    errDiv.classList.remove('d-none');
+                    return;
+                }
+
+                const btn = document.getElementById('hlBtnPreview');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+
+                const fd = new FormData();
+                fd.append('archivo', fileInput.files[0]);
+
+                fetch('<?= RUTA_URL ?>logistica/bulk/hl-preview', { method: 'POST', body: fd })
+                    .then(r => r.json())
+                    .then(data => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
+                        if (!data.ok) {
+                            errDiv.textContent = data.error || 'Error al procesar el archivo.';
+                            errDiv.classList.remove('d-none');
+                            return;
+                        }
+                        _hlJobId = data.job_id;
+                        renderPreviewHL(data);
+                    })
+                    .catch(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-eye"></i> Vista previa';
+                        errDiv.textContent = 'Error de red. Intenta de nuevo.';
+                        errDiv.classList.remove('d-none');
+                    });
+            };
+
+            // ── Renderizar vista previa ───────────────────────────────────────
+            function renderPreviewHL(data) {
+                const s = data.summary || {};
+                document.getElementById('hlTotalCount').textContent = s.total || 0;
+                document.getElementById('hlValidCount').textContent = s.validas || 0;
+                document.getElementById('hlErrorCount').textContent = s.errores || 0;
+                document.getElementById('hlWarnCount').textContent  = s.advertencias || 0;
+
+                const errList  = document.getElementById('hlErrorList');
+                const warnList = document.getElementById('hlWarnList');
+                errList.innerHTML  = '';
+                warnList.innerHTML = '';
+
+                if (data.errores && data.errores.length) {
+                    errList.innerHTML = '<div class="alert alert-danger"><strong>Errores (' + data.errores.length + '):</strong><ul class="mb-0 mt-1">' +
+                        data.errores.map(e => '<li>' + escHlHtml(e) + '</li>').join('') + '</ul></div>';
+                }
+                if (data.advertencias && data.advertencias.length) {
+                    warnList.innerHTML = '<div class="alert alert-warning"><strong>Advertencias (' + data.advertencias.length + '):</strong><ul class="mb-0 mt-1">' +
+                        data.advertencias.map(w => '<li>' + escHlHtml(w) + '</li>').join('') + '</ul></div>';
+                }
+
+                const tbody = document.getElementById('hlPreviewBody');
+                tbody.innerHTML = '';
+                (data.preview_rows || []).forEach(row => {
+                    const cambio = row.code_city_actual !== row.code_city_nuevo;
+                    const yaEnv  = row.ya_enviado;
+                    const tr = document.createElement('tr');
+                    if (!cambio) tr.classList.add('table-secondary');
+                    tr.innerHTML =
+                        '<td>' + escHlHtml(row._line) + '</td>' +
+                        '<td><code>' + escHlHtml(row.numero_orden) + '</code></td>' +
+                        '<td>' + escHlHtml(row.destinatario || '—') + '</td>' +
+                        '<td><code class="text-muted">' + escHlHtml(row.code_city_actual || '—') + '</code></td>' +
+                        '<td><code class="text-success fw-bold">' + escHlHtml(row.code_city_nuevo) + '</code></td>' +
+                        '<td>' + (yaEnv
+                            ? '<span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>S&iacute;</span>'
+                            : '<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Pendiente</span>') + '</td>';
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('hlPaso1').classList.add('d-none');
+                document.getElementById('hlPaso2').classList.remove('d-none');
+                document.getElementById('hlBtnPreview').classList.add('d-none');
+
+                const btnConf = document.getElementById('hlBtnConfirmar');
+                btnConf.classList.remove('d-none');
+                btnConf.disabled = (s.errores > 0);
+                if (s.errores > 0) btnConf.title = 'Corrija los errores antes de confirmar.';
+
+                actualizarPasoHL(2);
+            }
+
+            // ── Confirmar y aplicar ───────────────────────────────────────────
+            window.confirmarBulkHL = function() {
+                if (!_hlJobId) return;
+                const btn = document.getElementById('hlBtnConfirmar');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Aplicando...';
+
+                fetch('<?= RUTA_URL ?>logistica/bulk/hl-commit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: _hlJobId })
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
+
+                        document.getElementById('hlPaso2').classList.add('d-none');
+                        document.getElementById('hlBtnConfirmar').classList.add('d-none');
+                        document.getElementById('hlPaso3').classList.remove('d-none');
+                        actualizarPasoHL(3);
+
+                        if (data.ok && data.summary) {
+                            const s = data.summary;
+                            document.getElementById('hlResultContent').innerHTML =
+                                '<div class="alert alert-success">' +
+                                '<h5><i class="bi bi-check-circle-fill me-2"></i>Operaci&oacute;n completada</h5>' +
+                                '<ul class="mb-0">' +
+                                '<li><strong>Total procesadas:</strong> ' + s.total + '</li>' +
+                                '<li><strong>Pedidos actualizados:</strong> <span class="text-success">' + s.actualizados + '</span></li>' +
+                                '<li><strong>Forwarding disparado a HL Express:</strong> <span class="text-primary fw-bold">' + s.forwarding_disparado + '</span></li>' +
+                                '<li><strong>Sin cambios (omitidas):</strong> ' + s.sin_cambios + '</li>' +
+                                (s.fallidos > 0 ? '<li><strong>Fallidas:</strong> <span class="text-danger">' + s.fallidos + '</span></li>' : '') +
+                                '</ul></div>' +
+                                (s.failed_rows && s.failed_rows.length
+                                    ? '<div class="alert alert-warning"><strong>Detalle de fallos:</strong><ul class="mb-0">' +
+                                      s.failed_rows.map(r => '<li>' + escHlHtml(r) + '</li>').join('') + '</ul></div>'
+                                    : '');
+                        } else {
+                            document.getElementById('hlResultContent').innerHTML =
+                                '<div class="alert alert-danger"><strong>Error:</strong> ' + escHlHtml(data.error || 'Error desconocido') + '</div>';
+                        }
+                    })
+                    .catch(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-check-circle"></i> Confirmar y aplicar';
+                        document.getElementById('hlResultContent').innerHTML =
+                            '<div class="alert alert-danger">Error de red al aplicar los cambios.</div>';
+                        document.getElementById('hlPaso2').classList.add('d-none');
+                        document.getElementById('hlPaso3').classList.remove('d-none');
+                    });
+            };
+
+            // ── Indicador de pasos ────────────────────────────────────────────
+            function actualizarPasoHL(paso) {
+                [1, 2, 3].forEach(n => {
+                    const badge = document.getElementById('hlStep' + n + 'Badge');
+                    const label = document.getElementById('hlStep' + n + 'Label');
+                    if (n < paso)   { badge.className = 'badge rounded-pill bg-success me-2';           label.className = 'text-muted me-3'; }
+                    if (n === paso) { badge.className = 'badge rounded-pill bg-warning text-dark me-2'; label.className = 'fw-semibold me-3'; }
+                    if (n > paso)   { badge.className = 'badge rounded-pill bg-secondary me-2';         label.className = 'text-muted'; }
+                });
+            }
+
+            function escHlHtml(str) {
+                return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+        })();
+    </script>
+<?php endif; ?>
+
+
 
 <?php if ($tieneHLExpress): ?>
     <!-- ════════════════════════════════════════════════════════════════════

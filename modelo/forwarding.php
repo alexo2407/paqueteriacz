@@ -347,9 +347,39 @@ class ForwardingModel
         }
     }
 
+    /**
+     * Verificar si un pedido ya fue enviado exitosamente a un proveedor para una regla específica.
+     * Usado para evitar reenvíos duplicados al disparar el forwarding diferido.
+     *
+     * @param int $idPedido
+     * @param int $idRule
+     * @return bool True si ya existe un registro status='success' para este pedido+regla
+     */
+    public static function yaFueEnviadoExitosamente(int $idPedido, int $idRule): bool
+    {
+        try {
+            $db   = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT COUNT(*) FROM forwarding_log
+                WHERE id_pedido = :id_pedido
+                  AND id_rule   = :id_rule
+                  AND status    = 'success'
+            ");
+            $stmt->execute([
+                ':id_pedido' => $idPedido,
+                ':id_rule'   => $idRule,
+            ]);
+            return (int)$stmt->fetchColumn() > 0;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::yaFueEnviadoExitosamente error: " . $e->getMessage());
+            return false; // En caso de error, no bloquear el reenvío
+        }
+    }
+
     // =========================================================================
     // LOGS
     // =========================================================================
+
 
     /**
      * Registrar un intento de forwarding.

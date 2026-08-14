@@ -1132,8 +1132,37 @@ class PedidosController
                 }
             }
 
+            // Leer code_city ANTES de actualizar para detectar si fue recién asignado
+            $codeCityAntes = '';
+            try {
+                require_once __DIR__ . '/../modelo/pedido.php';
+                $pedidoAntes   = PedidosModel::obtenerPedido((int)$data['id_pedido']);
+                $codeCityAntes = trim($pedidoAntes['code_city'] ?? '');
+            } catch (Exception $e) {
+                // Silently continue — no bloquear la edición por esto
+            }
+
             // Llama al modelo para actualizar el pedido
             $resultado = PedidosModel::actualizarPedido($data);
+
+            // TRIGGER FORWARDING DIFERIDO: si code_city pasó de vacío a lleno, disparar el envío a HL Express
+            if ($resultado && defined('FORWARDING_ENABLED') && FORWARDING_ENABLED) {
+                $codeCityNuevo = trim($data['code_city'] ?? '');
+                if (!empty($codeCityNuevo) && empty($codeCityAntes)) {
+                    try {
+                        require_once __DIR__ . '/../services/ForwardingService.php';
+                        require_once __DIR__ . '/../modelo/forwarding.php';
+                        $fwdClienteId = (int)($pedidoAntes['id_cliente'] ?? 0);
+                        if ($fwdClienteId > 0) {
+                            error_log("guardarEdicion: disparando forwarding diferido (code_city asignado) para pedido {$data['id_pedido']}.");
+                            ForwardingService::evaluarYReenviar((int)$data['id_pedido'], $fwdClienteId);
+                        }
+                    } catch (Exception $fwdEx) {
+                        // Solo loguear — la edición ya fue guardada correctamente
+                        error_log("Forwarding diferido (code_city) pedido {$data['id_pedido']}: " . $fwdEx->getMessage());
+                    }
+                }
+            }
 
             if ($resultado) {
                 $resp = ['success' => true, 'message' => 'Pedido actualizado correctamente.'];

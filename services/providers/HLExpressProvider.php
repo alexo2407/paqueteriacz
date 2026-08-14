@@ -103,19 +103,14 @@ class HLExpressProvider extends BaseProvider
             }
         }
 
-        // city_dane_code: código de ciudad requerido por HL Express.
-        // Prioridad: code_city → postalCode → codigo_postal
-        // Si ninguno está disponible se lanza excepción — NO se asume ningún valor por defecto.
-        $cityCode = !empty($pedido['code_city'])
-            ? $pedido['code_city']
-            : (!empty($pedido['postalCode'])
-                ? $pedido['postalCode']
-                : ($pedido['codigo_postal'] ?? ''));
+        // city_dane_code: únicamente se usa code_city.
+        // Los códigos postales (postalCode / codigo_postal) NO aplican para HL Express.
+        $cityCode = trim((string)($pedido['code_city'] ?? ''));
 
-        if (empty($cityCode)) {
+        if (empty($cityCode) || $cityCode === '0') {
             throw new Exception(
-                "HL Express: el pedido #{$pedido['numero_orden']} no tiene código de ciudad (code_city / codigo_postal). " .
-                "Asigna un código de ciudad antes de generar la guía."
+                "HL Express: el pedido #{$pedido['numero_orden']} no tiene code_city asignado. " .
+                "El proveedor de mensajería debe asignar el código de ciudad antes de generar la guía."
             );
         }
 
@@ -134,13 +129,31 @@ class HLExpressProvider extends BaseProvider
         $items = [];
         foreach ($productos as $p) {
             $cantidad = max(0, (int)($p['cantidad'] ?? 0) - (int)($p['cantidad_devuelta'] ?? 0));
-            if ($cantidad <= 0) continue;
+            if ($cantidad <= 0) continue; // producto sin stock o totalmente devuelto — se omite
+
+            $sku = trim((string)($p['sku'] ?? ''));
+            if (empty($sku)) {
+                // Sin SKU no se puede crear la guía — el pedido queda bloqueado
+                // hasta que el producto tenga SKU asignado.
+                throw new Exception(
+                    "HL Express: el producto \"{$p['producto_nombre']}\" (id={$p['id_producto']}) " .
+                    "del pedido #{$pedido['numero_orden']} no tiene SKU asignado. " .
+                    "Asigna el SKU del producto antes de generar la guía."
+                );
+            }
 
             $items[] = [
-                'sku'      => (string)($p['sku'] ?? $p['id_producto'] ?? ''),
+                'sku'      => $sku,
                 'nombre'   => $p['producto_nombre'] ?? 'Producto',
                 'cantidad' => $cantidad,
             ];
+        }
+
+        // Si tras filtrar cantidad=0 no queda ningún producto válido, bloquear el envío.
+        if (empty($items)) {
+            throw new Exception(
+                "HL Express: el pedido #{$pedido['numero_orden']} no tiene productos con stock disponible para enviar."
+            );
         }
 
         return [

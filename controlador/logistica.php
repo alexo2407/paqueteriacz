@@ -712,7 +712,479 @@ class LogisticaController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Exportar plantilla CSV pre-rellena con pedidos filtrados (para bulk update)
+    // Bulk HL Express — Preview: validar archivo CSV/XLSX de code_city
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function bulkHLPreview(): void
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente(); // ROL_CLIENTE = proveedor logístico
+
+        if (!$isProveedor && !isSuperAdmin()) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
+            exit;
+        }
+
+        if (empty($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'No se recibió ningún archivo.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../utils/BulkParser.php';
+        require_once __DIR__ . '/../modelo/conexion.php';
+        require_once __DIR__ . '/../modelo/forwarding.php';
+
+        try {
+            $parsed = BulkParser::parseFile($_FILES['archivo']);
+        } catch (RuntimeException $e) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+            exit;
+        }
+
+        // Validar encabezados específicos para HL Express
+        $headerError = BulkParser::validateHeadersHL($parsed['headers']);
+        if ($headerError) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => $headerError]);
+            exit;
+        }
+
+        if (empty($parsed['rows'])) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'El archivo no contiene filas de datos.']);
+            exit;
+        }
+
+        $db   = (new Conexion())->conectar();
+        $rows = $parsed['rows'];
+
+        // Recopilar identificadores
+        $idPedidos = [];
+        $numOrden  = [];
+        foreach ($rows as $row) {
+            $ip = isset($row['id_pedido'])    && $row['id_pedido']    !== null ? (int)$row['id_pedido']    : null;
+            $no = isset($row['numero_orden']) && $row['numero_orden'] !== null ? (string)$row['numero_orden'] : null;
+            if ($ip) $idPedidos[] = $ip;
+            if ($no) $numOrden[]  = $no;
+        }
+
+        // Consulta batch
+        $pedidosById    = [];
+        $pedidosByOrden = [];
+
+        if (!empty($idPedidos)) {
+            $ph   = implode(',', array_fill(0, count($idPedidos), '?'));
+            $stmt = $db->prepare("SELECT id, numero_orden, destinatario, id_proveedor, id_cliente, code_city FROM pedidos WHERE id IN ($ph)");
+            $stmt->execute($idPedidos);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                $pedidosById[(int)$p['id']] = $p;
+            }
+        }
+
+        if (!empty($numOrden)) {
+            $ph     = implode(',', array_fill(0, count($numOrden), '?'));
+            $sql    = "SELECT id, numero_orden, destinatario, id_proveedor, id_cliente, code_city FROM pedidos WHERE CAST(numero_orden AS CHAR) IN ($ph)";
+            $params = $numOrden;
+            if ($isProveedor) {
+                $sql    .= ' AND id_proveedor = ?';
+                $params[] = $userId;
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                $key = (string)$p['numero_orden'];
+                if (isset($pedidosByOrden[$key])) {
+                    $pedidosByOrden[$key] = 'AMBIGUO';
+                } else {
+                    $pedidosByOrden[$key] = $p;
+                }
+            }
+        }
+
+        // Obtener reglas HL Express activas para este usuario (para saber si el forwarding aplica)
+        // Solo necesitamos saber si tienen regla, no ejecutarla aquí.
+        $tieneReglaHL = false;
+        try {
+            $stmtHL = $db->prepare("
+                SELECT COUNT(*) FROM forwarding_rules r
+                INNER JOIN forwarding_providers p ON p.id = r.id_provider
+                WHERE p.slug = 'hlexpress' AND p.activo = 1 AND r.activo = 1
+                  AND r.id_cliente = :uid
+            ");
+            $stmtHL->execute([':uid' => (int)$userId]);
+            $tieneReglaHL = (int)$stmtHL->fetchColumn() > 0;
+        } catch (Exception $e) {
+            // Silently continue
+        }
+
+        // Validar cada fila y construir preview
+        $rowsValidadas = [];
+        $errores       = [];
+        $advertencias  = [];
+
+        foreach ($rows as $row) {
+            $line     = $row['_line'] ?? '?';
+            $ip       = isset($row['id_pedido'])    && $row['id_pedido']    !== null ? (int)$row['id_pedido']    : null;
+            $no       = isset($row['numero_orden']) && $row['numero_orden'] !== null ? (string)$row['numero_orden'] : null;
+            $codeCity = isset($row['code_city'])    && $row['code_city']    !== null ? trim((string)$row['code_city']) : null;
+
+            if ($ip === null && $no === null) {
+                $errores[] = "Línea {$line}: Falta id_pedido y numero_orden.";
+                continue;
+            }
+
+            if (empty($codeCity)) {
+                $errores[] = "Línea {$line}: El campo code_city está vacío.";
+                continue;
+            }
+
+            // Resolver pedido
+            $pedido = null;
+            if ($ip !== null) {
+                $pedido = $pedidosById[$ip] ?? null;
+                if ($pedido === null) {
+                    $errores[] = "Línea {$line}: id_pedido {$ip} no encontrado.";
+                    continue;
+                }
+            } else {
+                $match = $pedidosByOrden[$no] ?? null;
+                if ($match === null) {
+                    $errores[] = "Línea {$line}: numero_orden {$no} no encontrado.";
+                    continue;
+                }
+                if ($match === 'AMBIGUO') {
+                    $errores[] = "Línea {$line}: numero_orden {$no} pertenece a más de un pedido — use id_pedido.";
+                    continue;
+                }
+                $pedido = $match;
+            }
+
+            // Verificar propiedad si es proveedor
+            if ($isProveedor && (int)$pedido['id_proveedor'] !== (int)$userId) {
+                $errores[] = "Línea {$line}: El pedido {$pedido['id']} no pertenece a su cuenta.";
+                continue;
+            }
+
+            $codeCityActual = trim($pedido['code_city'] ?? '');
+            // Normalizar: '0' se trata igual que vacío (valor por defecto en BD)
+            if ($codeCityActual === '0') $codeCityActual = '';
+
+            // Advertencia si no hubo cambio
+            if ($codeCity === $codeCityActual) {
+                $advertencias[] = "Línea {$line}: Pedido {$pedido['numero_orden']} ya tiene ese mismo code_city ({$codeCity}). Sin cambio.";
+            }
+
+            // ¿Ya fue enviado exitosamente a HL Express?
+            // Buscamos cualquier log exitoso del pedido con proveedor hlexpress
+            $yaEnviado = false;
+            try {
+                $stmtLog = $db->prepare("
+                    SELECT COUNT(*) FROM forwarding_log fl
+                    INNER JOIN forwarding_providers fp ON fp.id = fl.id_provider
+                    WHERE fl.id_pedido = :pid AND fp.slug = 'hlexpress' AND fl.status = 'success'
+                ");
+                $stmtLog->execute([':pid' => (int)$pedido['id']]);
+                $yaEnviado = (int)$stmtLog->fetchColumn() > 0;
+            } catch (Exception $e) { /* silently */ }
+
+            $rowsValidadas[] = [
+                '_line'            => $line,
+                'id_pedido'        => (int)$pedido['id'],
+                'numero_orden'     => (string)$pedido['numero_orden'],
+                'destinatario'     => $pedido['destinatario'] ?? '',
+                'code_city_actual' => $codeCityActual,
+                'code_city_nuevo'  => $codeCity,
+                'ya_enviado'       => $yaEnviado,
+                'forwarding_aplica'=> $tieneReglaHL,
+            ];
+        }
+
+        $totalValidas = count($rowsValidadas);
+        $sinCambio    = count(array_filter($rowsValidadas, fn($r) => $r['code_city_actual'] === $r['code_city_nuevo']));
+        $conCambio    = $totalValidas - $sinCambio;
+
+        // Guardar job en sesión
+        $jobId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+        $_SESSION['bulk_hl_job_' . $jobId] = [
+            'rows'    => $rowsValidadas,
+            'user_id' => $userId,
+            'archivo' => $_FILES['archivo']['name'] ?? 'bulk_hl',
+            'ts'      => time(),
+        ];
+
+        ob_clean();
+        echo json_encode([
+            'ok'      => true,
+            'job_id'  => $jobId,
+            'summary' => [
+                'total'      => $totalValidas + count($errores),
+                'validas'    => $totalValidas,
+                'errores'    => count($errores),
+                'advertencias' => count($advertencias),
+                'con_cambio' => $conCambio,
+                'sin_cambio' => $sinCambio,
+            ],
+            'errores'      => $errores,
+            'advertencias' => $advertencias,
+            'preview_rows' => array_slice($rowsValidadas, 0, 30),
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bulk HL Express — Commit: aplicar code_city y disparar forwarding
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function bulkHLCommit(): void
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        if (!$isProveedor && !isSuperAdmin()) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $jobId = trim($input['job_id'] ?? '');
+
+        if (empty($jobId) || !isset($_SESSION['bulk_hl_job_' . $jobId])) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Job no encontrado o expirado. Suba el archivo nuevamente.']);
+            exit;
+        }
+
+        $job = $_SESSION['bulk_hl_job_' . $jobId];
+
+        if (time() - ($job['ts'] ?? 0) > 1800) {
+            unset($_SESSION['bulk_hl_job_' . $jobId]);
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'La sesión expiró. Suba el archivo nuevamente.']);
+            exit;
+        }
+
+        if ((int)($job['user_id'] ?? 0) !== (int)$userId) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Job no válido para este usuario.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../modelo/conexion.php';
+        require_once __DIR__ . '/../modelo/pedido.php';
+
+        $db          = (new Conexion())->conectar();
+        $actualizados = 0;
+        $sinCambio    = 0;
+        $fwdDisparado = 0;
+        $fallidos     = 0;
+        $failedRows   = [];
+
+        // Cargar ForwardingService si está disponible
+        $fwdEnabled = defined('FORWARDING_ENABLED') && FORWARDING_ENABLED;
+        if ($fwdEnabled) {
+            $fwdFile = __DIR__ . '/../services/ForwardingService.php';
+            if (file_exists($fwdFile)) {
+                require_once $fwdFile;
+                require_once __DIR__ . '/../modelo/forwarding.php';
+            } else {
+                $fwdEnabled = false;
+            }
+        }
+
+        foreach ($job['rows'] as $row) {
+            $idPedido      = (int)$row['id_pedido'];
+            $codeCityNuevo = $row['code_city_nuevo'];
+            $codeCityAntes = $row['code_city_actual'];
+            $yaEnviado     = $row['ya_enviado'] ?? false;
+            $idCliente     = 0;
+
+            try {
+                // Si no hay cambio real, omitir
+                if ($codeCityNuevo === $codeCityAntes) {
+                    $sinCambio++;
+                    continue;
+                }
+
+                // Actualizar code_city en la BD
+                $stmt = $db->prepare("UPDATE pedidos SET code_city = :code_city WHERE id = :id");
+                $stmt->execute([':code_city' => $codeCityNuevo, ':id' => $idPedido]);
+                $actualizados++;
+
+                // Disparar forwarding si no fue enviado aún y el forwarding está habilitado
+                if ($fwdEnabled && !$yaEnviado) {
+                    // Obtener id_cliente del pedido
+                    $stmtC = $db->prepare("SELECT id_cliente FROM pedidos WHERE id = :id");
+                    $stmtC->execute([':id' => $idPedido]);
+                    $idCliente = (int)($stmtC->fetchColumn() ?: 0);
+
+                    if ($idCliente > 0) {
+                        try {
+                            ForwardingService::evaluarYReenviar($idPedido, $idCliente);
+                            $fwdDisparado++;
+                        } catch (Exception $fwdEx) {
+                            error_log("bulkHLCommit: forwarding falló pedido {$idPedido}: " . $fwdEx->getMessage());
+                            // No cuenta como fallo del bulk, el code_city ya se actualizó
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                $fallidos++;
+                $failedRows[] = "Pedido #{$idPedido} ({$row['numero_orden']}): " . $e->getMessage();
+                error_log("bulkHLCommit error pedido {$idPedido}: " . $e->getMessage());
+            }
+        }
+
+        unset($_SESSION['bulk_hl_job_' . $jobId]);
+
+        ob_clean();
+        echo json_encode([
+            'ok'      => true,
+            'summary' => [
+                'total'           => count($job['rows']),
+                'actualizados'    => $actualizados,
+                'forwarding_disparado' => $fwdDisparado,
+                'sin_cambios'     => $sinCambio,
+                'fallidos'        => $fallidos,
+                'failed_rows'     => $failedRows,
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Reintentar forwarding a HL Express — POST logistica/reintentarHL
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * POST logistica/reintentarHL
+     * Body JSON: { "id_pedido": 1234 }
+     * Vuelve a ejecutar ForwardingService::evaluarYReenviar() para el pedido indicado.
+     * Solo disponible si el pedido aún no fue enviado exitosamente.
+     */
+    public function reintentarForwardingHL(): void
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        if (!$isProveedor && !isSuperAdmin()) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
+            exit;
+        }
+
+        $input    = json_decode(file_get_contents('php://input'), true);
+        $idPedido = (int)($input['id_pedido'] ?? 0);
+
+        if ($idPedido <= 0) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'id_pedido inválido.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../modelo/conexion.php';
+        require_once __DIR__ . '/../modelo/forwarding.php';
+
+        $db = (new Conexion())->conectar();
+
+        // Verificar que el pedido existe y el usuario tiene acceso
+        $stmt = $db->prepare("SELECT id, id_cliente, id_proveedor, numero_orden FROM pedidos WHERE id = :id");
+        $stmt->execute([':id' => $idPedido]);
+        $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$pedido) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => "Pedido #{$idPedido} no encontrado."]);
+            exit;
+        }
+
+        // Verificar propiedad: proveedor solo puede reintentar sus pedidos
+        if ($isProveedor && (int)$pedido['id_proveedor'] !== (int)$userId) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'El pedido no pertenece a su cuenta.']);
+            exit;
+        }
+
+        // Verificar que no haya sido enviado ya exitosamente (cualquier regla HL Express)
+        $stmtChk = $db->prepare("
+            SELECT COUNT(*) FROM forwarding_log fl
+            INNER JOIN forwarding_rules fr ON fr.id = fl.id_rule
+            INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
+            WHERE fl.id_pedido = :pid AND fp.slug = 'hlexpress' AND fl.status = 'success'
+        ");
+        $stmtChk->execute([':pid' => $idPedido]);
+        if ((int)$stmtChk->fetchColumn() > 0) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Este pedido ya fue enviado exitosamente a HL Express. No se requiere reintento.']);
+            exit;
+        }
+
+        // Cargar ForwardingService
+        $fwdFile = __DIR__ . '/../services/ForwardingService.php';
+        if (!file_exists($fwdFile)) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'ForwardingService no disponible en este entorno.']);
+            exit;
+        }
+        require_once $fwdFile;
+
+        try {
+            $resultados = ForwardingService::evaluarYReenviar($idPedido, (int)$pedido['id_cliente']);
+
+            if (empty($resultados)) {
+                ob_clean();
+                echo json_encode(['ok' => false, 'error' => 'No hay reglas de forwarding activas para este pedido.']);
+                exit;
+            }
+
+            // Verificar si algún resultado fue exitoso
+            $alguno_exitoso = false;
+            $mensajes       = [];
+            foreach ($resultados as $r) {
+                if (!empty($r['success']) && empty($r['skipped'])) {
+                    $alguno_exitoso = true;
+                }
+                if (!empty($r['message'])) {
+                    $mensajes[] = $r['message'];
+                }
+            }
+
+            if ($alguno_exitoso) {
+                ob_clean();
+                echo json_encode([
+                    'ok'      => true,
+                    'message' => 'Pedido enviado exitosamente a HL Express.',
+                ], JSON_UNESCAPED_UNICODE);
+            } else {
+                $errMsg = implode(' | ', $mensajes) ?: 'El reintento no fue exitoso.';
+                ob_clean();
+                echo json_encode(['ok' => false, 'error' => $errMsg], JSON_UNESCAPED_UNICODE);
+            }
+        } catch (Exception $e) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     /**
      * GET logistica/plantilla_csv?tab=...&fecha_desde=...&fecha_hasta=...&id_cliente=...&id_estado=...&search=...
@@ -899,6 +1371,96 @@ class LogisticaController {
                 '',                               // <-- fecha_entrega (solo si estado = Reprogramado)
                 '',                               // <-- fecha_liquidacion (solo si estado = Entregado - liquidado)
                 $p['numero_traking']    ?? '',    // <-- número de tracking (dejar vacío para no sobreescribir)
+            ]);
+        }
+
+        fclose($out);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Exportar plantilla CSV de pedidos sin code_city (para bulk HL Express)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * GET logistica/plantilla_csv_hl_sin_code_city
+     * Descarga un CSV con todos los pedidos del usuario que aún no tienen
+     * code_city asignado, listos para completar y subir al modal de carga masiva HL Express.
+     * Columnas: numero_orden, destinatario, code_city (vacío para completar)
+     */
+    public function exportarPlantillaHLSinCodeCity(): void
+    {
+        require_once __DIR__ . '/../modelo/conexion.php';
+        require_once __DIR__ . '/../utils/permissions.php';
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente(); // ROL_CLIENTE = proveedor logístico
+
+        if (!$isProveedor && !isSuperAdmin()) {
+            http_response_code(403);
+            echo 'Sin permiso.';
+            exit;
+        }
+
+        $db = (new Conexion())->conectar();
+
+        // Traer pedidos sin code_city del usuario (como proveedor o como cliente con regla HL)
+        if ($isProveedor) {
+            // Proveedor: pedidos donde él es el mensajero (id_proveedor)
+            $stmt = $db->prepare("
+                SELECT p.numero_orden, p.destinatario, p.code_city
+                FROM pedidos p
+                INNER JOIN forwarding_rules fr ON fr.id_cliente = p.id_cliente
+                INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
+                WHERE p.id_proveedor = :uid
+                  AND fp.slug = 'hlexpress'
+                  AND fp.activo = 1
+                  AND fr.activo = 1
+                  AND (p.code_city IS NULL OR p.code_city = '' OR p.code_city = '0')
+                ORDER BY p.id DESC
+                LIMIT 10000
+            ");
+            $stmt->execute([':uid' => (int)$userId]);
+        } else {
+            // Super admin / cliente con regla: pedidos del cliente
+            $stmt = $db->prepare("
+                SELECT p.numero_orden, p.destinatario, p.code_city
+                FROM pedidos p
+                INNER JOIN forwarding_rules fr ON fr.id_cliente = p.id_cliente
+                INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
+                WHERE p.id_cliente = :uid
+                  AND fp.slug = 'hlexpress'
+                  AND fp.activo = 1
+                  AND fr.activo = 1
+                  AND (p.code_city IS NULL OR p.code_city = '' OR p.code_city = '0')
+                ORDER BY p.id DESC
+                LIMIT 10000
+            ");
+            $stmt->execute([':uid' => (int)$userId]);
+        }
+
+        $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $timestamp = date('Ymd_Hi');
+        $filename  = "pedidos_sin_code_city_{$timestamp}.csv";
+
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: text/csv; charset=utf-8');
+        header("Content-Disposition: attachment; filename=\"{$filename}\"");
+        header('Cache-Control: max-age=0');
+
+        $out = fopen('php://output', 'w');
+        // BOM UTF-8 para que Excel abra correctamente en Windows
+        fputs($out, "\xEF\xBB\xBF");
+
+        // Encabezados
+        fputcsv($out, ['numero_orden', 'destinatario', 'code_city']);
+
+        foreach ($pedidos as $p) {
+            fputcsv($out, [
+                (string)($p['numero_orden'] ?? ''),   // cast a string para que bigint no se trunque
+                $p['destinatario'] ?? '',
+                '',   // <-- código de ciudad a completar
             ]);
         }
 

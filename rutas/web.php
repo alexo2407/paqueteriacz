@@ -850,6 +850,22 @@ if (isset($ruta[0]) && $ruta[0] === 'reset-password' && $_SERVER['REQUEST_METHOD
     exit;
 }
 
+// -----------------------
+// Manejo de usuarios (GET /usuarios/exportar)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'usuarios' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $accion = $ruta[1] ?? '';
+    if ($accion === 'exportar') {
+        require_once __DIR__ . '/../controlador/usuario.php';
+        require_once __DIR__ . '/../modelo/usuario.php';
+        require_once __DIR__ . '/../utils/session.php';
+        start_secure_session();
+        $ctrl = new UsuariosController();
+        $ctrl->exportar();
+        exit;
+    }
+}
+
 // Manejo de acciones sobre usuarios (ej. actualizar)
 if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $accion = isset($ruta[1]) ? $ruta[1] : '';
@@ -1616,6 +1632,22 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] ==
             $ctrl->bulkCommit();
             exit;
         }
+        // Bulk HL Express — carga masiva de code_city
+        if ($sub === 'hl-preview') {
+            $ctrl->bulkHLPreview();
+            exit;
+        }
+        if ($sub === 'hl-commit') {
+            $ctrl->bulkHLCommit();
+            exit;
+        }
+    }
+
+    // Reintentar forwarding a HL Express para un pedido específico
+    if ($accion === 'reintentarHL') {
+        require_once __DIR__ . '/../utils/permissions.php';
+        $ctrl->reintentarForwardingHL();
+        exit;
     }
 }
 
