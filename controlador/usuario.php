@@ -181,6 +181,93 @@ class UsuariosController
      * Procesa el login desde un formulario POST
      */
     /**
+     * GET /usuarios/exportar — Descarga un XLSX con todos los usuarios del sistema.
+     * Solo accesible para Administradores.
+     *
+     * @return void (streamed download)
+     */
+    public function exportar()
+    {
+        if (empty($_SESSION['idUsuario'])) {
+            http_response_code(403);
+            echo 'Debes iniciar sesión.';
+            exit;
+        }
+
+        require_once __DIR__ . '/../utils/authorization.php';
+        require_role(['Administrador']);
+
+        require_once __DIR__ . '/../modelo/usuario.php';
+        $model = new UsuarioModel();
+        $usuarios = $model->mostrarUsuarios();
+
+        // Enriquecer cada usuario con sus roles
+        foreach ($usuarios as &$u) {
+            $rolesData = $model->obtenerRolesDeUsuario((int)$u['id']);
+            $u['roles'] = implode(', ', $rolesData['nombres'] ?? []);
+        }
+        unset($u);
+
+        $nombreArchivo = 'usuarios_export_' . date('Ymd_His') . '.xlsx';
+
+        require_once __DIR__ . '/../vendor/autoload.php';
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Usuarios');
+
+        // --- Cabeceras ---
+        $headers = ['ID', 'Nombre', 'Email', 'Teléfono', 'País', 'Roles', 'Estado', 'Fecha Creación'];
+        $cols    = ['A',  'B',     'C',     'D',         'E',    'F',     'G',      'H'];
+        foreach ($headers as $i => $h) {
+            $sheet->setCellValue($cols[$i] . '1', $h);
+            $sheet->getColumnDimension($cols[$i])->setAutoSize(true);
+        }
+
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '0B4EA2'],   // Azul corporativo PaqueteriaCZ
+            ],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ];
+        $sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
+        $sheet->freezePane('A2');
+
+        // --- Datos ---
+        $row = 2;
+        foreach ($usuarios as $u) {
+            $activo        = isset($u['activo']) ? ($u['activo'] ? 'Activo' : 'Inactivo') : 'Activo';
+            $fechaCreacion = !empty($u['created_at']) ? date('d/m/Y', strtotime($u['created_at'])) : '—';
+            $paisNombre    = $u['pais_nombre'] ?? '—';
+
+            $sheet->setCellValue('A' . $row, $u['id']);
+            $sheet->setCellValue('B' . $row, $u['nombre'] ?? '');
+            $sheet->setCellValue('C' . $row, $u['email'] ?? '');
+            $sheet->setCellValue('D' . $row, $u['telefono'] ?? '');
+            $sheet->setCellValue('E' . $row, $paisNombre);
+            $sheet->setCellValue('F' . $row, $u['roles'] ?? '');
+            $sheet->setCellValue('G' . $row, $activo);
+            $sheet->setCellValue('H' . $row, $fechaCreacion);
+            $row++;
+        }
+
+        // Bordes para toda la tabla
+        if ($row > 2) {
+            $sheet->getStyle('A1:H' . ($row - 1))->getBorders()->getAllBorders()
+                ->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+        }
+
+        // --- Stream ---
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
      * Procesar el login desde el formulario del frontend.
      *
      * - Valida parámetros POST (email, password), verifica credenciales con

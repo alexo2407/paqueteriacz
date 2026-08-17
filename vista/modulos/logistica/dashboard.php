@@ -548,7 +548,7 @@ include "vista/includes/header.php";
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
-                            <?php if (isCliente() || isSuperAdmin()): ?>
+                            <?php if (isCliente() || isProveedor() || isSuperAdmin()): ?>
                                 <div class="col-sm-3 col-md-3">
                                     <button type="button" class="btn btn-warning btn-sm w-100" id="btnAbrirBulk" onclick="abrirModalBulk()">
                                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
@@ -853,7 +853,7 @@ include "vista/includes/header.php";
                                     <i class="bi bi-file-earmark-excel me-1"></i> Descargar Excel
                                 </a>
                             </div>
-                            <?php if (isCliente() || isSuperAdmin()): ?>
+                            <?php if (isCliente() || isProveedor() || isSuperAdmin()): ?>
                                 <div class="col-sm-3 col-md-3">
                                     <button type="button" class="btn btn-warning btn-sm w-100" onclick="abrirModalBulk()">
                                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo

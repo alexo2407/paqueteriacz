@@ -1,4 +1,4 @@
-﻿
+
 <?php include("vista/includes/header.php") ?>
 
 <?php
@@ -186,9 +186,23 @@ $roleColors = [
                         </a>
                     <?php endif; ?>
                 </div>
-                <a href="<?=RUTA_URL?>usuarios/crear" class="btn btn-primary px-4">
-                    <i class="bi bi-plus-circle me-2"></i>Nuevo Usuario
-                </a>
+                <div class="d-flex gap-2">
+                    <?php
+                    $rolesSession = $_SESSION['roles_nombres'] ?? [];
+                    $isAdminExport = in_array(ROL_NOMBRE_ADMIN, $rolesSession, true);
+                    if ($isAdminExport):
+                    ?>
+                    <a href="<?= RUTA_URL ?>usuarios/exportar" 
+                       class="btn btn-success px-4"
+                       id="btnExportarUsuarios"
+                       title="Descargar lista de usuarios en Excel">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Exportar Excel
+                    </a>
+                    <?php endif; ?>
+                    <a href="<?=RUTA_URL?>usuarios/crear" class="btn btn-primary px-4">
+                        <i class="bi bi-plus-circle me-2"></i>Nuevo Usuario
+                    </a>
+                </div>
             </div>
             
             <div class="table-responsive">

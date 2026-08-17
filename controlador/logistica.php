@@ -723,7 +723,7 @@ class LogisticaController {
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $isProveedor = isCliente(); // ROL_CLIENTE = proveedor logístico
 
-        if (!$isProveedor && !isSuperAdmin()) {
+        if (!$isProveedor && !isProveedor() && !isSuperAdmin()) {
             ob_clean();
             echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
             exit;
@@ -780,8 +780,15 @@ class LogisticaController {
 
         if (!empty($idPedidos)) {
             $ph   = implode(',', array_fill(0, count($idPedidos), '?'));
-            $stmt = $db->prepare("SELECT id, numero_orden, destinatario, id_proveedor, id_cliente, code_city FROM pedidos WHERE id IN ($ph)");
-            $stmt->execute($idPedidos);
+            $sql  = "SELECT id, numero_orden, destinatario, id_proveedor, id_cliente, code_city FROM pedidos WHERE id IN ($ph)";
+            $paramsId = $idPedidos;
+            if (!isSuperAdmin()) {
+                $sql .= ' AND (id_proveedor = ? OR id_cliente = ?)';
+                $paramsId[] = $userId;
+                $paramsId[] = $userId;
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($paramsId);
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
                 $pedidosById[(int)$p['id']] = $p;
             }
@@ -791,8 +798,9 @@ class LogisticaController {
             $ph     = implode(',', array_fill(0, count($numOrden), '?'));
             $sql    = "SELECT id, numero_orden, destinatario, id_proveedor, id_cliente, code_city FROM pedidos WHERE CAST(numero_orden AS CHAR) IN ($ph)";
             $params = $numOrden;
-            if ($isProveedor) {
-                $sql    .= ' AND id_proveedor = ?';
+            if (!isSuperAdmin()) {
+                $sql .= ' AND (id_proveedor = ? OR id_cliente = ?)';
+                $params[] = $userId;
                 $params[] = $userId;
             }
             $stmt = $db->prepare($sql);
@@ -865,8 +873,8 @@ class LogisticaController {
                 $pedido = $match;
             }
 
-            // Verificar propiedad si es proveedor
-            if ($isProveedor && (int)$pedido['id_proveedor'] !== (int)$userId) {
+            // Verificar propiedad del pedido si no es superadmin
+            if (!isSuperAdmin() && (int)$pedido['id_proveedor'] !== (int)$userId && (int)$pedido['id_cliente'] !== (int)$userId) {
                 $errores[] = "Línea {$line}: El pedido {$pedido['id']} no pertenece a su cuenta.";
                 continue;
             }
@@ -955,7 +963,7 @@ class LogisticaController {
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $isProveedor = isCliente();
 
-        if (!$isProveedor && !isSuperAdmin()) {
+        if (!$isProveedor && !isProveedor() && !isSuperAdmin()) {
             ob_clean();
             echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
             exit;
@@ -1396,7 +1404,7 @@ class LogisticaController {
         $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
         $isProveedor = isCliente(); // ROL_CLIENTE = proveedor logístico
 
-        if (!$isProveedor && !isSuperAdmin()) {
+        if (!$isProveedor && !isProveedor() && !isSuperAdmin()) {
             http_response_code(403);
             echo 'Sin permiso.';
             exit;
@@ -1404,34 +1412,35 @@ class LogisticaController {
 
         $db = (new Conexion())->conectar();
 
-        // Traer pedidos sin code_city del usuario (como proveedor o como cliente con regla HL)
-        if ($isProveedor) {
-            // Proveedor: pedidos donde él es el mensajero (id_proveedor)
+        // Traer pedidos activos sin code_city del usuario (como proveedor o como cliente con regla HL)
+        // Se filtran solo pedidos activos (estados 1: En bodega, 2: En ruta, 4: Reprogramado, o NULL)
+        // para evitar incluir pedidos históricos/viejos que ya fueron entregados, cancelados o liquidados sin integración.
+        if (isSuperAdmin()) {
             $stmt = $db->prepare("
                 SELECT p.numero_orden, p.destinatario, p.code_city
                 FROM pedidos p
                 INNER JOIN forwarding_rules fr ON fr.id_cliente = p.id_cliente
                 INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
-                WHERE p.id_proveedor = :uid
-                  AND fp.slug = 'hlexpress'
+                WHERE fp.slug = 'hlexpress'
                   AND fp.activo = 1
                   AND fr.activo = 1
+                  AND (p.id_estado IS NULL OR p.id_estado IN (1, 2, 4))
                   AND (p.code_city IS NULL OR p.code_city = '' OR p.code_city = '0')
                 ORDER BY p.id DESC
                 LIMIT 10000
             ");
-            $stmt->execute([':uid' => (int)$userId]);
+            $stmt->execute();
         } else {
-            // Super admin / cliente con regla: pedidos del cliente
             $stmt = $db->prepare("
                 SELECT p.numero_orden, p.destinatario, p.code_city
                 FROM pedidos p
                 INNER JOIN forwarding_rules fr ON fr.id_cliente = p.id_cliente
                 INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
-                WHERE p.id_cliente = :uid
+                WHERE (p.id_proveedor = :uid OR p.id_cliente = :uid)
                   AND fp.slug = 'hlexpress'
                   AND fp.activo = 1
                   AND fr.activo = 1
+                  AND (p.id_estado IS NULL OR p.id_estado IN (1, 2, 4))
                   AND (p.code_city IS NULL OR p.code_city = '' OR p.code_city = '0')
                 ORDER BY p.id DESC
                 LIMIT 10000
