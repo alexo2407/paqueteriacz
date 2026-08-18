@@ -2060,17 +2060,10 @@ class LogisticaController {
             http_response_code(405); exit;
         }
 
-        $rawPath = trim($_GET['path'] ?? '');
-        if (empty($rawPath)) {
+        $input = trim($_GET['url'] ?? $_GET['path'] ?? '');
+        if (empty($input)) {
             http_response_code(400);
-            echo 'Parámetro path requerido.';
-            exit;
-        }
-
-        // Validar que la ruta sea exactamente storage/guides/<uuid>.pdf (sin traversal)
-        if (!preg_match('#^storage/guides/[a-f0-9\-]+\.pdf$#i', $rawPath)) {
-            http_response_code(400);
-            echo 'Ruta de guía no válida.';
+            echo 'Parámetro url o path requerido.';
             exit;
         }
 
@@ -2083,9 +2076,22 @@ class LogisticaController {
 
             $credentials = json_decode($providerData['credentials'] ?? '{}', true) ?: [];
             $apiKey = $credentials['password'] ?? $credentials['apiKey'] ?? '';
-            $baseUrl = rtrim($providerData['base_url'] ?? 'https://shippmentapi.hlexpresspanama.com', '/');
+            $configuredBaseUrl = rtrim($providerData['base_url'] ?? 'https://shippmentapi.hlexpresspanama.com', '/');
+            $configuredHost = parse_url($configuredBaseUrl, PHP_URL_HOST);
 
-            $pdfUrl = $baseUrl . '/' . $rawPath;
+            if (str_starts_with($input, 'http://') || str_starts_with($input, 'https://')) {
+                $inputHost = parse_url($input, PHP_URL_HOST);
+                // Validar que el host coincida con el host configurado o hlexpresspanama.com para evitar SSRF
+                if ($inputHost !== $configuredHost && !str_ends_with($inputHost ?? '', 'hlexpresspanama.com')) {
+                    http_response_code(400);
+                    echo 'Host de guía no permitido.';
+                    exit;
+                }
+                $pdfUrl = $input;
+            } else {
+                $rawPath = ltrim($input, '/');
+                $pdfUrl = $configuredBaseUrl . '/' . $rawPath;
+            }
 
             $ch = curl_init($pdfUrl);
             curl_setopt_array($ch, [
@@ -2222,7 +2228,9 @@ class LogisticaController {
                 $dest   = $s['shipment_destination'] ?? [];
                 $city   = $dest['city']['name'] ?? ($s['city']['name'] ?? '');
                 $estado = $statusNames[$s['shipment_status_id'] ?? 0] ?? ('Estado #' . ($s['shipment_status_id'] ?? '?'));
-                $pdfUrl = !empty($s['guide_link']) ? $hlBaseUrl . $s['guide_link'] : '';
+                $pdfUrl = !empty($s['guide_link'])
+                    ? (str_starts_with($s['guide_link'], 'http') ? $s['guide_link'] : $hlBaseUrl . ltrim($s['guide_link'], '/'))
+                    : '';
                 $fecha  = !empty($s['created_at'])
                     ? (new \DateTime($s['created_at']))->setTimezone(new \DateTimeZone('America/Panama'))->format('d/m/Y H:i')
                     : '';

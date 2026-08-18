@@ -2839,7 +2839,7 @@ include "vista/includes/header.php";
                     data.forEach(s => {
                         const dest  = s.shipment_destination ?? {};
                         const fecha = s.created_at ? new Date(s.created_at).toLocaleDateString('es-PA',{day:'2-digit',month:'2-digit',year:'numeric'}) : '-';
-                        const pdfUrl = s.guide_link ? hlBaseUrl + s.guide_link : null;
+                        const pdfUrl = s.guide_link ? (s.guide_link.startsWith('http') ? s.guide_link : hlBaseUrl + s.guide_link.replace(/^\//, '')) : null;
                         const tracking = s.tracking_number ?? s.order_number ?? '-';
                         const trackingHtml = pdfUrl
                             ? `<button type="button" class="btn btn-link p-0 fw-semibold text-primary text-decoration-none" onclick="window.abrirGuiaPDF('${escE(pdfUrl)}','${escE(tracking)}')"><i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>${escE(tracking)}</button>`
@@ -3050,13 +3050,9 @@ include "vista/includes/header.php";
             // Función global para abrir el modal del PDF
             window.abrirGuiaPDF = function(url, tracking) {
                 document.getElementById('modalGuiaPDFTracking').textContent = tracking || 'Guía';
-                // El botón "nueva pestaña" usa la URL externa directa
-                document.getElementById('modalGuiaPDFLink').href = url;
-                // El iframe usa el proxy para evitar X-Frame-Options del servidor externo
-                const pathMatch = url.match(/storage\/guides\/[a-f0-9\-]+\.pdf/i);
-                const proxyUrl = pathMatch
-                    ? '<?= RUTA_URL ?>logistica/proxyGuiaPDF?path=' + encodeURIComponent(pathMatch[0])
-                    : url;
+                // Usamos el proxy seguro de nuestro backend para evitar bloqueo de X-Frame-Options y CORS
+                const proxyUrl = '<?= RUTA_URL ?>logistica/proxyGuiaPDF?url=' + encodeURIComponent(url);
+                document.getElementById('modalGuiaPDFLink').href = proxyUrl;
                 document.getElementById('modalGuiaPDFFrame').src = proxyUrl;
                 const modal = new bootstrap.Modal(document.getElementById('modalGuiaPDF'));
                 modal.show();

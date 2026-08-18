@@ -366,14 +366,15 @@ class HLExpressProvider extends BaseProvider
         $authData = $this->authenticate();
 
         $params = array_filter($filters, fn($v) => $v !== null && $v !== '');
-        if (!isset($params['limit'])) {
-            $params['limit'] = 20;
-        }
-        if (!isset($params['page'])) {
-            $params['page'] = 1;
-        }
+        $requestedLimit = (int)($params['limit'] ?? 20);
+        $requestedPage  = max(1, (int)($params['page'] ?? 1));
 
-        $url = $this->baseUrl . '/shipments/filtered?' . http_build_query($params);
+        // Pedimos con un límite amplio a la API para obtener el total del universo filtrado y paginar en el backend
+        $apiParams = $params;
+        $apiParams['limit'] = 1000;
+        unset($apiParams['page']);
+
+        $url = $this->baseUrl . '/shipments/filtered?' . http_build_query($apiParams);
 
         $response = $this->httpRequest('GET', $url, [
             'Accept: application/json',
@@ -392,26 +393,30 @@ class HLExpressProvider extends BaseProvider
             throw new Exception("HL Express getShipmentsFiltered falló: " . $errorMsg, (int)$response['http_status']);
         }
 
-        // La API devuelve paginación real: { data[], total, current_page, last_page, per_page }
-        if (isset($raw['data']) && is_array($raw['data'])) {
+        // Si la API devuelve estructura paginada nativa
+        if (isset($raw['data']) && is_array($raw['data']) && isset($raw['total'])) {
             return [
                 'data'         => $raw['data'],
-                'total'        => (int)($raw['total']        ?? count($raw['data'])),
-                'current_page' => (int)($raw['current_page'] ?? 1),
-                'last_page'    => (int)($raw['last_page']    ?? 1),
-                'per_page'     => (int)($raw['per_page']     ?? $params['limit']),
+                'total'        => (int)$raw['total'],
+                'current_page' => (int)($raw['current_page'] ?? $requestedPage),
+                'last_page'    => (int)($raw['last_page']    ?? max(1, (int)ceil((int)$raw['total'] / $requestedLimit))),
+                'per_page'     => (int)($raw['per_page']     ?? $requestedLimit),
             ];
         }
 
-        // Fallback: array plano
-        $items = is_array($raw) ? $raw : [];
+        // Si la API devuelve array plano (comportamiento de HL Express)
+        $items = is_array($raw) ? (isset($raw['data']) && is_array($raw['data']) ? $raw['data'] : $raw) : [];
         $total = count($items);
-        $perPage = (int)($params['limit'] ?? 20);
+        $perPage = max(1, $requestedLimit);
+        $lastPage = max(1, (int)ceil($total / $perPage));
+        $offset = ($requestedPage - 1) * $perPage;
+        $pagedItems = array_slice($items, $offset, $perPage);
+
         return [
-            'data'         => $items,
+            'data'         => array_values($pagedItems),
             'total'        => $total,
-            'current_page' => 1,
-            'last_page'    => max(1, (int)ceil($total / $perPage)),
+            'current_page' => $requestedPage,
+            'last_page'    => $lastPage,
             'per_page'     => $perPage,
         ];
     }
