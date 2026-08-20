@@ -236,22 +236,17 @@ class HLExpressProvider extends BaseProvider
         // inc.incident_type.name, inc.created_at, inc.is_solved
         $isSolvedFilter = $params['is_solved'] ?? 'No';
         $normalized = array_map(function (array $item) use ($isSolvedFilter) {
-            $statusId = (int)($item['shipment_status_id'] ?? $item['shipment_status']['id'] ?? 0);
-            $statusName = $item['shipment_status']['name'] ?? $this->resolverNombreNovedad($statusId);
-            $shipmentId = $item['id'] ?? $item['shipment_id'] ?? null;
-
             return [
                 // Campos de la novedad
-                'id'         => $shipmentId,
+                'id'         => $item['id']         ?? null,
                 'created_at' => $item['created_at']  ?? null,
                 'is_solved'  => $isSolvedFilter,
                 'incident_type' => [
-                    'name'  => $statusName,
-                    'color' => $item['shipment_status']['color'] ?? null,
+                    'name' => $this->resolverNombreNovedad((int)($item['shipment_status_id'] ?? 0)),
                 ],
                 // Sub-objeto shipment con los campos que renderiza el JS
                 'shipment' => [
-                    'id'                   => $shipmentId,
+                    'id'                   => $item['id']              ?? null,
                     'order_number'         => $item['order_number']    ?? '',
                     'tracking_number'      => $item['tracking_number'] ?? '',
                     'shipment_destination' => $item['shipment_destination'] ?? [],
@@ -445,7 +440,7 @@ class HLExpressProvider extends BaseProvider
             'X-API-KEY: ' . $authData['token'],
         ], null, 30);
 
-        if ($response['error']) {
+        if ($response['error']) {   
             throw new Exception("Error de conexión con HL Express (getShipmentById): " . $response['error']);
         }
 
