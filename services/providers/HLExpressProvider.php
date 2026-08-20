@@ -236,17 +236,22 @@ class HLExpressProvider extends BaseProvider
         // inc.incident_type.name, inc.created_at, inc.is_solved
         $isSolvedFilter = $params['is_solved'] ?? 'No';
         $normalized = array_map(function (array $item) use ($isSolvedFilter) {
+            $statusId = (int)($item['shipment_status_id'] ?? $item['shipment_status']['id'] ?? 0);
+            $statusName = $item['shipment_status']['name'] ?? $this->resolverNombreNovedad($statusId);
+            $shipmentId = $item['id'] ?? $item['shipment_id'] ?? null;
+
             return [
                 // Campos de la novedad
-                'id'         => $item['id']         ?? null,
+                'id'         => $shipmentId,
                 'created_at' => $item['created_at']  ?? null,
                 'is_solved'  => $isSolvedFilter,
                 'incident_type' => [
-                    'name' => $this->resolverNombreNovedad((int)($item['shipment_status_id'] ?? 0)),
+                    'name'  => $statusName,
+                    'color' => $item['shipment_status']['color'] ?? null,
                 ],
                 // Sub-objeto shipment con los campos que renderiza el JS
                 'shipment' => [
-                    'id'                   => $item['id']              ?? null,
+                    'id'                   => $shipmentId,
                     'order_number'         => $item['order_number']    ?? '',
                     'tracking_number'      => $item['tracking_number'] ?? '',
                     'shipment_destination' => $item['shipment_destination'] ?? [],
@@ -420,5 +425,40 @@ class HLExpressProvider extends BaseProvider
             'per_page'     => $perPage,
         ];
     }
+
+    /**
+     * Consultar detalle de un envío específico por su ID en HL Express.
+     * GET {baseUrl}/shipments/{id}
+     *
+     * Retorna la información completa del shipment, incluyendo:
+     * - shipment_destination
+     * - shipment_status_history (con observations y shipment_return_reason)
+     * - items, etc.
+     */
+    public function getShipmentById($shipmentId)
+    {
+        $authData = $this->authenticate();
+        $url = $this->baseUrl . '/shipments/' . urlencode((string)$shipmentId);
+
+        $response = $this->httpRequest('GET', $url, [
+            'Accept: application/json',
+            'X-API-KEY: ' . $authData['token'],
+        ], null, 30);
+
+        if ($response['error']) {
+            throw new Exception("Error de conexión con HL Express (getShipmentById): " . $response['error']);
+        }
+
+        $raw = $response['decoded'] ?? [];
+        if ($response['http_status'] !== 200) {
+            $errorMsg = is_array($raw)
+                ? ($raw['message'] ?? $raw['error'] ?? 'Error desconocido')
+                : 'Error desconocido';
+            throw new Exception("HL Express getShipmentById falló: " . $errorMsg, (int)$response['http_status']);
+        }
+
+        return $raw;
+    }
 }
+
 

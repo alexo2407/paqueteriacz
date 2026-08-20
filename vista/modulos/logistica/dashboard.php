@@ -2299,6 +2299,39 @@ include "vista/includes/header.php";
         #tabNovedadesBody td {
             vertical-align: middle;
         }
+
+        /* Timeline de historial HL Express */
+        .timeline-hl {
+            position: relative;
+            padding-left: 20px;
+            border-left: 2px solid #dee2e6;
+            margin-left: 10px;
+        }
+        .timeline-hl-item {
+            position: relative;
+            margin-bottom: 18px;
+        }
+        .timeline-hl-item:last-child {
+            margin-bottom: 0;
+        }
+        .timeline-hl-dot {
+            position: absolute;
+            left: -26px;
+            top: 3px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #6c757d;
+            border: 2px solid #fff;
+        }
+        .timeline-hl-dot.novedad {
+            background: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+        }
+        .timeline-hl-dot.entregado {
+            background: #198754;
+            box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.2);
+        }
     </style>
 
     <script>
@@ -2437,8 +2470,13 @@ include "vista/includes/header.php";
                         }
 
                         data.forEach(inc => {
-                            const ship = inc.shipment ?? {};
-                            const dest = ship.shipment_destination ?? {};
+                            const ship = inc.shipment || inc || {};
+                            const dest = ship.shipment_destination || inc.shipment_destination || {};
+                            const shipId = ship.id || inc.id || inc.shipment_id || '';
+                            const orderNum = ship.order_number || inc.order_number || '';
+                            const trackingNum = ship.tracking_number || inc.tracking_number || '';
+                            const novName = inc.incident_type?.name || inc.shipment_status?.name || trackingNum || 'Novedad';
+
                             const fecha = inc.created_at ? new Date(inc.created_at).toLocaleDateString('es-PA', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -2450,28 +2488,48 @@ include "vista/includes/header.php";
 
                             const tr = document.createElement('tr');
                             tr.className = 'novedad-row';
-                            const destJson = JSON.stringify(dest);
                             tr.innerHTML = `
-                    <td class="small fw-semibold">${escH(ship.order_number ?? '-')}</td>
+                    <td class="small fw-semibold">${escH(orderNum || '-')}</td>
                     <td class="small">${escH(dest.full_name ?? '-')}<br><span class="text-muted">${escH(dest.phone_number ?? '')}</span></td>
                     <td class="small">${escH(dest.address ?? '-')}</td>
-                    <td class="small">${escH(inc.incident_type?.name ?? ship.tracking_number ?? '-')}</td>
+                    <td class="small">${escH(novName)}</td>
                     <td><span class="badge ${badgeCls} small">${badgeTxt}</span></td>
                     <td class="small text-muted">${fecha}</td>
-                    <td>
+                    <td class="text-nowrap">
+                        <button type="button" class="btn btn-outline-info btn-sm px-2 py-1 me-1 btn-ver-detalle-novedad"
+                            data-order="${escH(orderNum)}"
+                            data-shipment-id="${escH(shipId)}"
+                            title="Ver detalle e historial de la novedad">
+                            <i class="bi bi-eye me-1"></i>Detalle
+                        </button>
                         <button type="button" class="btn btn-warning btn-sm px-2 py-1 btn-resolver-novedad"
-                            data-order="${escH(ship.order_number ?? '')}"
+                            data-order="${escH(orderNum)}"
+                            data-shipment-id="${escH(shipId)}"
                             title="Resolver esta novedad">
                             <i class="bi bi-tools me-1"></i>Resolver
                         </button>
                     </td>
                 `;
-                            // Guardar datos del destinatario como objeto en el botón
-                            const btn = tr.querySelector('.btn-resolver-novedad');
-                            btn._destData = dest;
-                            btn._shipId = ship.id ?? '';
-                            btn.addEventListener('click', function() {
-                                abrirModalResolverNovedad(this._shipId, this._destData, this.dataset.order);
+                            // Botón detalle de la novedad
+                            const btnDetalle = tr.querySelector('.btn-ver-detalle-novedad');
+                            btnDetalle._destData = dest;
+                            btnDetalle._shipId = shipId;
+                            btnDetalle.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const sid = this._shipId || this.getAttribute('data-shipment-id');
+                                const ord = this.getAttribute('data-order');
+                                abrirModalDetalleNovedad(sid, ord, this._destData);
+                            });
+
+                            // Botón resolver novedad
+                            const btnResolver = tr.querySelector('.btn-resolver-novedad');
+                            btnResolver._destData = dest;
+                            btnResolver._shipId = shipId;
+                            btnResolver.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                const sid = this._shipId || this.getAttribute('data-shipment-id');
+                                const ord = this.getAttribute('data-order');
+                                abrirModalResolverNovedad(sid, this._destData, ord);
                             });
                             tbody.appendChild(tr);
                         });
@@ -2522,7 +2580,6 @@ include "vista/includes/header.php";
 
             // Abrir modal de resolución individual desde la tabla
             window.abrirModalResolverNovedad = function(shipmentId, dest, orderNumber) {
-                // Rellenar el modal existente con los datos del envío
                 const modalEl = document.getElementById('modalResolverNovedad_dashboard');
                 if (!modalEl) return;
                 document.getElementById('rnov_order_number').textContent = orderNumber || '';
@@ -2536,7 +2593,125 @@ include "vista/includes/header.php";
                 // Resetear UI
                 document.getElementById('secRnovCorreccion').style.display = 'none';
                 document.getElementById('secRnovConfirmacion').style.display = 'none';
-                new bootstrap.Modal(modalEl).show();
+                
+                try {
+                    const modalInst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modalInst.show();
+                } catch (e) {
+                    if (window.jQuery) $(modalEl).modal('show');
+                }
+            };
+
+            // Abrir modal de detalle completo de novedad e historial desde la API HL Express
+            window.abrirModalDetalleNovedad = function(shipmentId, orderNumber, fallbackDest) {
+                const modalEl = document.getElementById('modalDetalleNovedadHL');
+                if (!modalEl) {
+                    console.error('Modal #modalDetalleNovedadHL no encontrado en el DOM');
+                    return;
+                }
+
+                try {
+                    const modalInst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modalInst.show();
+                } catch (e) {
+                    if (window.jQuery) $(modalEl).modal('show');
+                }
+
+                // Resetear UI
+                document.getElementById('detNov_order_number').textContent = orderNumber || '-';
+                document.getElementById('detNov_loader').classList.remove('d-none');
+                document.getElementById('detNov_error').classList.add('d-none');
+                document.getElementById('detNov_content').classList.add('d-none');
+
+                const btnResolverDirecto = document.getElementById('detNov_btnResolverDirecto');
+                if (btnResolverDirecto) {
+                    btnResolverDirecto.onclick = function() {
+                        try {
+                            const modalInst = bootstrap.Modal.getInstance(modalEl);
+                            if (modalInst) modalInst.hide();
+                            else if (window.jQuery) $(modalEl).modal('hide');
+                        } catch (e) {}
+                        window.abrirModalResolverNovedad(shipmentId, window._currentDetalleDest || fallbackDest || {}, orderNumber);
+                    };
+                }
+
+                if (!shipmentId) {
+                    document.getElementById('detNov_loader').classList.add('d-none');
+                    document.getElementById('detNov_error_msg').textContent = 'No se encontró el identificador del envío en HL Express.';
+                    document.getElementById('detNov_error').classList.remove('d-none');
+                    return;
+                }
+
+                fetch(_baseUrl + 'logistica/consultarDetalleEnvioHLExpress/' + encodeURIComponent(shipmentId), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(res => {
+                    document.getElementById('detNov_loader').classList.add('d-none');
+                    if (!res.success) {
+                        document.getElementById('detNov_error_msg').textContent = res.message || 'Error al obtener detalle del envío.';
+                        document.getElementById('detNov_error').classList.remove('d-none');
+                        return;
+                    }
+
+                    const data = res.shipment ?? {};
+                    const dest = data.shipment_destination ?? fallbackDest ?? {};
+                    window._currentDetalleDest = dest;
+
+                    const nov = res.novedad_detalle ?? {};
+                    const history = res.history ?? [];
+
+                    // Motivo y Observaciones del último estado
+                    document.getElementById('detNov_motivo').textContent = nov.motivo_retorno || 'Sin motivo de devolución especificado';
+                    document.getElementById('detNov_observaciones').textContent = nov.observaciones || 'Sin observaciones registradas por el repartidor/operador.';
+                    document.getElementById('detNov_fecha').textContent = nov.fecha ? new Date(nov.fecha).toLocaleString('es-PA', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
+                    document.getElementById('detNov_estado_badge').textContent = nov.estado_nombre || (res.ultimo_estado?.shipment_status?.name ?? 'Novedad');
+
+                    // Datos del Envío
+                    document.getElementById('detNov_tracking').textContent = data.tracking_number || '-';
+                    document.getElementById('detNov_destinatario').textContent = dest.full_name || '-';
+                    document.getElementById('detNov_telefono').textContent = dest.phone_number || '-';
+                    document.getElementById('detNov_direccion').textContent = dest.address || '-';
+
+                    // Historial (shipment_status_history)
+                    const timelineEl = document.getElementById('detNov_timeline');
+                    document.getElementById('detNov_history_count').textContent = history.length + ' evento(s)';
+
+                    if (history.length === 0) {
+                        timelineEl.innerHTML = '<p class="text-muted small text-center my-3"><i class="bi bi-clock me-1"></i>No hay historial de estados registrado.</p>';
+                    } else {
+                        let tHtml = '<div class="timeline-hl">';
+                        history.forEach((h, index) => {
+                            const isLast = (index === history.length - 1);
+                            const stName = h.shipment_status?.name ?? ('Estado #' + (h.shipment_status_id ?? '-'));
+                            const hFecha = h.created_at ? new Date(h.created_at).toLocaleString('es-PA', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                            const dotCls = isLast ? 'novedad' : ([4].includes(h.shipment_status_id) ? 'entregado' : '');
+                            const reasonHtml = h.shipment_return_reason?.name ? `<div class="text-danger small fw-bold mt-1"><i class="bi bi-tag-fill me-1"></i>Motivo: ${escH(h.shipment_return_reason.name)}</div>` : '';
+                            const obsHtml = h.observations ? `<div class="small text-muted bg-white p-2 rounded mt-1 border"><i class="bi bi-chat-left-text me-1"></i>${escH(h.observations)}</div>` : '';
+
+                            tHtml += `
+                                <div class="timeline-hl-item">
+                                    <div class="timeline-hl-dot ${dotCls}"></div>
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-1">
+                                        <strong class="${isLast ? 'text-danger' : 'text-dark'}">${escH(stName)}</strong>
+                                        <small class="text-muted">${hFecha}</small>
+                                    </div>
+                                    ${reasonHtml}
+                                    ${obsHtml}
+                                </div>
+                            `;
+                        });
+                        tHtml += '</div>';
+                        timelineEl.innerHTML = tHtml;
+                    }
+
+                    document.getElementById('detNov_content').classList.remove('d-none');
+                })
+                .catch(err => {
+                    document.getElementById('detNov_loader').classList.add('d-none');
+                    document.getElementById('detNov_error_msg').textContent = 'Error de red: ' + err.message;
+                    document.getElementById('detNov_error').classList.remove('d-none');
+                });
             };
 
             function escH(str) {
@@ -3219,6 +3394,99 @@ include "vista/includes/header.php";
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                     <button type="button" class="btn btn-primary" id="btnProcesarNovedadesMasivo">
                         <i class="bi bi-gear-fill me-1"></i>Procesar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ───────────────────────────────────────────────────────────────────
+     MODAL: Detalle de Novedad e Historial HL Express
+─────────────────────────────────────────────────────────────────── -->
+    <div class="modal fade" id="modalDetalleNovedadHL" tabindex="-1" aria-labelledby="detNovLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title" id="detNovLabel">
+                        <i class="bi bi-info-circle-fill text-info me-2"></i>
+                        Detalle de Novedad — Orden <span id="detNov_order_number" class="text-warning"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Loader -->
+                    <div id="detNov_loader" class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-muted small">Consultando historial en HL Express...</p>
+                    </div>
+
+                    <!-- Error -->
+                    <div id="detNov_error" class="alert alert-danger d-none py-3 text-center">
+                        <i class="bi bi-exclamation-octagon-fill me-2"></i>
+                        <span id="detNov_error_msg">Error al cargar la novedad.</span>
+                    </div>
+
+                    <!-- Contenido -->
+                    <div id="detNov_content" class="d-none">
+                        <!-- Alerta principal del estado actual / motivo -->
+                        <div class="card border-warning border-2 bg-light mb-3">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                    <span class="badge bg-danger fs-6 px-3 py-1" id="detNov_estado_badge">Novedad</span>
+                                    <small class="text-muted"><i class="bi bi-clock me-1"></i><span id="detNov_fecha">-</span></small>
+                                </div>
+                                <h6 class="text-dark fw-bold mb-1">
+                                    <i class="bi bi-tag-fill text-danger me-1"></i>
+                                    Motivo: <span id="detNov_motivo" class="text-danger"></span>
+                                </h6>
+                                <div class="bg-white border rounded p-2 mt-2">
+                                    <strong class="text-secondary small d-block mb-1"><i class="bi bi-chat-left-quote me-1"></i>Observaciones del Repartidor:</strong>
+                                    <p class="mb-0 small text-dark" id="detNov_observaciones" style="white-space: pre-wrap;"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resumen del Envío y Destinatario -->
+                        <div class="card border-0 bg-white shadow-sm mb-3">
+                            <div class="card-body p-3">
+                                <h6 class="text-uppercase text-secondary fw-bold small mb-2"><i class="bi bi-person-lines-fill me-1"></i>Datos de Entrega</h6>
+                                <div class="row g-2 small">
+                                    <div class="col-sm-6">
+                                        <span class="text-muted d-block">Guía / Tracking:</span>
+                                        <strong id="detNov_tracking" class="text-dark"></strong>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <span class="text-muted d-block">Destinatario:</span>
+                                        <strong id="detNov_destinatario" class="text-dark"></strong>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <span class="text-muted d-block">Teléfono:</span>
+                                        <span id="detNov_telefono" class="text-dark"></span>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <span class="text-muted d-block">Dirección de Entrega:</span>
+                                        <span id="detNov_direccion" class="text-dark"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Historial de Estados (Timeline) -->
+                        <div class="card border-0 bg-light shadow-sm">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="text-uppercase text-secondary fw-bold small mb-0"><i class="bi bi-clock-history me-1"></i>Historial de Eventos</h6>
+                                    <span class="badge bg-secondary" id="detNov_history_count">0 eventos</span>
+                                </div>
+                                <div id="detNov_timeline" class="py-2" style="max-height: 280px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-warning btn-sm fw-bold" id="detNov_btnResolverDirecto">
+                        <i class="bi bi-tools me-1"></i>Resolver esta Novedad
                     </button>
                 </div>
             </div>

@@ -1526,9 +1526,26 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] =
     exit;
 }
 
-// -----------------------
-// Endpoints específicos para Novedades de HL Express
-// -----------------------
+// GET logistica/consultarDetalleEnvioHLExpress/<shipmentId>
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'consultarDetalleEnvioHLExpress' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/crm_roles.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? 0);
+    if (!isUserAdmin($userId) && !isUserCliente($userId) && !isUserProveedor($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $shipmentId = isset($ruta[2]) ? trim($ruta[2]) : '';
+    $ctrl = new LogisticaController();
+    $ctrl->consultarDetalleEnvioHLExpress($shipmentId);
+    exit;
+}
+
 if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'consultarIncidenciasHLExpress') {
     require_once __DIR__ . '/../controlador/logistica.php';
     require_once __DIR__ . '/../utils/session.php';

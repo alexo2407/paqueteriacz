@@ -1680,6 +1680,82 @@ class LogisticaController {
     }
 
     /**
+     * Consultar detalle completo de un envío de HL Express por su ID.
+     * GET logistica/consultarDetalleEnvioHLExpress/<shipmentId>
+     */
+    public function consultarDetalleEnvioHLExpress($shipmentId) {
+        if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        ob_start();
+
+        require_once "modelo/forwarding.php";
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
+
+        try {
+            if (empty($shipmentId)) {
+                throw new Exception("ID de envío de HL Express no proporcionado.");
+            }
+
+            $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
+            if (!$providerData) {
+                throw new Exception("Proveedor HL Express no configurado en la plataforma.");
+            }
+
+            $credentials   = json_decode($providerData['credentials']    ?? '{}', true) ?: [];
+            $defaultConfig = json_decode($providerData['default_config'] ?? '{}', true) ?: [];
+            $config = array_merge($defaultConfig, [
+                'auth_endpoint'  => $providerData['auth_endpoint']  ?? '/api/AccountApi',
+                'order_endpoint' => $providerData['order_endpoint'] ?? '/shipments',
+                'auth_method'    => $providerData['auth_method']    ?? 'api_key',
+            ]);
+
+            $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
+            $shipment = $hlExpress->getShipmentById($shipmentId);
+
+            // Extraer historial de estados y obtener el último evento registrado
+            $history = $shipment['shipment_status_history'] ?? [];
+            $ultimoEstado = null;
+            if (is_array($history) && !empty($history)) {
+                // Tomar el último elemento del array
+                $ultimoEstado = end($history);
+            }
+
+            $motivoRetorno = $ultimoEstado['shipment_return_reason']['name'] ?? null;
+            $observaciones = $ultimoEstado['observations'] ?? null;
+
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success'         => true,
+                'shipment'        => $shipment,
+                'ultimo_estado'   => $ultimoEstado,
+                'novedad_detalle' => [
+                    'motivo_retorno' => $motivoRetorno,
+                    'motivo_id'      => $ultimoEstado['shipment_return_reason']['id'] ?? null,
+                    'observaciones'  => $observaciones,
+                    'fecha'          => $ultimoEstado['created_at'] ?? null,
+                    'estado_id'      => $ultimoEstado['shipment_status_id'] ?? ($shipment['shipment_status_id'] ?? null),
+                    'estado_nombre'  => $ultimoEstado['shipment_status']['name'] ?? null,
+                ],
+                'history'         => is_array($history) ? array_values($history) : [],
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+
+        } catch (Exception $e) {
+            error_log("LogisticaController::consultarDetalleEnvioHLExpress error: " . $e->getMessage());
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json', true, 500);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            exit;
+        }
+    }
+
+    /**
      * Listar envíos de HL Express con filtros y paginación real.
      * GET logistica/listarEnviosHLExpress
      * Params: page, limit, status_id, tracking_number, order_number, start_date, end_date
