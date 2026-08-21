@@ -755,11 +755,11 @@ include("vista/includes/header.php");
                     </div>
 
                     <div id="listaNovedades" class="d-none">
-                        <ul class="list-group list-group-flush" id="containerNovedades" style="max-height: 300px; overflow-y: auto;">
+                        <ul class="list-group list-group-flush" id="containerNovedades" style="max-height: 450px; overflow-y: auto;">
                             <!-- Se llena dinámicamente con JS -->
                         </ul>
                         <div class="p-3 bg-light border-top text-center">
-                            <button type="button" class="btn btn-sm btn-primary w-100" data-bs-toggle="modal" data-bs-target="#resolverNovedadModal">
+                            <button type="button" class="btn btn-primary fw-bold w-100 py-2" data-bs-toggle="modal" data-bs-target="#resolverNovedadModal">
                                 <i class="bi bi-chat-right-text me-1"></i> Resolver Novedad
                             </button>
                         </div>
@@ -770,7 +770,7 @@ include("vista/includes/header.php");
         </div>
 
         <!-- Fila Inferior: Historial de Estados -->
-        <div class="col-12">
+        <div class="col-12 mb-4">
             <div class="card shadow border-0">
                 <div class="card-header bg-info text-white py-3">
                     <h6 class="m-0 fw-bold"><i class="bi bi-clock-history me-2"></i>Historial de Estados y Cambios</h6>
@@ -1483,29 +1483,85 @@ function cargarNovedadesHLExpress() {
         return response.json();
     })
     .then(res => {
-        if (res.success && res.data && res.data.length > 0) {
-            // Renderizar la lista
-            res.data.forEach(inc => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item p-3 border-bottom';
-                
-                // Formatear fecha
-                const dateStr = inc.created_at ? new Date(inc.created_at).toLocaleDateString('es-ES', {
-                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                }) : 'Fecha no disponible';
+        const incidents = (res.success && res.data) ? res.data : [];
+        const history   = (res.success && res.history) ? res.history : [];
 
-                li.innerHTML = `
-                    <div class="d-flex justify-content-between mb-1">
-                        <span class="badge bg-warning text-dark small fw-bold">${inc.incident_type ? inc.incident_type.name : 'Incidente'}</span>
-                        <small class="text-muted">${dateStr}</small>
-                    </div>
-                    <p class="mb-1 text-dark small fw-semibold">${inc.description || 'Sin descripción'}</p>
-                    <div class="small text-muted">
-                        <strong>Estatus:</strong> ${inc.status || 'Pendiente'}
-                    </div>
+        if (incidents.length > 0 || history.length > 0) {
+            container.innerHTML = '';
+
+            // 1. Renderizar Novedades Activas
+            if (incidents.length > 0) {
+                incidents.forEach(inc => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item p-3 border-bottom';
+                    
+                    const dateStr = inc.created_at ? new Date(inc.created_at).toLocaleDateString('es-ES', {
+                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    }) : 'Fecha no disponible';
+
+                    const reasonName = inc.shipment_return_reason?.name 
+                                    || inc.shipment_return_reason_name 
+                                    || inc.reason_name 
+                                    || inc.reason 
+                                    || inc.novedad 
+                                    || '';
+
+                    const desc = inc.description && inc.description !== 'Sin descripción' ? inc.description : '';
+
+                    li.innerHTML = `
+                        <div class="d-flex justify-content-between mb-1 align-items-center">
+                            <span class="badge bg-warning text-dark small fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>${inc.incident_type ? inc.incident_type.name : 'Novedad'}</span>
+                            <small class="text-muted"><i class="bi bi-clock me-1"></i>${dateStr}</small>
+                        </div>
+                        ${reasonName ? `<div class="text-danger small fw-bold mt-2 mb-1" style="font-size:0.92rem;"><i class="bi bi-tag-fill me-1"></i><strong>Motivo:</strong> ${reasonName}</div>` : ''}
+                        ${desc ? `<p class="mb-1 text-dark small fw-semibold">${desc}</p>` : (!reasonName ? `<p class="mb-1 text-muted small fst-italic">Sin descripción adicional</p>` : '')}
+                        <div class="small text-muted mt-1">
+                            <strong>Estatus:</strong> <span class="badge bg-secondary">${inc.status || 'Pendiente'}</span>
+                        </div>
+                    `;
+                    container.appendChild(li);
+                });
+            }
+
+            // 2. Renderizar Histórico de Estados (Timeline HL Express)
+            if (history.length > 0) {
+                const histHeader = document.createElement('li');
+                histHeader.className = 'list-group-item bg-dark text-white py-2 px-3 fw-bold small d-flex align-items-center justify-content-between';
+                histHeader.innerHTML = `
+                    <span><i class="bi bi-clock-history me-1 text-info"></i> Histórico de Eventos (HL Express)</span>
+                    <span class="badge bg-info text-dark">${history.length} evento(s)</span>
                 `;
-                container.appendChild(li);
-            });
+                container.appendChild(histHeader);
+
+                const histItem = document.createElement('li');
+                histItem.className = 'list-group-item p-3 bg-white';
+                
+                let timelineHtml = '<div class="timeline-hl position-relative ps-3 border-start border-2 border-primary ms-2 my-2">';
+                history.slice().reverse().forEach((h, idx) => {
+                    const hDate = h.created_at ? new Date(h.created_at).toLocaleDateString('es-ES', {
+                        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    }) : '';
+                    const stName = h.shipment_status?.name || ('Estado #' + (h.shipment_status_id || ''));
+                    const obs = h.observations || '';
+                    const retReason = h.shipment_return_reason?.name || '';
+
+                    timelineHtml += `
+                        <div class="mb-3 position-relative">
+                            <div class="position-absolute bg-primary rounded-circle" style="width: 10px; height: 10px; left: -21px; top: 4px;"></div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong class="text-dark small">${stName}</strong>
+                                <span class="text-muted fs-7" style="font-size: 0.75rem;">${hDate}</span>
+                            </div>
+                            ${retReason ? `<div class="text-danger small fw-bold mt-1"><i class="bi bi-tag-fill me-1"></i>Motivo: ${retReason}</div>` : ''}
+                            ${obs ? `<div class="text-muted small mt-1 bg-light p-2 rounded border"><i class="bi bi-chat-left-text me-1"></i>${obs}</div>` : ''}
+                        </div>
+                    `;
+                });
+                timelineHtml += '</div>';
+                histItem.innerHTML = timelineHtml;
+                container.appendChild(histItem);
+            }
+
             listaNovedades.classList.remove('d-none');
         } else {
             sinNovedades.classList.remove('d-none');

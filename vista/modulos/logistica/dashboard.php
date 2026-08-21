@@ -2587,6 +2587,8 @@ include "vista/includes/header.php";
                 document.getElementById('rnov_contact_phone').value = dest.phone_number ?? '';
                 document.getElementById('rnov_contact_address').value = '';
                 document.getElementById('rnov_solve_description').value = '';
+                const inputCity = document.getElementById('rnov_customer_destination_city_code');
+                if (inputCity) inputCity.value = dest.city_dane_code ?? dest.code_city ?? dest.zip_code ?? '';
                 document.getElementById('rnov_direccion_actual').textContent = dest.address ?? '';
                 document.getElementById('rnov_shipment_id').value = shipmentId ?? '';
                 document.getElementById('rnov_is_return').value = 'false';
@@ -3319,6 +3321,10 @@ include "vista/includes/header.php";
                                 <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Specify Address</label>
                                 <input type="text" id="rnov_contact_address" name="contact_address" class="form-control form-control-sm" placeholder="Nueva dirección de entrega" required>
                             </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Código de Ciudad / City Code <span class="text-muted fw-normal font-monospace" style="font-size:0.75rem;">(Opcional)</span></label>
+                                <input type="text" id="rnov_customer_destination_city_code" name="customer_destination_city_code" class="form-control form-control-sm" placeholder="Ej: 100075918 (dejar vacío si no cambia)">
+                            </div>
                             <div class="text-end mt-3">
                                 <button type="button" class="btn btn-sm btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
                                 <button type="submit" class="btn btn-sm btn-dark" id="btnRnovSubmit">
@@ -3380,8 +3386,8 @@ include "vista/includes/header.php";
                         <i class="bi bi-info-circle-fill me-1"></i>
                         <strong>Instrucciones:</strong> Descargue el Excel de novedades, complete las columnas
                         <code>accion</code> (<code>reintentar</code> o <code>devolver</code>),
-                        <code>nueva_solucion</code>, <code>nuevo_nombre</code>, <code>nuevo_telefono</code>
-                        y <code>nueva_direccion</code>, luego súbalo aquí.
+                        <code>nueva_solucion</code>, <code>nuevo_nombre</code>, <code>nuevo_telefono</code>,
+                        <code>nueva_direccion</code> y <code>nuevo_code_city</code>, luego súbalo aquí.
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Archivo Excel</label>

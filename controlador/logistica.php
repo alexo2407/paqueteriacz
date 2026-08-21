@@ -1559,6 +1559,10 @@ class LogisticaController {
             // Intentar también con # (por si la BD lo guarda con prefijo)
             $pedido = $model->obtenerPedidoPorNumero('#' . $buscar);
         }
+        if (!$pedido && preg_match('/^[A-Za-z]+(\d+)$/', $buscar, $mMatch)) {
+            // Quitar prefijo alfanumérico propio de HL Express (ej. WPA241706612 -> 241706612)
+            $pedido = $model->obtenerPedidoPorNumero($mMatch[1]);
+        }
 
         // Si no se encontró por numero_orden directo, intentar cruzando con forwarding_log.
         // HL Express puede devolver el order_number con un prefijo propio (ej. "WCO2801")
@@ -1667,6 +1671,7 @@ class LogisticaController {
 
             $result = $hlExpress->getIncidentsFiltered($filters);
 
+            if (ob_get_length()) ob_clean();
             header('Content-Type: application/json');
             echo json_encode(['success' => true] + $result);
             exit;
@@ -1815,6 +1820,7 @@ class LogisticaController {
      * GET logistica/exportarNovedadesExcel
      */
     public function exportarNovedadesExcel() {
+        require_once "modelo/pedido.php";
         require_once "modelo/forwarding.php";
         require_once __DIR__ . '/../utils/permissions.php';
         require_once __DIR__ . '/../services/providers/HLExpressProvider.php';
@@ -1871,29 +1877,62 @@ class LogisticaController {
                 'F1' => 'tipo_novedad_id',
                 'G1' => 'is_solved',
                 'H1' => 'fecha_novedad',
+                'I1' => 'novedad',
                 // Columnas a rellenar por el usuario:
-                'I1' => 'accion',
-                'J1' => 'nueva_solucion',
-                'K1' => 'nuevo_nombre',
-                'L1' => 'nuevo_telefono',
-                'M1' => 'nueva_direccion',
+                'J1' => 'accion',
+                'K1' => 'nueva_solucion',
+                'L1' => 'nuevo_nombre',
+                'M1' => 'nuevo_telefono',
+                'N1' => 'nueva_direccion',
+                'O1' => 'nuevo_code_city',
             ];
 
             foreach ($headers as $cell => $label) {
                 $sheet->setCellValue($cell, $label);
                 $col = substr($cell, 0, 1);
-                // Columnas a rellenar (I-M) en azul, info (A-H) en naranja
-                $sheet->getStyle($cell)->applyFromArray(ord($col) >= ord('I') ? $infoStyle : $boldStyle);
+                // Columnas a rellenar (J-O) en azul, info (A-I) en naranja
+                $sheet->getStyle($cell)->applyFromArray(ord($col) >= ord('J') ? $infoStyle : $boldStyle);
             }
 
-            // Añadir comentario en celda I1 explicando valores válidos
-            $comment = $sheet->getComment('I1');
+            // Añadir comentario en celda J1 explicando valores válidos
+            $comment = $sheet->getComment('J1');
             $comment->getText()->createTextRun('Valores válidos: reintentar | devolver');
 
             $row = 2;
             foreach ($allIncidents as $inc) {
                 $shipment = $inc['shipment'] ?? [];
                 $dest     = $shipment['shipment_destination'] ?? [];
+
+                $novedadMotivo = $inc['shipment_return_reason']['name']
+                              ?? $inc['shipment_return_reason_name']
+                              ?? $inc['return_reason']['name']
+                              ?? $inc['reason_name']
+                              ?? $inc['reason']
+                              ?? $inc['novedad']
+                              ?? $inc['ultimo_evento']
+                              ?? $inc['description']
+                              ?? '';
+
+                if (empty($novedadMotivo) && !empty($shipment['id'])) {
+                    try {
+                        $detHL = $hlExpress->getShipmentById($shipment['id']);
+                        $history = $detHL['shipment_status_history'] ?? [];
+                        if (is_array($history) && !empty($history)) {
+                            $lastH = end($history);
+                            $novedadMotivo = $lastH['shipment_return_reason']['name'] ?? $lastH['observations'] ?? '';
+                        }
+                    } catch (Exception $eDet) {}
+                }
+
+                $cityCodePre = $dest['city_dane_code'] ?? $dest['zip_code'] ?? $dest['code_city'] ?? '';
+                if (empty($cityCodePre) && !empty($shipment['order_number'])) {
+                    $cleanOrd = ltrim($shipment['order_number'], '#');
+                    if (preg_match('/^[A-Za-z]+(\d+)$/', $cleanOrd, $mM)) $cleanOrd = $mM[1];
+                    $pedLoc = (new PedidosModel())->obtenerPedidoPorNumero($cleanOrd);
+                    if ($pedLoc) {
+                        $cityCodePre = $pedLoc['code_city'] ?? $pedLoc['codigo_postal'] ?? '';
+                    }
+                }
 
                 $sheet->setCellValue("A{$row}", $shipment['order_number']    ?? '');
                 $sheet->setCellValue("B{$row}", $shipment['tracking_number'] ?? '');
@@ -1903,23 +1942,27 @@ class LogisticaController {
                 $sheet->setCellValue("F{$row}", $inc['incident_type']['name'] ?? ($inc['status'] ?? ''));
                 $sheet->setCellValue("G{$row}", $inc['is_solved']            ?? 'No');
                 $sheet->setCellValue("H{$row}", $inc['created_at']           ?? '');
-                // I–M quedan vacías para que el usuario las llene
-                $sheet->setCellValue("I{$row}", ''); // accion
-                $sheet->setCellValue("J{$row}", ''); // nueva_solucion
-                $sheet->setCellValue("K{$row}", $dest['full_name']    ?? ''); // nuevo_nombre (pre-rellenado)
-                $sheet->setCellValue("L{$row}", $dest['phone_number'] ?? ''); // nuevo_telefono (pre-rellenado)
-                $sheet->setCellValue("M{$row}", $dest['address']      ?? ''); // nueva_direccion (pre-rellenado)
+                $sheet->setCellValue("I{$row}", $novedadMotivo);
+                // J–O quedan para que el usuario las llene/revise
+                $sheet->setCellValue("J{$row}", ''); // accion
+                $sheet->setCellValue("K{$row}", ''); // nueva_solucion
+                $sheet->setCellValue("L{$row}", $dest['full_name']    ?? ''); // nuevo_nombre (pre-rellenado)
+                $sheet->setCellValue("M{$row}", $dest['phone_number'] ?? ''); // nuevo_telefono (pre-rellenado)
+                $sheet->setCellValue("N{$row}", $dest['address']      ?? ''); // nueva_direccion (pre-rellenado)
+                $sheet->setCellValue("O{$row}", $cityCodePre);                // nuevo_code_city (pre-rellenado)
 
                 $row++;
             }
 
             // Auto-size columnas
-            foreach (range('A', 'M') as $col) {
+            foreach (range('A', 'O') as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
             $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(40);
-            $sheet->getColumnDimension('J')->setAutoSize(false)->setWidth(35);
-            $sheet->getColumnDimension('M')->setAutoSize(false)->setWidth(40);
+            $sheet->getColumnDimension('I')->setAutoSize(false)->setWidth(35);
+            $sheet->getColumnDimension('K')->setAutoSize(false)->setWidth(35);
+            $sheet->getColumnDimension('N')->setAutoSize(false)->setWidth(40);
+            $sheet->getColumnDimension('O')->setAutoSize(false)->setWidth(20);
 
             // Fijar la primera fila como encabezado
             $sheet->freezePane('A2');
@@ -1970,7 +2013,7 @@ class LogisticaController {
 
             // Subtítulo
             $instrSheet->mergeCells('A2:D2');
-            $instrSheet->setCellValue('A2', 'Complete las columnas azules (I–M) en la hoja "Novedades HL Express" y suba el archivo para procesar las resoluciones.');
+            $instrSheet->setCellValue('A2', 'Complete las columnas azules (J–O) en la hoja "Novedades HL Express" y suba el archivo para procesar las resoluciones.');
             $instrSheet->getStyle('A2')->getFont()->setItalic(true)->setSize(10);
             $instrSheet->getRowDimension(2)->setRowHeight(18);
 
@@ -1994,6 +2037,7 @@ class LogisticaController {
                 ['F', 'tipo_novedad_id', 'Nombre o ID del tipo de novedad registrada.',             'Novedad'],
                 ['G', 'is_solved',       'Indica si la novedad ya fue resuelta (No = pendiente).',  'No'],
                 ['H', 'fecha_novedad',   'Fecha y hora en que se registró la novedad en HL Express.','2026-06-17T14:30:00Z'],
+                ['I', 'novedad',         'Motivo o razón de la novedad (shipment_return_reason.name).','No contesta Cliente.'],
             ];
 
             $r = 6;
@@ -2021,16 +2065,18 @@ class LogisticaController {
             $r++;
 
             $editColumns = [
-                ['I', 'accion',         '⚠️ OBLIGATORIO. Define si se reintenta la entrega o se devuelve al remitente.',
-                                        'reintentar   ó   devolver'],
-                ['J', 'nueva_solucion', 'Instrucciones u observaciones para el operador de HL Express (cómo entregar, nuevo punto, etc.).',
-                                        'Llamar al cliente antes de ir. Dejar con vecino si no contesta.'],
-                ['K', 'nuevo_nombre',   'Nombre del destinatario actualizado (opcional si no cambió).',
-                                        'Ana González'],
-                ['L', 'nuevo_telefono', 'Teléfono de contacto actualizado (opcional si no cambió).',
-                                        '50698765432'],
-                ['M', 'nueva_direccion','Dirección de entrega actualizada (opcional si no cambió).',
-                                        'Calle 8 Nte, Casa 12, Panamá Centro'],
+                ['J', 'accion',          '⚠️ OBLIGATORIO. Define si se reintenta la entrega o se devuelve al remitente.',
+                                         'reintentar   ó   devolver'],
+                ['K', 'nueva_solucion',  'Instrucciones u observaciones para el operador de HL Express (cómo entregar, nuevo punto, etc.).',
+                                         'Llamar al cliente antes de ir. Dejar con vecino si no contesta.'],
+                ['L', 'nuevo_nombre',    'Nombre del destinatario actualizado (opcional si no cambió).',
+                                         'Ana González'],
+                ['M', 'nuevo_telefono',  'Teléfono de contacto actualizado (opcional si no cambió).',
+                                         '50698765432'],
+                ['N', 'nueva_direccion', 'Dirección de entrega actualizada (opcional si no cambió).',
+                                         'Calle 8 Nte, Casa 12, Panamá Centro'],
+                ['O', 'nuevo_code_city', 'Código de ciudad actualizado HL Express (opcional si no cambió).',
+                                         '100075918'],
             ];
 
             foreach ($editColumns as [$col, $name, $desc, $ex]) {
@@ -2072,8 +2118,8 @@ class LogisticaController {
 
             $warns = [
                 '• No elimine ni reordene columnas. El sistema las procesa por posición.',
-                '• No cambie los valores de las columnas A–H (información de lectura).',
-                '• La columna "accion" (I) debe contener exactamente: reintentar  o  devolver (en minúsculas).',
+                '• No cambie los valores de las columnas A–I (información de lectura).',
+                '• La columna "accion" (J) debe contener exactamente: reintentar  o  devolver (en minúsculas).',
                 '• Si deja "accion" en blanco, esa fila será ignorada al procesar.',
                 '• Los campos nuevo_nombre, nuevo_telefono y nueva_direccion vienen pre-rellenados; solo modifíquelos si hay cambios.',
                 '• El archivo se procesa en lote: todas las filas con "accion" completada serán enviadas a HL Express.',
@@ -2496,6 +2542,25 @@ class LogisticaController {
                 $buscarOrden = ltrim($numeroOrden, '#');
                 $pedido = (new PedidosModel())->obtenerPedidoPorNumero($buscarOrden);
                 if (!$pedido) $pedido = (new PedidosModel())->obtenerPedidoPorNumero('#' . $buscarOrden);
+                if (!$pedido && preg_match('/^[A-Za-z]+(\d+)$/', $buscarOrden, $mMatch)) {
+                    // Quitar prefijo alfanumérico como WPA (ej. WPA241692151 -> 241692151)
+                    $pedido = (new PedidosModel())->obtenerPedidoPorNumero($mMatch[1]);
+                }
+                if (!$pedido) {
+                    // Buscar en forwarding_log por tracking number, external_order_id u order_number en payload
+                    try {
+                        $dbF = (new Conexion())->conectar();
+                        $stmtF = $dbF->prepare("SELECT id_pedido FROM forwarding_log WHERE external_order_id = :ord OR request_payload LIKE :ordL OR response_payload LIKE :ordL LIMIT 1");
+                        $stmtF->execute([':ord' => $buscarOrden, ':ordL' => '%' . $buscarOrden . '%']);
+                        $flogRow = $stmtF->fetch(PDO::FETCH_ASSOC);
+                        if ($flogRow && !empty($flogRow['id_pedido'])) {
+                            $pedido = (new PedidosModel())->obtenerPedidoPorId($flogRow['id_pedido']);
+                        }
+                    } catch (Exception $eSearch) {
+                        // ignora error secundario de búsqueda
+                    }
+                }
+
                 if (!$pedido) {
                     $errores[] = "Fila {$rowNum} ({$numeroOrden}): pedido no encontrado en la plataforma.";
                     $resultados[] = [
@@ -2549,13 +2614,21 @@ class LogisticaController {
                 }
 
                 try {
+                    $nuevoCityCode  = trim($row[$colMap['code_city'] ?? $colMap['codigo_ciudad'] ?? $colMap['ciudad'] ?? ''] ?? '');
+                    $cityCode = !empty($nuevoCityCode) ? $nuevoCityCode : ($pedido['code_city'] ?? $pedido['codigo_postal'] ?? '');
+                    if (!empty($nuevoCityCode) && $nuevoCityCode !== ($pedido['code_city'] ?? '')) {
+                        try {
+                            PedidosModel::actualizarPedido(['id_pedido' => $pedido['id'], 'code_city' => $nuevoCityCode]);
+                        } catch (Exception $eUpCity) {}
+                    }
                     $payloadAPI = [
-                        'tracking_number'   => $trackingNumber,
-                        'is_return'         => $isReturn,
-                        'contact_name'      => $nuevoNombre,
-                        'contact_phone'     => $nuevoTelefono,
-                        'contact_address'   => $nuevaDireccion,
-                        'solve_description' => $nuevaSolucion,
+                        'tracking_number'                => $trackingNumber,
+                        'is_return'                      => $isReturn,
+                        'contact_name'                   => $nuevoNombre,
+                        'contact_phone'                  => $nuevoTelefono,
+                        'contact_address'                => $nuevaDireccion,
+                        'solve_description'              => $nuevaSolucion,
+                        'customer_destination_city_code' => $cityCode,
                     ];
 
                     $hlExpress->solveReturn($payloadAPI);
@@ -2657,25 +2730,10 @@ class LogisticaController {
             exit;
         }
 
-        // El external_order_id es el UUID interno de HL Express.
-        // El guide_number para solve-return es el order_number (ej. WCO2801)
-        // que viene en el response_payload del forwarding log.
+        $externalId = $log['external_order_id'] ?? null;
         $responseDecoded = json_decode($log['response_payload'] ?? '{}', true) ?: [];
-        // tracking_number (ej. V4000021620) es el identificador que acepta
-        // el endpoint solve-return de HL Express como guide_number.
-        $guideNumber = $responseDecoded['tracking_number']
-            ?? $responseDecoded['external_order_id']
-            ?? $log['external_order_id']
-            ?? null;
-
-        if (empty($guideNumber)) {
-            header('Content-Type: application/json', true, 400);
-            echo json_encode(['success' => false, 'message' => 'No se pudo obtener el número de guía de HL Express.']);
-            exit;
-        }
-
-        // city_code del pedido (código postal usado como city_code en HL Express)
-        $cityCode = $pedido['codigo_postal'] ?? '';
+        $shipmentId = $externalId ?: ($responseDecoded['id'] ?? $responseDecoded['external_order_id'] ?? null);
+        $trackingNumber = $responseDecoded['tracking_number'] ?? $responseDecoded['order_number'] ?? null;
 
         try {
             $providerData = ForwardingModel::obtenerProveedorPorSlug('hlexpress');
@@ -2694,11 +2752,72 @@ class LogisticaController {
             ]);
 
             $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
-            $incidents = $hlExpress->getIncidents($guideNumber);
+
+            $shipmentData = null;
+            $history = [];
+
+            if (!empty($shipmentId)) {
+                try {
+                    $shipmentData = $hlExpress->getShipmentById($shipmentId);
+                    $history = $shipmentData['shipment_status_history'] ?? [];
+                } catch (Exception $eShip) {
+                    error_log("consultarIncidenciasHLExpress getShipmentById error: " . $eShip->getMessage());
+                }
+            }
+
+            $incidents = [];
+            try {
+                $filtRes = $hlExpress->getIncidentsFiltered([
+                    'order_number'    => $pedido['numero_orden'],
+                    'tracking_number' => $trackingNumber,
+                    'limit'           => 10
+                ]);
+                $incidents = $filtRes['data'] ?? [];
+            } catch (Exception $eFilt) {
+                error_log("consultarIncidenciasHLExpress getIncidentsFiltered error: " . $eFilt->getMessage());
+            }
+
+            if (empty($incidents) && !empty($shipmentData)) {
+                $lastH = !empty($history) && is_array($history) ? end($history) : null;
+                $reasonObj = $lastH['shipment_return_reason'] ?? $shipmentData['shipment_return_reason'] ?? null;
+                $reasonName = $reasonObj['name'] ?? $lastH['observations'] ?? $shipmentData['observations'] ?? '';
+                
+                $incidents[] = [
+                    'id'                     => $shipmentData['id'] ?? null,
+                    'created_at'             => $lastH['created_at'] ?? $shipmentData['created_at'] ?? date('Y-m-d H:i:s'),
+                    'is_solved'              => 'No',
+                    'shipment_return_reason' => [
+                        'name' => $reasonName,
+                    ],
+                    'novedad'                => $reasonName,
+                    'ultimo_evento'          => $reasonName,
+                    'description'            => $lastH['observations'] ?? $reasonName ?: 'Novedad registrada en HL Express',
+                    'incident_type'          => [
+                        'name' => $lastH['shipment_status']['name'] ?? 'Novedad'
+                    ],
+                    'status'                 => $lastH['shipment_status']['name'] ?? 'Pendiente'
+                ];
+            } else {
+                foreach ($incidents as &$inc) {
+                    if (empty($inc['shipment_return_reason']['name']) && !empty($history) && is_array($history)) {
+                        $lastH = end($history);
+                        $rName = $lastH['shipment_return_reason']['name'] ?? $lastH['observations'] ?? '';
+                        if (!empty($rName)) {
+                            $inc['shipment_return_reason'] = ['name' => $rName];
+                        }
+                    }
+                }
+                unset($inc);
+            }
 
             if (ob_get_length()) ob_clean();
             header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'data' => $incidents]);
+            echo json_encode([
+                'success'  => true,
+                'data'     => $incidents,
+                'history'  => is_array($history) ? array_values($history) : [],
+                'shipment' => $shipmentData,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             exit;
         } catch (Exception $e) {
             error_log("LogisticaController::consultarIncidenciasHLExpress error: " . $e->getMessage());
@@ -2781,9 +2900,6 @@ class LogisticaController {
             exit;
         }
 
-        // city_code del pedido (código postal usado como city_code en HL Express)
-        $cityCode = $pedido['codigo_postal'] ?? '';
-
         // Validar parámetros del body POST/JSON
         $rawInput = file_get_contents('php://input');
         $inputDecoded = json_decode($rawInput, true) ?: [];
@@ -2793,6 +2909,18 @@ class LogisticaController {
         $contactPhone     = trim($_POST['contact_phone'] ?? $inputDecoded['contact_phone'] ?? '');
         $contactAddress   = trim($_POST['contact_address'] ?? $inputDecoded['contact_address'] ?? '');
         $solveDescription = trim($_POST['solve_description'] ?? $inputDecoded['solve_description'] ?? '');
+        $inputCityCode    = trim($_POST['customer_destination_city_code'] ?? $_POST['city_code'] ?? $inputDecoded['customer_destination_city_code'] ?? $inputDecoded['city_code'] ?? '');
+
+        // city_code del pedido (usar el enviado por el usuario si se proporcionó, sino el registrado en el pedido)
+        $cityCode = !empty($inputCityCode) ? $inputCityCode : ($pedido['code_city'] ?? $pedido['codigo_postal'] ?? '');
+
+        if (!empty($inputCityCode) && $inputCityCode !== ($pedido['code_city'] ?? '')) {
+            try {
+                PedidosModel::actualizarPedido(['id_pedido' => $pedido['id'], 'code_city' => $inputCityCode]);
+            } catch (Exception $eUpdateCity) {
+                error_log("Error actualizando code_city en pedido #{$pedido['id']}: " . $eUpdateCity->getMessage());
+            }
+        }
 
         // Validaciones
         if (!$isReturn) {

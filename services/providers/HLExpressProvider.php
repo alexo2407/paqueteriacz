@@ -236,11 +236,25 @@ class HLExpressProvider extends BaseProvider
         // inc.incident_type.name, inc.created_at, inc.is_solved
         $isSolvedFilter = $params['is_solved'] ?? 'No';
         $normalized = array_map(function (array $item) use ($isSolvedFilter) {
+            $reasonName = $item['shipment_return_reason']['name']
+                       ?? $item['shipment_return_reason_name']
+                       ?? $item['return_reason']['name']
+                       ?? $item['reason_name']
+                       ?? $item['reason']
+                       ?? $item['description'] 
+                       ?? $item['observation'] 
+                       ?? '';
             return [
                 // Campos de la novedad
-                'id'         => $item['id']         ?? null,
-                'created_at' => $item['created_at']  ?? null,
-                'is_solved'  => $isSolvedFilter,
+                'id'                     => $item['id']         ?? null,
+                'created_at'             => $item['created_at']  ?? null,
+                'is_solved'              => $isSolvedFilter,
+                'shipment_return_reason' => [
+                    'name' => $reasonName,
+                ],
+                'novedad'                => $reasonName,
+                'ultimo_evento'          => $reasonName,
+                'description'            => $reasonName,
                 'incident_type' => [
                     'name' => $this->resolverNombreNovedad((int)($item['shipment_status_id'] ?? 0)),
                 ],
@@ -313,7 +327,7 @@ class HLExpressProvider extends BaseProvider
             'customer_destination_phone_number'  => $payload['customer_destination_phone_number']  ?? $payload['contact_phone']           ?? '',
             'customer_destination_address'       => $payload['customer_destination_address']       ?? $payload['contact_address']         ?? '',
             'customer_destination_address_line'  => $payload['customer_destination_address_line']  ?? '',
-            'customer_destination_city_code'     => $payload['customer_destination_city_code']     ?? '',
+            'customer_destination_city_code'     => $payload['customer_destination_city_code']     ?? $payload['code_city'] ?? $payload['codigo_postal'] ?? '',
             'is_return'                          => (bool)($payload['is_return']                   ?? false),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
