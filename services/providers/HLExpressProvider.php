@@ -179,6 +179,46 @@ class HLExpressProvider extends BaseProvider
     }
 
     /**
+     * Cache de motivos de devolución / novedad de HL Express.
+     * @var array<int, string>|null
+     */
+    private static ?array $returnReasonsCache = null;
+
+    /**
+     * Obtener el catálogo de motivos de novedad de HL Express [id => name].
+     */
+    public function getReturnReasons(): array
+    {
+        if (self::$returnReasonsCache !== null) {
+            return self::$returnReasonsCache;
+        }
+
+        try {
+            $authData = $this->authenticate();
+            $url = $this->baseUrl . '/shipments/return-reasons';
+            $response = $this->httpRequest('GET', $url, [
+                'Accept: application/json',
+                'X-API-KEY: ' . $authData['token'],
+            ], null, 15);
+
+            if (!$response['error'] && $response['http_status'] === 200 && is_array($response['decoded'])) {
+                $map = [];
+                foreach ($response['decoded'] as $item) {
+                    if (isset($item['id']) && isset($item['name'])) {
+                        $map[(int)$item['id']] = trim($item['name']);
+                    }
+                }
+                self::$returnReasonsCache = $map;
+                return self::$returnReasonsCache;
+            }
+        } catch (Exception $e) {
+            error_log('[HLExpress::getReturnReasons] error: ' . $e->getMessage());
+        }
+
+        return self::$returnReasonsCache ?? [];
+    }
+
+    /**
      * Consultar novedades con filtros avanzados y paginación.
      * Retorna la respuesta paginada completa: data, total, current_page, last_page, per_page.
      *
@@ -230,13 +270,17 @@ class HLExpressProvider extends BaseProvider
             $items = [];
         }
 
+        $returnReasons = $this->getReturnReasons();
+
         // Normalizar cada item al formato que espera el JS del dashboard:
         // El JS accede a inc.shipment.order_number, inc.shipment.tracking_number,
         // inc.shipment.shipment_destination, inc.shipment.id,
         // inc.incident_type.name, inc.created_at, inc.is_solved
         $isSolvedFilter = $params['is_solved'] ?? 'No';
-        $normalized = array_map(function (array $item) use ($isSolvedFilter) {
+        $normalized = array_map(function (array $item) use ($isSolvedFilter, $returnReasons) {
+            $reasonId = (int)($item['shipment_return_reason_id'] ?? ($item['shipment_return_reason']['id'] ?? 0));
             $reasonName = $item['shipment_return_reason']['name']
+                       ?? ($reasonId > 0 && isset($returnReasons[$reasonId]) ? $returnReasons[$reasonId] : null)
                        ?? $item['shipment_return_reason_name']
                        ?? $item['return_reason']['name']
                        ?? $item['reason_name']
@@ -250,6 +294,7 @@ class HLExpressProvider extends BaseProvider
                 'created_at'             => $item['created_at']  ?? null,
                 'is_solved'              => $isSolvedFilter,
                 'shipment_return_reason' => [
+                    'id'   => $reasonId,
                     'name' => $reasonName,
                 ],
                 'novedad'                => $reasonName,
@@ -263,6 +308,7 @@ class HLExpressProvider extends BaseProvider
                     'id'                   => $item['id']              ?? null,
                     'order_number'         => $item['order_number']    ?? '',
                     'tracking_number'      => $item['tracking_number'] ?? '',
+                    'created_at'           => $item['created_at']       ?? null,
                     'shipment_destination' => $item['shipment_destination'] ?? [],
                 ],
             ];
@@ -354,6 +400,25 @@ class HLExpressProvider extends BaseProvider
                 $details = array_map(fn($e) => ($e['Key'] ?? '') . ': ' . ($e['Message'] ?? ''), $data['errors']);
                 $errorMsg = implode(' | ', $details);
             }
+
+            // Si el error indica que no se encontró el envío con ese número de guía,
+            // verificar si lo que se envió fue un número de orden para buscar la guía real y reintentar
+            if (stripos($errorMsg, "find a shipment with this guide number") !== false) {
+                $guideCandidate = trim($payload['guide_number'] ?? $payload['tracking_number'] ?? '');
+                if (!empty($guideCandidate)) {
+                    try {
+                        $search = $this->getIncidentsFiltered(['order_number' => $guideCandidate, 'is_solved' => '']);
+                        $realTracking = $search['data'][0]['shipment']['tracking_number'] ?? null;
+                        if ($realTracking && $realTracking !== $guideCandidate) {
+                            $retryPayload = $payload;
+                            $retryPayload['guide_number'] = $realTracking;
+                            $retryPayload['tracking_number'] = $realTracking;
+                            return $this->solveReturn($retryPayload);
+                        }
+                    } catch (Exception $eRetry) {}
+                }
+            }
+
             throw new Exception("HL Express solveReturn falló: " . $errorMsg, (int)$response['http_status']);
         }
 

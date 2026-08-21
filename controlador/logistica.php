@@ -1868,34 +1868,37 @@ class LogisticaController {
                 'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '2E75B6']],
             ];
 
+            // Columnas base (A–K) informativas + Columnas de resolución (L–Q)
             $headers = [
-                'A1' => 'numero_orden',
-                'B1' => 'tracking_number',
-                'C1' => 'destinatario',
-                'D1' => 'telefono',
-                'E1' => 'direccion',
-                'F1' => 'tipo_novedad_id',
-                'G1' => 'is_solved',
-                'H1' => 'fecha_novedad',
-                'I1' => 'novedad',
-                // Columnas a rellenar por el usuario:
-                'J1' => 'accion',
-                'K1' => 'nueva_solucion',
-                'L1' => 'nuevo_nombre',
-                'M1' => 'nuevo_telefono',
-                'N1' => 'nueva_direccion',
-                'O1' => 'nuevo_code_city',
+                'A1' => 'FECHA DE LA ORDEN',
+                'B1' => 'NOMBRE Y APELLIDOS',
+                'C1' => 'TELEFONO',
+                'D1' => 'GUIA',
+                'E1' => 'ESTATUS',
+                'F1' => 'DEPARTAMENTO',
+                'G1' => 'CIUDAD',
+                'H1' => 'FECHA DE NOVEDAD 1',
+                'I1' => 'HORA DE NOVEDAD 1',
+                'J1' => 'NOVEDAD 1',
+                'K1' => 'NUMERO_ORDEN',
+                // Columnas a rellenar / revisar por el usuario:
+                'L1' => 'ACCION',
+                'M1' => 'NUEVA_SOLUCION',
+                'N1' => 'NUEVO_NOMBRE',
+                'O1' => 'NUEVO_TELEFONO',
+                'P1' => 'NUEVA_DIRECCION',
+                'Q1' => 'NUEVO_CODE_CITY',
             ];
 
             foreach ($headers as $cell => $label) {
                 $sheet->setCellValue($cell, $label);
                 $col = substr($cell, 0, 1);
-                // Columnas a rellenar (J-O) en azul, info (A-I) en naranja
-                $sheet->getStyle($cell)->applyFromArray(ord($col) >= ord('J') ? $infoStyle : $boldStyle);
+                // Columnas de resolución (L–Q) en azul, columnas informativas (A–K) en naranja
+                $sheet->getStyle($cell)->applyFromArray(ord($col) >= ord('L') ? $infoStyle : $boldStyle);
             }
 
-            // Añadir comentario en celda J1 explicando valores válidos
-            $comment = $sheet->getComment('J1');
+            // Añadir comentario en celda L1 explicando valores válidos
+            $comment = $sheet->getComment('L1');
             $comment->getText()->createTextRun('Valores válidos: reintentar | devolver');
 
             $row = 2;
@@ -1903,6 +1906,61 @@ class LogisticaController {
                 $shipment = $inc['shipment'] ?? [];
                 $dest     = $shipment['shipment_destination'] ?? [];
 
+                // 1. Buscar pedido local por número de orden o por guía
+                $cleanOrd = ltrim($shipment['order_number'] ?? '', '#');
+                if (preg_match('/^[A-Za-z]+(\d+)$/', $cleanOrd, $mM)) $cleanOrd = $mM[1];
+                $pedLoc = (new PedidosModel())->obtenerPedidoPorNumero($cleanOrd);
+                if (!$pedLoc && !empty($shipment['tracking_number'])) {
+                    $pedLoc = (new PedidosModel())->obtenerPedidoPorTracking($shipment['tracking_number']);
+                }
+                if (!$pedLoc && !empty($shipment['order_number'])) {
+                    $pedLoc = (new PedidosModel())->obtenerPedidoPorNumero($shipment['order_number']);
+                }
+
+                // 2. Extraer Fecha de la Orden (Prioridad: local fecha_ingreso / created_at -> shipment created_at)
+                $rawFechaOrden = $pedLoc['fecha_ingreso'] ?? $pedLoc['created_at'] ?? $shipment['created_at'] ?? null;
+                $fechaOrden = '';
+                if (!empty($rawFechaOrden)) {
+                    try {
+                        $dtOrd = new DateTime($rawFechaOrden);
+                        if (str_ends_with(trim($rawFechaOrden), 'Z')) {
+                            $dtOrd->setTimezone(new DateTimeZone('America/Panama'));
+                        }
+                        $fechaOrden = $dtOrd->format('d-m-Y');
+                    } catch (Exception $eOrd) {
+                        $fechaOrden = substr($rawFechaOrden, 0, 10);
+                    }
+                }
+
+                // 3. Extraer Departamento y Ciudad
+                $rawAddr = $dest['raw_address'] ?? $dest['address'] ?? '';
+                $parts = array_map('trim', explode(',', $rawAddr));
+                $depto = $dest['state']['name'] ?? $dest['city']['state']['name'] ?? ($pedLoc['departmentName'] ?? '');
+                if (empty($depto) && isset($parts[1]) && !empty($parts[1])) {
+                    $depto = $parts[1];
+                }
+                $ciudad = $dest['city']['name'] ?? ($pedLoc['municipalitiesName'] ?? '');
+                if (empty($ciudad) && isset($parts[2]) && !empty($parts[2])) {
+                    $ciudad = $parts[2];
+                }
+
+                // 4. Extraer Fecha y Hora de la Novedad
+                $fechaNovedad = '';
+                $horaNovedad  = '';
+                if (!empty($inc['created_at'])) {
+                    try {
+                        $dtNov = new DateTime($inc['created_at']);
+                        if (str_ends_with(trim($inc['created_at']), 'Z')) {
+                            $dtNov->setTimezone(new DateTimeZone('America/Panama'));
+                        }
+                        $fechaNovedad = $dtNov->format('d-m-Y');
+                        $horaNovedad  = $dtNov->format('H:i');
+                    } catch (Exception $eNov) {
+                        $fechaNovedad = substr($inc['created_at'], 0, 10);
+                    }
+                }
+
+                // 5. Motivo de la novedad
                 $novedadMotivo = $inc['shipment_return_reason']['name']
                               ?? $inc['shipment_return_reason_name']
                               ?? $inc['return_reason']['name']
@@ -1924,45 +1982,43 @@ class LogisticaController {
                     } catch (Exception $eDet) {}
                 }
 
-                $cityCodePre = $dest['city_dane_code'] ?? $dest['zip_code'] ?? $dest['code_city'] ?? '';
-                if (empty($cityCodePre) && !empty($shipment['order_number'])) {
-                    $cleanOrd = ltrim($shipment['order_number'], '#');
-                    if (preg_match('/^[A-Za-z]+(\d+)$/', $cleanOrd, $mM)) $cleanOrd = $mM[1];
-                    $pedLoc = (new PedidosModel())->obtenerPedidoPorNumero($cleanOrd);
-                    if ($pedLoc) {
-                        $cityCodePre = $pedLoc['code_city'] ?? $pedLoc['codigo_postal'] ?? '';
-                    }
-                }
+                // 6. Código de ciudad (pre-rellenado para resolución)
+                $cityCodePre = $dest['city_dane_code'] ?? $dest['zip_code'] ?? $dest['code_city'] ?? ($pedLoc['code_city'] ?? $pedLoc['codigo_postal'] ?? '');
 
-                $sheet->setCellValue("A{$row}", $shipment['order_number']    ?? '');
-                $sheet->setCellValue("B{$row}", $shipment['tracking_number'] ?? '');
-                $sheet->setCellValue("C{$row}", $dest['full_name']           ?? '');
-                $sheet->setCellValue("D{$row}", $dest['phone_number']        ?? '');
-                $sheet->setCellValue("E{$row}", $dest['address']             ?? '');
-                $sheet->setCellValue("F{$row}", $inc['incident_type']['name'] ?? ($inc['status'] ?? ''));
-                $sheet->setCellValue("G{$row}", $inc['is_solved']            ?? 'No');
-                $sheet->setCellValue("H{$row}", $inc['created_at']           ?? '');
-                $sheet->setCellValue("I{$row}", $novedadMotivo);
-                // J–O quedan para que el usuario las llene/revise
-                $sheet->setCellValue("J{$row}", ''); // accion
-                $sheet->setCellValue("K{$row}", ''); // nueva_solucion
-                $sheet->setCellValue("L{$row}", $dest['full_name']    ?? ''); // nuevo_nombre (pre-rellenado)
-                $sheet->setCellValue("M{$row}", $dest['phone_number'] ?? ''); // nuevo_telefono (pre-rellenado)
-                $sheet->setCellValue("N{$row}", $dest['address']      ?? ''); // nueva_direccion (pre-rellenado)
-                $sheet->setCellValue("O{$row}", $cityCodePre);                // nuevo_code_city (pre-rellenado)
+                $sheet->setCellValue("A{$row}", $fechaOrden);
+                $sheet->setCellValue("B{$row}", $dest['full_name']           ?? ($pedLoc['destinatario'] ?? ''));
+                $sheet->setCellValue("C{$row}", $dest['phone_number']        ?? ($pedLoc['telefono'] ?? ''));
+                $sheet->setCellValue("D{$row}", $shipment['tracking_number'] ?? ($pedLoc['numero_traking'] ?? ''));
+                $sheet->setCellValue("E{$row}", $inc['incident_type']['name'] ?? ($inc['status'] ?? 'NOVEDAD'));
+                $sheet->setCellValue("F{$row}", $depto);
+                $sheet->setCellValue("G{$row}", $ciudad);
+                $sheet->setCellValue("H{$row}", $fechaNovedad);
+                $sheet->setCellValue("I{$row}", $horaNovedad);
+                $sheet->setCellValue("J{$row}", $novedadMotivo);
+                $sheet->setCellValue("K{$row}", $shipment['order_number']    ?? ($pedLoc['numero_orden'] ?? ''));
+                // L–Q quedan para que el usuario las llene/revise
+                $sheet->setCellValue("L{$row}", ''); // accion
+                $sheet->setCellValue("M{$row}", ''); // nueva_solucion
+                $sheet->setCellValue("N{$row}", $dest['full_name']    ?? ($pedLoc['destinatario'] ?? '')); // nuevo_nombre (pre-rellenado)
+                $sheet->setCellValue("O{$row}", $dest['phone_number'] ?? ($pedLoc['telefono'] ?? ''));     // nuevo_telefono (pre-rellenado)
+                $sheet->setCellValue("P{$row}", $dest['address']      ?? ($pedLoc['direccion'] ?? ''));    // nueva_direccion (pre-rellenado)
+                $sheet->setCellValue("Q{$row}", $cityCodePre);                                             // nuevo_code_city (pre-rellenado)
 
                 $row++;
             }
 
             // Auto-size columnas
-            foreach (range('A', 'O') as $col) {
+            foreach (range('A', 'Q') as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
-            $sheet->getColumnDimension('E')->setAutoSize(false)->setWidth(40);
-            $sheet->getColumnDimension('I')->setAutoSize(false)->setWidth(35);
-            $sheet->getColumnDimension('K')->setAutoSize(false)->setWidth(35);
-            $sheet->getColumnDimension('N')->setAutoSize(false)->setWidth(40);
-            $sheet->getColumnDimension('O')->setAutoSize(false)->setWidth(20);
+            $sheet->getColumnDimension('B')->setAutoSize(false)->setWidth(25);
+            $sheet->getColumnDimension('D')->setAutoSize(false)->setWidth(18);
+            $sheet->getColumnDimension('F')->setAutoSize(false)->setWidth(20);
+            $sheet->getColumnDimension('G')->setAutoSize(false)->setWidth(20);
+            $sheet->getColumnDimension('J')->setAutoSize(false)->setWidth(35);
+            $sheet->getColumnDimension('M')->setAutoSize(false)->setWidth(35);
+            $sheet->getColumnDimension('P')->setAutoSize(false)->setWidth(40);
+            $sheet->getColumnDimension('Q')->setAutoSize(false)->setWidth(20);
 
             // Fijar la primera fila como encabezado
             $sheet->freezePane('A2');
@@ -2013,7 +2069,7 @@ class LogisticaController {
 
             // Subtítulo
             $instrSheet->mergeCells('A2:D2');
-            $instrSheet->setCellValue('A2', 'Complete las columnas azules (J–O) en la hoja "Novedades HL Express" y suba el archivo para procesar las resoluciones.');
+            $instrSheet->setCellValue('A2', 'Complete las columnas azules (L–Q) en la hoja "Novedades HL Express" y suba el archivo para procesar las resoluciones.');
             $instrSheet->getStyle('A2')->getFont()->setItalic(true)->setSize(10);
             $instrSheet->getRowDimension(2)->setRowHeight(18);
 
@@ -2029,15 +2085,17 @@ class LogisticaController {
             $instrSheet->getStyle('A5:D5')->applyFromArray($colHeaderStyle);
 
             $infoColumns = [
-                ['A', 'numero_orden',    'Número de orden interno del sistema.',                    'ORD-20726'],
-                ['B', 'tracking_number', 'Número de tracking de HL Express (WPA.../WCO...).',       'WPA2000827970'],
-                ['C', 'destinatario',    'Nombre completo del destinatario del envío.',             'Juan Pérez'],
-                ['D', 'telefono',        'Teléfono de contacto del destinatario.',                  '50612345678'],
-                ['E', 'direccion',       'Dirección de entrega original registrada en el sistema.', 'Calle 5, El Dorado, Panamá'],
-                ['F', 'tipo_novedad_id', 'Nombre o ID del tipo de novedad registrada.',             'Novedad'],
-                ['G', 'is_solved',       'Indica si la novedad ya fue resuelta (No = pendiente).',  'No'],
-                ['H', 'fecha_novedad',   'Fecha y hora en que se registró la novedad en HL Express.','2026-06-17T14:30:00Z'],
-                ['I', 'novedad',         'Motivo o razón de la novedad (shipment_return_reason.name).','No contesta Cliente.'],
+                ['A', 'FECHA DE LA ORDEN',   'Fecha de creación del pedido en formato DD-MM-YYYY.',      '17-08-2026'],
+                ['B', 'NOMBRE Y APELLIDOS',  'Nombre completo del destinatario del envío.',              'Orlando Pérez'],
+                ['C', 'TELEFONO',            'Teléfono de contacto del destinatario.',                   '67812882'],
+                ['D', 'GUIA',                'Número de tracking/guía de HL Express (WPA...).',          'WPA2000963046'],
+                ['E', 'ESTATUS',             'Estado actual del envío en HL Express.',                   'NOVEDAD'],
+                ['F', 'DEPARTAMENTO',        'Departamento o provincia de destino.',                    'PANAMA'],
+                ['G', 'CIUDAD',              'Ciudad o municipio de destino.',                           'BETHANIA'],
+                ['H', 'FECHA DE NOVEDAD 1',  'Fecha en que ocurrió el evento de novedad (DD-MM-YYYY).',  '18-08-2026'],
+                ['I', 'HORA DE NOVEDAD 1',   'Hora en que se registró la novedad (HH:mm).',              '15:15'],
+                ['J', 'NOVEDAD 1',           'Motivo o causa de la novedad registrada.',                 'No contesta Cliente.'],
+                ['K', 'NUMERO_ORDEN',        'Número de orden interno asociado al envío.',               'ORD-20726'],
             ];
 
             $r = 6;
@@ -2065,17 +2123,17 @@ class LogisticaController {
             $r++;
 
             $editColumns = [
-                ['J', 'accion',          '⚠️ OBLIGATORIO. Define si se reintenta la entrega o se devuelve al remitente.',
+                ['L', 'ACCION',          '⚠️ OBLIGATORIO. Define si se reintenta la entrega o se devuelve al remitente.',
                                          'reintentar   ó   devolver'],
-                ['K', 'nueva_solucion',  'Instrucciones u observaciones para el operador de HL Express (cómo entregar, nuevo punto, etc.).',
+                ['M', 'NUEVA_SOLUCION',  'Instrucciones u observaciones para el operador de HL Express (cómo entregar, nuevo punto, etc.).',
                                          'Llamar al cliente antes de ir. Dejar con vecino si no contesta.'],
-                ['L', 'nuevo_nombre',    'Nombre del destinatario actualizado (opcional si no cambió).',
-                                         'Ana González'],
-                ['M', 'nuevo_telefono',  'Teléfono de contacto actualizado (opcional si no cambió).',
-                                         '50698765432'],
-                ['N', 'nueva_direccion', 'Dirección de entrega actualizada (opcional si no cambió).',
-                                         'Calle 8 Nte, Casa 12, Panamá Centro'],
-                ['O', 'nuevo_code_city', 'Código de ciudad actualizado HL Express (opcional si no cambió).',
+                ['N', 'NUEVO_NOMBRE',    'Nombre del destinatario actualizado (opcional si no cambió).',
+                                         'Orlando Pérez'],
+                ['O', 'NUEVO_TELEFONO',  'Teléfono de contacto actualizado (opcional si no cambió).',
+                                         '67812882'],
+                ['P', 'NUEVA_DIRECCION', 'Dirección de entrega actualizada (opcional si no cambió).',
+                                         'Calle 8 Nte, Casa 12, Bethania'],
+                ['Q', 'NUEVO_CODE_CITY', 'Código de ciudad actualizado HL Express (opcional si no cambió).',
                                          '100075918'],
             ];
 
@@ -2088,10 +2146,10 @@ class LogisticaController {
                 $r++;
             }
 
-            // ── Sección 3: Reglas de la columna "accion" ──
+            // ── Sección 3: Reglas de la columna "ACCION" ──
             $r++;
             $instrSheet->mergeCells("A{$r}:D{$r}");
-            $instrSheet->setCellValue("A{$r}", 'VALORES VÁLIDOS PARA LA COLUMNA "accion"');
+            $instrSheet->setCellValue("A{$r}", 'VALORES VÁLIDOS PARA LA COLUMNA "ACCION"');
             $instrSheet->getStyle("A{$r}:D{$r}")->applyFromArray($sectionStyle);
             $r++;
 
@@ -2117,12 +2175,12 @@ class LogisticaController {
             $r++;
 
             $warns = [
-                '• No elimine ni reordene columnas. El sistema las procesa por posición.',
-                '• No cambie los valores de las columnas A–I (información de lectura).',
-                '• La columna "accion" (J) debe contener exactamente: reintentar  o  devolver (en minúsculas).',
-                '• Si deja "accion" en blanco, esa fila será ignorada al procesar.',
-                '• Los campos nuevo_nombre, nuevo_telefono y nueva_direccion vienen pre-rellenados; solo modifíquelos si hay cambios.',
-                '• El archivo se procesa en lote: todas las filas con "accion" completada serán enviadas a HL Express.',
+                '• No elimine ni reordene columnas. El sistema las procesa por posición o encabezado.',
+                '• No cambie los valores de las columnas A–K (información de lectura).',
+                '• La columna "ACCION" (L) debe contener exactamente: reintentar  o  devolver (en minúsculas).',
+                '• Si deja "ACCION" en blanco, esa fila será ignorada al procesar.',
+                '• Los campos NUEVO_NOMBRE, NUEVO_TELEFONO y NUEVA_DIRECCION vienen pre-rellenados; solo modifíquelos si hay cambios.',
+                '• El archivo se procesa en lote: todas las filas con "ACCION" completada serán enviadas a HL Express.',
             ];
             foreach ($warns as $w) {
                 $instrSheet->mergeCells("A{$r}:D{$r}");
@@ -2133,7 +2191,7 @@ class LogisticaController {
 
             // Auto-size instrSheet
             $instrSheet->getColumnDimension('A')->setWidth(12);
-            $instrSheet->getColumnDimension('B')->setWidth(22);
+            $instrSheet->getColumnDimension('B')->setWidth(25);
             $instrSheet->getColumnDimension('C')->setWidth(70);
             $instrSheet->getColumnDimension('D')->setWidth(45);
             foreach (range(1, $r) as $rowIdx) {
@@ -2473,17 +2531,30 @@ class LogisticaController {
             $sheet = $spreadsheet->getActiveSheet();
             $rows  = $sheet->toArray(null, true, true, true);
 
-            // Detectar encabezados en fila 1
-            $headers = array_map('strtolower', array_map('trim', $rows[1] ?? []));
-            $colMap  = array_flip($headers); // nombre_columna => letra_columna
+            // Detectar encabezados en fila 1 con soporte para variantes y mayúsculas/minúsculas
+            $colMap = [];
+            foreach (($rows[1] ?? []) as $colKey => $rawHeader) {
+                if ($rawHeader === null || $rawHeader === '') continue;
+                $norm = strtolower(trim((string)$rawHeader));
+                $normClean = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', ' '], ['a', 'e', 'i', 'o', 'u', 'n', '_'], $norm);
+                $colMap[$norm] = $colKey;
+                $colMap[$normClean] = $colKey;
+            }
 
-            $required = ['numero_orden', 'accion'];
-            foreach ($required as $req) {
-                if (!isset($colMap[$req])) {
-                    header('Content-Type: application/json', true, 400);
-                    echo json_encode(['success' => false, 'message' => "Columna requerida no encontrada: {$req}"]);
-                    exit;
-                }
+            // Identificar columnas necesarias
+            $colOrden    = $colMap['numero_orden'] ?? $colMap['orden'] ?? $colMap['numero_de_orden'] ?? $colMap['order_number'] ?? null;
+            $colGuia     = $colMap['guia'] ?? $colMap['tracking_number'] ?? $colMap['tracking'] ?? $colMap['numero_guia'] ?? null;
+            $colAccion   = $colMap['accion'] ?? $colMap['action'] ?? null;
+            $colSolucion = $colMap['nueva_solucion'] ?? $colMap['solucion'] ?? $colMap['instrucciones'] ?? $colMap['nueva_instruccion'] ?? null;
+            $colNombre   = $colMap['nuevo_nombre'] ?? $colMap['nombre_y_apellidos'] ?? $colMap['nombre'] ?? $colMap['destinatario'] ?? null;
+            $colTelefono = $colMap['nuevo_telefono'] ?? $colMap['telefono'] ?? null;
+            $colDireccion= $colMap['nueva_direccion'] ?? $colMap['direccion'] ?? null;
+            $colCityCode = $colMap['nuevo_code_city'] ?? $colMap['code_city'] ?? $colMap['codigo_ciudad'] ?? $colMap['ciudad'] ?? null;
+
+            if (!$colAccion || (!$colOrden && !$colGuia)) {
+                header('Content-Type: application/json', true, 400);
+                echo json_encode(['success' => false, 'message' => "El archivo debe contener al menos la columna 'ACCION' y la columna 'NUMERO_ORDEN' o 'GUIA'."]);
+                exit;
             }
 
             // Obtener proveedor HL Express
@@ -2508,15 +2579,17 @@ class LogisticaController {
             foreach ($rows as $rowNum => $row) {
                 if ($rowNum === 1) continue; // Saltar encabezado
 
-                $numeroOrden = trim($row[$colMap['numero_orden']] ?? '');
-                $accion      = strtolower(trim($row[$colMap['accion']] ?? ''));
+                $numeroOrden = $colOrden ? trim($row[$colOrden] ?? '') : '';
+                $guia        = $colGuia  ? trim($row[$colGuia]  ?? '') : '';
+                $accion      = strtolower(trim($row[$colAccion] ?? ''));
+                $itemRef     = $numeroOrden ?: $guia;
 
-                if (empty($numeroOrden) || empty($accion)) continue;
+                if (empty($accion) || empty($itemRef)) continue;
                 if (!in_array($accion, ['reintentar', 'devolver'])) {
-                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): acción inválida '{$accion}'. Use 'reintentar' o 'devolver'.";
+                    $errores[] = "Fila {$rowNum} ({$itemRef}): acción inválida '{$accion}'. Use 'reintentar' o 'devolver'.";
                     $resultados[] = [
                         'fila'   => $rowNum,
-                        'orden'  => $numeroOrden,
+                        'orden'  => $itemRef,
                         'accion' => $accion,
                         'estado' => 'error',
                         'msg'    => "Acción inválida '{$accion}'. Use 'reintentar' o 'devolver'.",
@@ -2527,77 +2600,100 @@ class LogisticaController {
                 $isReturn = ($accion === 'devolver');
 
                 // Obtener campos de corrección
-                $nuevaSolucion  = trim($row[$colMap['nueva_solucion']  ?? ''] ?? '');
-                $nuevoNombre    = trim($row[$colMap['nuevo_nombre']    ?? ''] ?? '');
-                $nuevoTelefono  = trim($row[$colMap['nuevo_telefono']  ?? ''] ?? '');
-                $nuevaDireccion = trim($row[$colMap['nueva_direccion'] ?? ''] ?? '');
+                $nuevaSolucion  = $colSolucion  ? trim($row[$colSolucion]  ?? '') : '';
+                $nuevoNombre    = $colNombre    ? trim($row[$colNombre]    ?? '') : '';
+                $nuevoTelefono  = $colTelefono  ? trim($row[$colTelefono]  ?? '') : '';
+                $nuevaDireccion = $colDireccion ? trim($row[$colDireccion] ?? '') : '';
+                $nuevoCityCode  = $colCityCode  ? trim($row[$colCityCode]  ?? '') : '';
 
                 // Validar campos para reintentar
                 if (!$isReturn && (empty($nuevaSolucion) || empty($nuevoNombre) || empty($nuevoTelefono) || empty($nuevaDireccion))) {
-                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): para 'reintentar' se requieren nueva_solucion, nuevo_nombre, nuevo_telefono y nueva_direccion.";
+                    $errores[] = "Fila {$rowNum} ({$itemRef}): para 'reintentar' se requieren nueva_solucion, nuevo_nombre, nuevo_telefono y nueva_direccion.";
+                    $resultados[] = [
+                        'fila'   => $rowNum,
+                        'orden'  => $itemRef,
+                        'accion' => $accion,
+                        'estado' => 'error',
+                        'msg'    => "Para 'reintentar' se requieren nueva_solucion, nuevo_nombre, nuevo_telefono y nueva_direccion.",
+                    ];
                     continue;
                 }
 
-                // Buscar pedido local por número de orden
-                $buscarOrden = ltrim($numeroOrden, '#');
-                $pedido = (new PedidosModel())->obtenerPedidoPorNumero($buscarOrden);
-                if (!$pedido) $pedido = (new PedidosModel())->obtenerPedidoPorNumero('#' . $buscarOrden);
-                if (!$pedido && preg_match('/^[A-Za-z]+(\d+)$/', $buscarOrden, $mMatch)) {
-                    // Quitar prefijo alfanumérico como WPA (ej. WPA241692151 -> 241692151)
-                    $pedido = (new PedidosModel())->obtenerPedidoPorNumero($mMatch[1]);
+                // Buscar pedido local
+                $pedido = null;
+                $buscarOrden = '';
+                if (!empty($numeroOrden)) {
+                    $buscarOrden = ltrim($numeroOrden, '#');
+                    $cleanNumeric = $buscarOrden;
+                    if (preg_match('/^[A-Za-z]+(\d+)$/', $buscarOrden, $mMatch)) {
+                        $cleanNumeric = $mMatch[1];
+                    }
+                    $pedido = (new PedidosModel())->obtenerPedidoPorNumero($cleanNumeric);
+                    if (!$pedido) $pedido = (new PedidosModel())->obtenerPedidoPorNumero($buscarOrden);
+                    if (!$pedido) $pedido = (new PedidosModel())->obtenerPedidoPorNumero('#' . $buscarOrden);
                 }
-                if (!$pedido) {
-                    // Buscar en forwarding_log por tracking number, external_order_id u order_number en payload
+                if (!$pedido && !empty($guia)) {
+                    $pedido = (new PedidosModel())->obtenerPedidoPorTracking($guia);
+                }
+                if (!$pedido && !empty($buscarOrden)) {
+                    // Buscar en forwarding_log
                     try {
                         $dbF = (new Conexion())->conectar();
-                        $stmtF = $dbF->prepare("SELECT id_pedido FROM forwarding_log WHERE external_order_id = :ord OR request_payload LIKE :ordL OR response_payload LIKE :ordL LIMIT 1");
-                        $stmtF->execute([':ord' => $buscarOrden, ':ordL' => '%' . $buscarOrden . '%']);
+                        $stmtF = $dbF->prepare("SELECT id_pedido, response_payload FROM forwarding_log WHERE request_payload LIKE :o1 OR response_payload LIKE :o2 OR external_order_id = :o3 LIMIT 1");
+                        $stmtF->execute([':o1' => '%' . $buscarOrden . '%', ':o2' => '%' . $buscarOrden . '%', ':o3' => $buscarOrden]);
                         $flogRow = $stmtF->fetch(PDO::FETCH_ASSOC);
                         if ($flogRow && !empty($flogRow['id_pedido'])) {
                             $pedido = (new PedidosModel())->obtenerPedidoPorId($flogRow['id_pedido']);
                         }
-                    } catch (Exception $eSearch) {
-                        // ignora error secundario de búsqueda
+                    } catch (Exception $eSearch) {}
+                }
+
+                // Determinar el tracking number REAL de HL Express
+                $trackingNumber = null;
+
+                // 1. Si la guía del Excel ya es un tracking válido (no un UUID ni order_number)
+                if (!empty($guia) && !preg_match('/^[0-9a-f\-]{36}$/i', $guia) && !str_starts_with($guia, 'WPA24') && strlen($guia) > 5) {
+                    $trackingNumber = $guia;
+                }
+
+                // 2. Si el pedido local tiene numero_traking válido
+                if (empty($trackingNumber) && !empty($pedido['numero_traking']) && !preg_match('/^[0-9a-f\-]{36}$/i', $pedido['numero_traking'])) {
+                    $trackingNumber = $pedido['numero_traking'];
+                }
+
+                // 3. Extraer tracking de forwarding_log (del response_payload JSON)
+                if (empty($trackingNumber) && !empty($pedido['id'])) {
+                    $log = ForwardingModel::obtenerLogForwardingExitoso($pedido['id'], 'hlexpress');
+                    if ($log) {
+                        $dec = json_decode($log['response_payload'] ?? '{}', true);
+                        if (!empty($dec['tracking_number'])) {
+                            $trackingNumber = $dec['tracking_number'];
+                        } elseif (!empty($dec['external_order_id']) && !preg_match('/^[0-9a-f\-]{36}$/i', $dec['external_order_id'])) {
+                            $trackingNumber = $dec['external_order_id'];
+                        }
                     }
                 }
 
-                if (!$pedido) {
-                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): pedido no encontrado en la plataforma.";
-                    $resultados[] = [
-                        'fila'   => $rowNum,
-                        'orden'  => $numeroOrden,
-                        'accion' => $accion,
-                        'estado' => 'error',
-                        'msg'    => 'Pedido no encontrado en la plataforma.',
-                    ];
-                    continue;
+                // 4. Si aún no lo tenemos, consultar dinámicamente a la API de HL Express por número de orden
+                if (empty($trackingNumber) && !empty($numeroOrden)) {
+                    try {
+                        $searchHL = $hlExpress->getIncidentsFiltered(['order_number' => $numeroOrden, 'is_solved' => '']);
+                        if (!empty($searchHL['data'][0]['shipment']['tracking_number'])) {
+                            $trackingNumber = $searchHL['data'][0]['shipment']['tracking_number'];
+                        }
+                    } catch (Exception $eHLSearch) {}
                 }
 
-                // Obtener tracking number
-                $log = ForwardingModel::obtenerLogForwardingExitoso($pedido['id'], 'hlexpress');
-                if (!$log) {
-                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): el pedido no fue enviado por HL Express.";
-                    $resultados[] = [
-                        'fila'   => $rowNum,
-                        'orden'  => $numeroOrden,
-                        'accion' => $accion,
-                        'estado' => 'warning',
-                        'msg'    => 'El pedido no fue enviado por HL Express (sin log de forwarding).',
-                    ];
-                    continue;
-                }
-
-                $trackingNumber = $log['external_order_id'] ?? null;
+                // 5. Fallback final si $guia o $numeroOrden vino en el archivo
                 if (empty($trackingNumber)) {
-                    $decoded = json_decode($log['response_payload'] ?? '{}', true);
-                    $trackingNumber = $decoded['id'] ?? $decoded['tracking_number'] ?? null;
+                    $trackingNumber = !empty($guia) ? $guia : $numeroOrden;
                 }
 
                 if (empty($trackingNumber)) {
-                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): no se pudo obtener el número de guía.";
+                    $errores[] = "Fila {$rowNum} ({$itemRef}): no se pudo obtener el número de guía de HL Express.";
                     $resultados[] = [
                         'fila'   => $rowNum,
-                        'orden'  => $numeroOrden,
+                        'orden'  => $itemRef,
                         'accion' => $accion,
                         'estado' => 'warning',
                         'msg'    => 'No se pudo obtener el número de guía de HL Express.',
@@ -2614,9 +2710,8 @@ class LogisticaController {
                 }
 
                 try {
-                    $nuevoCityCode  = trim($row[$colMap['code_city'] ?? $colMap['codigo_ciudad'] ?? $colMap['ciudad'] ?? ''] ?? '');
                     $cityCode = !empty($nuevoCityCode) ? $nuevoCityCode : ($pedido['code_city'] ?? $pedido['codigo_postal'] ?? '');
-                    if (!empty($nuevoCityCode) && $nuevoCityCode !== ($pedido['code_city'] ?? '')) {
+                    if (!empty($nuevoCityCode) && $pedido && !empty($pedido['id']) && $nuevoCityCode !== ($pedido['code_city'] ?? '')) {
                         try {
                             PedidosModel::actualizarPedido(['id_pedido' => $pedido['id'], 'code_city' => $nuevoCityCode]);
                         } catch (Exception $eUpCity) {}
@@ -2633,27 +2728,29 @@ class LogisticaController {
 
                     $hlExpress->solveReturn($payloadAPI);
 
-                    // Actualizar estado local
-                    $nuevoEstado = $isReturn ? 'Devuelto' : 'Reprogramado';
-                    $obs = "Resolución Masiva HL Express - {$accion}: {$nuevaSolucion}";
-                    LogisticaModel::actualizarEstado($pedido['id'], $nuevoEstado, $obs, $userId);
+                    // Actualizar estado local si existe pedido asociado
+                    if ($pedido && !empty($pedido['id'])) {
+                        $nuevoEstado = $isReturn ? 'Devuelto' : 'Reprogramado';
+                        $obs = "Resolución Masiva HL Express - {$accion}: {$nuevaSolucion}";
+                        LogisticaModel::actualizarEstado($pedido['id'], $nuevoEstado, $obs, $userId);
+                    }
 
                     $exitosos++;
                     $resultados[] = [
                         'fila'   => $rowNum,
-                        'orden'  => $numeroOrden,
+                        'orden'  => $itemRef,
                         'accion' => $accion,
                         'estado' => 'ok',
                         'msg'    => "Resuelta correctamente como '{$accion}'.",
                     ];
                 } catch (Exception $apiError) {
-                    $errores[] = "Fila {$rowNum} ({$numeroOrden}): {$apiError->getMessage()}";
+                    $errores[] = "Fila {$rowNum} ({$itemRef}): {$apiError->getMessage()}";
                     $resultados[] = [
                         'fila'   => $rowNum,
-                        'orden'  => $numeroOrden,
+                        'orden'  => $itemRef,
                         'accion' => $accion,
                         'estado' => 'error',
-                        'msg'    => $apiError->getMessage(),
+                        'msg'    => "Error en HL Express: " . $apiError->getMessage(),
                     ];
                 }
             }

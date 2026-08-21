@@ -762,7 +762,10 @@ class PedidosModel
             // Consulta para obtener los datos del pedido y su estado (adaptada al esquema actual)
             $sql = "SELECT 
                         p.id,
+                        p.fecha_ingreso,
+                        p.created_at,
                         p.numero_orden,
+                        p.numero_traking,
                         p.destinatario,
                         p.telefono,
                         p.precio_local,
@@ -808,6 +811,64 @@ class PedidosModel
         } catch (PDOException $e) {
             // Manejar errores de conexión o consulta
             throw new Exception("Error while fetching the order: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Obtener un pedido por su número de tracking o número de guía.
+     *
+     * @param string $tracking
+     * @return array|null
+     */
+    public function obtenerPedidoPorTracking($tracking)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $sql = "SELECT 
+                        p.id,
+                        p.fecha_ingreso,
+                        p.created_at,
+                        p.numero_orden,
+                        p.numero_traking,
+                        p.destinatario,
+                        p.telefono,
+                        p.precio_local,
+                        p.precio_usd,
+                        p.id_pais,
+                        p.id_departamento,
+                        p.id_municipio,
+                        p.id_barrio,
+                        p.codigo_postal,
+                        p.code_city,
+                        p.direccion,
+                        p.comentario,
+                        p.id_cliente,
+                        p.id_proveedor,
+                        p.municipalitiesName,
+                        p.postalCode,
+                        p.departmentName,
+                        p.Location,
+                        p.betweenStreets,
+                        p.courier_service,
+                        ST_Y(p.coordenadas) AS latitud,
+                        ST_X(p.coordenadas) AS longitud,
+                        ep.nombre_estado AS nombre_estado
+                    FROM pedidos p
+                    LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
+                    WHERE p.numero_traking = :tracking OR p.numero_orden = :tracking_ord
+                    LIMIT 1";
+
+            $stmt = $db->prepare($sql);
+            $stmt->bindValue(':tracking', $tracking, PDO::PARAM_STR);
+            $stmt->bindValue(':tracking_ord', $tracking, PDO::PARAM_STR);
+            $stmt->execute();
+
+            if ($stmt->rowCount() > 0) {
+                return $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            return null;
+        } catch (PDOException $e) {
+            throw new Exception("Error while fetching the order by tracking: " . $e->getMessage());
         }
     }
 
