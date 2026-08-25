@@ -514,15 +514,26 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && ($_SERVER['REQUEST_METHOD'] ?
 // Manejo de productos (POST a ?enlace=productos/<accion>)
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    ob_start();
     $accion = isset($ruta[1]) ? $ruta[1] : '';
     require_once __DIR__ . '/../controlador/producto.php';
     require_once __DIR__ . '/../utils/session.php';
     require_once __DIR__ . '/../utils/csrf.php';
+    require_once __DIR__ . '/../utils/permissions.php';
     start_secure_session();
+
+    $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+             || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
 
     // Validar token CSRF
     $csrfToken = $_POST['csrf_token'] ?? null;
     if (!verify_csrf_token($csrfToken)) {
+        if ($isAjax) {
+            if (ob_get_length()) ob_clean();
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'message' => 'Token de seguridad inválido. Por favor, recarga la página.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         set_flash('error', 'Token de seguridad inválido. Por favor, recarga la página e intenta de nuevo.');
         header('Location: ' . RUTA_URL . 'productos/listar');
         exit;
@@ -656,8 +667,11 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
             'stock_minimo' => isset($_POST['stock_minimo']) ? (int)$_POST['stock_minimo'] : 10,
             'stock_maximo' => isset($_POST['stock_maximo']) ? (int)$_POST['stock_maximo'] : 100,
             'activo' => isset($_POST['activo']) ? (int)$_POST['activo'] : 1,
-            'id_usuario_creador' => $_POST['id_usuario_creador'] ?? null,
         ];
+
+        if (isSuperAdmin() && isset($_POST['id_usuario_creador'])) {
+            $payload['id_usuario_creador'] = !empty($_POST['id_usuario_creador']) ? (int)$_POST['id_usuario_creador'] : null;
+        }
         
         // Solo incluir imagen si cambió
         if ($imagenCambiada) {
@@ -671,6 +685,7 @@ if (isset($ruta[0]) && $ruta[0] === 'productos' && $_SERVER['REQUEST_METHOD'] ==
                  || (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
         
         if ($isAjax) {
+            if (ob_get_length()) ob_clean();
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => $response['success'],

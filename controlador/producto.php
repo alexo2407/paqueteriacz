@@ -79,6 +79,22 @@ class ProductosController
             return ['success' => false, 'message' => 'El nombre es obligatorio.'];
         }
 
+        require_once __DIR__ . '/../utils/permissions.php';
+        
+        $productoExistente = ProductoModel::obtenerPorId($id);
+        if (!$productoExistente) {
+            return ['success' => false, 'message' => 'El producto especificado no existe.'];
+        }
+
+        if (!canEditProduct($productoExistente)) {
+            return ['success' => false, 'message' => 'No tienes permisos para actualizar este producto.'];
+        }
+
+        // Proteger id_usuario_creador si no es SuperAdmin para mantener la asociación con el usuario/cliente
+        if (!isSuperAdmin()) {
+            unset($data['id_usuario_creador']);
+        }
+
         // Pasar el array completo al modelo para que maneje todos los campos
         $ok = ProductoModel::actualizar($id, $data);
         if (!$ok) {

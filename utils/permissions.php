@@ -279,25 +279,37 @@ function canViewProduct($producto) {
  * @return bool
  */
 function canEditProduct($producto) {
-    // Misma lógica que canViewProduct para proveedores/clientes
-    // Solo admin y el creador pueden editar
     if (isSuperAdmin()) {
         return true;
     }
     
     // Si no hay creador asignado, solo admin puede editar (productos legacy)
-    // Esto evita que clientes se apropien de productos viejos
     if (!isset($producto['id_usuario_creador']) || $producto['id_usuario_creador'] === null) {
         return isSuperAdmin();
     }
     
-    // Proveedor/Cliente solo puede editar sus propios productos
-    $userId = $_SESSION['user_id'] ?? $_SESSION['ID_Usuario'] ?? null;
+    $userId = getCurrentUserId();
     if ($userId === null) {
         return false;
     }
     
-    return (int)$producto['id_usuario_creador'] === (int)$userId;
+    $cId = (int)$producto['id_usuario_creador'];
+
+    // Si el usuario es el propio creador/dueño
+    if ($cId === (int)$userId) {
+        return true;
+    }
+
+    // Proveedor/Cliente: verificar si el creador está dentro de sus usuarios permitidos
+    $filtro = getIdUsuarioCreadorFilter();
+    if (is_array($filtro)) {
+        return in_array($cId, $filtro, true);
+    }
+    if ($filtro !== null) {
+        return $cId === $filtro;
+    }
+
+    return false;
 }
 
 /**

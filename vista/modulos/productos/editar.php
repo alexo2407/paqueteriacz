@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
 require_once __DIR__ . '/../../../utils/permissions.php';
@@ -241,6 +241,8 @@ if (isSuperAdmin()) {
                                     <small class="text-muted">Si se deja vacío, el producto pertenecerá al administrador.</small>
                                 </div>
                             </div>
+                            <?php else: ?>
+                                <input type="hidden" name="id_usuario_creador" value="<?php echo htmlspecialchars($producto['id_usuario_creador'] ?? ''); ?>">
                             <?php endif; ?>
                         </div>
 
@@ -524,11 +526,15 @@ if (isSuperAdmin()) {
             
             return response.text().then(text => {
                 console.log('Response text:', text);
+                const cleanText = text.trim();
                 try {
-                    return JSON.parse(text);
+                    return JSON.parse(cleanText);
                 } catch (e) {
                     console.error('JSON parse error:', e);
                     console.error('Response was:', text);
+                    if (cleanText.includes('<html') || cleanText.includes('<!DOCTYPE') || cleanText.includes('<script')) {
+                        throw new Error('La sesión ha caducado o la página ha sido redirigida. Por favor, recarga la página.');
+                    }
                     throw new Error('La respuesta no es JSON válido');
                 }
             });
