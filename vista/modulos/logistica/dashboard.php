@@ -550,8 +550,13 @@ include "vista/includes/header.php";
                             </div>
                             <?php if (isCliente() || isProveedor() || isSuperAdmin()): ?>
                                 <div class="col-sm-3 col-md-3">
-                                    <button type="button" class="btn btn-warning btn-sm w-100" id="btnAbrirBulk" onclick="abrirModalBulk()">
+                                    <button type="button" class="btn btn-warning btn-sm w-100" id="btnAbrirBulk" onclick="abrirModalBulk()" title="Actualizar estado, comentario y tracking">
                                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
+                                    </button>
+                                </div>
+                                <div class="col-sm-3 col-md-3">
+                                    <button type="button" class="btn btn-sm w-100 text-white" id="btnAbrirBulkInfo" onclick="abrirModalBulkInformativo()" title="Actualizar destinatario, teléfono, dirección, depto, municipio, calles, ubicación, CP y courier" style="background:#1B3B6F; border-color:#1B3B6F;">
+                                        <i class="bi bi-person-lines-fill me-1"></i> Actualizar Informativo
                                     </button>
                                 </div>
                                 <?php if ($tieneHLExpress): ?>
@@ -855,8 +860,13 @@ include "vista/includes/header.php";
                             </div>
                             <?php if (isCliente() || isProveedor() || isSuperAdmin()): ?>
                                 <div class="col-sm-3 col-md-3">
-                                    <button type="button" class="btn btn-warning btn-sm w-100" onclick="abrirModalBulk()">
+                                    <button type="button" class="btn btn-warning btn-sm w-100" onclick="abrirModalBulk()" title="Actualizar estado, comentario y tracking">
                                         <i class="bi bi-file-earmark-arrow-up me-1"></i> Actualizar masivo
+                                    </button>
+                                </div>
+                                <div class="col-sm-3 col-md-3">
+                                    <button type="button" class="btn btn-sm w-100 text-white" onclick="abrirModalBulkInformativo()" title="Actualizar destinatario, teléfono, dirección, depto, municipio, calles, ubicación, CP y courier" style="background:#1B3B6F; border-color:#1B3B6F;">
+                                        <i class="bi bi-person-lines-fill me-1"></i> Actualizar Informativo
                                     </button>
                                 </div>
                                 <?php if ($tieneHLExpress): ?>
@@ -2269,6 +2279,472 @@ include "vista/includes/header.php";
             }
 
             function escHlHtml(str) {
+                return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+        })();
+    </script>
+<?php endif; ?>
+
+<?php if (isCliente() || isProveedor() || isSuperAdmin()): ?>
+    <!-- ===== MODAL: ACTUALIZACIÓN MASIVA DE CAMPOS INFORMATIVOS ===== -->
+    <div class="modal fade" id="modalBulkInformativo" tabindex="-1" aria-labelledby="modalBulkInfoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content shadow-lg border-0">
+
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-dark" id="modalBulkInfoLabel">
+                        <i class="bi bi-person-lines-fill text-primary me-2"></i>Actualización Masiva de Datos Informativos
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body p-4">
+
+                    <!-- Indicador de pasos -->
+                    <div class="d-flex align-items-center mb-4" id="bulkInfoStepsIndicator">
+                        <span class="badge rounded-pill bg-primary text-white me-2" id="bulkInfoStep1Badge">1</span>
+                        <span class="fw-bold me-3" id="bulkInfoStep1Label">Subir archivo</span>
+                        <div class="flex-grow-1 border-top mx-2"></div>
+                        <span class="badge rounded-pill bg-secondary text-white me-2" id="bulkInfoStep2Badge">2</span>
+                        <span class="text-muted me-3" id="bulkInfoStep2Label">Vista previa</span>
+                        <div class="flex-grow-1 border-top mx-2"></div>
+                        <span class="badge rounded-pill bg-secondary text-white me-2" id="bulkInfoStep3Badge">3</span>
+                        <span class="text-muted" id="bulkInfoStep3Label">Confirmado</span>
+                    </div>
+
+                    <!-- PASO 1: Descarga de plantilla y subida -->
+                    <div id="bulkInfoPaso1">
+                        <div class="alert alert-info border-0 shadow-sm mb-4">
+                            <div class="d-flex">
+                                <i class="bi bi-info-circle-fill fs-5 me-2 flex-shrink-0"></i>
+                                <div>
+                                    <strong>Campos informativos soportados:</strong>
+                                    <div class="d-flex flex-wrap gap-1 mt-2">
+                                        <span class="badge bg-dark">numero_orden <small class="text-warning">(obligatorio)</small></span>
+                                        <span class="badge bg-secondary">destinatario</span>
+                                        <span class="badge bg-secondary">telefono</span>
+                                        <span class="badge bg-secondary">direccion</span>
+                                        <span class="badge bg-secondary">departamento</span>
+                                        <span class="badge bg-secondary">municipio</span>
+                                        <span class="badge bg-secondary">entre_calles</span>
+                                        <span class="badge bg-secondary">ubicacion</span>
+                                        <span class="badge bg-secondary">codigo_postal</span>
+                                        <span class="badge bg-secondary">courier</span>
+                                    </div>
+                                    <div class="small text-muted mt-2">
+                                        Solo se modificarán las columnas que incluyas con valores actualizados. Si dejas una celda o columna sin tocar, su valor actual se conservará.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Opciones de descarga de plantillas -->
+                        <div class="card bg-light border mb-4">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-download me-2 text-primary"></i>Descargar Plantillas</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-white border rounded h-100 d-flex flex-column justify-content-between">
+                                            <div>
+                                                <p class="fw-semibold text-dark mb-1"><i class="bi bi-file-earmark-text me-1 text-secondary"></i> Plantilla Vacía de Ejemplo</p>
+                                                <p class="small text-muted mb-3">Incluye los 10 encabezados y 2 filas de ejemplo listas para rellenar desde cero.</p>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-outline-success btn-sm flex-grow-1" onclick="descargarPlantillaInfo('vacia', 'excel')">
+                                                    <i class="bi bi-file-earmark-excel me-1"></i> Excel (.xlsx)
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm flex-grow-1" onclick="descargarPlantillaInfo('vacia', 'csv')">
+                                                    <i class="bi bi-file-earmark-text me-1"></i> CSV (.csv)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3 bg-white border rounded h-100 d-flex flex-column justify-content-between">
+                                            <div>
+                                                <p class="fw-semibold text-primary mb-1"><i class="bi bi-table me-1"></i> Plantilla con Pedidos Filtrados</p>
+                                                <p class="small text-muted mb-3">Exporta los pedidos actuales en pantalla con sus datos informativos para editar solo lo que necesitas.</p>
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <button type="button" class="btn btn-success btn-sm flex-grow-1" onclick="descargarPlantillaInfo('filtrada', 'excel')">
+                                                    <i class="bi bi-cloud-arrow-down-fill me-1"></i> Excel (.xlsx)
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success btn-sm flex-grow-1" onclick="descargarPlantillaInfo('filtrada', 'csv')">
+                                                    <i class="bi bi-cloud-download me-1"></i> CSV (.csv)
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Selector de archivo -->
+                        <div class="mb-3">
+                            <label for="bulkInfoFileInput" class="form-label fw-bold text-dark">
+                                <i class="bi bi-file-earmark-arrow-up me-1"></i> Seleccionar archivo modificado (.xlsx, .xls o .csv)
+                            </label>
+                            <input type="file" class="form-control form-control-lg" id="bulkInfoFileInput" accept=".csv,.xlsx,.xls">
+                            <div class="form-text text-muted">
+                                Máximo 10,000 pedidos por archivo. Compatible con Excel y LibreOffice.
+                            </div>
+                        </div>
+
+                        <div id="bulkInfoUploadError" class="alert alert-danger d-none mt-3"></div>
+                    </div>
+
+                    <!-- PASO 2: Vista previa -->
+                    <div id="bulkInfoPaso2" class="d-none">
+                        <div class="row g-3 mb-4" id="bulkInfoSummaryCards">
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0 bg-light shadow-sm">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold text-dark" id="bulkInfoTotalCount">0</div>
+                                        <small class="text-secondary">Total Filas</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0 shadow-sm" style="background:#d6f0e0">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold text-success" id="bulkInfoValidCount">0</div>
+                                        <small class="text-success fw-semibold">Válidas / Con Cambios</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0 shadow-sm" style="background:#fadadd">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold text-danger" id="bulkInfoErrorCount">0</div>
+                                        <small class="text-danger fw-semibold">Errores</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="card text-center border-0 shadow-sm" style="background:#fff4cc">
+                                    <div class="card-body py-2">
+                                        <div class="fs-4 fw-bold text-warning" id="bulkInfoWarnCount">0</div>
+                                        <small class="text-muted fw-semibold">Advertencias</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Errores y Advertencias -->
+                        <div id="bulkInfoErrorList" class="mb-3"></div>
+                        <div id="bulkInfoWarnList" class="mb-3"></div>
+
+                        <!-- Tabla de Vista Previa -->
+                        <h6 class="fw-bold text-dark mb-2">
+                            <i class="bi bi-table me-1 text-primary"></i> Cambios Detectados (primeros 50 pedidos)
+                        </h6>
+                        <div class="table-responsive border rounded bg-white" style="max-height: 380px;">
+                            <table class="table table-sm table-hover align-middle mb-0" id="bulkInfoPreviewTable">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width: 50px;">Fila</th>
+                                        <th># Orden</th>
+                                        <th>Destinatario</th>
+                                        <th>Teléfono</th>
+                                        <th>Dirección</th>
+                                        <th>Depto / Muni</th>
+                                        <th>Calles / Ubicación</th>
+                                        <th>CP / Courier</th>
+                                        <th>Cambios a Aplicar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bulkInfoPreviewBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PASO 3: Confirmación y Resultados -->
+                    <div id="bulkInfoPaso3" class="d-none">
+                        <div id="bulkInfoResultContent"></div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" id="bulkInfoBtnCancelar">Cerrar</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="bulkInfoBtnAtras" onclick="volverPaso1Informativo()">
+                        <i class="bi bi-arrow-left me-1"></i> Volver a cargar
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" id="bulkInfoBtnPreview" onclick="enviarPreviewInformativo()">
+                        <i class="bi bi-eye me-1"></i> Vista previa
+                    </button>
+                    <button type="button" class="btn btn-success btn-sm d-none" id="bulkInfoBtnConfirmar" onclick="confirmarBulkInformativo()">
+                        <i class="bi bi-check-circle-fill me-1"></i> Confirmar y Aplicar Cambios
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS: ACTUALIZACIÓN MASIVA INFORMATIVA -->
+    <script>
+        (function() {
+            let _bulkInfoJobId = null;
+
+            window.abrirModalBulkInformativo = function() {
+                _bulkInfoJobId = null;
+                document.getElementById('bulkInfoPaso1').classList.remove('d-none');
+                document.getElementById('bulkInfoPaso2').classList.add('d-none');
+                document.getElementById('bulkInfoPaso3').classList.remove('d-none');
+                document.getElementById('bulkInfoPaso3').classList.add('d-none');
+                document.getElementById('bulkInfoBtnPreview').classList.remove('d-none');
+                document.getElementById('bulkInfoBtnConfirmar').classList.add('d-none');
+                document.getElementById('bulkInfoBtnAtras').classList.add('d-none');
+                document.getElementById('bulkInfoFileInput').value = '';
+                document.getElementById('bulkInfoUploadError').classList.add('d-none');
+                actualizarPasoInfoIndicador(1);
+
+                const modal = new bootstrap.Modal(document.getElementById('modalBulkInformativo'));
+                modal.show();
+            };
+
+            window.volverPaso1Informativo = function() {
+                _bulkInfoJobId = null;
+                document.getElementById('bulkInfoPaso1').classList.remove('d-none');
+                document.getElementById('bulkInfoPaso2').classList.add('d-none');
+                document.getElementById('bulkInfoPaso3').classList.add('d-none');
+                document.getElementById('bulkInfoBtnPreview').classList.remove('d-none');
+                document.getElementById('bulkInfoBtnConfirmar').classList.add('d-none');
+                document.getElementById('bulkInfoBtnAtras').classList.add('d-none');
+                document.getElementById('bulkInfoUploadError').classList.add('d-none');
+                actualizarPasoInfoIndicador(1);
+            };
+
+            window.descargarPlantillaInfo = function(tipo, formato) {
+                const params = new URLSearchParams(window.location.search);
+                const query = {
+                    vacia: (tipo === 'vacia') ? '1' : '0',
+                    tab: params.get('tab') || 'pedidos',
+                    fecha_desde: params.get('fecha_desde') || '',
+                    fecha_hasta: params.get('fecha_hasta') || '',
+                    id_cliente: params.get('id_cliente') || '0',
+                    id_estado: params.get('id_estado') || '0',
+                    search: params.get('search') || '',
+                };
+
+                const qs = Object.entries(query)
+                    .map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v))
+                    .join('&');
+
+                const endpoint = (formato === 'excel') ? 'plantilla_informativa_excel' : 'plantilla_informativa_csv';
+                window.location.href = '<?= RUTA_URL ?>logistica/' + endpoint + '?' + qs;
+            };
+
+            window.enviarPreviewInformativo = function() {
+                const fileInput = document.getElementById('bulkInfoFileInput');
+                const errDiv = document.getElementById('bulkInfoUploadError');
+                errDiv.classList.add('d-none');
+
+                if (!fileInput.files.length) {
+                    errDiv.textContent = 'Por favor selecciona un archivo (.xlsx o .csv) primero.';
+                    errDiv.classList.remove('d-none');
+                    return;
+                }
+
+                const btn = document.getElementById('bulkInfoBtnPreview');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Analizando...';
+
+                const fd = new FormData();
+                fd.append('archivo', fileInput.files[0]);
+
+                fetch('<?= RUTA_URL ?>logistica/bulk/info-preview', {
+                    method: 'POST',
+                    body: fd
+                })
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-eye me-1"></i> Vista previa';
+
+                    if (!data.ok) {
+                        errDiv.textContent = data.error || 'Error al procesar el archivo.';
+                        errDiv.classList.remove('d-none');
+                        return;
+                    }
+
+                    _bulkInfoJobId = data.job_id;
+                    renderPreviewInformativo(data);
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-eye me-1"></i> Vista previa';
+                    errDiv.textContent = 'Error de red al subir el archivo. Intenta de nuevo.';
+                    errDiv.classList.remove('d-none');
+                });
+            };
+
+            function renderPreviewInformativo(data) {
+                const s = data.summary || {};
+                document.getElementById('bulkInfoTotalCount').textContent = s.total || 0;
+                document.getElementById('bulkInfoValidCount').textContent = (s.con_cambios !== undefined ? s.con_cambios : s.validas) || 0;
+                document.getElementById('bulkInfoErrorCount').textContent = s.errores || 0;
+                document.getElementById('bulkInfoWarnCount').textContent = s.advertencias || 0;
+
+                const errList = document.getElementById('bulkInfoErrorList');
+                const warnList = document.getElementById('bulkInfoWarnList');
+                errList.innerHTML = '';
+                warnList.innerHTML = '';
+
+                if (data.errores && data.errores.length) {
+                    let html = '<div class="alert alert-danger mb-3"><strong><i class="bi bi-exclamation-octagon-fill me-1"></i> Errores encontrados:</strong><ul class="mb-0 mt-1">';
+                    data.errores.forEach(e => html += '<li>' + escInfoHtml(e) + '</li>');
+                    html += '</ul></div>';
+                    errList.innerHTML = html;
+                }
+
+                if (data.advertencias && data.advertencias.length) {
+                    let html = '<div class="alert alert-warning mb-3"><strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Avisos / Sin cambios:</strong><ul class="mb-0 mt-1">';
+                    data.advertencias.slice(0, 10).forEach(w => html += '<li>' + escInfoHtml(w) + '</li>');
+                    if (data.advertencias.length > 10) {
+                        html += '<li>...y ' + (data.advertencias.length - 10) + ' avisos más.</li>';
+                    }
+                    html += '</ul></div>';
+                    warnList.innerHTML = html;
+                }
+
+                const tbody = document.getElementById('bulkInfoPreviewBody');
+                tbody.innerHTML = '';
+
+                if (data.preview_rows && data.preview_rows.length) {
+                    data.preview_rows.forEach(r => {
+                        const tr = document.createElement('tr');
+                        const cambios = r.cambios || {};
+                        const cantCambios = Object.keys(cambios).length;
+
+                        let badgesCambios = '';
+                        if (cantCambios === 0) {
+                            badgesCambios = '<span class="badge bg-secondary">Sin cambios</span>';
+                        } else {
+                            badgesCambios = Object.values(cambios).map(c => 
+                                '<span class="badge bg-success mb-1 me-1 text-wrap d-inline-block text-start">' +
+                                escInfoHtml(c.label) + ': <s>' + escInfoHtml(c.antes || '(vacío)') + '</s> &rarr; <b>' + escInfoHtml(c.nuevo) + '</b>' +
+                                '</span>'
+                            ).join('<br>');
+                        }
+
+                        tr.innerHTML = 
+                            '<td class="text-muted">' + escInfoHtml(r._line) + '</td>' +
+                            '<td><strong class="text-primary">#' + escInfoHtml(r.numero_orden) + '</strong></td>' +
+                            '<td>' + (cambios.destinatario ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.destinatario.nuevo) + '</span>' : escInfoHtml(r.destinatario || '-')) + '</td>' +
+                            '<td>' + (cambios.telefono ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.telefono.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.telefono || '-')) + '</td>' +
+                            '<td class="small" style="max-width:200px;">' + (cambios.direccion ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.direccion.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.direccion || '-')) + '</td>' +
+                            '<td class="small">' + 
+                                (cambios.departmentName ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.departmentName.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.departmentName || '-')) + ' / ' +
+                                (cambios.municipalitiesName ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.municipalitiesName.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.municipalitiesName || '-')) +
+                            '</td>' +
+                            '<td class="small">' +
+                                (cambios.betweenStreets ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.betweenStreets.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.betweenStreets || '-')) + ' / ' +
+                                (cambios.Location ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.Location.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.Location || '-')) +
+                            '</td>' +
+                            '<td class="small">' +
+                                (cambios.postalCode ? '<span class="text-success fw-bold">' + escInfoHtml(cambios.postalCode.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.postalCode || '-')) + ' / ' +
+                                (cambios.courier_service ? '<span class="badge bg-info text-dark">' + escInfoHtml(cambios.courier_service.nuevo) + '</span>' : escInfoHtml(r.datos_nuevos?.courier_service || '-')) +
+                            '</td>' +
+                            '<td>' + badgesCambios + '</td>';
+
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">No hay pedidos con cambios para mostrar.</td></tr>';
+                }
+
+                // Cambiar a Paso 2
+                document.getElementById('bulkInfoPaso1').classList.add('d-none');
+                document.getElementById('bulkInfoPaso2').classList.remove('d-none');
+                document.getElementById('bulkInfoBtnPreview').classList.add('d-none');
+                document.getElementById('bulkInfoBtnAtras').classList.remove('d-none');
+
+                const btnConfirmar = document.getElementById('bulkInfoBtnConfirmar');
+                btnConfirmar.classList.remove('d-none');
+                btnConfirmar.disabled = (s.validas === 0 || (s.con_cambios !== undefined && s.con_cambios === 0));
+
+                actualizarPasoInfoIndicador(2);
+            }
+
+            window.confirmarBulkInformativo = function() {
+                if (!_bulkInfoJobId) return;
+
+                const btn = document.getElementById('bulkInfoBtnConfirmar');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Aplicando cambios...';
+
+                fetch('<?= RUTA_URL ?>logistica/bulk/info-commit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: _bulkInfoJobId })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Confirmar y Aplicar Cambios';
+
+                    document.getElementById('bulkInfoPaso2').classList.add('d-none');
+                    document.getElementById('bulkInfoBtnConfirmar').classList.add('d-none');
+                    document.getElementById('bulkInfoBtnAtras').classList.add('d-none');
+                    document.getElementById('bulkInfoBtnCancelar').textContent = 'Finalizar y Actualizar Vista';
+                    document.getElementById('bulkInfoBtnCancelar').onclick = function() { window.location.reload(); };
+                    document.getElementById('bulkInfoPaso3').classList.remove('d-none');
+                    actualizarPasoInfoIndicador(3);
+
+                    if (data.ok && data.summary) {
+                        const s = data.summary;
+                        let html = 
+                            '<div class="text-center py-4">' +
+                                '<i class="bi bi-check-circle-fill text-success display-3 mb-3"></i>' +
+                                '<h4 class="fw-bold text-dark">¡Actualización Informativa Completada!</h4>' +
+                                '<p class="text-muted">Los datos de los pedidos han sido actualizados y registrados en la auditoría del sistema.</p>' +
+                                '<div class="row justify-content-center g-3 my-3">' +
+                                    '<div class="col-md-3"><div class="p-3 bg-light rounded border"><div class="fs-4 fw-bold text-dark">' + s.total + '</div><small class="text-muted">Procesadas</small></div></div>' +
+                                    '<div class="col-md-3"><div class="p-3 bg-light rounded border"><div class="fs-4 fw-bold text-success">' + s.actualizados + '</div><small class="text-success fw-bold">Actualizados</small></div></div>' +
+                                    '<div class="col-md-3"><div class="p-3 bg-light rounded border"><div class="fs-4 fw-bold text-muted">' + s.sin_cambios + '</div><small class="text-muted">Sin cambios</small></div></div>' +
+                                    (s.fallidos > 0 ? '<div class="col-md-3"><div class="p-3 bg-light rounded border"><div class="fs-4 fw-bold text-danger">' + s.fallidos + '</div><small class="text-danger fw-bold">Fallidos</small></div></div>' : '') +
+                                '</div>' +
+                                '<button type="button" class="btn btn-primary btn-lg mt-3" onclick="window.location.reload()">' +
+                                    '<i class="bi bi-arrow-clockwise me-2"></i> Recargar y ver pedidos actualizados' +
+                                '</button>' +
+                            '</div>';
+                        document.getElementById('bulkInfoResultContent').innerHTML = html;
+                    } else {
+                        document.getElementById('bulkInfoResultContent').innerHTML = 
+                            '<div class="alert alert-danger"><strong>Error:</strong> ' + escInfoHtml(data.error || 'No se pudo completar la actualización.') + '</div>';
+                    }
+                })
+                .catch(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Confirmar y Aplicar Cambios';
+                    document.getElementById('bulkInfoResultContent').innerHTML = 
+                        '<div class="alert alert-danger">Error de red al aplicar la actualización masiva.</div>';
+                    document.getElementById('bulkInfoPaso2').classList.add('d-none');
+                    document.getElementById('bulkInfoPaso3').classList.remove('d-none');
+                });
+            };
+
+            function actualizarPasoInfoIndicador(paso) {
+                [1, 2, 3].forEach(n => {
+                    const badge = document.getElementById('bulkInfoStep' + n + 'Badge');
+                    const label = document.getElementById('bulkInfoStep' + n + 'Label');
+                    if (!badge || !label) return;
+                    if (n < paso) {
+                        badge.className = 'badge rounded-pill bg-success text-white me-2';
+                        label.className = 'text-muted me-3';
+                    } else if (n === paso) {
+                        badge.className = 'badge rounded-pill bg-primary text-white me-2';
+                        label.className = 'fw-bold text-dark me-3';
+                    } else {
+                        badge.className = 'badge rounded-pill bg-secondary text-white me-2';
+                        label.className = 'text-muted';
+                    }
+                });
+            }
+
+            function escInfoHtml(str) {
                 return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             }
         })();

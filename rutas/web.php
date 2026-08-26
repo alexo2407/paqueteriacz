@@ -1673,6 +1673,25 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] ==
             $ctrl->bulkHLCommit();
             exit;
         }
+        // Bulk Informativo — datos informativos del pedido
+        if ($sub === 'info-preview') {
+            $ctrl->bulkInformativoPreview();
+            exit;
+        }
+        if ($sub === 'info-commit') {
+            $ctrl->bulkInformativoCommit();
+            exit;
+        }
+    }
+
+    if ($accion === 'plantilla_informativa_csv') {
+        $ctrl->exportarPlantillaInformativaCSV();
+        exit;
+    }
+
+    if ($accion === 'plantilla_informativa_excel') {
+        $ctrl->exportarPlantillaInformativaExcel();
+        exit;
     }
 
     // Reintentar forwarding a HL Express para un pedido específico

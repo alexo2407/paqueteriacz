@@ -1024,4 +1024,288 @@ class LogisticaModel {
             return [];
         }
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bulk informativo: Preview y Commit
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Valida filas de actualización masiva de campos informativos.
+     *
+     * @param array $rows
+     * @param int   $userId
+     * @param bool  $isProveedor
+     * @return array
+     */
+    public static function bulkInformativoPreview(array $rows, int $userId, bool $isProveedor): array
+    {
+        $db = (new Conexion())->conectar();
+
+        // 1. Recopilar identificadores
+        $idPedidos = [];
+        $numOrden  = [];
+
+        foreach ($rows as $row) {
+            $ip = isset($row['id_pedido']) && $row['id_pedido'] !== null && $row['id_pedido'] !== '' ? (int)$row['id_pedido'] : null;
+            $no = isset($row['numero_orden']) && $row['numero_orden'] !== null && $row['numero_orden'] !== '' ? trim((string)$row['numero_orden']) : null;
+            if ($ip) $idPedidos[] = $ip;
+            if ($no) $numOrden[]  = $no;
+        }
+
+        // 2. Consulta batch a pedidos
+        $pedidosById    = [];
+        $pedidosByOrden = [];
+
+        $selectCols = "id, numero_orden, id_proveedor, id_cliente, destinatario, telefono, direccion, departmentName, municipalitiesName, betweenStreets, Location, postalCode, courier_service";
+
+        if (!empty($idPedidos)) {
+            $ph   = implode(',', array_fill(0, count($idPedidos), '?'));
+            $stmt = $db->prepare("SELECT $selectCols FROM pedidos WHERE id IN ($ph)");
+            $stmt->execute($idPedidos);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                $pedidosById[(int)$p['id']] = $p;
+            }
+        }
+
+        if (!empty($numOrden)) {
+            $ph   = implode(',', array_fill(0, count($numOrden), '?'));
+            $sql  = "SELECT $selectCols FROM pedidos WHERE CAST(numero_orden AS CHAR) IN ($ph)";
+            if ($isProveedor) {
+                $sql .= ' AND (id_proveedor = ? OR id_cliente = ?)';
+                $params = array_merge($numOrden, [$userId, $userId]);
+            } else {
+                $params = $numOrden;
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                $key = trim((string)$p['numero_orden']);
+                if (isset($pedidosByOrden[$key])) {
+                    $pedidosByOrden[$key] = 'AMBIGUO';
+                } else {
+                    $pedidosByOrden[$key] = $p;
+                }
+            }
+        }
+
+        // Mapeo canónico a columnas de BD
+        $infoFields = [
+            'destinatario'  => ['col' => 'destinatario',       'max' => 255, 'label' => 'Destinatario'],
+            'telefono'      => ['col' => 'telefono',           'max' => 50,  'label' => 'Teléfono'],
+            'direccion'     => ['col' => 'direccion',          'max' => 500, 'label' => 'Dirección'],
+            'departamento'  => ['col' => 'departmentName',     'max' => 100, 'label' => 'Departamento'],
+            'municipio'     => ['col' => 'municipalitiesName', 'max' => 100, 'label' => 'Municipio'],
+            'entre_calles'  => ['col' => 'betweenStreets',     'max' => 255, 'label' => 'Entre Calles'],
+            'ubicacion'     => ['col' => 'Location',           'max' => 255, 'label' => 'Ubicación / Barrio'],
+            'codigo_postal' => ['col' => 'postalCode',         'max' => 20,  'label' => 'Código Postal'],
+            'courier'       => ['col' => 'courier_service',    'max' => 100, 'label' => 'Courier'],
+        ];
+
+        // 3. Validar cada fila
+        $rowsValidadas = [];
+        $errores       = [];
+        $advertencias  = [];
+
+        foreach ($rows as $row) {
+            $line = $row['_line'] ?? '?';
+            $ip   = isset($row['id_pedido']) && $row['id_pedido'] !== null && $row['id_pedido'] !== '' ? (int)$row['id_pedido'] : null;
+            $no   = isset($row['numero_orden']) && $row['numero_orden'] !== null && $row['numero_orden'] !== '' ? trim((string)$row['numero_orden']) : null;
+
+            if ($ip === null && $no === null) {
+                $errores[] = "Línea {$line}: Falta numero_orden o id_pedido.";
+                continue;
+            }
+
+            // Resolver pedido
+            $pedido = null;
+            if ($ip !== null) {
+                $pedido = $pedidosById[$ip] ?? null;
+                if ($pedido === null) {
+                    $errores[] = "Línea {$line}: id_pedido {$ip} no existe.";
+                    continue;
+                }
+            } else {
+                $match = $pedidosByOrden[$no] ?? null;
+                if ($match === null) {
+                    $errores[] = "Línea {$line}: numero_orden '{$no}' no existe.";
+                    continue;
+                }
+                if ($match === 'AMBIGUO') {
+                    $errores[] = "Línea {$line}: numero_orden '{$no}' pertenece a más de un pedido — use id_pedido.";
+                    continue;
+                }
+                $pedido = $match;
+            }
+
+            // Verificar propiedad
+            if ($isProveedor && (int)$pedido['id_proveedor'] !== $userId && (int)$pedido['id_cliente'] !== $userId) {
+                $errores[] = "Línea {$line}: El pedido #{$pedido['numero_orden']} no pertenece a su cuenta.";
+                continue;
+            }
+
+            // Extraer y comparar campos informativos
+            $cambios      = [];
+            $datosNuevos  = [];
+            $datosAntes   = [];
+            $hayErrorFila = false;
+
+            foreach ($infoFields as $key => $meta) {
+                if (!array_key_exists($key, $row) || $row[$key] === null) {
+                    continue; // Columna no enviada en el archivo, no se toca
+                }
+
+                $nuevoValor   = trim((string)$row[$key]);
+                $colBD        = $meta['col'];
+                $valorActual  = trim((string)($pedido[$colBD] ?? ''));
+
+                if (strlen($nuevoValor) > $meta['max']) {
+                    $errores[] = "Línea {$line}: {$meta['label']} excede {$meta['max']} caracteres.";
+                    $hayErrorFila = true;
+                    break;
+                }
+
+                if ($nuevoValor !== $valorActual) {
+                    $cambios[$colBD]     = ['antes' => $valorActual, 'nuevo' => $nuevoValor, 'label' => $meta['label']];
+                    $datosNuevos[$colBD] = $nuevoValor;
+                    $datosAntes[$colBD]  = $valorActual;
+                }
+            }
+
+            if ($hayErrorFila) {
+                continue;
+            }
+
+            if (empty($cambios)) {
+                $advertencias[] = "Línea {$line}: Pedido #{$pedido['numero_orden']} sin cambios en los datos informativos.";
+            }
+
+            $rowsValidadas[] = [
+                '_line'        => $line,
+                'id_pedido'    => (int)$pedido['id'],
+                'numero_orden' => $pedido['numero_orden'],
+                'destinatario' => $pedido['destinatario'],
+                'cambios'      => $cambios,
+                'datos_nuevos' => $datosNuevos,
+                'datos_antes'  => $datosAntes,
+            ];
+        }
+
+        return [
+            'rows_validadas' => $rowsValidadas,
+            'errores'        => $errores,
+            'advertencias'   => $advertencias,
+            'summary'        => [
+                'total'        => count($rows),
+                'validas'      => count($rowsValidadas),
+                'con_cambios'  => count(array_filter($rowsValidadas, fn($r) => !empty($r['cambios']))),
+                'errores'      => count($errores),
+                'advertencias' => count($advertencias),
+            ],
+        ];
+    }
+
+    /**
+     * Aplica la actualización masiva de campos informativos en una transacción atómica.
+     *
+     * @param  array  $rowsValidadas
+     * @param  int    $userId
+     * @param  string $archivoNombre
+     * @return array
+     */
+    public static function bulkInformativoCommit(array $rowsValidadas, int $userId, string $archivoNombre = 'bulk_info'): array
+    {
+        require_once __DIR__ . '/auditoria.php';
+
+        $db = (new Conexion())->conectar();
+        $db->beginTransaction();
+
+        $actualizados = 0;
+        $sinCambios   = 0;
+        $fallidos     = 0;
+        $failedRows   = [];
+
+        try {
+            foreach ($rowsValidadas as $row) {
+                $idPedido    = (int)$row['id_pedido'];
+                $datosNuevos = $row['datos_nuevos'] ?? [];
+                $datosAntes  = $row['datos_antes'] ?? [];
+
+                if (empty($datosNuevos)) {
+                    $sinCambios++;
+                    continue;
+                }
+
+                $sets   = [];
+                $params = [':id' => $idPedido];
+
+                foreach ($datosNuevos as $col => $val) {
+                    $sets[] = "{$col} = :{$col}";
+                    $params[":{$col}"] = ($val === '' ? null : $val);
+                }
+
+                $sql  = 'UPDATE pedidos SET ' . implode(', ', $sets) . ' WHERE id = :id';
+                $stmt = $db->prepare($sql);
+                $ok   = $stmt->execute($params);
+
+                if ($ok) {
+                    $actualizados++;
+                    // Registrar en auditoría
+                    try {
+                        AuditoriaModel::registrar(
+                            'pedidos',
+                            $idPedido,
+                            'actualizar_informativo_masivo',
+                            $userId,
+                            $datosAntes,
+                            $datosNuevos
+                        );
+                    } catch (Exception $eAudit) {
+                        error_log('Audit bulkInformativo error: ' . $eAudit->getMessage());
+                    }
+                } else {
+                    $fallidos++;
+                    $failedRows[] = "Fila {$row['_line']}: pedido #{$row['numero_orden']} no se pudo actualizar.";
+                }
+            }
+
+            $db->commit();
+
+            // Registrar en historial importaciones_csv
+            try {
+                $ins = $db->prepare("INSERT INTO importaciones_csv
+                    (id_usuario, archivo_nombre, filas_totales, filas_exitosas, filas_error, estado)
+                    VALUES (:uid, :arch, :total, :ok, :err, 'completado')");
+                $total = count($rowsValidadas);
+                $ins->execute([
+                    ':uid'   => $userId,
+                    ':arch'  => 'bulk_info_' . $archivoNombre,
+                    ':total' => $total,
+                    ':ok'    => $actualizados,
+                    ':err'   => $fallidos,
+                ]);
+            } catch (Exception $e) {
+                error_log('bulkInformativoCommit log error: ' . $e->getMessage());
+            }
+
+        } catch (Exception $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('bulkInformativoCommit error: ' . $e->getMessage());
+            return [
+                'total'        => count($rowsValidadas),
+                'actualizados' => 0,
+                'sin_cambios'  => 0,
+                'fallidos'     => count($rowsValidadas),
+                'error'        => 'Error en base de datos: ' . $e->getMessage(),
+                'failed_rows'  => [$e->getMessage()],
+            ];
+        }
+
+        return [
+            'total'        => count($rowsValidadas),
+            'actualizados' => $actualizados,
+            'sin_cambios'  => $sinCambios,
+            'fallidos'     => $fallidos,
+            'failed_rows'  => $failedRows,
+        ];
+    }
 }

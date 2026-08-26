@@ -712,6 +712,140 @@ class LogisticaController {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Bulk Informativo — Preview
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function bulkInformativoPreview(): void
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        if (!$isProveedor && !isProveedor() && !isSuperAdmin()) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
+            exit;
+        }
+
+        if (empty($_FILES['archivo']) || $_FILES['archivo']['error'] !== UPLOAD_ERR_OK) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'No se recibió ningún archivo o hubo un error al subirlo.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../utils/BulkParser.php';
+        require_once __DIR__ . '/../modelo/logistica.php';
+
+        try {
+            $parsed = BulkParser::parseFile($_FILES['archivo']);
+        } catch (RuntimeException $e) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => $e->getMessage()]);
+            exit;
+        }
+
+        $headerError = BulkParser::validateHeadersInformativo($parsed['headers']);
+        if ($headerError) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => $headerError]);
+            exit;
+        }
+
+        if (empty($parsed['rows'])) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'El archivo no contiene filas de datos.']);
+            exit;
+        }
+
+        $normalizedRows = BulkParser::normalizeInformativoRows($parsed['rows']);
+        $preview = LogisticaModel::bulkInformativoPreview($normalizedRows, $userId, $isProveedor);
+
+        // Guardar job en sesión
+        $jobId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+            mt_rand(0, 0xffff),
+            mt_rand(0, 0x0fff) | 0x4000,
+            mt_rand(0, 0x3fff) | 0x8000,
+            mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+        );
+
+        $_SESSION['bulk_info_job_' . $jobId] = [
+            'rows'    => $preview['rows_validadas'],
+            'user_id' => $userId,
+            'archivo' => $_FILES['archivo']['name'] ?? 'bulk_info',
+            'ts'      => time(),
+        ];
+
+        ob_clean();
+        echo json_encode([
+            'ok'           => true,
+            'job_id'       => $jobId,
+            'summary'      => $preview['summary'],
+            'errores'      => $preview['errores'],
+            'advertencias' => $preview['advertencias'],
+            'preview_rows' => array_slice($preview['rows_validadas'], 0, 50),
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Bulk Informativo — Commit
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function bulkInformativoCommit(): void
+    {
+        ob_start();
+        header('Content-Type: application/json');
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        if (!$isProveedor && !isProveedor() && !isSuperAdmin()) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Sin permiso para esta operación.']);
+            exit;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $jobId = trim($input['job_id'] ?? '');
+
+        if (empty($jobId) || !isset($_SESSION['bulk_info_job_' . $jobId])) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Job no encontrado o expirado. Suba el archivo nuevamente.']);
+            exit;
+        }
+
+        $job = $_SESSION['bulk_info_job_' . $jobId];
+
+        if (time() - ($job['ts'] ?? 0) > 1800) {
+            unset($_SESSION['bulk_info_job_' . $jobId]);
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'La sesión expiró. Suba el archivo nuevamente.']);
+            exit;
+        }
+
+        if ((int)($job['user_id'] ?? 0) !== (int)$userId) {
+            ob_clean();
+            echo json_encode(['ok' => false, 'error' => 'Job no válido para este usuario.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../modelo/logistica.php';
+        $result = LogisticaModel::bulkInformativoCommit($job['rows'], $userId, $job['archivo'] ?? 'bulk_info');
+
+        unset($_SESSION['bulk_info_job_' . $jobId]);
+
+        ob_clean();
+        echo json_encode([
+            'ok'      => true,
+            'summary' => $result,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Bulk HL Express — Preview: validar archivo CSV/XLSX de code_city
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -1306,6 +1440,210 @@ class LogisticaController {
         $desde    = $liqDesde  ? str_replace('-', '', $liqDesde)  : 'inicio';
         $hasta    = $liqHasta  ? str_replace('-', '', $liqHasta)  : date('Ymd');
         $filename = "liquidados_{$desde}_{$hasta}.xlsx";
+
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header("Content-Disposition: attachment; filename=\"{$filename}\"");
+        header('Cache-Control: max-age=0');
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $writer->save('php://output');
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Exportar plantilla informativa CSV
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function exportarPlantillaInformativaCSV(): void
+    {
+        require_once 'modelo/logistica.php';
+        require_once __DIR__ . '/../utils/permissions.php';
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        if (!$isProveedor && !isProveedor() && !isSuperAdmin()) {
+            http_response_code(403);
+            echo 'Sin permiso.';
+            exit;
+        }
+
+        $esVacia = isset($_GET['vacia']) && (int)$_GET['vacia'] === 1;
+
+        $timestamp = date('Ymd_Hi');
+        $filename  = $esVacia ? "plantilla_informativa_vacia.csv" : "plantilla_informativa_{$timestamp}.csv";
+
+        if (ob_get_length()) ob_clean();
+        header('Content-Type: text/csv; charset=utf-8');
+        header("Content-Disposition: attachment; filename=\"{$filename}\"");
+        header('Cache-Control: max-age=0');
+
+        $out = fopen('php://output', 'w');
+        fputs($out, "\xEF\xBB\xBF"); // UTF-8 BOM
+
+        $headers = ['numero_orden', 'destinatario', 'telefono', 'direccion', 'departamento', 'municipio', 'entre_calles', 'ubicacion', 'codigo_postal', 'courier'];
+        fputcsv($out, $headers);
+
+        if ($esVacia) {
+            // Filas de ejemplo
+            fputcsv($out, ['100234', 'Juan Pérez', '5551234567', 'Av. Central #123', 'Guatemala', 'Guatemala', 'Entre 4ta y 5ta calle', 'Zona 1', '01001', 'Mensajería Express']);
+            fputcsv($out, ['100235', 'María Gómez', '5559876543', 'Calle Las Flores #45', 'Sacatepéquez', 'Antigua Guatemala', 'Frente al parque', 'Centro', '03001', 'HL Express']);
+            fclose($out);
+            exit;
+        }
+
+        // Obtener pedidos filtrados
+        $filtros = [
+            'fecha_desde' => $_GET['fecha_desde'] ?? '',
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
+            'search'      => $_GET['search']      ?? '',
+            'id_cliente'  => isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0,
+            'id_estado'   => isset($_GET['id_estado'])  && is_numeric($_GET['id_estado'])  ? (int)$_GET['id_estado']  : 0,
+        ];
+        $soloActivos = (($_GET['tab'] ?? 'all') === 'pedidos');
+        $pedidos = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, 10001, 0, $soloActivos);
+
+        foreach ($pedidos as $p) {
+            $depto = !empty($p['departmentName']) ? $p['departmentName'] : ($p['nombre_departamento'] ?? '');
+            $muni  = !empty($p['municipalitiesName']) ? $p['municipalitiesName'] : ($p['nombre_municipio'] ?? '');
+            $cp    = !empty($p['postalCode']) ? $p['postalCode'] : ($p['codigo_postal'] ?? '');
+
+            fputcsv($out, [
+                $p['numero_orden']    ?? '',
+                $p['destinatario']    ?? '',
+                $p['telefono']        ?? '',
+                $p['direccion']       ?? '',
+                $depto,
+                $muni,
+                $p['betweenStreets']  ?? '',
+                $p['Location']        ?? '',
+                $cp,
+                $p['courier_service'] ?? '',
+            ]);
+        }
+
+        fclose($out);
+        exit;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Exportar plantilla informativa Excel (.xlsx)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function exportarPlantillaInformativaExcel(): void
+    {
+        require_once 'modelo/logistica.php';
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../vendor/autoload.php';
+
+        $userId      = $_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0;
+        $isProveedor = isCliente();
+
+        if (!$isProveedor && !isProveedor() && !isSuperAdmin()) {
+            http_response_code(403);
+            echo 'Sin permiso.';
+            exit;
+        }
+
+        $esVacia = isset($_GET['vacia']) && (int)$_GET['vacia'] === 1;
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Datos Informativos');
+
+        // Estilo cabecera
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '1F4E79'], // Azul ejecutivo oscuro
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ]
+        ];
+
+        $headers = [
+            'A1' => 'numero_orden',
+            'B1' => 'destinatario',
+            'C1' => 'telefono',
+            'D1' => 'direccion',
+            'E1' => 'departamento',
+            'F1' => 'municipio',
+            'G1' => 'entre_calles',
+            'H1' => 'ubicacion',
+            'I1' => 'codigo_postal',
+            'J1' => 'courier',
+        ];
+
+        foreach ($headers as $cell => $val) {
+            $sheet->setCellValue($cell, $val);
+        }
+        $sheet->getStyle('A1:J1')->applyFromArray($headerStyle);
+        $sheet->getRowDimension('1')->setRowHeight(26);
+
+        if ($esVacia) {
+            $sheet->setCellValue('A2', '100234');
+            $sheet->setCellValue('B2', 'Juan Pérez');
+            $sheet->setCellValue('C2', '5551234567');
+            $sheet->setCellValue('D2', 'Av. Central #123');
+            $sheet->setCellValue('E2', 'Guatemala');
+            $sheet->setCellValue('F2', 'Guatemala');
+            $sheet->setCellValue('G2', 'Entre 4ta y 5ta calle');
+            $sheet->setCellValue('H2', 'Zona 1');
+            $sheet->setCellValue('I2', '01001');
+            $sheet->setCellValue('J2', 'Mensajería Express');
+
+            $sheet->setCellValue('A3', '100235');
+            $sheet->setCellValue('B3', 'María Gómez');
+            $sheet->setCellValue('C3', '5559876543');
+            $sheet->setCellValue('D3', 'Calle Las Flores #45');
+            $sheet->setCellValue('E3', 'Sacatepéquez');
+            $sheet->setCellValue('F3', 'Antigua Guatemala');
+            $sheet->setCellValue('G3', 'Frente al parque');
+            $sheet->setCellValue('H3', 'Centro');
+            $sheet->setCellValue('I3', '03001');
+            $sheet->setCellValue('J3', 'HL Express');
+        } else {
+            $filtros = [
+                'fecha_desde' => $_GET['fecha_desde'] ?? '',
+                'fecha_hasta' => $_GET['fecha_hasta'] ?? '',
+                'search'      => $_GET['search']      ?? '',
+                'id_cliente'  => isset($_GET['id_cliente']) && is_numeric($_GET['id_cliente']) ? (int)$_GET['id_cliente'] : 0,
+                'id_estado'   => isset($_GET['id_estado'])  && is_numeric($_GET['id_estado'])  ? (int)$_GET['id_estado']  : 0,
+            ];
+            $soloActivos = (($_GET['tab'] ?? 'all') === 'pedidos');
+            $pedidos = LogisticaModel::obtenerHistorialCliente($userId, $filtros, $isProveedor, 10001, 0, $soloActivos);
+
+            $row = 2;
+            foreach ($pedidos as $p) {
+                $depto = !empty($p['departmentName']) ? $p['departmentName'] : ($p['nombre_departamento'] ?? '');
+                $muni  = !empty($p['municipalitiesName']) ? $p['municipalitiesName'] : ($p['nombre_municipio'] ?? '');
+                $cp    = !empty($p['postalCode']) ? $p['postalCode'] : ($p['codigo_postal'] ?? '');
+
+                // Asegurar numero_orden y telefono como texto para no perder ceros o notación científica
+                $sheet->setCellValueExplicit("A{$row}", $p['numero_orden'] ?? '', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $sheet->setCellValue("B{$row}", $p['destinatario'] ?? '');
+                $sheet->setCellValueExplicit("C{$row}", $p['telefono'] ?? '', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $sheet->setCellValue("D{$row}", $p['direccion'] ?? '');
+                $sheet->setCellValue("E{$row}", $depto);
+                $sheet->setCellValue("F{$row}", $muni);
+                $sheet->setCellValue("G{$row}", $p['betweenStreets'] ?? '');
+                $sheet->setCellValue("H{$row}", $p['Location'] ?? '');
+                $sheet->setCellValueExplicit("I{$row}", $cp, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $sheet->setCellValue("J{$row}", $p['courier_service'] ?? '');
+                $row++;
+            }
+        }
+
+        foreach (range('A', 'J') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $timestamp = date('Ymd_Hi');
+        $filename  = $esVacia ? "plantilla_informativa_vacia.xlsx" : "plantilla_informativa_{$timestamp}.xlsx";
 
         if (ob_get_length()) ob_clean();
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

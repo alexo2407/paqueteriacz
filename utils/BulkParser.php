@@ -18,6 +18,74 @@ class BulkParser
     /** Columnas para la carga masiva de code_city (HL Express) */
     const KNOWN_COLS_HL = ['id_pedido', 'numero_orden', 'code_city'];
 
+    /** Columnas canónicas para la carga masiva de datos informativos */
+    const KNOWN_COLS_INFO = [
+        'id_pedido',
+        'numero_orden',
+        'destinatario',
+        'telefono',
+        'direccion',
+        'departamento',
+        'municipio',
+        'entre_calles',
+        'ubicacion',
+        'codigo_postal',
+        'courier',
+    ];
+
+    /** Mapa de alias a columnas canónicas informativas */
+    const ALIAS_MAP_INFO = [
+        'id'                     => 'id_pedido',
+        'id_pedido'              => 'id_pedido',
+        'orden'                  => 'numero_orden',
+        'num_orden'              => 'numero_orden',
+        'no_orden'               => 'numero_orden',
+        'numero_orden'           => 'numero_orden',
+        'order_number'           => 'numero_orden',
+        'destinatario'           => 'destinatario',
+        'nombre_destinatario'    => 'destinatario',
+        'cliente'                => 'destinatario',
+        'nombre_cliente'         => 'destinatario',
+        'nombre'                 => 'destinatario',
+        'telefono'               => 'telefono',
+        'tel'                    => 'telefono',
+        'celular'                => 'telefono',
+        'phone'                  => 'telefono',
+        'telefono_contacto'      => 'telefono',
+        'direccion'              => 'direccion',
+        'direccion_entrega'      => 'direccion',
+        'address'                => 'direccion',
+        'direccion_completa'     => 'direccion',
+        'departamento'           => 'departamento',
+        'departmentname'         => 'departamento',
+        'department_name'        => 'departamento',
+        'depto'                  => 'departamento',
+        'municipio'              => 'municipio',
+        'municipalitiesname'     => 'municipio',
+        'municipalities_name'    => 'municipio',
+        'ciudad'                 => 'municipio',
+        'city'                   => 'municipio',
+        'entre_calles'           => 'entre_calles',
+        'betweenstreets'         => 'entre_calles',
+        'between_streets'        => 'entre_calles',
+        'calles'                 => 'entre_calles',
+        'ubicacion'              => 'ubicacion',
+        'location'               => 'ubicacion',
+        'barrio'                 => 'ubicacion',
+        'colonia'                => 'ubicacion',
+        'referencia'             => 'ubicacion',
+        'punto_referencia'       => 'ubicacion',
+        'codigo_postal'          => 'codigo_postal',
+        'postalcode'             => 'codigo_postal',
+        'postal_code'            => 'codigo_postal',
+        'cp'                     => 'codigo_postal',
+        'zip'                    => 'codigo_postal',
+        'courier'                => 'courier',
+        'courier_service'        => 'courier',
+        'mensajeria'             => 'courier',
+        'empresa_mensajeria'     => 'courier',
+    ];
+
 
     /**
      * Punto de entrada principal.
@@ -258,5 +326,63 @@ class BulkParser
         }
 
         return null;
+    }
+
+    /**
+     * Verifica que el archivo de carga masiva informativa tenga las columnas requeridas:
+     *   - id_pedido o numero_orden (para identificar el pedido)
+     *   - al menos un campo informativo para actualizar
+     *
+     * @param string[] $headers
+     * @return string|null Mensaje de error, o null si es válido
+     */
+    public static function validateHeadersInformativo(array $headers): ?string
+    {
+        // Normalizar encabezados contra el mapa de alias
+        $mapped = array_map(function($h) {
+            $norm = strtolower(trim(str_replace(' ', '_', (string)$h)));
+            return self::ALIAS_MAP_INFO[$norm] ?? $norm;
+        }, $headers);
+
+        $hasId    = in_array('id_pedido',    $mapped, true);
+        $hasOrden = in_array('numero_orden', $mapped, true);
+
+        if (!$hasId && !$hasOrden) {
+            return 'El archivo debe tener al menos una columna de identificación: numero_orden o id_pedido.';
+        }
+
+        $camposInfo = ['destinatario', 'telefono', 'direccion', 'departamento', 'municipio', 'entre_calles', 'ubicacion', 'codigo_postal', 'courier'];
+        $hasAnyInfo = false;
+        foreach ($camposInfo as $c) {
+            if (in_array($c, $mapped, true)) {
+                $hasAnyInfo = true;
+                break;
+            }
+        }
+
+        if (!$hasAnyInfo) {
+            return 'El archivo debe incluir al menos una columna informativa para actualizar (destinatario, telefono, direccion, departamento, municipio, entre_calles, ubicacion, codigo_postal, courier).';
+        }
+
+        return null;
+    }
+
+    /**
+     * Normaliza las claves de un conjunto de filas parseadas al conjunto canónico informativo.
+     */
+    public static function normalizeInformativoRows(array $rows): array
+    {
+        $normalizedRows = [];
+        foreach ($rows as $row) {
+            $normRow = ['_line' => $row['_line'] ?? 0];
+            foreach ($row as $key => $val) {
+                if ($key === '_line') continue;
+                $cleanKey = strtolower(trim(str_replace(' ', '_', (string)$key)));
+                $canonical = self::ALIAS_MAP_INFO[$cleanKey] ?? $cleanKey;
+                $normRow[$canonical] = $val;
+            }
+            $normalizedRows[] = $normRow;
+        }
+        return $normalizedRows;
     }
 }
