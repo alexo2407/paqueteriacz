@@ -151,6 +151,7 @@ class PedidosModel
             $detalleStmt = $db->prepare('
                 INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
                 VALUES (:id_pedido, :id_producto, :cantidad, 0)
+                ON DUPLICATE KEY UPDATE cantidad = cantidad + VALUES(cantidad)
             ');
 
             // Procesar fila por fila: cada pedido se inserta en su propia transacción
@@ -343,7 +344,12 @@ class PedidosModel
 
                             $p = ProductoModel::buscarPorNombre($pNombre, $pIdCliente);
                             if ($p && isset($p['id'])) {
-                                $productosAInsertar[] = ['id' => (int)$p['id'], 'cantidad' => $pCantidad];
+                                $pId = (int)$p['id'];
+                                if (isset($productosAInsertar[$pId])) {
+                                    $productosAInsertar[$pId]['cantidad'] += $pCantidad;
+                                } else {
+                                    $productosAInsertar[$pId] = ['id' => $pId, 'cantidad' => $pCantidad];
+                                }
                             } else {
                                 // Producto no encontrado en el catálogo del cliente → rechazar fila completa.
                                 // No se crea automáticamente para evitar mezcla de catálogos entre clientes.
@@ -382,7 +388,11 @@ class PedidosModel
 
                         $cantidad = isset($row['cantidad']) ? (int)$row['cantidad'] : 1;
                         if ($productoId !== null && $cantidad > 0) {
-                            $productosAInsertar[] = ['id' => $productoId, 'cantidad' => $cantidad];
+                            if (isset($productosAInsertar[$productoId])) {
+                                $productosAInsertar[$productoId]['cantidad'] += $cantidad;
+                            } else {
+                                $productosAInsertar[$productoId] = ['id' => $productoId, 'cantidad' => $cantidad];
+                            }
                         }
                     }
 
@@ -1819,13 +1829,27 @@ class PedidosModel
                 error_log("[DEBUG] Pedido INSERT SUCCESS - ID: " . $pedidoId);
             }
 
-            // 3. Insertar items en pedidos_productos
-            $detalleStmt = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
+            // 3. Insertar items en pedidos_productos (agrupando por producto para evitar duplicados en la clave primaria)
+            $detalleStmt = $db->prepare('
+                INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
+                VALUES (:id_pedido, :id_producto, :cantidad, 0)
+                ON DUPLICATE KEY UPDATE cantidad = cantidad + VALUES(cantidad)
+            ');
 
+            $itemsAgrupados = [];
             foreach ($items as $item) {
-                $prodId = (int)$item['id_producto'];
-                $cant   = (int)$item['cantidad'];
+                $prodId = (int)($item['id_producto'] ?? $item['producto_id'] ?? 0);
+                $cant   = (int)($item['cantidad'] ?? 1);
+                if ($prodId <= 0 || $cant <= 0) continue;
 
+                if (isset($itemsAgrupados[$prodId])) {
+                    $itemsAgrupados[$prodId] += $cant;
+                } else {
+                    $itemsAgrupados[$prodId] = $cant;
+                }
+            }
+
+            foreach ($itemsAgrupados as $prodId => $cant) {
                 $detalleStmt->bindValue(':id_pedido',  $pedidoId, PDO::PARAM_INT);
                 $detalleStmt->bindValue(':id_producto', $prodId,  PDO::PARAM_INT);
                 $detalleStmt->bindValue(':cantidad',    $cant,    PDO::PARAM_INT);
