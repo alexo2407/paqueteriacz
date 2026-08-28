@@ -393,65 +393,99 @@
 
     /** Carga y renderiza el historial de movimientos del paquete. */
     async function cargarHistorial(idPedido) {
-        const tbody = document.getElementById('tbodyHistorial');
-        if (!tbody) return;
+        const container = document.getElementById('containerTimeline');
+        const tbody     = document.getElementById('tbodyHistorial');
+        if (!container && !tbody) return;
 
-        // Fila de carga
-        tbody.innerHTML = '';
-        const trCargando = document.createElement('tr');
-        const tdCargando = document.createElement('td');
-        tdCargando.colSpan = 8;
-        tdCargando.className = 'text-center text-muted py-3';
-        tdCargando.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Cargando historial…';
-        trCargando.appendChild(tdCargando);
-        tbody.appendChild(trCargando);
+        if (container) {
+            container.innerHTML = '<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-1"></span> Cargando historial…</div>';
+        } else if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3"><span class="spinner-border spinner-border-sm me-1"></span> Cargando historial…</td></tr>';
+        }
 
         try {
             const resp = await apiGet('ubicaciones/historial.php', { id_pedido: String(idPedido) });
-            tbody.innerHTML = '';
-
             const items = (resp.data || []);
-            if (items.length === 0) {
-                const tr = document.createElement('tr');
-                const td = document.createElement('td');
-                td.colSpan = 8;
-                td.className = 'text-center text-muted py-4';
-                td.textContent = 'Sin movimientos físicos registrados.';
-                tr.appendChild(td);
-                tbody.appendChild(tr);
+
+            if (container) {
+                container.innerHTML = '';
+                if (items.length === 0) {
+                    container.innerHTML = '<div class="text-center text-muted py-4"><i class="bi bi-clock-history display-6 opacity-25 d-block mb-2"></i>Sin movimientos físicos registrados.</div>';
+                    return;
+                }
+
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item border-start border-2 border-primary ps-3 pb-3 position-relative ms-2 mb-2';
+                    
+                    const dot = document.createElement('div');
+                    dot.className = item.activo ? 'position-absolute bg-success rounded-circle' : 'position-absolute bg-secondary rounded-circle';
+                    dot.style.cssText = 'left:-7px; top:2px; width:12px; height:12px;';
+
+                    const header = document.createElement('div');
+                    header.className = 'd-flex justify-content-between align-items-center mb-1';
+                    header.innerHTML = `<span class="badge ${item.activo ? 'bg-success' : 'bg-secondary'}">${esc(item.tipo_movimiento || 'INGRESO')}</span>
+                                        <small class="text-muted font-monospace"><i class="bi bi-clock me-1"></i>${fmtFecha(item.created_at)}</small>`;
+
+                    const body = document.createElement('div');
+                    body.className = 'fw-bold small text-dark';
+                    body.innerHTML = `🏢 ${esc(item.bodega_nombre)} <span class="badge bg-dark font-monospace ms-1">${esc(item.ubicacion_codigo)}</span>`;
+
+                    const meta = document.createElement('div');
+                    meta.className = 'small text-muted mt-1';
+                    meta.innerHTML = `<i class="bi bi-person me-1"></i>Operador: <strong>${esc(item.operador_nombre)}</strong>`;
+
+                    div.appendChild(dot);
+                    div.appendChild(header);
+                    div.appendChild(body);
+                    div.appendChild(meta);
+
+                    if (item.motivo) {
+                        const mot = document.createElement('div');
+                        mot.className = 'small text-dark mt-1 bg-light p-2 rounded border';
+                        mot.innerHTML = `<i class="bi bi-chat-left-text me-1 text-muted"></i>${esc(item.motivo)}`;
+                        div.appendChild(mot);
+                    }
+
+                    container.appendChild(div);
+                });
                 return;
             }
 
-            items.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.appendChild(tdTxt(item.tipo_movimiento  || '—'));
-                tr.appendChild(tdTxt(item.bodega_nombre    || String(item.id_bodega || '—')));
-                tr.appendChild(tdCodigo(item.codigo_ubicacion || '—'));
-                tr.appendChild(tdTxt(item.operador_nombre  || String(item.id_operador || '—')));
-                tr.appendChild(tdTxt(item.motivo           || '—'));
-                tr.appendChild(tdTxt(fmtFecha(item.created_at)));
-                tr.appendChild(tdTxt(item.retirado_at ? fmtFecha(item.retirado_at) : '—'));
+            if (tbody) {
+                tbody.innerHTML = '';
+                if (items.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Sin movimientos físicos registrados.</td></tr>';
+                    return;
+                }
+                items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.appendChild(tdTxt(item.tipo_movimiento  || '—'));
+                    tr.appendChild(tdTxt(item.bodega_nombre    || String(item.id_bodega || '—')));
+                    tr.appendChild(tdCodigo(item.codigo_ubicacion || '—'));
+                    tr.appendChild(tdTxt(item.operador_nombre  || String(item.id_operador || '—')));
+                    tr.appendChild(tdTxt(item.motivo           || '—'));
+                    tr.appendChild(tdTxt(fmtFecha(item.created_at)));
+                    tr.appendChild(tdTxt(item.retirado_at ? fmtFecha(item.retirado_at) : '—'));
 
-                const tdEstado = document.createElement('td');
-                tdEstado.className = 'text-center';
-                const sp = document.createElement('span');
-                sp.className = item.activo ? 'badge bg-success' : 'badge bg-secondary';
-                sp.textContent = item.activo ? 'ACTIVO' : 'FINALIZADO';
-                tdEstado.appendChild(sp);
-                tr.appendChild(tdEstado);
+                    const tdEstado = document.createElement('td');
+                    tdEstado.className = 'text-center';
+                    const sp = document.createElement('span');
+                    sp.className = item.activo ? 'badge bg-success' : 'badge bg-secondary';
+                    sp.textContent = item.activo ? 'ACTIVO' : 'FINALIZADO';
+                    tdEstado.appendChild(sp);
+                    tr.appendChild(tdEstado);
 
-                tbody.appendChild(tr);
-            });
+                    tbody.appendChild(tr);
+                });
+            }
 
         } catch (err) {
-            tbody.innerHTML = '';
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.colSpan = 8;
-            td.className = 'text-center text-danger py-3 small';
-            td.textContent = 'Error al cargar el historial.';
-            tr.appendChild(td);
-            tbody.appendChild(tr);
+            if (container) {
+                container.innerHTML = '<div class="text-center text-danger py-3 small"><i class="bi bi-exclamation-triangle me-1"></i>Error al cargar el historial.</div>';
+            } else if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-3 small">Error al cargar el historial.</td></tr>';
+            }
         }
     }
 
@@ -475,7 +509,27 @@
     // Carga de estado completo del paquete
     // ══════════════════════════════════════════════════════════════════════════
 
-    /** Refresca la ubicación actual y el historial, y actualiza las acciones. */
+    /** Refresca los conteos KPI de las tarjetas superiores en tiempo real. */
+    async function refrescarKpis() {
+        try {
+            const resp = await apiGet('catalogos/kpis.php');
+            if (resp.success && resp.data) {
+                const k = resp.data;
+                const el1 = document.getElementById('kpiRecibidosHoy');
+                const el2 = document.getElementById('kpiPendientesUbicacion');
+                const el3 = document.getElementById('kpiEnIncidencia');
+                const el4 = document.getElementById('kpiRetiradosHoy');
+                if (el1) el1.textContent = String(k.recibidos_hoy ?? 0);
+                if (el2) el2.textContent = String(k.pendientes_ubicacion ?? 0);
+                if (el3) el3.textContent = String(k.en_incidencia ?? 0);
+                if (el4) el4.textContent = String(k.retirados_hoy ?? 0);
+            }
+        } catch {
+            // Silencioso si falla la actualización de KPIs
+        }
+    }
+
+    /** Refresca la ubicación actual y el historial, y actualiza las acciones y KPIs. */
     async function refrescarEstadoPaquete() {
         if (!_pedidoActual) return;
         const id = _pedidoActual.id;
@@ -495,6 +549,7 @@
         renderUbicacion(_ubicacionActual);
         renderAcciones(_recepcionActual, _ubicacionActual);
         await cargarHistorial(id);
+        await refrescarKpis();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -585,6 +640,15 @@
                 _recepcionActual = null;
                 _ubicacionActual = null;
                 input.focus();
+            });
+        }
+
+        const btnActHist = document.getElementById('btnActualizarHistorial');
+        if (btnActHist) {
+            btnActHist.addEventListener('click', () => {
+                if (_pedidoActual) {
+                    cargarHistorial(_pedidoActual.id);
+                }
             });
         }
 

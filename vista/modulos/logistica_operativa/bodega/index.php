@@ -23,11 +23,35 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../../../config/config.php';
 
-// ── CSRF token ────────────────────────────────────────────────────────────────
+require_once __DIR__ . '/../../../../modelo/conexion.php';
+
+// ── CSRF token y Métricas KPI Dinámicas ───────────────────────────────────────
 if (empty($_SESSION['csrf_token_bodega'])) {
     $_SESSION['csrf_token_bodega'] = bin2hex(random_bytes(32));
 }
 $csrfToken = $_SESSION['csrf_token_bodega'];
+
+$recibidosHoy = 0;
+$pendientesUbicacion = 0;
+$enIncidencia = 0;
+$retiradosHoy = 0;
+
+try {
+    $db = (new Conexion())->conectar();
+    $s1 = $db->query("SELECT COUNT(*) FROM logistica_recepciones WHERE DATE(recibido_at) = CURDATE()");
+    $recibidosHoy = (int)($s1 ? $s1->fetchColumn() : 0);
+
+    $s2 = $db->query("SELECT COUNT(*) FROM logistica_recepciones WHERE estado = 'RECIBIDO' AND (id_ubicacion IS NULL OR id_ubicacion = 0)");
+    $pendientesUbicacion = (int)($s2 ? $s2->fetchColumn() : 0);
+
+    $s3 = $db->query("SELECT COUNT(*) FROM logistica_ruta_pedidos WHERE estado_entrega = 'INCIDENCIA'");
+    $enIncidencia = (int)($s3 ? $s3->fetchColumn() : 0);
+
+    $s4 = $db->query("SELECT COUNT(*) FROM logistica_recepciones WHERE estado = 'RETIRADO' AND DATE(updated_at) = CURDATE()");
+    $retiradosHoy = (int)($s4 ? $s4->fetchColumn() : 0);
+} catch (Throwable $e) {
+    error_log('[bodega/index] Error calculando KPIs dinámicos: ' . $e->getMessage());
+}
 
 $pageTitle = 'Bodega — Logística Operativa';
 ?>
@@ -56,7 +80,7 @@ $pageTitle = 'Bodega — Logística Operativa';
                     <i class="bi bi-box-arrow-in-down"></i>
                 </div>
                 <div>
-                    <div class="h3 mb-0 fw-bold">126</div>
+                    <div class="h3 mb-0 fw-bold" id="kpiRecibidosHoy"><?= $recibidosHoy ?></div>
                     <div class="fw-semibold text-success small">Recibidos hoy</div>
                     <div class="text-muted small" style="font-size:0.75rem;">Paquetes ingresados</div>
                 </div>
@@ -70,7 +94,7 @@ $pageTitle = 'Bodega — Logística Operativa';
                     <i class="bi bi-hourglass-split"></i>
                 </div>
                 <div>
-                    <div class="h3 mb-0 fw-bold">18</div>
+                    <div class="h3 mb-0 fw-bold" id="kpiPendientesUbicacion"><?= $pendientesUbicacion ?></div>
                     <div class="fw-semibold text-warning small">Pendientes de ubicación</div>
                     <div class="text-muted small" style="font-size:0.75rem;">Esperando ser ubicados</div>
                 </div>
@@ -84,7 +108,7 @@ $pageTitle = 'Bodega — Logística Operativa';
                     <i class="bi bi-exclamation-triangle"></i>
                 </div>
                 <div>
-                    <div class="h3 mb-0 fw-bold text-danger">7</div>
+                    <div class="h3 mb-0 fw-bold text-danger" id="kpiEnIncidencia"><?= $enIncidencia ?></div>
                     <div class="fw-semibold text-danger small">En incidencia</div>
                     <div class="text-muted small" style="font-size:0.75rem;">Requieren atención</div>
                 </div>
@@ -98,7 +122,7 @@ $pageTitle = 'Bodega — Logística Operativa';
                     <i class="bi bi-box-arrow-up"></i>
                 </div>
                 <div>
-                    <div class="h3 mb-0 fw-bold">32</div>
+                    <div class="h3 mb-0 fw-bold" id="kpiRetiradosHoy"><?= $retiradosHoy ?></div>
                     <div class="fw-semibold text-purple small" style="color:#9333ea;">Retirados hoy</div>
                     <div class="text-muted small" style="font-size:0.75rem;">Paquetes entregados</div>
                 </div>

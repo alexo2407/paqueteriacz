@@ -28,20 +28,32 @@ class DashboardOperativoModel
             'total_escaneado_hoy' => 0
         ];
 
-        // 2. Pedidos por recolección (Estado 11) y recolectados (Estado 12)
-        $stmtEst = $this->db->query("
-            SELECT 
-                SUM(CASE WHEN id_estado = 11 THEN 1 ELSE 0 END) as pendientes_colecta,
-                SUM(CASE WHEN id_estado = 12 THEN 1 ELSE 0 END) as recolectados_mensajeria,
-                SUM(CASE WHEN id_estado = 1 THEN 1 ELSE 0 END) as en_bodega,
-                SUM(CASE WHEN id_estado = 2 THEN 1 ELSE 0 END) as en_ruta
-            FROM pedidos
+        // 2. Inventario en Bodega, Pendientes de Colecta y En Ruta de Logística Operativa
+        $stmtBod = $this->db->query("
+            SELECT COUNT(*) FROM logistica_recepciones WHERE estado IN ('RECIBIDO', 'UBICADO')
         ");
-        $estadosPed = $stmtEst->fetch(PDO::FETCH_ASSOC) ?: [
-            'pendientes_colecta' => 0,
+        $enBodega = (int)($stmtBod ? $stmtBod->fetchColumn() : 0);
+
+        $stmtPendCol = $this->db->query("
+            SELECT COALESCE(SUM(GREATEST(0, cantidad_esperada - cantidad_escaneada)), 0) 
+            FROM logistica_colectas 
+            WHERE estado = 'ABIERTA'
+        ");
+        $pendientesColecta = (int)($stmtPendCol ? $stmtPendCol->fetchColumn() : 0);
+
+        $stmtEnRuta = $this->db->query("
+            SELECT COUNT(*) 
+            FROM logistica_ruta_pedidos rp
+            JOIN logistica_rutas r ON r.id = rp.id_ruta
+            WHERE r.estado IN ('SELLADA', 'EN_CURSO') AND rp.estado_entrega = 'PENDIENTE'
+        ");
+        $enRuta = (int)($stmtEnRuta ? $stmtEnRuta->fetchColumn() : 0);
+
+        $estadosPed = [
+            'pendientes_colecta'      => $pendientesColecta,
             'recolectados_mensajeria' => 0,
-            'en_bodega' => 0,
-            'en_ruta' => 0
+            'en_bodega'               => $enBodega,
+            'en_ruta'                 => $enRuta
         ];
 
         // 3. Rutas activas hoy

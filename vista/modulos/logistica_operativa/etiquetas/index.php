@@ -32,7 +32,10 @@ try {
                p.precio_total_local AS monto_cod, u.nombre AS cliente_nombre, p.fecha_ingreso
           FROM pedidos p
           JOIN usuarios u ON u.id = p.id_cliente
-         WHERE 1=1
+         WHERE (
+            p.id IN (SELECT id_pedido FROM logistica_colecta_pedidos)
+            OR p.id IN (SELECT id_pedido FROM logistica_recepciones)
+         )
     ";
     
     if ($filtroCliente > 0) {
@@ -44,13 +47,24 @@ try {
     $stmt = $db->query($sql);
     $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Obtener lista de clientes
+    // Obtener lista de clientes que participan activamente en Logística Operativa
     if ($isProveedor && !$isAdmin) {
         $stmtCli = $db->prepare("SELECT id, nombre FROM usuarios WHERE id = :id");
         $stmtCli->execute(['id' => $filtroCliente]);
         $clientes = $stmtCli->fetchAll(PDO::FETCH_ASSOC);
     } else {
-        $stmtCli = $db->query("SELECT id, nombre FROM usuarios WHERE id_estado = 1 ORDER BY nombre ASC");
+        $stmtCli = $db->query("
+            SELECT DISTINCT u.id, u.nombre 
+              FROM usuarios u
+             WHERE u.id IN (
+                 SELECT DISTINCT p.id_cliente FROM logistica_colecta_pedidos cp JOIN pedidos p ON p.id = cp.id_pedido
+                 UNION
+                 SELECT DISTINCT p.id_proveedor FROM logistica_colecta_pedidos cp JOIN pedidos p ON p.id = cp.id_pedido
+                 UNION
+                 SELECT DISTINCT p.id_cliente FROM logistica_recepciones r JOIN pedidos p ON p.id = r.id_pedido
+             )
+             ORDER BY u.nombre ASC
+        ");
         $clientes = $stmtCli->fetchAll(PDO::FETCH_ASSOC);
     }
 

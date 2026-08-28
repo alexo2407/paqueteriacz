@@ -168,13 +168,13 @@ function badgeResultadoJS(resultado) {
     btnConfirmar.addEventListener('click', async () => {
         if (processing) return;
 
-        // Validar formulario
-        const form       = document.getElementById('formAbrirColecta');
-        const idCliente  = document.getElementById('abrirIdCliente')?.value;
-        const fecha      = document.getElementById('abrirFecha')?.value;
-        const turnoEl    = form.querySelector('input[name="turno"]:checked');
-        const turno      = turnoEl?.value ?? '';
-        const alerta     = document.getElementById('alertaAbrirColecta');
+        const form          = document.getElementById('formAbrirColecta');
+        const idCliente     = document.getElementById('abrirIdCliente')?.value;
+        const idProveedorEl = document.getElementById('abrirIdProveedor');
+        const fecha         = document.getElementById('abrirFecha')?.value;
+        const turnoEl       = form.querySelector('input[name="turno"]:checked');
+        const turno         = turnoEl?.value ?? '';
+        const alerta        = document.getElementById('alertaAbrirColecta');
 
         alerta.className = 'alert d-none mb-3';
         alerta.textContent = '';
@@ -182,6 +182,12 @@ function badgeResultadoJS(resultado) {
         if (!idCliente || !fecha || !turno) {
             alerta.className = 'alert alert-danger mb-3';
             alerta.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Completa todos los campos requeridos.';
+            return;
+        }
+
+        if (idProveedorEl && !idProveedorEl.value) {
+            alerta.className = 'alert alert-danger mb-3';
+            alerta.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Selecciona un proveedor válido.';
             return;
         }
 
@@ -200,11 +206,16 @@ function badgeResultadoJS(resultado) {
         btnConfirmar.disabled = true;
 
         try {
-            const resp = await apiPost('api/logistica-operativa/colectas/abrir', {
+            const payload = {
                 id_cliente: parseInt(idCliente, 10),
                 fecha,
                 turno,
-            });
+            };
+            if (idProveedorEl && idProveedorEl.value) {
+                payload.id_proveedor = parseInt(idProveedorEl.value, 10);
+            }
+
+            const resp = await apiPost('api/logistica-operativa/colectas/abrir', payload);
 
             if (resp.success) {
                 alerta.className = 'alert alert-success mb-3';
@@ -234,9 +245,26 @@ function badgeResultadoJS(resultado) {
         }
     });
 
-    // Reset del modal al cerrarse
+    // Auto-seleccionar proveedor cuando cambia el cliente en el modal
+    const selectCliente   = document.getElementById('abrirIdCliente');
+    const selectProveedor = document.getElementById('abrirIdProveedor');
+
+    function autoSeleccionarProveedor() {
+        if (!selectCliente || !selectProveedor || typeof MAPEO_CLIENTE_PROVEEDOR === 'undefined') return;
+        const cliId = parseInt(selectCliente.value, 10);
+        if (cliId && MAPEO_CLIENTE_PROVEEDOR[cliId]) {
+            selectProveedor.value = MAPEO_CLIENTE_PROVEEDOR[cliId];
+        }
+    }
+
+    if (selectCliente && selectProveedor) {
+        selectCliente.addEventListener('change', autoSeleccionarProveedor);
+    }
+
+    // Reset del modal al cerrarse / Evento al abrirse
     const modalEl = document.getElementById('modalAbrirColecta');
     if (modalEl) {
+        modalEl.addEventListener('shown.bs.modal', autoSeleccionarProveedor);
         modalEl.addEventListener('hidden.bs.modal', () => {
             const alerta = document.getElementById('alertaAbrirColecta');
             if (alerta) {

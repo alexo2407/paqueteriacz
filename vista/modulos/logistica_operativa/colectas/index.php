@@ -72,7 +72,7 @@ try {
     // Obtener colectas con filtros
     $colectas = $colModel->listarConFiltros($filtrosQuery);
 
-    // Obtener clientes (Rol 4) disponibles con pedidos en estado 11 (Pendiente recolección)
+    // Obtener clientes (Rol 4) disponibles con pedidos no colectados en estado 11 (Pendiente recolección)
     if ($isProveedor && !$isAdmin && $currentUserId !== null) {
         $stmtClientes = $db->prepare(
             "SELECT u.id, u.nombre
@@ -82,6 +82,13 @@ try {
               WHERE ur.id_rol = 4
                 AND p.id_proveedor = :id_proveedor
                 AND p.id_estado = 11
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM logistica_colecta_pedidos cp
+                      JOIN logistica_colectas c ON c.id = cp.id_colecta
+                     WHERE cp.id_pedido = p.id
+                       AND c.estado != 'CANCELADA'
+                )
               GROUP BY u.id, u.nombre
               ORDER BY u.nombre ASC"
         );
@@ -95,6 +102,13 @@ try {
                JOIN pedidos p ON p.id_cliente = u.id
               WHERE ur.id_rol = 4
                 AND p.id_estado = 11
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM logistica_colecta_pedidos cp
+                      JOIN logistica_colectas c ON c.id = cp.id_colecta
+                     WHERE cp.id_pedido = p.id
+                       AND c.estado != 'CANCELADA'
+                )
               GROUP BY u.id, u.nombre
               ORDER BY u.nombre ASC"
         );
@@ -103,6 +117,7 @@ try {
 
     // Obtener lista de proveedores (Rol 5) para el desplegable del Admin
     $proveedores = [];
+    $mapeoClienteProveedor = [];
     if ($isAdmin) {
         $stmtProveedores = $db->query(
             "SELECT u.id, u.nombre
@@ -113,6 +128,22 @@ try {
               ORDER BY u.nombre ASC"
         );
         $proveedores = $stmtProveedores->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtMap = $db->query("
+            SELECT DISTINCT p.id_cliente, p.id_proveedor
+              FROM pedidos p
+             WHERE p.id_estado = 11
+               AND NOT EXISTS (
+                   SELECT 1
+                     FROM logistica_colecta_pedidos cp
+                     JOIN logistica_colectas c ON c.id = cp.id_colecta
+                    WHERE cp.id_pedido = p.id
+                      AND c.estado != 'CANCELADA'
+               )
+        ");
+        foreach ($stmtMap->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $mapeoClienteProveedor[(int)$row['id_cliente']] = (int)$row['id_proveedor'];
+        }
     }
 
     // Calcular contadores KPI para el header
@@ -343,6 +374,7 @@ $pageTitle = 'Colectas — Logística Operativa';
 <!-- ═══ Scripts ═══ -->
 <script>
 const CSRF_TOKEN_COLECTAS = '<?= $csrfToken ?>';
+const MAPEO_CLIENTE_PROVEEDOR = <?= json_encode($mapeoClienteProveedor ?? []) ?>;
 </script>
 <script src="<?= RUTA_URL ?>vista/modulos/logistica_operativa/colectas/js/colectas.js?v=<?= filemtime(__FILE__) ?>"></script>
 
