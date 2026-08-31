@@ -3,6 +3,7 @@
  * vista/modulos/logistica_operativa/etiquetas/index.php
  *
  * Centro de Impresión Masiva de Etiquetas adhesivas de envío (4x6" / Código de barras).
+ * Filtra EXCLUSIVAMENTE pedidos con estado "Pendiente recolección por mensajería" (Estado 11).
  */
 
 declare(strict_types=1);
@@ -11,59 +12,106 @@ require_once __DIR__ . '/../../../../config/config.php';
 require_once __DIR__ . '/../../../../modelo/conexion.php';
 
 $rolesSession = $_SESSION['roles_nombres'] ?? [];
+$isCliente    = in_array(ROL_NOMBRE_CLIENTE, $rolesSession, true) || in_array('Cliente', $rolesSession, true);
 $isProveedor  = in_array(ROL_NOMBRE_PROVEEDOR, $rolesSession, true) || in_array('Proveedor', $rolesSession, true);
 $isAdmin      = in_array(ROL_NOMBRE_ADMIN, $rolesSession, true) || in_array('Administrador', $rolesSession, true);
 
 $pedidos = [];
 $errorMsg = null;
 
+// Filtros recibidos
+$filtroProveedor = isset($_GET['proveedor']) && $_GET['proveedor'] !== '' ? (int)$_GET['proveedor'] : 0;
+$filtroCliente   = isset($_GET['cliente']) && $_GET['cliente'] !== '' ? (int)$_GET['cliente'] : 0;
+$fechaDesde      = isset($_GET['fecha_desde']) ? trim((string)$_GET['fecha_desde']) : '';
+$fechaHasta      = isset($_GET['fecha_hasta']) ? trim((string)$_GET['fecha_hasta']) : '';
+
+// Si el usuario autenticado es Proveedor (y no admin), fijar automáticamente su ID de proveedor
+if ($isProveedor && !$isAdmin) {
+    $filtroProveedor = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+}
+// Si el usuario autenticado es Cliente (y no admin/proveedor), fijar automáticamente su ID de cliente
+if ($isCliente && !$isAdmin && !$isProveedor) {
+    $filtroCliente = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+}
+
 try {
     $db = (new Conexion())->conectar();
     
-    $filtroCliente = isset($_GET['cliente']) ? (int)$_GET['cliente'] : 0;
-
-    // Si es proveedor de logística y no admin, filtrar por su ID
-    if ($isProveedor && !$isAdmin) {
-        $filtroCliente = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
-    }
-    
+    // Consulta base: paquetes con datos del cliente emisor y proveedor asignado
+    // EXCLUSIVAMENTE en estado 11: "Pendiente recolección por mensajería"
     $sql = "
         SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion AS direccion_destino,
-               p.precio_total_local AS monto_cod, u.nombre AS cliente_nombre, p.fecha_ingreso
+               p.precio_total_local AS monto_cod, 
+               COALESCE(u.nombre, 'Sin cliente') AS cliente_nombre,
+               COALESCE(up.nombre, 'Sin asignar') AS proveedor_nombre,
+               COALESCE(p.fecha_ingreso, p.created_at, p.fecha_entrega) AS fecha_registro,
+               p.id_estado, ep.nombre_estado
           FROM pedidos p
           JOIN usuarios u ON u.id = p.id_cliente
-         WHERE (
-            p.id IN (SELECT id_pedido FROM logistica_colecta_pedidos)
-            OR p.id IN (SELECT id_pedido FROM logistica_recepciones)
-         )
+     LEFT JOIN usuarios up ON up.id = p.id_proveedor
+          JOIN estados_pedidos ep ON ep.id = p.id_estado
+         WHERE p.id_estado = 11
     ";
+    $params = [];
     
-    if ($filtroCliente > 0) {
-        $sql .= " AND (p.id_cliente = " . $filtroCliente . " OR p.id_proveedor = " . $filtroCliente . ")";
+    // Filtro por Proveedor asignado
+    if ($filtroProveedor > 0) {
+        $sql .= " AND p.id_proveedor = :filtroProveedor";
+        $params[':filtroProveedor'] = $filtroProveedor;
     }
     
-    $sql .= " ORDER BY p.id DESC LIMIT 50";
+    // Filtro por Cliente Emisor
+    if ($filtroCliente > 0) {
+        $sql .= " AND p.id_cliente = :filtroCliente";
+        $params[':filtroCliente'] = $filtroCliente;
+    }
     
-    $stmt = $db->query($sql);
+    // Filtro por Rango de Fechas (opcional)
+    if (!empty($fechaDesde)) {
+        $sql .= " AND DATE(COALESCE(p.fecha_ingreso, p.created_at, p.fecha_entrega)) >= :fechaDesde";
+        $params[':fechaDesde'] = $fechaDesde;
+    }
+    if (!empty($fechaHasta)) {
+        $sql .= " AND DATE(COALESCE(p.fecha_ingreso, p.created_at, p.fecha_entrega)) <= :fechaHasta";
+        $params[':fechaHasta'] = $fechaHasta;
+    }
+    
+    $sql .= " ORDER BY p.id DESC LIMIT 200";
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Obtener lista de clientes que participan activamente en Logística Operativa
+    // 1. Obtener lista ÚNICAMENTE de PROVEEDORES que tienen pedidos en estado 11 (Pendiente recolección)
     if ($isProveedor && !$isAdmin) {
+        $stmtProv = $db->prepare("SELECT id, nombre FROM usuarios WHERE id = :id");
+        $stmtProv->execute([':id' => $filtroProveedor]);
+        $proveedores = $stmtProv->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $stmtProv = $db->query("
+            SELECT u.id, u.nombre, COUNT(p.id) AS pendientes
+              FROM usuarios u
+              JOIN pedidos p ON p.id_proveedor = u.id
+             WHERE p.id_estado = 11
+             GROUP BY u.id, u.nombre
+             ORDER BY pendientes DESC, u.nombre ASC
+        ");
+        $proveedores = $stmtProv->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // 2. Obtener lista ÚNICAMENTE de CLIENTES emisores que tienen pedidos en estado 11 (Pendiente recolección)
+    if ($isCliente && !$isAdmin && !$isProveedor) {
         $stmtCli = $db->prepare("SELECT id, nombre FROM usuarios WHERE id = :id");
-        $stmtCli->execute(['id' => $filtroCliente]);
+        $stmtCli->execute([':id' => $filtroCliente]);
         $clientes = $stmtCli->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $stmtCli = $db->query("
-            SELECT DISTINCT u.id, u.nombre 
+            SELECT u.id, u.nombre, COUNT(p.id) AS pendientes
               FROM usuarios u
-             WHERE u.id IN (
-                 SELECT DISTINCT p.id_cliente FROM logistica_colecta_pedidos cp JOIN pedidos p ON p.id = cp.id_pedido
-                 UNION
-                 SELECT DISTINCT p.id_proveedor FROM logistica_colecta_pedidos cp JOIN pedidos p ON p.id = cp.id_pedido
-                 UNION
-                 SELECT DISTINCT p.id_cliente FROM logistica_recepciones r JOIN pedidos p ON p.id = r.id_pedido
-             )
-             ORDER BY u.nombre ASC
+              JOIN pedidos p ON p.id_cliente = u.id
+             WHERE p.id_estado = 11
+             GROUP BY u.id, u.nombre
+             ORDER BY pendientes DESC, u.nombre ASC
         ");
         $clientes = $stmtCli->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -166,48 +214,127 @@ $pageTitle = 'Impresión Masiva de Etiquetas — Logística Operativa';
         <h1 class="h4 fw-bold mb-0">
             <i class="bi bi-tag-fill me-2 text-warning"></i>Impresión Masiva de Etiquetas adhesivas (4×6")
         </h1>
-        <small class="text-muted">Generación de guías con código de barras listas para impresoras térmicas (Zebra / Xprinter)</small>
+        <small class="text-muted">Mostrando exclusivamente paquetes en estado <strong>Pendiente recolección por mensajería</strong></small>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-warning fw-bold px-3 text-dark shadow-sm" onclick="window.print()">
-            <i class="bi bi-printer-fill me-1"></i>Imprimir Etiquetas Seleccionadas
+        <button class="btn btn-warning fw-bold px-3 text-dark shadow-sm" onclick="window.print()" <?= empty($pedidos) ? 'disabled' : '' ?>>
+            <i class="bi bi-printer-fill me-1"></i>Imprimir Etiquetas (<?= count($pedidos) ?>)
         </button>
     </div>
 </div>
 
 <!-- Filtros no-print -->
-<div class="card border-0 shadow-sm mb-4 no-print">
-    <div class="card-body">
-        <form method="GET" action="<?= RUTA_URL ?>index.php" class="row g-3">
+<div class="card border-0 shadow-sm mb-4 no-print bg-white rounded-4">
+    <div class="card-body p-3 p-md-4">
+        <form method="GET" action="<?= RUTA_URL ?>index.php" class="row g-3 align-items-end" id="formFiltrosEtiquetas">
             <input type="hidden" name="enlace" value="logistica-operativa/etiquetas">
-            <div class="col-12 col-md-6">
-                <label class="form-label small fw-semibold text-muted mb-1">Cliente remisor</label>
-                <?php if (($isCliente || $isProveedor) && !$isAdmin): ?>
+
+            <!-- Filtro Proveedor / Mensajería Asignada -->
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-truck me-1 text-primary"></i>Proveedor / Mensajería
+                </label>
+                <?php if ($isProveedor && !$isAdmin): ?>
+                <select name="proveedor" class="form-select form-select-sm bg-light" disabled>
+                    <?php foreach ($proveedores as $pr): ?>
+                    <option value="<?= (int)$pr['id'] ?>" selected>🚚 <?= htmlspecialchars($pr['nombre']) ?> (Mi Cuenta)</option>
+                    <?php endforeach; ?>
+                </select>
+                <?php else: ?>
+                <select name="proveedor" class="form-select form-select-sm">
+                    <option value="">-- Todos los proveedores --</option>
+                    <?php foreach ($proveedores as $pr): ?>
+                    <option value="<?= (int)$pr['id'] ?>" <?= $filtroProveedor === (int)$pr['id'] ? 'selected' : '' ?>>
+                        🚚 <?= htmlspecialchars($pr['nombre']) ?> (<?= (int)$pr['pendientes'] ?> pendiente<?= (int)$pr['pendientes'] !== 1 ? 's' : '' ?>)
+                    </option>
+                    <?php endforeach; ?>
+                </select>
+                <?php endif; ?>
+            </div>
+
+            <!-- Filtro Cliente Emisor -->
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-building me-1 text-info"></i>Cliente Emisor (Remitente)
+                </label>
+                <?php if ($isCliente && !$isAdmin && !$isProveedor): ?>
                 <select name="cliente" class="form-select form-select-sm bg-light" disabled>
                     <?php foreach ($clientes as $c): ?>
                     <option value="<?= (int)$c['id'] ?>" selected>🏢 <?= htmlspecialchars($c['nombre']) ?> (Mi Cuenta)</option>
                     <?php endforeach; ?>
                 </select>
                 <?php else: ?>
-                <select name="cliente" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">-- Todos los clientes --</option>
+                <select name="cliente" class="form-select form-select-sm">
+                    <option value="">-- Todos los clientes emisores --</option>
                     <?php foreach ($clientes as $c): ?>
                     <option value="<?= (int)$c['id'] ?>" <?= $filtroCliente === (int)$c['id'] ? 'selected' : '' ?>>
-                        🏢 <?= htmlspecialchars($c['nombre']) ?>
+                        🏢 <?= htmlspecialchars($c['nombre']) ?> (<?= (int)$c['pendientes'] ?> pendiente<?= (int)$c['pendientes'] !== 1 ? 's' : '' ?>)
                     </option>
                     <?php endforeach; ?>
                 </select>
                 <?php endif; ?>
             </div>
-            <div class="col-12 col-md-6 d-flex align-items-end justify-content-end">
-                <div class="form-check form-switch">
+
+            <!-- Filtro Fecha Desde -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">
+                    <i class="bi bi-calendar-event me-1"></i>Fecha Desde
+                </label>
+                <input type="date" name="fecha_desde" class="form-control form-control-sm"
+                       value="<?= htmlspecialchars($fechaDesde) ?>" id="inputFechaDesde" placeholder="Desde">
+            </div>
+
+            <!-- Filtro Fecha Hasta (Opcional) -->
+            <div class="col-6 col-md-2 d-none d-md-block" style="display:none !important;">
+                <input type="date" name="fecha_hasta" value="<?= htmlspecialchars($fechaHasta) ?>" id="inputFechaHasta">
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100 fw-semibold">
+                    <i class="bi bi-filter me-1"></i>Filtrar
+                </button>
+                <a href="<?= RUTA_URL ?>logistica-operativa/etiquetas"
+                   class="btn btn-outline-secondary btn-sm" title="Limpiar filtros">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </a>
+            </div>
+
+            <!-- Indicador y Switch -->
+            <div class="col-12 d-flex align-items-center justify-content-between pt-2 border-top flex-wrap gap-2">
+                <div class="small text-muted">
+                    Mostrando <strong class="text-dark"><?= count($pedidos) ?></strong> paquete(s) en estado 
+                    <span class="badge bg-warning-subtle text-dark border border-warning-subtle fw-semibold">
+                        <i class="bi bi-box-seam me-1"></i>Pendiente recolección por mensajería
+                    </span>
+                    <?php if (!empty($fechaDesde)): ?>
+                        a partir del <span class="badge bg-light text-primary border"><?= date('d/m/Y', strtotime($fechaDesde)) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <div class="form-check form-switch mb-0">
                     <input class="form-check-input" type="checkbox" id="chkTodos" checked onclick="toggleSeleccionarTodos(this)">
-                    <label class="form-check-label fw-bold small text-muted" for="chkTodos">Seleccionar todos los paquetes</label>
+                    <label class="form-check-label fw-bold small text-muted cursor-pointer" for="chkTodos">
+                        Seleccionar todos los paquetes
+                    </label>
                 </div>
             </div>
         </form>
     </div>
 </div>
+
+<?php if (empty($pedidos)): ?>
+<div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white my-4 no-print">
+    <div class="py-4">
+        <i class="bi bi-tags display-4 text-muted opacity-50 mb-3 d-block"></i>
+        <h5 class="fw-bold text-dark mb-1">No hay paquetes pendientes de recolección</h5>
+        <p class="text-muted small mb-3">No se encontraron pedidos con estado <em>Pendiente recolección por mensajería</em> para los filtros seleccionados.</p>
+        <a href="<?= RUTA_URL ?>logistica-operativa/etiquetas" class="btn btn-outline-primary btn-sm px-3 rounded-pill">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Restablecer filtros
+        </a>
+    </div>
+</div>
+<?php else: ?>
 
 <!-- Rejilla de Etiquetas (Stickers 4x6") -->
 <div class="row g-4 label-grid" id="contenedorEtiquetas">
@@ -220,9 +347,17 @@ $pageTitle = 'Impresión Masiva de Etiquetas — Logística Operativa';
                 <div class="badge bg-dark text-white font-monospace fs-6">COD: C$ <?= number_format((float)($p['monto_cod'] ?? 0), 2) ?></div>
             </div>
 
-            <!-- Datos Cliente -->
-            <div class="small text-muted mb-1">REMITENTE:</div>
-            <div class="fw-bold text-dark mb-2">🏢 <?= htmlspecialchars((string)($p['cliente_nombre'] ?? '')) ?></div>
+            <!-- Datos Cliente y Proveedor -->
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <div class="small text-muted" style="font-size:0.75rem;">REMITENTE:</div>
+                    <div class="fw-bold text-dark small">🏢 <?= htmlspecialchars((string)($p['cliente_nombre'] ?? '')) ?></div>
+                </div>
+                <div class="text-end">
+                    <div class="small text-muted" style="font-size:0.75rem;">MENSAJERÍA:</div>
+                    <div class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace small">🚚 <?= htmlspecialchars((string)($p['proveedor_nombre'] ?? '')) ?></div>
+                </div>
+            </div>
 
             <!-- Datos Destinatario -->
             <div class="bg-light p-2 rounded border mb-2">
@@ -249,6 +384,7 @@ $pageTitle = 'Impresión Masiva de Etiquetas — Logística Operativa';
     </div>
     <?php endforeach; ?>
 </div>
+<?php endif; ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>

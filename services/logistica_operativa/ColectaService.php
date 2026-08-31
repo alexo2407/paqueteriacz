@@ -303,15 +303,17 @@ class ColectaService
             // Idempotencia por evento (colecta + pedido + tipo)
             if ($this->escaneoModel->existeEvento($idColecta, $idPedido, $tipoEvento)) {
                 $registroColecta = $this->colectaModel->obtenerPedidoEnColecta($idColecta, $idPedido);
-                $idEscaneo = (int) $this->db->query(
+                $stmt = $this->db->prepare(
                     "SELECT id FROM logistica_escaneos
-                      WHERE id_colecta=? AND id_pedido=? AND tipo_evento=? LIMIT 1"
-                )->execute([$idColecta, $idPedido, $tipoEvento]);
+                      WHERE id_colecta = ? AND id_pedido = ? AND tipo_evento = ? LIMIT 1"
+                );
+                $stmt->execute([$idColecta, $idPedido, $tipoEvento]);
+                $idEscaneo = (int) ($stmt->fetchColumn() ?: 0);
                 $this->db->rollBack();
                 return [
                     'idempotente'     => true,
-                    'id_escaneo'      => 0,
-                    'resultado_pedido' => $registroColecta['resultado'] ?? 'DESCONOCIDO',
+                    'id_escaneo'      => $idEscaneo,
+                    'resultado_pedido' => $registroColecta['resultado'] ?? 'RECIBIDO',
                 ];
             }
 
@@ -350,10 +352,17 @@ class ColectaService
 
             $this->db->commit();
 
+            $resumen = $this->colectaModel->obtenerResumen($idColecta);
+            $pedidos = $this->colectaModel->obtenerPedidosDetalle($idColecta);
+
             return [
-                'idempotente'     => false,
-                'id_escaneo'      => $idEscaneo,
+                'idempotente'      => false,
+                'id_escaneo'       => $idEscaneo,
                 'resultado_pedido' => $resultadoPedido,
+                'id_pedido'        => $idPedido,
+                'escaneado_at'     => $escaneadoAt,
+                'conteos'          => $resumen['conteos'] ?? [],
+                'pedidos'          => $pedidos,
             ];
         } catch (\Throwable $e) {
             if ($this->db->inTransaction()) {

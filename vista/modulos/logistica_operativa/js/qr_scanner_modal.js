@@ -63,6 +63,48 @@
     }
 
     /**
+     * Sincroniza #qrScanOverlay con el qrbox de html5-qrcode.
+     *
+     * Por qué funciona ahora:
+     *   - #qrReaderRegion__header_message y __dashboard_section están ocultos
+     *     → el <video> empieza en y=0 de #qrReaderRegion sin offsets.
+     *   - El video tiene height:360px !important (via CSS) → html5-qrcode usa
+     *     video.clientHeight = 360 para centrar su qrbox en y=180.
+     *   - Nuestro overlay calcula su centro en el mismo punto → coincidencia exacta.
+     *
+     * readyState >= 2 (HAVE_CURRENT_DATA) garantiza dimensiones finales,
+     * evitando usar valores provisionales que html5-qrcode actualiza async.
+     *
+     * @param {number} [intentos=0] - reintentos mientras el video carga
+     */
+    function sincronizarOverlay(intentos = 0) {
+        const viewport = document.getElementById('qrScannerViewport');
+        const overlay  = document.getElementById('qrScanOverlay');
+        if (!viewport || !overlay) return;
+
+        const video = viewport.querySelector('video');
+
+        if (!video || video.clientWidth < 50 || video.clientHeight < 50 || video.readyState < 2) {
+            if (intentos < 30) setTimeout(() => sincronizarOverlay(intentos + 1), 200);
+            return;
+        }
+
+        const vpRect  = viewport.getBoundingClientRect();
+        const vidRect = video.getBoundingClientRect();
+
+        // Centro del <video> relativo al #qrScannerViewport.
+        // Con el video en y=0 de su contenedor y height=360px,
+        // este punto coincide exactamente con el centro del qrbox de html5-qrcode.
+        const cx = (vidRect.left - vpRect.left) + vidRect.width  * 0.5;
+        const cy = (vidRect.top  - vpRect.top)  + vidRect.height * 0.5;
+
+        overlay.style.left      = cx + 'px';
+        overlay.style.top       = cy + 'px';
+        overlay.style.transform = 'translate(-50%, -50%)';
+    }
+
+
+    /**
      * Hace vibrar el dispositivo si la API es soportada.
      */
     function darFeedbackHaptico() {
@@ -77,6 +119,13 @@
      * Detiene la cámara de forma limpia.
      */
     async function detenerCamara() {
+        // Limpiar ResizeObserver del video antes de detener
+        const videoEl = document.querySelector('#qrScannerViewport video');
+        if (videoEl && videoEl._qrResizeObserver) {
+            videoEl._qrResizeObserver.disconnect();
+            videoEl._qrResizeObserver = null;
+        }
+
         if (html5QrcodeInstance) {
             try {
                 if (html5QrcodeInstance.isScanning) {
@@ -92,20 +141,74 @@
     }
 
     /**
-     * Inicia el escaneo en la cámara especificada.
+     * Aplica autoenfoque continuo, autoexposición y mejoras de nitidez al track de video activo.
+     */
+    async function aplicarAutoenfoqueYMejoras(videoEl) {
+        if (!videoEl || !videoEl.srcObject) return;
+        const stream = videoEl.srcObject;
+        const tracks = stream.getVideoTracks ? stream.getVideoTracks() : [];
+        if (!tracks || tracks.length === 0) return;
+        const track = tracks[0];
+
+        try {
+            const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+            const advancedConstraints = [];
+
+            // 1. Autoenfoque continuo (Continuous Auto-Focus)
+            if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                advancedConstraints.push({ focusMode: 'continuous' });
+            }
+
+            // 2. Modo de exposición automática continua para compensar iluminación
+            if (capabilities.exposureMode && capabilities.exposureMode.includes('continuous')) {
+                advancedConstraints.push({ exposureMode: 'continuous' });
+            }
+
+            // 3. Balance de blancos continuo
+            if (capabilities.whiteBalanceMode && capabilities.whiteBalanceMode.includes('continuous')) {
+                advancedConstraints.push({ whiteBalanceMode: 'continuous' });
+            }
+
+            if (advancedConstraints.length > 0) {
+                await track.applyConstraints({ advanced: advancedConstraints });
+                console.log('Autoenfoque continuo y optimizaciones aplicadas al stream.');
+            }
+        } catch (e) {
+            console.warn('Aviso: El dispositivo/navegador no permite ajustar el enfoque por software:', e);
+        }
+    }
+
+    /**
+     * Inicia el escaneo en la cámara especificada con optimizaciones de enfoque y resolución.
      */
     async function iniciarCamara(cameraIdOrConfig) {
         await detenerCamara();
 
         const qrRegion = document.getElementById('qrReaderRegion');
+        const viewport = document.getElementById('qrScannerViewport');
         if (!qrRegion) return;
 
         html5QrcodeInstance = new Html5Qrcode('qrReaderRegion');
 
+        // Calcular el aspectRatio exacto del contenedor visual actual (ancho / alto = e.g. 700 / 360).
+        const vpWidth = (viewport && viewport.clientWidth > 0) ? viewport.clientWidth : (qrRegion.clientWidth || 640);
+        const vpHeight = (viewport && viewport.clientHeight > 0) ? viewport.clientHeight : 360;
+        const dynamicAspectRatio = vpWidth / vpHeight;
+
         const config = {
-            fps: 15,
-            qrbox: { width: 220, height: 220 },
-            aspectRatio: 1.0,
+            fps: 20, // Mayor tasa de cuadros para escaneo más fluido y rápido
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                const boxSize = Math.min(220, Math.min(viewfinderWidth - 20, viewfinderHeight - 20));
+                return { width: boxSize, height: boxSize };
+            },
+            aspectRatio: dynamicAspectRatio,
+            videoConstraints: {
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 },
+                advanced: [
+                    { focusMode: "continuous" }
+                ]
+            },
             experimentalFeatures: {
                 useBarCodeDetectorIfSupported: true
             }
@@ -119,6 +222,31 @@
                 onQrScanError
             );
             actualizarEstadoFeedback('Cámara activa. Enfoca el código en el recuadro.', 'info');
+
+            // Sincronizar overlay con el qrbox real de html5-qrcode.
+            sincronizarOverlay();
+
+            const videoEl = document.querySelector('#qrScannerViewport video');
+            if (videoEl) {
+                const onVideoReady = () => {
+                    sincronizarOverlay();
+                    aplicarAutoenfoqueYMejoras(videoEl);
+                };
+
+                videoEl.addEventListener('loadedmetadata', onVideoReady, { once: true });
+                videoEl.addEventListener('canplay',        onVideoReady, { once: true });
+                videoEl.addEventListener('playing',        onVideoReady, { once: true });
+
+                // Aplicar de inmediato por si el video ya inició
+                aplicarAutoenfoqueYMejoras(videoEl);
+
+                // ResizeObserver: re-sincronizar si html5-qrcode cambia el tamaño del video
+                if (window.ResizeObserver) {
+                    if (videoEl._qrResizeObserver) videoEl._qrResizeObserver.disconnect();
+                    videoEl._qrResizeObserver = new ResizeObserver(() => sincronizarOverlay());
+                    videoEl._qrResizeObserver.observe(videoEl);
+                }
+            }
         } catch (err) {
             console.error('Error al iniciar cámara:', err);
             const errStr = (err.message || String(err));
@@ -338,5 +466,21 @@
                 targetInputEl.focus();
             }
         });
+
+        // Tap/Click en el visor para re-enfocar manualmente si la cámara pierde foco
+        const viewportEl = document.getElementById('qrScannerViewport');
+        if (viewportEl) {
+            viewportEl.addEventListener('click', function () {
+                const videoEl = viewportEl.querySelector('video');
+                if (videoEl) {
+                    aplicarAutoenfoqueYMejoras(videoEl);
+                }
+            });
+        }
+
+        // Resincronizar overlay cuando cambia el tamaño de ventana o la orientación.
+        function onResize() { sincronizarOverlay(); }
+        window.addEventListener('resize',            onResize);
+        window.addEventListener('orientationchange', onResize);
     });
 })();

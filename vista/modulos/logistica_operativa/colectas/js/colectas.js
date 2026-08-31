@@ -125,32 +125,118 @@ function actualizarContadores(nuevos) {
 }
 
 /**
- * Actualiza el badge de resultado en la fila de un pedido.
+ * Actualiza el badge de resultado, estado de escaneado y fecha en la fila de un pedido.
  */
 function actualizarFilaPedido(idPedido, resultado, escaneadoAt) {
-    const fila = document.getElementById('fila-pedido-' + idPedido);
+    let fila = document.getElementById('fila-pedido-' + idPedido);
+    if (!fila) {
+        fila = document.querySelector(`.fila-pedido-item[data-numero-orden="${idPedido}"]`) ||
+               document.querySelector(`.fila-pedido-item[data-id-pedido="${idPedido}"]`);
+    }
     if (!fila) return;
 
     const tdResultado = fila.querySelector('td:nth-child(3)');
-    const tdFecha     = fila.querySelector('td:nth-child(4)');
+    const tdEscaneado = fila.querySelector('td:nth-child(4)');
+    const tdFecha     = fila.querySelector('td:nth-child(5)');
 
     if (tdResultado) {
         tdResultado.innerHTML = badgeResultadoJS(resultado);
     }
+    if (tdEscaneado) {
+        tdEscaneado.innerHTML = '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check me-1"></i>Sí</span>';
+    }
     if (tdFecha && escaneadoAt) {
         const d = new Date(escaneadoAt.replace(' ', 'T'));
-        tdFecha.textContent = d.toLocaleDateString('es', { day:'2-digit', month:'2-digit' })
-                            + ' ' + d.toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit' });
+        tdFecha.textContent = d.toLocaleDateString('es', { day:'2-digit', month:'2-digit', year:'numeric' })
+                            + ' ' + d.toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
     }
+
+    // Efecto visual de resaltado suave
+    fila.classList.add('table-success');
+    setTimeout(() => {
+        fila.classList.remove('table-success');
+    }, 2500);
+}
+
+/**
+ * Renderiza o refresca asíncronamente la tabla completa de pedidos si se recibe la lista actualizada.
+ */
+function actualizarTablaPedidosCompleta(pedidos) {
+    if (!Array.isArray(pedidos)) return;
+    const tbody = document.getElementById('tbodyPedidos');
+    if (!tbody) return;
+
+    if (pedidos.length === 0) {
+        tbody.innerHTML = `
+            <tr id="trSinPedidos">
+                <td colspan="${typeof COLECTA_ABIERTA !== 'undefined' && COLECTA_ABIERTA ? '6' : '5'}" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox display-5 opacity-25 d-block mb-2"></i>
+                    Sin pedidos en esta colecta.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    const trSinPedidos = document.getElementById('trSinPedidos');
+    if (trSinPedidos) trSinPedidos.remove();
+
+    pedidos.forEach(p => {
+        const idPed = parseInt(p.id_pedido, 10);
+        let fila = document.getElementById('fila-pedido-' + idPed);
+        const res = p.resultado_pedido || 'ESPERADO';
+        const escAt = p.escaneado_at || null;
+        const orden = p.numero_orden || ('#' + idPed);
+        const dest = p.destinatario || '—';
+
+        if (fila) {
+            actualizarFilaPedido(idPed, res, escAt);
+        } else {
+            // Es un pedido nuevo (ej. EXTRA): crear la fila dinámicamente
+            fila = document.createElement('tr');
+            fila.id = 'fila-pedido-' + idPed;
+            fila.className = 'fila-pedido-item table-warning';
+            fila.setAttribute('data-id-pedido', idPed);
+            fila.setAttribute('data-numero-orden', orden);
+
+            const formattedDate = escAt ? (new Date(escAt.replace(' ', 'T')).toLocaleDateString('es', { day:'2-digit', month:'2-digit', year:'numeric' }) + ' ' + new Date(escAt.replace(' ', 'T')).toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit', second:'2-digit' })) : '—';
+            const escBadge = escAt ? '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check me-1"></i>Sí</span>' : '<span class="badge bg-light text-muted border">No</span>';
+
+            let accionTd = '';
+            if (typeof COLECTA_ABIERTA !== 'undefined' && COLECTA_ABIERTA) {
+                let btn = '';
+                if (res === 'EXTRA') {
+                    btn = `<button class="btn btn-sm btn-outline-danger py-1 px-2.5 text-nowrap rounded-3"
+                                   onclick="eliminarPedidoExtra(${idPed}, '${orden.replace(/'/g, "\\'")}')"
+                                   title="Quitar este paquete extra">
+                               <i class="bi bi-trash me-1"></i>Quitar
+                           </button>`;
+                }
+                accionTd = `<td class="text-end pe-4">${btn}</td>`;
+            }
+
+            fila.innerHTML = `
+                <td class="fw-bold font-monospace ps-4">${orden}</td>
+                <td class="small fw-semibold text-dark">${dest}</td>
+                <td>${badgeResultadoJS(res)}</td>
+                <td>${escBadge}</td>
+                <td class="small text-muted font-monospace">${formattedDate}</td>
+                ${accionTd}
+            `;
+
+            tbody.prepend(fila);
+            setTimeout(() => fila.classList.remove('table-warning'), 3000);
+        }
+    });
 }
 
 function badgeResultadoJS(resultado) {
     switch (resultado) {
-        case 'RECIBIDO': return '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Recibido</span>';
-        case 'FALTANTE': return '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Faltante</span>';
-        case 'EXTRA':    return '<span class="badge bg-warning text-dark"><i class="bi bi-plus-circle me-1"></i>Extra</span>';
-        case 'ESPERADO': return '<span class="badge bg-light text-dark border"><i class="bi bi-clock me-1"></i>Esperado</span>';
-        default:         return '<span class="badge bg-secondary">' + resultado + '</span>';
+        case 'RECIBIDO':  return '<span class="badge badge-outline-success"><i class="bi bi-check-circle me-1"></i>RECIBIDO</span>';
+        case 'FALTANTE':  return '<span class="badge badge-outline-danger"><i class="bi bi-x-circle me-1"></i>FALTANTE</span>';
+        case 'EXTRA':     return '<span class="badge badge-outline-warning"><i class="bi bi-plus-circle me-1"></i>EXTRA</span>';
+        case 'ESPERADO':
+        case 'PENDIENTE': return '<span class="badge badge-outline-secondary"><i class="bi bi-clock me-1"></i>PENDIENTE</span>';
+        default:          return '<span class="badge bg-secondary">' + resultado + '</span>';
     }
 }
 
@@ -395,10 +481,14 @@ function badgeResultadoJS(resultado) {
 
                 mostrarResultado(tipo, msg);
 
-                // Actualizar fila de la tabla si existe
-                actualizarFilaPedido(idPedido, r.resultado_pedido, r.escaneado_at);
+                // Actualizar tabla de pedidos (asíncronamente sin recargar página)
+                if (r.pedidos && Array.isArray(r.pedidos)) {
+                    actualizarTablaPedidosCompleta(r.pedidos);
+                } else {
+                    actualizarFilaPedido(idPedido, r.resultado_pedido, r.escaneado_at);
+                }
 
-                // Actualizar contadores con los del resumen actualizado
+                // Actualizar contadores y barra de progreso
                 if (r.conteos) actualizarContadores(r.conteos);
 
                 // Agregar al historial local

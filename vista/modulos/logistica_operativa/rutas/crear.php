@@ -25,6 +25,10 @@ try {
     $rutaModel = new RutaModel($db);
     $rutaService = new RutaService($db);
 
+    // Obtener Zonas de Reparto activas desde la base de datos
+    $stmtZonas = $db->query("SELECT id, nombre, descripcion FROM logistica_zonas WHERE activa = 1 ORDER BY nombre ASC");
+    $zonas = $stmtZonas->fetchAll(PDO::FETCH_ASSOC);
+
     // Obtener repartidores (usuarios con rol 'Repartidor' o ID de rol 3 vía usuarios_roles)
     $stmtRep = $db->query("
         SELECT DISTINCT u.id, u.nombre
@@ -47,7 +51,7 @@ try {
 
     // Procesar formulario POST
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
-        $nombre       = $_POST['nombre'] ?? '';
+        $nombre       = trim($_POST['nombre'] ?? '');
         $fecha        = $_POST['fecha'] ?? date('Y-m-d');
         $idRepartidor = (int)($_POST['id_repartidor'] ?? 0);
         $pedidosSel   = $_POST['pedidos'] ?? [];
@@ -77,7 +81,7 @@ $pageTitle = 'Armar Nueva Ruta — Logística Operativa';
         <h1 class="h4 fw-bold mb-0">
             <i class="bi bi-diagram-3 me-2 text-primary"></i>Armar Nueva Ruta de Despacho
         </h1>
-        <small class="text-muted">Selecciona paquetes en bodega para agrupar en un manifiesto de ruta</small>
+        <small class="text-muted">Selecciona la zona, repartidor y paquetes en bodega para agrupar en un manifiesto de ruta</small>
     </div>
     <div>
         <a href="<?= RUTA_URL ?>logistica-operativa/rutas" class="btn btn-outline-secondary btn-sm">
@@ -90,7 +94,7 @@ $pageTitle = 'Armar Nueva Ruta — Logística Operativa';
 <div class="alert alert-danger mb-4"><i class="bi bi-exclamation-triangle me-2"></i><?= htmlspecialchars((string)$error) ?></div>
 <?php endif; ?>
 
-<form method="POST" action="">
+<form method="POST" action="" id="formCrearRuta">
     <div class="row g-4">
 
         <!-- ═══ Columna Izquierda: Datos de la Ruta ═══ -->
@@ -100,22 +104,45 @@ $pageTitle = 'Armar Nueva Ruta — Logística Operativa';
                     <i class="bi bi-info-circle me-2"></i>Información de la Ruta
                 </div>
                 <div class="card-body">
+                    <!-- Selector Dinámico de Zona de Reparto -->
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Nombre / Nombre de Zona <span class="text-danger">*</span></label>
-                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Ruta 01 - Zona Managua Centro" required value="Ruta 01 - Managua Centro [DEMO LOCAL]">
+                        <label class="form-label small fw-semibold">
+                            <i class="bi bi-geo-alt me-1 text-primary"></i>Zona de Reparto / Cobertura <span class="text-danger">*</span>
+                        </label>
+                        <select id="selectZona" name="id_zona" class="form-select" onchange="onZonaSeleccionada(this)">
+                            <option value="">-- Seleccionar Zona de Reparto --</option>
+                            <?php foreach ($zonas as $z): ?>
+                            <option value="<?= (int)$z['id'] ?>" data-nombre="<?= htmlspecialchars((string)$z['nombre']) ?>" data-desc="<?= htmlspecialchars((string)($z['descripcion'] ?? '')) ?>">
+                                📍 <?= htmlspecialchars((string)$z['nombre']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                            <option value="custom">✏️ Otra zona personalizada...</option>
+                        </select>
+                        <small class="text-muted d-block mt-1" id="zonaDescInfo" style="font-size:0.75rem;"></small>
                     </div>
 
+                    <!-- Nombre de la Ruta (Auto-generado / Editable) -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Nombre de la Ruta <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" id="inputNombreRuta" class="form-control" placeholder="Ej: Ruta 01 - Managua Centro" required value="">
+                        <small class="text-muted" style="font-size:0.75rem;">Se sugiere automáticamente al elegir la zona, pero puedes personalizarlo.</small>
+                    </div>
+
+                    <!-- Fecha Programada -->
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Fecha Programada <span class="text-danger">*</span></label>
-                        <input type="date" name="fecha" class="form-control" required value="<?= date('Y-m-d') ?>">
+                        <input type="date" name="fecha" id="inputFechaRuta" class="form-control" required value="<?= date('Y-m-d') ?>">
                     </div>
 
+                    <!-- Repartidor / Mensajero Asignado -->
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Repartidor / Mensajero Asignado <span class="text-danger">*</span></label>
+                        <label class="form-label small fw-semibold">
+                            <i class="bi bi-person-badge me-1 text-primary"></i>Repartidor / Mensajero Asignado <span class="text-danger">*</span>
+                        </label>
                         <select name="id_repartidor" class="form-select" required>
                             <option value="">-- Seleccionar repartidor --</option>
                             <?php foreach ($repartidores as $r): ?>
-                            <option value="<?= (int)$r['id'] ?>"><?= htmlspecialchars((string)$r['nombre']) ?> (ID: <?= (int)$r['id'] ?>)</option>
+                            <option value="<?= (int)$r['id'] ?>">🛵 <?= htmlspecialchars((string)$r['nombre']) ?> (ID: <?= (int)$r['id'] ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -145,15 +172,21 @@ $pageTitle = 'Armar Nueva Ruta — Logística Operativa';
         <!-- ═══ Columna Derecha: Selección de Paquetes ═══ -->
         <div class="col-12 col-lg-8">
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-light d-flex align-items-center justify-content-between">
-                    <span class="fw-semibold"><i class="bi bi-boxes me-2"></i>Paquetes Disponibles en Bodega</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnSelectAll">
-                        <i class="bi bi-check-all me-1"></i>Seleccionar Todos
-                    </button>
+                <div class="card-header bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-semibold"><i class="bi bi-boxes me-1"></i>Paquetes Disponibles en Bodega</span>
+                        <span class="badge bg-primary rounded-pill"><?= count($paquetesEnBodega) ?></span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <input type="text" id="inputBuscarPaquete" class="form-control form-control-sm" placeholder="🔍 Buscar por N.º Orden, destinatario o zona..." style="width: 260px;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" id="btnSelectAll">
+                            <i class="bi bi-check-all me-1"></i>Seleccionar Todos
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                        <table class="table table-hover align-middle mb-0">
+                        <table class="table table-hover align-middle mb-0" id="tablaPaquetesBodega">
                             <thead class="table-light sticky-top">
                                 <tr>
                                     <th class="ps-3" style="width: 40px;"></th>
@@ -174,12 +207,12 @@ $pageTitle = 'Armar Nueva Ruta — Logística Operativa';
                                 </tr>
                                 <?php else: ?>
                                     <?php foreach ($paquetesEnBodega as $p): ?>
-                                    <tr>
+                                    <tr class="fila-paquete" data-search="<?= strtolower(htmlspecialchars((string)($p['numero_orden'] . ' ' . $p['destinatario'] . ' ' . ($p['municipalitiesName'] ?? '') . ' ' . ($p['departmentName'] ?? '')))) ?>">
                                         <td class="ps-3">
                                             <input type="checkbox" name="pedidos[]" value="<?= (int)$p['id_pedido'] ?>" data-cod="<?= (float)$p['monto_cod'] ?>" class="form-check-input chk-pedido">
                                         </td>
                                         <td>
-                                            <span class="fw-bold"><?= htmlspecialchars((string)($p['numero_orden'] ?? '#' . $p['id_pedido'])) ?></span>
+                                            <span class="fw-bold text-primary font-monospace"><?= htmlspecialchars((string)($p['numero_orden'] ?? '#' . $p['id_pedido'])) ?></span>
                                         </td>
                                         <td class="small"><?= htmlspecialchars((string)($p['destinatario'] ?? '—')) ?></td>
                                         <td class="small text-muted">
@@ -207,11 +240,42 @@ $pageTitle = 'Armar Nueva Ruta — Logística Operativa';
 </form>
 
 <script>
+function onZonaSeleccionada(select) {
+    const opt = select.options[select.selectedIndex];
+    const inputNombre = document.getElementById('inputNombreRuta');
+    const descInfo = document.getElementById('zonaDescInfo');
+    
+    if (!opt || !opt.value) {
+        descInfo.textContent = '';
+        return;
+    }
+
+    if (opt.value === 'custom') {
+        descInfo.textContent = 'Introduce el nombre de la zona personalizada en el campo inferior.';
+        inputNombre.value = '';
+        inputNombre.focus();
+        return;
+    }
+
+    const nombreZona = opt.getAttribute('data-nombre') || '';
+    const desc = opt.getAttribute('data-desc') || '';
+    
+    if (desc) {
+        descInfo.innerHTML = '<i class="bi bi-info-circle me-1"></i>' + desc;
+    } else {
+        descInfo.textContent = '';
+    }
+
+    // Auto-generar sugerencia de nombre de ruta
+    inputNombre.value = 'Ruta 01 - ' + nombreZona;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const chks = document.querySelectorAll('.chk-pedido');
     const cntSel = document.getElementById('cntSeleccionados');
     const totalCodEl = document.getElementById('totalCodCalculado');
     const btnSelectAll = document.getElementById('btnSelectAll');
+    const inputBuscar = document.getElementById('inputBuscarPaquete');
 
     function recualcularTotales() {
         let count = 0;
@@ -232,8 +296,28 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnSelectAll) {
         btnSelectAll.addEventListener('click', function() {
             allChecked = !allChecked;
-            chks.forEach(chk => chk.checked = allChecked);
+            const visibleChks = document.querySelectorAll('.fila-paquete:not([style*="display: none"]) .chk-pedido');
+            if (visibleChks.length > 0) {
+                visibleChks.forEach(chk => chk.checked = allChecked);
+            } else {
+                chks.forEach(chk => chk.checked = allChecked);
+            }
             recualcularTotales();
+        });
+    }
+
+    // Búsqueda en vivo de paquetes
+    if (inputBuscar) {
+        inputBuscar.addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            document.querySelectorAll('.fila-paquete').forEach(row => {
+                const text = row.getAttribute('data-search') || '';
+                if (!query || text.includes(query)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         });
     }
 });

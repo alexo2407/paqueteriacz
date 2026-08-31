@@ -380,7 +380,9 @@ $pageTitle = 'Colecta #' . $idColecta . ' — Detalle';
                             </tr>
                         <?php else: ?>
                             <?php foreach ($pedidos as $p): ?>
-                            <tr id="fila-pedido-<?= (int)$p['id_pedido'] ?>" class="fila-pedido-item">
+                            <tr id="fila-pedido-<?= (int)$p['id_pedido'] ?>" class="fila-pedido-item"
+                                data-id-pedido="<?= (int)$p['id_pedido'] ?>"
+                                data-numero-orden="<?= htmlspecialchars((string)($p['numero_orden'] ?? '')) ?>">
                                 <td class="fw-bold font-monospace ps-4">
                                     <?= htmlspecialchars((string)($p['numero_orden'] ?? '#' . $p['id_pedido'])) ?>
                                 </td>

@@ -4,6 +4,69 @@
  */
 
 /* ============================================
+   QR SCANNER MODAL — Overlay y animaciones
+   ============================================ */
+
+/* Animación de la línea horizontal de escaneo:
+   barre de arriba a abajo dentro del marco 220×220. */
+@keyframes qrScanLineSweep {
+    0%   { top: 4px;   opacity: 1; }
+    48%  { top: calc(100% - 6px); opacity: 1; }
+    50%  { top: calc(100% - 6px); opacity: 0; }
+    52%  { top: 4px;   opacity: 0; }
+    54%  { top: 4px;   opacity: 1; }
+    100% { top: 4px;   opacity: 1; }
+}
+
+/* Suprimir el overlay visual interno de html5-qrcode para evitar duplicación con el marco custom */
+#qrReaderRegion #qr-shaded-region,
+#qrReaderRegion [id*="qr-shaded-region"],
+#qrReaderRegion div[style*="rgba(0, 0, 0, 0.48)"],
+#qrReaderRegion div[style*="rgba(0, 0, 0, 0.6)"],
+#qrReaderRegion svg,
+#qrReaderRegion img[alt="Info icon"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Constraining #qrReaderRegion y su <video> a exactamente 360px de alto */
+#qrReaderRegion {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    width: 100% !important;
+    height: 360px !important;
+    max-height: 360px !important;
+    overflow: hidden !important;
+    position: relative !important;
+}
+
+#qrReaderRegion video {
+    width: 100% !important;
+    height: 100% !important;  /* = 360px heredados del contenedor */
+    object-fit: cover !important;
+    display: block !important;
+}
+
+/* El primer div hijo que html5-qrcode inyecta (scan_region wrapper) */
+#qrReaderRegion > div:first-child {
+    width: 100% !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    max-height: 360px !important;
+}
+
+/* Ocultar la UI interna de html5-qrcode que crea offsets verticales */
+#qrReaderRegion__header_message,
+#qrReaderRegion__dashboard_section,
+#qrReaderRegion [id$="__header_message"],
+#qrReaderRegion [id$="__dashboard_section"],
+#qrReaderRegion button {
+    display: none !important;
+}
+
+/* ============================================
    KPI CARDS - Tarjetas de Métricas
    ============================================ */
 .kpi-card {

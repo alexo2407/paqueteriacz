@@ -45,17 +45,69 @@
                 </div>
 
                 <!-- Visor de Escáner por Cámara -->
-                <div class="position-relative rounded-4 overflow-hidden shadow-inner bg-black" style="min-height: 280px; max-height: 420px;">
-                    <div id="qrReaderRegion" style="width: 100%; min-height: 280px;"></div>
-                    
-                    <!-- Overlay de apuntado visual -->
-                    <div class="position-absolute top-50 start-50 translate-middle pointer-events-none d-flex flex-column align-items-center justify-content-center" style="z-index: 10; width: 220px; height: 220px; border: 2px dashed rgba(59, 130, 246, 0.8); border-radius: 20px; box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.45);">
-                        <div class="spinner-grow spinner-grow-sm text-info mb-2" role="status" id="qrScanIndicator">
-                            <span class="visually-hidden">Escaneando...</span>
+                <!-- #qrScannerViewport es el único position:relative de referencia.
+                     El overlay se inyecta por JS dentro de #qrReaderRegion después de
+                     que html5-qrcode inicializa el <video>, garantizando alineación exacta. -->
+                <div id="qrScannerViewport" class="rounded-4 overflow-hidden shadow-inner bg-black"
+                     style="position: relative; width: 100%; height: 360px;">
+
+                    <!-- html5-qrcode renderiza su <video> aquí.
+                         NO se fuerza height para no interferir con el cálculo interno de qrbox. -->
+                    <div id="qrReaderRegion" style="width: 100%;"></div>
+
+                    <!-- Overlay de apuntado visual — centrado matemáticamente respecto al viewport.
+                         pointer-events:none para no bloquear eventos del video subyacente. -->
+                    <div id="qrScanOverlay"
+                         style="
+                             position: absolute;
+                             left: 50%;
+                             top: 50%;
+                             transform: translate(-50%, -50%);
+                             width: 220px;
+                             height: 220px;
+                             z-index: 20;
+                             pointer-events: none;
+                             display: flex;
+                             flex-direction: column;
+                             align-items: center;
+                             justify-content: center;
+                         ">
+
+                        <!-- Marco punteado: exactamente 220×220, mismo eje que el qrbox configurado en JS -->
+                        <div style="
+                                 position: absolute;
+                                 inset: 0;
+                                 border: 2px dashed rgba(59, 130, 246, 0.85);
+                                 border-radius: 16px;
+                                 box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.42);
+                             "></div>
+
+
+                        <!-- Línea horizontal de escaneo — ocupa el ancho interno del marco (inset:0 lateral) -->
+                        <div id="qrScanLine"
+                             style="
+                                 position: absolute;
+                                 left: 4px;
+                                 right: 4px;
+                                 height: 2px;
+                                 background: linear-gradient(90deg, transparent, rgba(59,130,246,0.9) 20%, #60a5fa 50%, rgba(59,130,246,0.9) 80%, transparent);
+                                 border-radius: 1px;
+                                 animation: qrScanLineSweep 2s ease-in-out infinite;
+                             "></div>
+
+                        <!-- Indicador + texto — parte SUPERIOR del marco, centrado en X.
+                             Posición relativa al #qrScanOverlay (220×220), NO a la línea animada.
+                             La línea sigue moviéndose de forma independiente. -->
+                        <div style="position:absolute; top:10px; left:50%; transform:translateX(-50%);
+                                    display:flex; align-items:center; gap:6px; white-space:nowrap; z-index:21;">
+                            <div class="spinner-grow spinner-grow-sm text-info" role="status" id="qrScanIndicator">
+                                <span class="visually-hidden">Escaneando...</span>
+                            </div>
+                            <span class="badge bg-primary bg-opacity-75 text-white px-3 py-1 rounded-pill small font-monospace">Buscando código...</span>
                         </div>
-                        <span class="badge bg-primary bg-opacity-75 text-white px-3 py-1 rounded-pill small font-monospace">Buscando código...</span>
-                    </div>
-                </div>
+
+                    </div><!-- /#qrScanOverlay -->
+                </div><!-- /#qrScannerViewport -->
 
                 <!-- Notificación / Feedback de estado -->
                 <div id="qrStatusFeedback" class="alert alert-info d-flex align-items-center justify-content-between mt-3 mb-0 py-2 px-3 rounded-3 small">
