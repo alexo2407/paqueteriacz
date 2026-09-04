@@ -56,7 +56,7 @@ class ForwardingModel
     }
 
     /**
-     * Obtener un proveedor por slug.
+     * Obtener un proveedor por slug (retorna el primero activo o encontrado).
      * @param string $slug
      * @return array|null
      */
@@ -64,13 +64,31 @@ class ForwardingModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("SELECT * FROM forwarding_providers WHERE slug = :slug");
+            $stmt = $db->prepare("SELECT * FROM forwarding_providers WHERE slug = :slug ORDER BY activo DESC, id ASC LIMIT 1");
             $stmt->execute([':slug' => $slug]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             return $row ?: null;
         } catch (Exception $e) {
             error_log("ForwardingModel::obtenerProveedorPorSlug error: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Obtener todos los proveedores asociados a un slug determinado.
+     * @param string $slug
+     * @return array
+     */
+    public static function obtenerProveedoresPorSlug($slug)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT * FROM forwarding_providers WHERE slug = :slug ORDER BY id ASC");
+            $stmt->execute([':slug' => $slug]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Exception $e) {
+            error_log("ForwardingModel::obtenerProveedoresPorSlug error: " . $e->getMessage());
+            return [];
         }
     }
 

@@ -73,12 +73,6 @@ if ($method === 'POST') {
                 }
             }
 
-            // Verificar slug único
-            $existing = ForwardingModel::obtenerProveedorPorSlug($input['slug']);
-            if ($existing) {
-                echo json_encode(['success' => false, 'message' => 'Ya existe un proveedor con ese slug']);
-                exit;
-            }
             $id = ForwardingModel::crearProveedor([
                 'nombre'         => $input['nombre'],
                 'slug'           => strtolower(preg_replace('/[^a-z0-9_-]/', '', $input['slug'])),

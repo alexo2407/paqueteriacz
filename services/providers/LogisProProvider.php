@@ -32,7 +32,7 @@ class LogisProProvider extends BaseProvider
             return self::$authCache;
         }
 
-        $url = $this->baseUrl . $this->config['auth_endpoint'] ?? '/api/AccountApi';
+        $url = $this->baseUrl . ($this->config['auth_endpoint'] ?? '/api/AccountApi');
 
         $body = json_encode([
             'userName' => $this->credentials['userName'] ?? '',

@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header.php") ?>
+<?php include("vista/includes/header.php") ?>
 
 <?php
 $usaDataTables = true;
@@ -134,8 +134,14 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         <input type="text" class="form-control" id="provNombre" placeholder="LogisPro México">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Slug <small class="text-muted">(identificador único)</small></label>
-                        <input type="text" class="form-control" id="provSlug" placeholder="logispro">
+                        <label class="form-label fw-semibold">Slug / Driver <small class="text-muted">(tipo de integración)</small></label>
+                        <input type="text" class="form-control" id="provSlug" placeholder="logispro" list="slugSuggestions">
+                        <datalist id="slugSuggestions">
+                            <option value="logispro">LogisPro (Ecuador, México, etc.)</option>
+                            <option value="hlexpress">HL Express</option>
+                            <option value="caex">CAEX</option>
+                            <option value="dynamic">Dinámico / Genérico</option>
+                        </datalist>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">URL Base de la API</label>

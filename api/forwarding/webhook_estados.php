@@ -137,22 +137,26 @@ try {
     }
     $bearerToken = trim($m[1]);
 
-    // Buscar proveedor LogisPro activo y validar webhook_secret
-    $proveedor = ForwardingModel::obtenerProveedorPorSlug('logispro');
-    if (!$proveedor || !$proveedor['activo']) {
-        http_response_code(503);
-        echo json_encode(['success' => false, 'message' => 'Integración no disponible.']);
-        exit;
+    // Buscar proveedores LogisPro activos y validar webhook_secret
+    $proveedores = ForwardingModel::obtenerProveedoresPorSlug('logispro');
+    $proveedorValido = null;
+
+    foreach ($proveedores as $prov) {
+        if (empty($prov['activo'])) continue;
+        $credentials = is_string($prov['credentials'])
+            ? json_decode($prov['credentials'], true)
+            : $prov['credentials'];
+
+        $webhookSecret = $credentials['webhook_secret'] ?? null;
+        if ($webhookSecret && hash_equals($webhookSecret, $bearerToken)) {
+            $proveedorValido = $prov;
+            break;
+        }
     }
 
-    $credentials = is_string($proveedor['credentials'])
-        ? json_decode($proveedor['credentials'], true)
-        : $proveedor['credentials'];
-
-    $webhookSecret = $credentials['webhook_secret'] ?? null;
-    if (!$webhookSecret || !hash_equals($webhookSecret, $bearerToken)) {
+    if (!$proveedorValido) {
         http_response_code(401);
-        echo json_encode(['success' => false, 'message' => 'Token inválido.']);
+        echo json_encode(['success' => false, 'message' => 'Token inválido o integración inactiva.']);
         exit;
     }
 
