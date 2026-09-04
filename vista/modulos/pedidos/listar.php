@@ -875,8 +875,9 @@ require_once __DIR__ . '/../../../utils/permissions.php';
             <table id="tblPedidos" class="table table-striped">
                 <thead>
                     <tr>
+                        <th>Tracking</th>
                         <th>Número de Orden</th>
-                        <th>Cliente</th>
+                        <th>Destinatario</th>
                         <th>Courier</th>
                         <th>Comentario</th>
                         <th>Estado</th>
@@ -1035,7 +1036,7 @@ $(document).ready(function() {
                 }
             }
         ],
-        order: [[0, 'desc']],
+        order: [[1, 'desc']],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         dom: 'Bfrtip',

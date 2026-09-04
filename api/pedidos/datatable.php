@@ -41,11 +41,12 @@ $search = trim($_REQUEST['search']['value'] ?? '');
 
 // Columnas mapeadas (índice DataTables → columna SQL segura)
 $columnasMapeadas = [
-    0 => 'p.numero_orden',
-    1 => 'p.destinatario',
-    2 => 'p.courier_service',
-    3 => 'p.comentario',
-    4 => 'ep.nombre_estado',
+    0 => 'p.numero_traking',
+    1 => 'p.numero_orden',
+    2 => 'p.destinatario',
+    3 => 'p.courier_service',
+    4 => 'p.comentario',
+    5 => 'ep.nombre_estado',
 ];
 $orderCol  = (int)($_REQUEST['order'][0]['column'] ?? 0);
 $orderDir  = strtoupper($_REQUEST['order'][0]['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
