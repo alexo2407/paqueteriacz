@@ -31,6 +31,7 @@ if (!in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)) {
 // ── GET: listar logs ───────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $filtros = [];
+    if (!empty($_GET['numero_orden'])) $filtros['numero_orden'] = trim($_GET['numero_orden']);
     if (!empty($_GET['id_provider']))  $filtros['id_provider']  = $_GET['id_provider'];
     if (!empty($_GET['status']))       $filtros['status']       = $_GET['status'];
     if (!empty($_GET['fecha_desde']))  $filtros['fecha_desde']  = $_GET['fecha_desde'];

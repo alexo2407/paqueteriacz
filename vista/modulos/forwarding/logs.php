@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header.php") ?>
+<?php include("vista/includes/header.php") ?>
 
 <?php
 $usaDataTables = true;
@@ -51,6 +51,10 @@ $proveedores = ForwardingModel::obtenerProveedores();
             <div class="filter-card mb-4">
                 <div class="row g-2 align-items-end">
                     <div class="col-md-2">
+                        <label class="form-label form-label-sm fw-semibold mb-1">Nº Orden</label>
+                        <input type="text" class="form-control form-control-sm" id="filterNumeroOrden" placeholder="Ej: 1234" onkeydown="if(event.key==='Enter') loadLogs()">
+                    </div>
+                    <div class="col-md-2">
                         <label class="form-label form-label-sm fw-semibold mb-1">Proveedor</label>
                         <select class="form-select form-select-sm" id="filterProvider">
                             <option value="">Todos</option>
@@ -77,14 +81,21 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         <label class="form-label form-label-sm fw-semibold mb-1">Hasta</label>
                         <input type="date" class="form-control form-control-sm" id="filterHasta">
                     </div>
-                    <div class="col-md-4 d-flex gap-2">
+                    <div class="col-md-2 d-flex flex-column gap-1">
                         <button class="btn btn-sm btn-primary w-100" onclick="loadLogs()">
                             <i class="bi bi-funnel me-1"></i>Filtrar
                         </button>
-                        <button class="btn btn-sm btn-outline-warning w-100" onclick="cancelAllLogs()" title="Cancelar todos los logs fallidos/pendientes de la base de datos">
+                        <button class="btn btn-sm btn-outline-secondary w-100" onclick="clearFilters()">
+                            <i class="bi bi-x-lg me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12 d-flex gap-2 justify-content-end">
+                        <button class="btn btn-sm btn-outline-warning" onclick="cancelAllLogs()" title="Cancelar todos los logs fallidos/pendientes de la base de datos">
                             <i class="bi bi-x-circle me-1"></i>Cancelar todo
                         </button>
-                        <button class="btn btn-sm btn-outline-danger w-100" onclick="deleteFailedLogs()" title="Eliminar permanentemente los logs fallidos y cancelados de la base de datos">
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteFailedLogs()" title="Eliminar permanentemente los logs fallidos y cancelados de la base de datos">
                             <i class="bi bi-trash me-1"></i>Eliminar fallas
                         </button>
                     </div>
@@ -200,10 +211,12 @@ let allLogs = [];
 
 function loadLogs() {
     const params = new URLSearchParams();
+    const numeroOrden = document.getElementById('filterNumeroOrden').value.trim();
     const provider = document.getElementById('filterProvider').value;
     const status = document.getElementById('filterStatus').value;
     const desde = document.getElementById('filterDesde').value;
     const hasta = document.getElementById('filterHasta').value;
+    if (numeroOrden) params.set('numero_orden', numeroOrden);
     if (provider) params.set('id_provider', provider);
     if (status) params.set('status', status);
     if (desde) params.set('fecha_desde', desde);
@@ -282,6 +295,16 @@ function renderLogs(logs, total) {
 
 function changePage(dir) {
     currentOffset = Math.max(0, currentOffset + (dir * PAGE_SIZE));
+    loadLogs();
+}
+
+function clearFilters() {
+    document.getElementById('filterNumeroOrden').value = '';
+    document.getElementById('filterProvider').value = '';
+    document.getElementById('filterStatus').value = '';
+    document.getElementById('filterDesde').value = '';
+    document.getElementById('filterHasta').value = '';
+    currentOffset = 0;
     loadLogs();
 }
 

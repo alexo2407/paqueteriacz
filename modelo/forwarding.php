@@ -481,6 +481,10 @@ class ForwardingModel
             $where = [];
             $params = [];
 
+            if (!empty($filtros['numero_orden'])) {
+                $where[] = "pe.numero_orden LIKE :numero_orden";
+                $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
+            }
             if (!empty($filtros['id_provider'])) {
                 $where[] = "fl.id_provider = :id_provider";
                 $params[':id_provider'] = (int)$filtros['id_provider'];
@@ -532,6 +536,10 @@ class ForwardingModel
             $where = [];
             $params = [];
 
+            if (!empty($filtros['numero_orden'])) {
+                $where[] = "pe.numero_orden LIKE :numero_orden";
+                $params[':numero_orden'] = '%' . $filtros['numero_orden'] . '%';
+            }
             if (!empty($filtros['id_provider'])) {
                 $where[] = "id_provider = :id_provider";
                 $params[':id_provider'] = (int)$filtros['id_provider'];
@@ -550,7 +558,7 @@ class ForwardingModel
             }
 
             $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-            $sql = "SELECT COUNT(*) FROM forwarding_log $whereClause";
+            $sql = "SELECT COUNT(*) FROM forwarding_log fl LEFT JOIN pedidos pe ON pe.id = fl.id_pedido $whereClause";
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             return (int) $stmt->fetchColumn();
