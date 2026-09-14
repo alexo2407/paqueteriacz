@@ -493,6 +493,7 @@
             <?php if ($isAdmin): ?>
             <a href="<?= RUTA_URL ?>stock/movimientos" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> Reporte Movimientos</a>
             <a href="<?= RUTA_URL ?>stock/saldo" class="nav-link"><i class="bi bi-bar-chart"></i> Saldo por Producto</a>
+            <a href="<?= RUTA_URL ?>stock/resumen_stock" class="nav-link"><i class="bi bi-bar-chart-line-fill"></i> Resumen Stock</a>
             <?php endif; ?>
             <a href="<?= RUTA_URL ?>stock/inventario_periodo" class="nav-link"><i class="bi bi-calendar-range"></i> Inventario Período</a>
             <a href="<?= RUTA_URL ?>stock/crear" class="nav-link"><i class="bi bi-plus-circle"></i> Nuevo Movimiento</a>
