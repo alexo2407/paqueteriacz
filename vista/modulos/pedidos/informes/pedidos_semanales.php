@@ -352,6 +352,12 @@ if ($export) {
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Pedidos Semanales');
 
+    // Helper universal para asignar valores a celdas por columna (1-indexed) y fila
+    $setCell = function($colIdx, $rowIdx, $val) use ($sheet) {
+        $colStr = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx);
+        $sheet->setCellValue("{$colStr}{$rowIdx}", $val);
+    };
+
     // Encabezado principal
     $sheet->setCellValue('A1', 'CANTIDAD DE PEDIDOS SEMANALES POR COORDINADOR');
     $sheet->setCellValue('A2', 'Rango evaluado: ' . reset($semanasInfo)['lunes'] . ' al ' . end($semanasInfo)['domingo']);
@@ -365,24 +371,24 @@ if ($export) {
     $currentRow = 4;
 
     // Fila Cabecera 1: Nombres de semana
-    $sheet->setCellValueByColumnAndRow(1, $currentRow, 'Coordinador');
-    $sheet->setCellValueByColumnAndRow(2, $currentRow, 'Cliente y País');
+    $setCell(1, $currentRow, 'Coordinador');
+    $setCell(2, $currentRow, 'Cliente y País');
     $cIdx = 3;
     foreach ($semanasInfo as $s) {
-        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $s['label']);
+        $setCell($cIdx, $currentRow, $s['label']);
         $cIdx++;
     }
-    $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, 'TOTAL');
+    $setCell($cIdx, $currentRow, 'TOTAL');
 
     // Fila Cabecera 2: Rango de fechas
-    $sheet->setCellValueByColumnAndRow(1, $currentRow + 1, '');
-    $sheet->setCellValueByColumnAndRow(2, $currentRow + 1, '');
+    $setCell(1, $currentRow + 1, '');
+    $setCell(2, $currentRow + 1, '');
     $cIdx = 3;
     foreach ($semanasInfo as $s) {
-        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow + 1, $s['rango']);
+        $setCell($cIdx, $currentRow + 1, $s['rango']);
         $cIdx++;
     }
-    $sheet->setCellValueByColumnAndRow($cIdx, $currentRow + 1, 'Período');
+    $setCell($cIdx, $currentRow + 1, 'Período');
 
     // Estilos cabecera
     $headerRange = "A{$currentRow}:{$lastColLet}" . ($currentRow + 1);
@@ -400,7 +406,7 @@ if ($export) {
     foreach ($filasCalculadas as $f) {
         if ($ultimoGrupo !== null && $ultimoGrupo != $f['grupo']) {
             // Separador visual de grupo en Excel
-            $sheet->setCellValueByColumnAndRow(1, $currentRow, "--- GRUPO {$f['grupo']} ---");
+            $setCell(1, $currentRow, "--- GRUPO {$f['grupo']} ---");
             $sheet->mergeCells("A{$currentRow}:{$lastColLet}{$currentRow}");
             $sheet->getStyle("A{$currentRow}")->getFont()->setBold(true)->getColor()->setARGB('FF475569');
             $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFF1F5F9');
@@ -408,14 +414,14 @@ if ($export) {
         }
         $ultimoGrupo = $f['grupo'];
 
-        $sheet->setCellValueByColumnAndRow(1, $currentRow, $f['coordinador']);
-        $sheet->setCellValueByColumnAndRow(2, $currentRow, $f['etiqueta']);
+        $setCell(1, $currentRow, $f['coordinador']);
+        $setCell(2, $currentRow, $f['etiqueta']);
         $cIdx = 3;
         foreach ($semanasKeys as $semKey) {
-            $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $f['semanas_cant'][$semKey] ?: 0);
+            $setCell($cIdx, $currentRow, $f['semanas_cant'][$semKey] ?: 0);
             $cIdx++;
         }
-        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $f['total_fila']);
+        $setCell($cIdx, $currentRow, $f['total_fila']);
 
         $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
         $sheet->getStyle("C{$currentRow}:{$lastColLet}{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
@@ -426,22 +432,22 @@ if ($export) {
 
     // Si hay cuentas sin asignar, exportarlas también en Excel
     if (!empty($sinAsignarPorCuenta)) {
-        $sheet->setCellValueByColumnAndRow(1, $currentRow, "--- CUENTAS PENDIENTES DE ASIGNAR A COORDINADOR ---");
+        $setCell(1, $currentRow, "--- CUENTAS PENDIENTES DE ASIGNAR A COORDINADOR ---");
         $sheet->mergeCells("A{$currentRow}:{$lastColLet}{$currentRow}");
         $sheet->getStyle("A{$currentRow}")->getFont()->setBold(true)->getColor()->setARGB('FFB45309');
         $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFEF3C7');
         $currentRow++;
 
         foreach ($sinAsignarPorCuenta as $sa) {
-            $sheet->setCellValueByColumnAndRow(1, $currentRow, 'Sin Asignar');
-            $sheet->setCellValueByColumnAndRow(2, $currentRow, $sa['etiqueta_sugerida']);
+            $setCell(1, $currentRow, 'Sin Asignar');
+            $setCell(2, $currentRow, $sa['etiqueta_sugerida']);
             $cIdx = 3;
             foreach ($semanasKeys as $semKey) {
                 $val = $sa['semanas_cant'][$semKey] ?? 0;
-                $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $val > 0 ? $val : 0);
+                $setCell($cIdx, $currentRow, $val > 0 ? $val : 0);
                 $cIdx++;
             }
-            $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $sa['total_fila']);
+            $setCell($cIdx, $currentRow, $sa['total_fila']);
 
             $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
             $sheet->getStyle("C{$currentRow}:{$lastColLet}{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
@@ -451,27 +457,27 @@ if ($export) {
         }
 
         // Subtotales en Excel
-        $sheet->setCellValueByColumnAndRow(1, $currentRow, '');
-        $sheet->setCellValueByColumnAndRow(2, $currentRow, 'Subtotal Asignado a Coordinadores');
+        $setCell(1, $currentRow, '');
+        $setCell(2, $currentRow, 'Subtotal Asignado a Coordinadores');
         $cIdx = 3;
         foreach ($semanasKeys as $semKey) {
-            $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalesPorSemana[$semKey]);
+            $setCell($cIdx, $currentRow, $totalesPorSemana[$semKey]);
             $cIdx++;
         }
-        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $granTotalPeriodo);
+        $setCell($cIdx, $currentRow, $granTotalPeriodo);
         $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getFont()->setBold(true)->getColor()->setARGB('FF475569');
         $sheet->getStyle("B{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("C{$currentRow}:{$lastColLet}{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         $currentRow++;
 
-        $sheet->setCellValueByColumnAndRow(1, $currentRow, '');
-        $sheet->setCellValueByColumnAndRow(2, $currentRow, 'Subtotal Sin Asignar');
+        $setCell(1, $currentRow, '');
+        $setCell(2, $currentRow, 'Subtotal Sin Asignar');
         $cIdx = 3;
         foreach ($semanasKeys as $semKey) {
-            $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalesSinAsignarPorSemana[$semKey]);
+            $setCell($cIdx, $currentRow, $totalesSinAsignarPorSemana[$semKey]);
             $cIdx++;
         }
-        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalSinAsignarPeriodo);
+        $setCell($cIdx, $currentRow, $totalSinAsignarPeriodo);
         $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getFont()->setBold(true)->getColor()->setARGB('FFB45309');
         $sheet->getStyle("B{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("C{$currentRow}:{$lastColLet}{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
@@ -479,15 +485,15 @@ if ($export) {
     }
 
     // Fila Total General del Sistema
-    $sheet->setCellValueByColumnAndRow(1, $currentRow, '');
-    $sheet->setCellValueByColumnAndRow(2, $currentRow, 'TOTAL GENERAL DEL SISTEMA');
+    $setCell(1, $currentRow, '');
+    $setCell(2, $currentRow, 'TOTAL GENERAL DEL SISTEMA');
     $cIdx = 3;
     foreach ($semanasKeys as $semKey) {
         $totalSemReal = $totalesPorSemana[$semKey] + ($totalesSinAsignarPorSemana[$semKey] ?? 0);
-        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalSemReal);
+        $setCell($cIdx, $currentRow, $totalSemReal);
         $cIdx++;
     }
-    $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $granTotalReal);
+    $setCell($cIdx, $currentRow, $granTotalReal);
 
     $totalRange = "A{$currentRow}:{$lastColLet}{$currentRow}";
     $sheet->getStyle($totalRange)->applyFromArray([
@@ -500,6 +506,10 @@ if ($export) {
 
     foreach (range(1, $totalCols) as $c) {
         $sheet->getColumnDimensionByColumn($c)->setAutoSize(true);
+    }
+
+    if (ob_get_level() > 0) {
+        ob_end_clean();
     }
 
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
