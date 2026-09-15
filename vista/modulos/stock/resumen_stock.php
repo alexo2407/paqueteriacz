@@ -46,22 +46,32 @@ $whereClienteSalidas    = '';
 $whereClienteProceso    = '';
 $whereProductoCliente   = '';
 
-$idClienteParam = $clienteId > 0 ? $clienteId : (!$isAdmin ? ($_SESSION['user_id'] ?? 0) : 0);
+// Seguridad: Si no es admin, forzar SIEMPRE su propio id_cliente de sesión
+if (!$isAdmin) {
+    $clienteId = (int)($_SESSION['user_id'] ?? 0);
+    $idClienteParam = $clienteId;
+} else {
+    $idClienteParam = $clienteId;
+}
 
 if ($idClienteParam > 0) {
     $whereClienteSalidasIni = 'AND pe.id_cliente = :cli_ini';
     $whereClienteSalidas    = 'AND pe.id_cliente = :cli_sal';
     $whereClienteProceso    = 'AND pe.id_cliente = :cli_proc';
-    $whereProductoCliente   = "AND pr.id IN (
-        SELECT DISTINCT pp_c.id_producto
-        FROM pedidos_productos pp_c
-        INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
-        WHERE p_c.id_cliente = :cli_prod
+    $whereProductoCliente   = "AND (
+        pr.id_usuario_creador = :cli_prod_creator
+        OR pr.id IN (
+            SELECT DISTINCT pp_c.id_producto
+            FROM pedidos_productos pp_c
+            INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
+            WHERE p_c.id_cliente = :cli_prod
+        )
     )";
-    $params[':cli_ini']  = $idClienteParam;
-    $params[':cli_sal']  = $idClienteParam;
-    $params[':cli_proc'] = $idClienteParam;
-    $params[':cli_prod'] = $idClienteParam;
+    $params[':cli_ini']          = $idClienteParam;
+    $params[':cli_sal']          = $idClienteParam;
+    $params[':cli_proc']         = $idClienteParam;
+    $params[':cli_prod']         = $idClienteParam;
+    $params[':cli_prod_creator'] = $idClienteParam;
 }
 
 // ── Query principal ───────────────────────────────────────────────────────────
@@ -320,7 +330,14 @@ if ($export) {
     <div class="rs-header-card">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
-                <h4><i class="bi bi-bar-chart-line-fill me-2"></i>Resumen de Stock</h4>
+                <h4>
+                    <i class="bi bi-bar-chart-line-fill me-2"></i>Resumen de Stock
+                    <?php if (!$isAdmin): ?>
+                        <span class="badge bg-white text-primary ms-2 fs-6 fw-semibold">
+                            <i class="bi bi-person-fill me-1"></i><?= htmlspecialchars($_SESSION['nombre'] ?? 'Mi Cuenta') ?>
+                        </span>
+                    <?php endif; ?>
+                </h4>
                 <small>Fórmula: Stock Final = Stock Inicial (en bodega) − Salidas (entregado) − En Proceso</small>
             </div>
             <!-- Stats rápidos -->

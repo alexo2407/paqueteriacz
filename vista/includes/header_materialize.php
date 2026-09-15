@@ -106,10 +106,12 @@ $userName = $_SESSION['nombre'] ?? null;
     <?php endif; ?>
 
     <!-- Inventario -->
-    <?php if ($isAdmin || $isProveedor): ?>
+    <?php if ($isAdmin || $isProveedor || $isCliente): ?>
     <li><div class="divider"></div></li>
     <li><a class="subheader">Inventario</a></li>
     <li><a href="<?= RUTA_URL ?>productos/listar"><i class="material-icons">inventory_2</i>Productos</a></li>
+    <li><a href="<?= RUTA_URL ?>stock/resumen_stock"><i class="material-icons">bar_chart</i>Resumen Stock</a></li>
+    <?php if ($isAdmin || $isProveedor): ?>
     <li><a href="<?= RUTA_URL ?>categorias/listar"><i class="material-icons">folder</i>Categorías</a></li>
     <li><a href="<?= RUTA_URL ?>stock/listar"><i class="material-icons">swap_vert</i>Mov. de Stock</a></li>
     <li><a href="<?= RUTA_URL ?>stock/kardex"><i class="material-icons">article</i>Kardex</a></li>
@@ -117,6 +119,7 @@ $userName = $_SESSION['nombre'] ?? null;
     <li><a href="<?= RUTA_URL ?>stock/saldo"><i class="material-icons">bar_chart</i>Saldo por Producto</a></li>
     <li><a href="<?= RUTA_URL ?>stock/inventario_periodo"><i class="material-icons">table_chart</i>Inventario Período</a></li>
     <li><a href="<?= RUTA_URL ?>stock/crear"><i class="material-icons">add_circle</i>Nuevo Movimiento</a></li>
+    <?php endif; ?>
     <?php endif; ?>
 
     <!-- Catálogos -->
