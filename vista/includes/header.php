@@ -471,6 +471,11 @@
                 <a href="<?= RUTA_URL ?>pedidos/informes/semana" class="nav-link ps-4" style="font-size:.85rem">
                     <i class="bi bi-calendar3-week me-1"></i> Tendencia Semanal
                 </a>
+                <?php if ($isAdmin): ?>
+                <a href="<?= RUTA_URL ?>pedidos/informes/pedidos_semanales" class="nav-link ps-4" style="font-size:.85rem">
+                    <i class="bi bi-table me-1"></i> Pedidos Semanales
+                </a>
+                <?php endif; ?>
             </div>
             <?php endif; // Admin || !$isProveedor (Informes) ?>
             <?php endif; // isAdmin || isProveedor || isCliente (Operaciones) ?>

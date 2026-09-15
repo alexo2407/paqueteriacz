@@ -1739,6 +1739,10 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && ($ruta[1] ?? '') === 'informes'
         require_once __DIR__ . '/../vista/modulos/pedidos/informes/semana.php';
         exit;
     }
+    if ($subInforme === 'pedidos_semanales') {
+        require_once __DIR__ . '/../vista/modulos/pedidos/informes/pedidos_semanales.php';
+        exit;
+    }
 }
 
 // Stock: Movimientos y Saldo por Producto
