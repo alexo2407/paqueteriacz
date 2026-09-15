@@ -97,7 +97,7 @@ class ForwardingService
      * @param bool $fromQueue Indica si se está ejecutando desde la cola de reintentos
      * @return array Resultado: ['provider' => slug, 'success' => bool, 'message' => string, ...]
      */
-    private static function ejecutarForwarding(array $pedido, array $regla, $fromQueue = false)
+    private static function ejecutarForwarding(array $pedido, array $regla, $fromQueue = false, $logIdToUpdate = null)
     {
         $slug     = $regla['slug'];
         $logData = [
@@ -106,6 +106,9 @@ class ForwardingService
             'id_rule'     => $regla['id'],
             'status'      => 'pending',
         ];
+
+        $logId = null;
+        $currentAttempts = 1;
 
         try {
             // Instanciar provider
@@ -125,8 +128,29 @@ class ForwardingService
                 ? $payload
                 : json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
-            // Registrar log como pending
-            $logId = ForwardingModel::registrarLog($logData);
+            if ($logIdToUpdate) {
+                try {
+                    $db = (new Conexion())->conectar();
+                    $stAtt = $db->prepare("SELECT attempts FROM forwarding_log WHERE id = :id");
+                    $stAtt->execute([':id' => $logIdToUpdate]);
+                    $attVal = $stAtt->fetchColumn();
+                    if ($attVal !== false) {
+                        $currentAttempts = max(1, (int)$attVal) + 1;
+                        $logId = (int)$logIdToUpdate;
+                    }
+                } catch (Exception $ignored) {}
+            }
+
+            if ($logId) {
+                ForwardingModel::actualizarLog($logId, [
+                    'request_payload' => $logData['request_payload'],
+                    'status'          => 'pending',
+                    'error_message'   => null,
+                    'attempts'        => $currentAttempts,
+                ]);
+            } else {
+                $logId = ForwardingModel::registrarLog($logData);
+            }
 
             // Crear la orden
             $resultado = $provider->createOrder($pedido, $pedido['productos'] ?? [], $authData);
@@ -137,7 +161,12 @@ class ForwardingService
                 'http_status'       => $resultado['http_status'] ?? 200,
                 'response_payload'  => json_encode($resultado['response'] ?? [], JSON_UNESCAPED_UNICODE),
                 'external_order_id' => $resultado['external_order_id'] ?? null,
+                'error_message'     => null,
+                'attempts'          => $currentAttempts,
             ]);
+
+            // Marcar cualquier otro log previo fallido/pendiente de este pedido y regla como resuelto
+            ForwardingModel::marcarLogsPreviosResueltos((int)$pedido['id'], (int)$regla['id'], (int)$logId);
 
             return [
                 'provider'          => $slug,
@@ -176,6 +205,7 @@ class ForwardingService
                     'status'           => 'failed',
                     'error_message'    => substr($e->getMessage(), 0, 1000),
                     'http_status'      => $httpStatus,
+                    'attempts'         => $currentAttempts,
                 ];
                 if ($rawResponse !== null) {
                     $updateData['response_payload'] = $rawResponse;
@@ -338,10 +368,31 @@ class ForwardingService
      *
      * @param int $idPedido
      * @param int $idRegla
+     * @param bool $fromQueue
+     * @param int|null $logIdToUpdate ID del log específico a actualizar
      * @return array Resultado
      */
-    public static function reintentarRegla($idPedido, $idRegla, $fromQueue = false)
+    public static function reintentarRegla($idPedido, $idRegla, $fromQueue = false, $logIdToUpdate = null)
     {
+        // 1. Candado anti-duplicados: verificar si ya fue enviado exitosamente
+        $logExitoso = ForwardingModel::obtenerLogExitoso((int)$idPedido, (int)$idRegla);
+        if ($logExitoso) {
+            $extId = $logExitoso['external_order_id'] ?? '';
+            // Si se intentó reintentar desde un log fallido que había quedado previo, marcarlo para limpiar la vista
+            if ($logIdToUpdate && (int)$logIdToUpdate !== (int)$logExitoso['id']) {
+                ForwardingModel::actualizarLog($logIdToUpdate, [
+                    'status'        => 'cancelled',
+                    'error_message' => 'Superado: este pedido ya fue enviado exitosamente (ID: ' . $extId . ')',
+                ]);
+            }
+            return [
+                'success'           => true,
+                'skipped'           => true,
+                'message'           => 'Este pedido ya fue enviado exitosamente anteriormente' . ($extId ? " (ID Externo: #$extId)" : "") . '. Reintento omitido para evitar duplicados.',
+                'external_order_id' => $extId,
+            ];
+        }
+
         try {
             $db = (new Conexion())->conectar();
 
@@ -396,6 +447,6 @@ class ForwardingService
             ];
         }
 
-        return self::ejecutarForwarding($pedido, $regla, $fromQueue);
+        return self::ejecutarForwarding($pedido, $regla, $fromQueue, $logIdToUpdate);
     }
 }

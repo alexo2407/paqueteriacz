@@ -145,9 +145,10 @@ class LogisProProvider extends BaseProvider
      */
     public function mapearCampos(array $pedido, array $productos, array $authData)
     {
-        // Resolver postalCode: enviar el valor tal como está (puede tener guiones u otros caracteres)
+        // Resolver postalCode: enviar solo dígitos (remover guiones u otros caracteres no numéricos)
         $postalCodeVal = $pedido['postalCode'] ?? $pedido['codigo_postal'] ?? '';
-        $postalCode = (string)$postalCodeVal !== '' ? (string)$postalCodeVal : '0';
+        $cleanPostal   = preg_replace('/\D/', '', (string)$postalCodeVal);
+        $postalCode    = $cleanPostal !== '' ? $cleanPostal : '0';
 
         // Fecha de entrega: si no existe, usar fecha actual + 3 días
         $fechaEntrega = $pedido['fecha_entrega'] ?? null;

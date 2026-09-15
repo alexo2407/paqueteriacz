@@ -92,13 +92,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         require_once __DIR__ . '/../services/ForwardingService.php';
 
-        // Reintentar solo la regla específica de este log para evitar duplicidades
-        $resultado = ForwardingService::reintentarRegla($idPedido, $idRule);
+        // Reintentar sobre el mismo registro del log para evitar duplicidades y actualizar su estado
+        $resultado = ForwardingService::reintentarRegla($idPedido, $idRule, false, $logId);
         $ok = !empty($resultado['success']);
 
         echo json_encode([
             'success'   => $ok,
-            'message'   => $resultado['message'] ?? ($ok ? 'Reenvío exitoso' : 'El reenvío falló. Revisa el nuevo log.'),
+            'message'   => $resultado['message'] ?? ($ok ? 'Reenvío exitoso' : 'El reenvío falló. Revisa el log actualizado.'),
             'resultado' => $resultado,
         ]);
         exit;
@@ -148,8 +148,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach ($uniqueRetries as $logRow) {
             $idPedido = (int)$logRow['id_pedido'];
             $idRule   = (int)$logRow['id_rule'];
+            $logId    = (int)$logRow['id'];
             
-            $resultado = ForwardingService::reintentarRegla($idPedido, $idRule);
+            $resultado = ForwardingService::reintentarRegla($idPedido, $idRule, false, $logId);
             if (!empty($resultado['success'])) {
                 $successCount++;
             } else {

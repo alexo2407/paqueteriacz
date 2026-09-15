@@ -394,6 +394,71 @@ class ForwardingModel
         }
     }
 
+    /**
+     * Obtener el registro exitoso de un pedido y regla si ya existe.
+     * @param int $idPedido
+     * @param int $idRule
+     * @return array|null
+     */
+    public static function obtenerLogExitoso(int $idPedido, int $idRule)
+    {
+        try {
+            $db   = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                SELECT id, external_order_id, created_at
+                FROM forwarding_log
+                WHERE id_pedido = :id_pedido
+                  AND id_rule   = :id_rule
+                  AND status    = 'success'
+                ORDER BY id DESC
+                LIMIT 1
+            ");
+            $stmt->execute([
+                ':id_pedido' => $idPedido,
+                ':id_rule'   => $idRule,
+            ]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::obtenerLogExitoso error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Marcar otros logs previos en estado failed/pending como resueltos/cancelados
+     * cuando un reintento tiene éxito, evitando reintentos redundantes.
+     * @param int $idPedido
+     * @param int $idRule
+     * @param int $logExitosoId
+     * @return bool
+     */
+    public static function marcarLogsPreviosResueltos(int $idPedido, int $idRule, int $logExitosoId): bool
+    {
+        try {
+            $db   = (new Conexion())->conectar();
+            $stmt = $db->prepare("
+                UPDATE forwarding_log
+                SET status = 'cancelled',
+                    error_message = CONCAT('Superado por reintento exitoso (Log #', :exitoso, ')')
+                WHERE id_pedido = :id_pedido
+                  AND id_rule   = :id_rule
+                  AND status IN ('failed', 'pending')
+                  AND id != :exitoso_id
+            ");
+            $stmt->execute([
+                ':exitoso'    => $logExitosoId,
+                ':id_pedido'  => $idPedido,
+                ':id_rule'    => $idRule,
+                ':exitoso_id' => $logExitosoId,
+            ]);
+            return true;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::marcarLogsPreviosResueltos error: " . $e->getMessage());
+            return false;
+        }
+    }
+
     // =========================================================================
     // LOGS
     // =========================================================================
@@ -448,7 +513,7 @@ class ForwardingModel
             $sets = [];
             $params = [':id' => $id];
 
-            $fields = ['response_payload', 'http_status', 'status', 'error_message', 'external_order_id', 'attempts'];
+            $fields = ['request_payload', 'response_payload', 'http_status', 'status', 'error_message', 'external_order_id', 'attempts'];
             foreach ($fields as $f) {
                 if (array_key_exists($f, $data)) {
                     $sets[] = "$f = :$f";
