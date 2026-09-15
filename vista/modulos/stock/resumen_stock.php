@@ -28,18 +28,57 @@ $db = (new Conexion())->conectar();
 
 $whereCliente = '';
 $params = [
-    ':desde' => $fechaDesde . ' 00:00:00',
-    ':hasta'  => $fechaHasta . ' 23:59:59',
+    ':desde'    => $fechaDesde . ' 00:00:00',
+    ':hasta'    => $fechaHasta . ' 23:59:59',
+    ':hasta_sf' => $fechaHasta . ' 23:59:59',
+    ':desde2'   => $fechaDesde . ' 00:00:00',
+    ':hasta2'   => $fechaHasta . ' 23:59:59',
 ];
 
+// ── Construir condición de cliente ────────────────────────────────────────────
+// Cuando hay cliente: el universo de productos es "los que aparecen en sus pedidos"
+// Cuando no hay cliente (admin): el universo es "todos los productos activos con movimiento"
+$joinCliente        = '';
+$whereProductoBase  = 'pr.activo = 1';
+$whereEntradas      = "s.tipo_movimiento = 'entrada' AND s.created_at BETWEEN :desde AND :hasta";
+$whereSalidas       = "s.tipo_movimiento = 'salida'  AND s.created_at BETWEEN :desde2 AND :hasta2";
+$wherePorProcesar   = 'p2.id_estado IN (1, 2)';
+$subStockFinal      = "SELECT SUM(s2.cantidad) FROM stock s2 WHERE s2.id_producto = pr.id AND s2.created_at <= :hasta_sf";
+
 if ($clienteId > 0) {
-    $whereCliente = ' AND p.id_cliente = :id_cliente';
+    // Limitar a productos que el cliente tiene en algún pedido
+    $joinCliente       = "INNER JOIN (
+                            SELECT DISTINCT pp_c.id_producto
+                            FROM pedidos_productos pp_c
+                            INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
+                            WHERE p_c.id_cliente = :id_cliente
+                          ) AS prod_cliente ON prod_cliente.id_producto = pr.id";
     $params[':id_cliente'] = $clienteId;
+
+    // Filtrar entradas/salidas solo de pedidos de ese cliente
+    $whereEntradas  = "s.tipo_movimiento = 'entrada' AND s.created_at BETWEEN :desde AND :hasta
+                       AND EXISTS (SELECT 1 FROM pedidos px WHERE px.id = s.referencia_id AND s.referencia_tipo='pedido' AND px.id_cliente = :id_cliente_e)";
+    $whereSalidas   = "s.tipo_movimiento = 'salida'  AND s.created_at BETWEEN :desde2 AND :hasta2
+                       AND EXISTS (SELECT 1 FROM pedidos px WHERE px.id = s.referencia_id AND s.referencia_tipo='pedido' AND px.id_cliente = :id_cliente_s)";
+    $wherePorProcesar = "p2.id_estado IN (1, 2) AND p2.id_cliente = :id_cliente_pp";
+    $subStockFinal  = "SELECT SUM(s2.cantidad) FROM stock s2
+                       INNER JOIN pedidos px2 ON px2.id = s2.referencia_id AND s2.referencia_tipo='pedido'
+                       WHERE s2.id_producto = pr.id AND px2.id_cliente = :id_cliente_sf AND s2.created_at <= :hasta_sf";
+
+    $params[':id_cliente_e']  = $clienteId;
+    $params[':id_cliente_s']  = $clienteId;
+    $params[':id_cliente_pp'] = $clienteId;
+    $params[':id_cliente_sf'] = $clienteId;
+
 } elseif (!$isAdmin) {
-    // Proveedor o Cliente: solo ve su propio stock
-    $whereCliente = ' AND (p.id_cliente = :id_cliente OR s.id_usuario = :id_usuario)';
+    // Proveedor/Cliente sin selección: solo sus propios productos
+    $joinCliente = "INNER JOIN (
+                        SELECT DISTINCT pp_c.id_producto
+                        FROM pedidos_productos pp_c
+                        INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
+                        WHERE p_c.id_cliente = :id_cliente
+                    ) AS prod_cliente ON prod_cliente.id_producto = pr.id";
     $params[':id_cliente'] = $_SESSION['user_id'] ?? 0;
-    $params[':id_usuario'] = $_SESSION['user_id'] ?? 0;
 }
 
 $sql = "
@@ -47,48 +86,28 @@ $sql = "
         pr.id                                                                         AS id_producto,
         pr.nombre                                                                     AS producto,
         pr.sku,
-        -- Stock Final acumulado (todos los movimientos hasta hoy)
-        COALESCE(
-            (SELECT SUM(s2.cantidad)
-             FROM stock s2
-             WHERE s2.id_producto = pr.id
-               AND s2.created_at <= :hasta_sf),
-        0)                                                                            AS stock_final,
+        -- Stock Final acumulado hasta el período
+        COALESCE(($subStockFinal), 0)                                                 AS stock_final,
         -- Entradas en el período
-        COALESCE(SUM(CASE
-            WHEN s.tipo_movimiento = 'entrada'
-             AND s.created_at BETWEEN :desde AND :hasta
-            THEN s.cantidad ELSE 0
-        END), 0)                                                                      AS entradas,
+        COALESCE(SUM(CASE WHEN $whereEntradas THEN s.cantidad ELSE 0 END), 0)        AS entradas,
         -- Salidas en el período
-        COALESCE(SUM(CASE
-            WHEN s.tipo_movimiento = 'salida'
-             AND s.created_at BETWEEN :desde2 AND :hasta2
-            THEN ABS(s.cantidad) ELSE 0
-        END), 0)                                                                      AS salidas,
-        -- Por procesar: pedidos en estado pendiente o en proceso con este producto
+        COALESCE(SUM(CASE WHEN $whereSalidas  THEN ABS(s.cantidad) ELSE 0 END), 0)   AS salidas,
+        -- Por procesar: pedidos pendientes/en proceso con este producto
         COALESCE(
             (SELECT SUM(pp2.cantidad)
              FROM pedidos_productos pp2
              INNER JOIN pedidos p2 ON p2.id = pp2.id_pedido
-             WHERE pp2.id_producto = pr.id
-               AND p2.id_estado IN (1, 2)  -- 1=Pendiente, 2=En proceso
-             ),
+             WHERE pp2.id_producto = pr.id AND $wherePorProcesar),
         0)                                                                            AS por_procesar
     FROM productos pr
-    LEFT JOIN stock s          ON s.id_producto = pr.id
-    LEFT JOIN pedidos p        ON p.id = s.referencia_id AND s.referencia_tipo = 'pedido'
-    WHERE pr.activo = 1
-    $whereCliente
+    $joinCliente
+    LEFT JOIN stock s ON s.id_producto = pr.id
+    WHERE $whereProductoBase
     GROUP BY pr.id, pr.nombre, pr.sku
     HAVING (stock_final <> 0 OR entradas <> 0 OR salidas <> 0 OR por_procesar <> 0)
     ORDER BY pr.nombre ASC
 ";
 
-// Duplicar parámetros necesarios (PDO named params se pueden usar solo 1 vez si es emulated)
-$params[':hasta_sf'] = $fechaHasta . ' 23:59:59';
-$params[':desde2']   = $fechaDesde . ' 00:00:00';
-$params[':hasta2']   = $fechaHasta . ' 23:59:59';
 
 $stmt = $db->prepare($sql);
 foreach ($params as $k => $v) $stmt->bindValue($k, $v);
