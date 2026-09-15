@@ -689,3 +689,76 @@ body.bs-body {
         padding: 0 !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ESCANER / VISOR DE CÁMARA (ORIENTACIÓN Y CENTRADO DE ENFOQUE)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Contenedor del visor */
+#reader,
+#reader__scan_region,
+#html5-qrcode-region,
+#interactive.viewport,
+.scanner-container,
+.scanner-viewport,
+div[id*="scanner"],
+div[class*="scanner"] {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    width: 100% !important;
+}
+
+/* Elemento Video y Canvas */
+video,
+.modal-body video,
+.scanner-video,
+#reader video,
+#reader canvas,
+#interactive video,
+#interactive canvas,
+#qr-video,
+div[id*="scanner"] video,
+div[class*="scanner"] video {
+    transform: none !important;
+    -webkit-transform: none !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    display: block !important;
+}
+
+/* Recuadro de enfoque (Overlay / Shaded Region / QRBox) */
+/* Selectores para librerías html5-qrcode y escáneres custom con distintos prefijos */
+#qr-shaded-region,
+.scan-region-highlight,
+.scanner-overlay,
+.qrbox,
+#reader div[style*="position: absolute"],
+div[id*="scanner"] div[style*="position: absolute"],
+div[class*="scanner"] div[style*="position: absolute"],
+div[id*="visor"] div[style*="position: absolute"],
+div[class*="visor"] div[style*="position: absolute"],
+div[id*="cam"] div[style*="position: absolute"],
+div[class*="cam"] div[style*="position: absolute"],
+div[id*="qr"] > div[style*="position: absolute"],
+div[id*="lector"] div[style*="position: absolute"] {
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    -webkit-transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+
+/* Flex-center fallback: el contenedor relativo que envuelve el video
+   centra sus hijos absolute cuando no coincide el selector exacto */
+.modal-body div[style*="position: relative"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+

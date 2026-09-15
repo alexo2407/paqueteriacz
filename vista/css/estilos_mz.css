@@ -703,3 +703,54 @@ table.responsive-table {
         text-align: center;
     }
 }
+
+/* Corrección de orientación y centrado de enfoque en escáneres */
+#reader,
+#reader__scan_region,
+#html5-qrcode-region,
+#interactive.viewport,
+.scanner-container,
+.scanner-viewport,
+div[id*="scanner"],
+div[class*="scanner"] {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+    overflow: hidden !important;
+    width: 100% !important;
+}
+
+video,
+.modal-body video,
+.scanner-video,
+#reader video,
+#reader canvas,
+#interactive video,
+#interactive canvas,
+#qr-video,
+div[id*="scanner"] video,
+div[class*="scanner"] video {
+    transform: none !important;
+    -webkit-transform: none !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    display: block !important;
+}
+
+#qr-shaded-region,
+.scan-region-highlight,
+.scanner-overlay,
+.qrbox,
+#reader div[style*="position: absolute"],
+div[id*="scanner"] div[style*="position: absolute"],
+div[class*="scanner"] div[style*="position: absolute"] {
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    -webkit-transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+

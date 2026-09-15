@@ -65,5 +65,108 @@ if ($flash) {
 }
 ?>
 
+
+<script>
+/* ── Fix: Centrado del recuadro de enfoque del escáner ────────────────────
+   Usa MutationObserver para detectar cuando aparece el video del escáner
+   y centra el overlay de enfoque (sea cual sea su ID/clase) relativo al
+   contenedor del video, usando dimensiones reales (no porcentajes CSS).
+───────────────────────────────────────────────────────────────────────── */
+(function () {
+    'use strict';
+
+    /** Centra todos los hijos absolute dentro del contenedor del video */
+    function centerScanOverlays(videoEl) {
+        var container = videoEl.parentElement;
+        if (!container) return;
+
+        var cW = container.offsetWidth;
+        var cH = container.offsetHeight;
+        if (cW === 0 || cH === 0) return;
+
+        var children = Array.from(container.children);
+        children.forEach(function (child) {
+            if (child === videoEl) return;
+
+            var pos = window.getComputedStyle(child).position;
+            if (pos !== 'absolute' && pos !== 'fixed') return;
+
+            var oW = child.offsetWidth;
+            var oH = child.offsetHeight;
+            if (oW === 0 || oH === 0) return;
+
+            var newLeft = Math.max(0, (cW - oW) / 2);
+            var newTop  = Math.max(0, (cH - oH) / 2);
+
+            child.style.setProperty('left',      newLeft + 'px', 'important');
+            child.style.setProperty('top',       newTop  + 'px', 'important');
+            child.style.setProperty('transform', 'none',         'important');
+        });
+
+        /* También arregla #qr-shaded-region si usa border-width como ventana */
+        var region = container.querySelector('#qr-shaded-region, [id*="shaded"], [id*="region"]');
+        if (region) {
+            var bt = parseFloat(region.style.borderTopWidth)    || 0;
+            var bb = parseFloat(region.style.borderBottomWidth) || 0;
+            var bl = parseFloat(region.style.borderLeftWidth)   || 0;
+            var br = parseFloat(region.style.borderRightWidth)  || 0;
+            var boxW = cW - bl - br;
+            var boxH = cH - bt - bb;
+            if (boxW > 0 && boxH > 0) {
+                var newBL = Math.max(0, (cW - boxW) / 2);
+                var newBT = Math.max(0, (cH - boxH) / 2);
+                region.style.setProperty('border-left-width',   newBL + 'px', 'important');
+                region.style.setProperty('border-right-width',  newBL + 'px', 'important');
+                region.style.setProperty('border-top-width',    newBT + 'px', 'important');
+                region.style.setProperty('border-bottom-width', newBT + 'px', 'important');
+            }
+        }
+    }
+
+    var _handled = new WeakSet();
+
+    function handleVideo(video) {
+        if (_handled.has(video)) return;
+        _handled.add(video);
+
+        /* Solo actuar en contexto de modal / escáner */
+        var inModal = video.closest(
+            '.modal-body, .modal-content, [id*="visor"], [class*="visor"], ' +
+            '[id*="scanner"], [class*="scanner"], [id*="cam"], [class*="cam"], ' +
+            '[id*="reader"], [id*="lector"], [id*="qr"]'
+        );
+        if (!inModal) return;
+
+        function tryCenter() { centerScanOverlays(video); }
+
+        tryCenter();
+        [200, 500, 1000, 2000].forEach(function (ms) { setTimeout(tryCenter, ms); });
+
+        video.addEventListener('loadeddata', tryCenter);
+        video.addEventListener('play',       tryCenter);
+        video.addEventListener('resize',     tryCenter);
+    }
+
+    /* Observar creación de nuevos elementos */
+    var _obs = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+            m.addedNodes.forEach(function (node) {
+                if (node.nodeType !== 1) return;
+                if (node.tagName === 'VIDEO') {
+                    handleVideo(node);
+                } else if (node.querySelectorAll) {
+                    node.querySelectorAll('video').forEach(handleVideo);
+                }
+            });
+        });
+    });
+
+    _obs.observe(document.body, { childList: true, subtree: true });
+
+    /* Videos ya en el DOM al cargar */
+    document.querySelectorAll('video').forEach(handleVideo);
+})();
+</script>
+
 </body>
 </html>
