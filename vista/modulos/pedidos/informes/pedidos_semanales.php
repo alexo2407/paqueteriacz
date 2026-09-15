@@ -69,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $coordinador = trim($_POST['coordinador'] ?? '');
         $etiqueta    = trim($_POST['etiqueta'] ?? '');
         $idCliente   = !empty($_POST['id_cliente']) ? (int)$_POST['id_cliente'] : null;
+        $idProveedor = !empty($_POST['id_proveedor']) ? (int)$_POST['id_proveedor'] : null;
         $idPais      = !empty($_POST['id_pais']) ? (int)$_POST['id_pais'] : null;
         $grupo       = max(1, (int)($_POST['grupo'] ?? 1));
         $orden       = (int)($_POST['orden'] ?? 0);
@@ -81,16 +82,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($id > 0) {
             $stmt = $db->prepare("
                 UPDATE pedidos_coordinadores_config 
-                SET coordinador = :coord, etiqueta = :etiq, id_cliente = :cli, id_pais = :pais, grupo = :grp, orden = :ord 
+                SET coordinador = :coord, etiqueta = :etiq, id_cliente = :cli, id_proveedor = :prov, id_pais = :pais, grupo = :grp, orden = :ord 
                 WHERE id = :id
             ");
-            $stmt->execute([':coord' => $coordinador, ':etiq' => $etiqueta, ':cli' => $idCliente, ':pais' => $idPais, ':grp' => $grupo, ':ord' => $orden, ':id' => $id]);
+            $stmt->execute([':coord' => $coordinador, ':etiq' => $etiqueta, ':cli' => $idCliente, ':prov' => $idProveedor, ':pais' => $idPais, ':grp' => $grupo, ':ord' => $orden, ':id' => $id]);
         } else {
             $stmt = $db->prepare("
-                INSERT INTO pedidos_coordinadores_config (coordinador, etiqueta, id_cliente, id_pais, grupo, orden) 
-                VALUES (:coord, :etiq, :cli, :pais, :grp, :ord)
+                INSERT INTO pedidos_coordinadores_config (coordinador, etiqueta, id_cliente, id_proveedor, id_pais, grupo, orden) 
+                VALUES (:coord, :etiq, :cli, :prov, :pais, :grp, :ord)
             ");
-            $stmt->execute([':coord' => $coordinador, ':etiq' => $etiqueta, ':cli' => $idCliente, ':pais' => $idPais, ':grp' => $grupo, ':ord' => $orden]);
+            $stmt->execute([':coord' => $coordinador, ':etiq' => $etiqueta, ':cli' => $idCliente, ':prov' => $idProveedor, ':pais' => $idPais, ':grp' => $grupo, ':ord' => $orden]);
         }
         echo json_encode(['ok' => true]);
         exit;
@@ -169,30 +170,45 @@ $configs = $db->query("
 
 // ── Catálogos para el modal de configuración ──────────────────────────────────
 $clientesCat = $db->query("
-    SELECT u.id, u.nombre 
+    SELECT u.id, u.nombre, u.id_pais, p.nombre as pais_nombre 
     FROM usuarios u 
     INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id 
+    LEFT JOIN paises p ON p.id = u.id_pais
     WHERE ur.id_rol IN (" . ROL_CLIENTE . ", " . ROL_PROVEEDOR . ") AND u.activo = 1 
+    GROUP BY u.id 
+    ORDER BY u.nombre ASC
+")->fetchAll(PDO::FETCH_ASSOC);
+
+$proveedoresCat = $db->query("
+    SELECT u.id, u.nombre, u.id_pais, p.nombre as pais_nombre 
+    FROM usuarios u 
+    INNER JOIN usuarios_roles ur ON ur.id_usuario = u.id 
+    LEFT JOIN paises p ON p.id = u.id_pais
+    WHERE ur.id_rol = " . ROL_PROVEEDOR . " AND u.activo = 1 
     GROUP BY u.id 
     ORDER BY u.nombre ASC
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $paisesCat = $db->query("SELECT id, nombre, codigo_iso FROM paises ORDER BY nombre ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-// ── Obtener datos agrupados de pedidos (con COALESCE para país) ───────────────
+// ── Obtener datos agrupados de pedidos (con COALESCE para país y nombres) ─────
 $sqlAgg = "
     SELECT 
         YEARWEEK(pe.fecha_ingreso, 3) AS anio_semana,
         WEEK(pe.fecha_ingreso, 3) AS semana,
         pe.id_cliente,
+        u.nombre AS cliente_nombre,
         pe.id_proveedor,
+        uprov.nombre AS proveedor_nombre,
         COALESCE(pe.id_pais, u.id_pais, uprov.id_pais) AS id_pais,
+        p.nombre AS pais_nombre,
         COUNT(*) AS cantidad
     FROM pedidos pe
     LEFT JOIN usuarios u ON u.id = pe.id_cliente
     LEFT JOIN usuarios uprov ON uprov.id = pe.id_proveedor
+    LEFT JOIN paises p ON p.id = COALESCE(pe.id_pais, u.id_pais, uprov.id_pais)
     WHERE pe.fecha_ingreso BETWEEN :desde AND :hasta
-    GROUP BY anio_semana, semana, pe.id_cliente, pe.id_proveedor, COALESCE(pe.id_pais, u.id_pais, uprov.id_pais)
+    GROUP BY anio_semana, semana, pe.id_cliente, u.nombre, pe.id_proveedor, uprov.nombre, COALESCE(pe.id_pais, u.id_pais, uprov.id_pais), p.nombre
 ";
 $stmtAgg = $db->prepare($sqlAgg);
 $stmtAgg->execute([':desde' => $minFechaSQL, ':hasta' => $maxFechaSQL]);
@@ -205,50 +221,50 @@ foreach ($rawAgg as $row) {
     $pedidosPorSemana[$semKey][] = $row;
 }
 
+// ── Función para comprobar si una fila de pedido calza con una configuración ───
+function filaCalzaConfig($cfg, $r) {
+    if (empty($cfg['id_cliente']) && empty($cfg['id_proveedor']) && empty($cfg['id_pais'])) {
+        return false;
+    }
+
+    $matchCliente = false;
+    if (!empty($cfg['id_cliente'])) {
+        if ($r['id_cliente'] == $cfg['id_cliente'] || $r['id_proveedor'] == $cfg['id_cliente']) {
+            $matchCliente = true;
+        }
+    } elseif (!empty($cfg['id_proveedor'])) {
+        if ($r['id_proveedor'] == $cfg['id_proveedor'] || $r['id_cliente'] == $cfg['id_proveedor']) {
+            $matchCliente = true;
+        }
+    } else {
+        $matchCliente = true;
+    }
+
+    $matchPais = false;
+    if (!empty($cfg['id_pais'])) {
+        if ($r['id_pais'] == $cfg['id_pais'] || ($r['id_pais'] === null && (!empty($cfg['id_cliente']) || !empty($cfg['id_proveedor'])))) {
+            $matchPais = true;
+        }
+    } else {
+        $matchPais = true;
+    }
+
+    return ($matchCliente && $matchPais);
+}
+
 // ── Función para computar cantidad de una configuración en una semana ────────
 function calcularCantidad($cfg, $filasSemana) {
     if (empty($filasSemana)) return 0;
-    // Si la fila no tiene cliente, proveedor ni país asignado, no sumar
-    if (empty($cfg['id_cliente']) && empty($cfg['id_proveedor']) && empty($cfg['id_pais'])) {
-        return 0;
-    }
-
     $total = 0;
     foreach ($filasSemana as $r) {
-        $matchCliente = false;
-        $matchPais    = false;
-
-        // Validación de Cliente / Proveedor
-        if (!empty($cfg['id_cliente'])) {
-            if ($r['id_cliente'] == $cfg['id_cliente'] || $r['id_proveedor'] == $cfg['id_cliente']) {
-                $matchCliente = true;
-            }
-        } elseif (!empty($cfg['id_proveedor'])) {
-            if ($r['id_proveedor'] == $cfg['id_proveedor'] || $r['id_cliente'] == $cfg['id_proveedor']) {
-                $matchCliente = true;
-            }
-        } else {
-            // Cuenta comodín general (ej. solo por país)
-            $matchCliente = true;
-        }
-
-        // Validación de País
-        if (!empty($cfg['id_pais'])) {
-            if ($r['id_pais'] == $cfg['id_pais'] || ($r['id_pais'] === null && (!empty($cfg['id_cliente']) || !empty($cfg['id_proveedor'])))) {
-                $matchPais = true;
-            }
-        } else {
-            $matchPais = true;
-        }
-
-        if ($matchCliente && $matchPais) {
+        if (filaCalzaConfig($cfg, $r)) {
             $total += (int)$r['cantidad'];
         }
     }
     return $total;
 }
 
-// ── Procesar filas y calcular totales ─────────────────────────────────────────
+// ── Procesar filas asignadas y calcular totales ───────────────────────────────
 $semanasKeys = array_keys($semanasInfo);
 $totalesPorSemana = array_fill_keys($semanasKeys, 0);
 $granTotalPeriodo = 0;
@@ -276,9 +292,55 @@ foreach ($configs as $cfg) {
     $filasCalculadas[]   = $cfg;
 }
 
+// ── Detectar pedidos de cuentas que NO tienen coordinador asignado ────────────
+$sinAsignarPorCuenta = [];
+$totalesSinAsignarPorSemana = array_fill_keys($semanasKeys, 0);
+
+foreach ($rawAgg as $r) {
+    $calzo = false;
+    foreach ($configs as $cfg) {
+        if (filaCalzaConfig($cfg, $r)) {
+            $calzo = true;
+            break;
+        }
+    }
+    if (!$calzo) {
+        $keyCli = $r['id_cliente'] ? 'c' . $r['id_cliente'] : 'p' . $r['id_proveedor'];
+        $keyPais = $r['id_pais'] ?? '0';
+        $cuentaKey = $keyCli . '_' . $keyPais;
+
+        if (!isset($sinAsignarPorCuenta[$cuentaKey])) {
+            $nombreMostrar = !empty($r['cliente_nombre']) ? $r['cliente_nombre'] : (!empty($r['proveedor_nombre']) ? $r['proveedor_nombre'] : 'Cuenta ID ' . ($r['id_cliente'] ?: $r['id_proveedor']));
+            $sinAsignarPorCuenta[$cuentaKey] = [
+                'id_cliente'        => $r['id_cliente'],
+                'cliente_nombre'    => $r['cliente_nombre'],
+                'id_proveedor'      => $r['id_proveedor'],
+                'proveedor_nombre'  => $r['proveedor_nombre'],
+                'id_pais'           => $r['id_pais'],
+                'pais_nombre'       => $r['pais_nombre'],
+                'etiqueta_sugerida' => $nombreMostrar . (!empty($r['pais_nombre']) ? ' ' . $r['pais_nombre'] : ''),
+                'nombre_mostrar'    => $nombreMostrar,
+                'semanas_cant'      => array_fill_keys($semanasKeys, 0),
+                'total_fila'        => 0,
+            ];
+        }
+        $semKey = (int)$r['anio_semana'];
+        $sinAsignarPorCuenta[$cuentaKey]['semanas_cant'][$semKey] = ($sinAsignarPorCuenta[$cuentaKey]['semanas_cant'][$semKey] ?? 0) + (int)$r['cantidad'];
+        $sinAsignarPorCuenta[$cuentaKey]['total_fila'] += (int)$r['cantidad'];
+        $totalesSinAsignarPorSemana[$semKey] = ($totalesSinAsignarPorSemana[$semKey] ?? 0) + (int)$r['cantidad'];
+    }
+}
+
+uasort($sinAsignarPorCuenta, function($a, $b) {
+    return $b['total_fila'] <=> $a['total_fila'];
+});
+
+$totalSinAsignarPeriodo = array_sum(array_column($sinAsignarPorCuenta, 'total_fila'));
+$granTotalReal = $granTotalPeriodo + $totalSinAsignarPeriodo;
+
 // Métricas para tarjetas ejecutivas (KPIs)
 $cantSemanas = max(1, count($semanasKeys));
-$promedioSemanal = (int)round($granTotalPeriodo / $cantSemanas);
+$promedioSemanal = (int)round($granTotalReal / $cantSemanas);
 arsort($volumenPorCoord);
 $topCoordinador = !empty($volumenPorCoord) ? key($volumenPorCoord) . ' (' . number_format(reset($volumenPorCoord)) . ')' : 'N/A';
 
@@ -362,19 +424,74 @@ if ($export) {
         $currentRow++;
     }
 
-    // Fila Total General
+    // Si hay cuentas sin asignar, exportarlas también en Excel
+    if (!empty($sinAsignarPorCuenta)) {
+        $sheet->setCellValueByColumnAndRow(1, $currentRow, "--- CUENTAS PENDIENTES DE ASIGNAR A COORDINADOR ---");
+        $sheet->mergeCells("A{$currentRow}:{$lastColLet}{$currentRow}");
+        $sheet->getStyle("A{$currentRow}")->getFont()->setBold(true)->getColor()->setARGB('FFB45309');
+        $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFEF3C7');
+        $currentRow++;
+
+        foreach ($sinAsignarPorCuenta as $sa) {
+            $sheet->setCellValueByColumnAndRow(1, $currentRow, 'Sin Asignar');
+            $sheet->setCellValueByColumnAndRow(2, $currentRow, $sa['etiqueta_sugerida']);
+            $cIdx = 3;
+            foreach ($semanasKeys as $semKey) {
+                $val = $sa['semanas_cant'][$semKey] ?? 0;
+                $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $val > 0 ? $val : 0);
+                $cIdx++;
+            }
+            $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $sa['total_fila']);
+
+            $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getBorders()->getAllBorders()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+            $sheet->getStyle("C{$currentRow}:{$lastColLet}{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("{$lastColLet}{$currentRow}")->getFont()->setBold(true);
+
+            $currentRow++;
+        }
+
+        // Subtotales en Excel
+        $sheet->setCellValueByColumnAndRow(1, $currentRow, '');
+        $sheet->setCellValueByColumnAndRow(2, $currentRow, 'Subtotal Asignado a Coordinadores');
+        $cIdx = 3;
+        foreach ($semanasKeys as $semKey) {
+            $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalesPorSemana[$semKey]);
+            $cIdx++;
+        }
+        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $granTotalPeriodo);
+        $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getFont()->setBold(true)->getColor()->setARGB('FF475569');
+        $sheet->getStyle("B{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("C{$currentRow}:{$lastColLet}{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $currentRow++;
+
+        $sheet->setCellValueByColumnAndRow(1, $currentRow, '');
+        $sheet->setCellValueByColumnAndRow(2, $currentRow, 'Subtotal Sin Asignar');
+        $cIdx = 3;
+        foreach ($semanasKeys as $semKey) {
+            $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalesSinAsignarPorSemana[$semKey]);
+            $cIdx++;
+        }
+        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalSinAsignarPeriodo);
+        $sheet->getStyle("A{$currentRow}:{$lastColLet}{$currentRow}")->getFont()->setBold(true)->getColor()->setARGB('FFB45309');
+        $sheet->getStyle("B{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("C{$currentRow}:{$lastColLet}{$currentRow}")->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $currentRow++;
+    }
+
+    // Fila Total General del Sistema
     $sheet->setCellValueByColumnAndRow(1, $currentRow, '');
-    $sheet->setCellValueByColumnAndRow(2, $currentRow, 'TOTAL GENERAL');
+    $sheet->setCellValueByColumnAndRow(2, $currentRow, 'TOTAL GENERAL DEL SISTEMA');
     $cIdx = 3;
     foreach ($semanasKeys as $semKey) {
-        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalesPorSemana[$semKey]);
+        $totalSemReal = $totalesPorSemana[$semKey] + ($totalesSinAsignarPorSemana[$semKey] ?? 0);
+        $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $totalSemReal);
         $cIdx++;
     }
-    $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $granTotalPeriodo);
+    $sheet->setCellValueByColumnAndRow($cIdx, $currentRow, $granTotalReal);
 
     $totalRange = "A{$currentRow}:{$lastColLet}{$currentRow}";
     $sheet->getStyle($totalRange)->applyFromArray([
-        'font' => ['bold' => true, 'size' => 11],
+        'font' => ['bold' => true, 'size' => 11, 'color' => ['argb' => 'FF1E3A8A']],
         'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFDBEAFE']],
         'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_MEDIUM]],
         'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]
@@ -654,7 +771,13 @@ if ($export) {
                 <div class="kpi-icon blue"><i class="bi bi-box-seam"></i></div>
                 <div>
                     <div class="kpi-label">Total Pedidos en Período</div>
-                    <div class="kpi-value"><?= number_format($granTotalPeriodo) ?></div>
+                    <div class="kpi-value"><?= number_format($granTotalReal) ?></div>
+                    <?php if ($totalSinAsignarPeriodo > 0): ?>
+                    <div class="small text-muted mt-1" style="font-size: 0.76rem;">
+                        <span><?= number_format($granTotalPeriodo) ?> asignados</span>
+                        <span class="text-warning-emphasis fw-bold ms-1">• <?= number_format($totalSinAsignarPeriodo) ?> sin asignar</span>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -677,6 +800,28 @@ if ($export) {
             </div>
         </div>
     </div>
+
+    <!-- ── Alerta si hay cuentas con pedidos sin coordinador asignado ─────── -->
+    <?php if (!empty($sinAsignarPorCuenta)): ?>
+    <div class="alert alert-warning border-0 shadow-sm d-flex flex-wrap align-items-center justify-content-between p-3 rounded-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-warning bg-opacity-25 p-2 text-warning-emphasis fs-4 d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div>
+                <h6 class="mb-0 fw-bold text-dark">
+                    <?= number_format($totalSinAsignarPeriodo) ?> Pedidos de cuentas sin coordinador asignado en este período
+                </h6>
+                <span class="small text-muted">
+                    Se detectaron <?= count($sinAsignarPorCuenta) ?> cuenta(s) con actividad en este rango que aún no están asignadas. Puedes asignarlas directamente abajo.
+                </span>
+            </div>
+        </div>
+        <a href="#seccionSinAsignar" class="btn btn-sm btn-warning text-dark fw-semibold mt-2 mt-sm-0">
+            <i class="bi bi-arrow-down-circle me-1"></i> Ver cuentas y asignar
+        </a>
+    </div>
+    <?php endif; ?>
 
     <!-- ── Barra de Filtros Natural (Desde / Hasta) ─────────────────────── -->
     <div class="filter-card">
@@ -770,14 +915,74 @@ if ($export) {
                     </tr>
                     <?php endforeach; ?>
 
-                    <!-- Fila Total General -->
+                    <?php if (!empty($sinAsignarPorCuenta)): ?>
+                    <!-- ── Sección Cuentas Sin Asignar ───────────────────────────── -->
+                    <tr class="group-separator-row" id="seccionSinAsignar" style="background: #fffbeb; border-top: 2px solid #fde68a; border-bottom: 2px solid #fde68a;">
+                        <td colspan="<?= count($semanasKeys) + 3 ?>" class="text-warning-emphasis">
+                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i> CUENTAS PENDIENTES DE ASIGNAR A UN COORDINADOR (<?= count($sinAsignarPorCuenta) ?>)
+                        </td>
+                    </tr>
+                    <?php foreach ($sinAsignarPorCuenta as $sa): ?>
+                    <tr style="background: #fffdf5;">
+                        <td>
+                            <button type="button" class="btn btn-sm btn-primary py-0 px-2 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
+                                    onclick="asignarDirecto(<?= (int)($sa['id_cliente'] ?? 0) ?>, <?= (int)($sa['id_proveedor'] ?? 0) ?>, <?= (int)($sa['id_pais'] ?? 0) ?>, '<?= htmlspecialchars(addslashes($sa['etiqueta_sugerida'])) ?>')">
+                                <i class="bi bi-person-plus-fill"></i> Asignar
+                            </button>
+                        </td>
+                        <td>
+                            <span class="text-dark fw-semibold"><?= htmlspecialchars($sa['nombre_mostrar']) ?></span>
+                            <?php if (!empty($sa['pais_nombre'])): ?>
+                            <span class="badge bg-light text-secondary border ms-1 font-monospace" style="font-size: 0.72rem;"><?= htmlspecialchars($sa['pais_nombre']) ?></span>
+                            <?php endif; ?>
+                            <small class="text-muted d-block" style="font-size: 0.74rem;">
+                                <?= $sa['id_cliente'] ? 'Cliente ID: ' . $sa['id_cliente'] : 'Proveedor ID: ' . $sa['id_proveedor'] ?>
+                            </small>
+                        </td>
+                        <?php foreach ($semanasKeys as $semKey): 
+                            $val = $sa['semanas_cant'][$semKey] ?? 0;
+                        ?>
+                        <td class="td-val <?= $val > 0 ? 'active-vol text-warning-emphasis' : 'zero-vol' ?>">
+                            <?= $val > 0 ? number_format($val) : '—' ?>
+                        </td>
+                        <?php endforeach; ?>
+                        <td class="td-total td-val text-warning-emphasis" style="background: #fffbeb;">
+                            <?= number_format($sa['total_fila']) ?>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php endif; ?>
+
+                    <!-- Subtotales si hay cuentas sin asignar -->
+                    <?php if (!empty($sinAsignarPorCuenta)): ?>
+                    <tr style="background: #f8fafc; font-size: 0.88rem; border-top: 1px solid #cbd5e1;">
+                        <td></td>
+                        <td class="text-end fw-semibold text-muted">Subtotal Asignado a Coordinadores</td>
+                        <?php foreach ($semanasKeys as $semKey): ?>
+                        <td class="td-val text-muted"><?= number_format($totalesPorSemana[$semKey]) ?></td>
+                        <?php endforeach; ?>
+                        <td class="td-val fw-bold text-muted"><?= number_format($granTotalPeriodo) ?></td>
+                    </tr>
+                    <tr style="background: #fffdf5; font-size: 0.88rem; border-bottom: 2px solid #cbd5e1;">
+                        <td></td>
+                        <td class="text-end fw-semibold text-warning-emphasis">Subtotal Pendiente de Asignar</td>
+                        <?php foreach ($semanasKeys as $semKey): ?>
+                        <td class="td-val text-warning-emphasis"><?= number_format($totalesSinAsignarPorSemana[$semKey]) ?></td>
+                        <?php endforeach; ?>
+                        <td class="td-val fw-bold text-warning-emphasis"><?= number_format($totalSinAsignarPeriodo) ?></td>
+                    </tr>
+                    <?php endif; ?>
+
+                    <!-- Fila Total General del Sistema -->
                     <tr class="tr-grand-total">
                         <td></td>
-                        <td class="text-end fw-bold">TOTAL GENERAL</td>
-                        <?php foreach ($semanasKeys as $semKey): ?>
-                        <td class="td-val"><?= number_format($totalesPorSemana[$semKey]) ?></td>
+                        <td class="text-end fw-bold">TOTAL GENERAL DEL SISTEMA</td>
+                        <?php foreach ($semanasKeys as $semKey): 
+                            $totalSemReal = $totalesPorSemana[$semKey] + ($totalesSinAsignarPorSemana[$semKey] ?? 0);
+                        ?>
+                        <td class="td-val"><?= number_format($totalSemReal) ?></td>
                         <?php endforeach; ?>
-                        <td class="td-val text-primary" style="font-size: 1.05rem;"><?= number_format($granTotalPeriodo) ?></td>
+                        <td class="td-val text-primary" style="font-size: 1.05rem;"><?= number_format($granTotalReal) ?></td>
                     </tr>
                 </tbody>
             </table>
@@ -808,25 +1013,34 @@ if ($export) {
                     <div class="row g-2">
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold mb-1">Coordinador *</label>
-                            <input type="text" name="coordinador" id="cfg_coordinador" class="form-control form-control-sm" placeholder="ej. Aldo, Juan..." required>
+                            <input type="text" name="coordinador" id="cfg_coordinador" class="form-control form-control-sm" placeholder="ej. Aldo, Juan, Fernanda..." required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label small fw-semibold mb-1">Etiqueta (Cliente y País) *</label>
-                            <input type="text" name="etiqueta" id="cfg_etiqueta" class="form-control form-control-sm" placeholder="ej. LogisPro/ Verde Street CR" required>
+                            <input type="text" name="etiqueta" id="cfg_etiqueta" class="form-control form-control-sm" placeholder="ej. Boxful Nicaragua" required>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold mb-1">Cliente en Sistema</label>
                             <select name="id_cliente" id="cfg_id_cliente" class="form-select form-select-sm">
-                                <option value="">-- Sin asignar --</option>
+                                <option value="">-- Sin cliente específico --</option>
                                 <?php foreach ($clientesCat as $cl): ?>
-                                <option value="<?= $cl['id'] ?>"><?= htmlspecialchars($cl['nombre']) ?></option>
+                                <option value="<?= $cl['id'] ?>" data-pais="<?= $cl['id_pais'] ?? '' ?>"><?= htmlspecialchars($cl['nombre']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold mb-1">Proveedor (Opcional)</label>
+                            <select name="id_proveedor" id="cfg_id_proveedor" class="form-select form-select-sm">
+                                <option value="">-- Todos / Sin proveedor --</option>
+                                <?php foreach ($proveedoresCat as $pr): ?>
+                                <option value="<?= $pr['id'] ?>"><?= htmlspecialchars($pr['nombre']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-semibold mb-1">País</label>
                             <select name="id_pais" id="cfg_id_pais" class="form-select form-select-sm">
-                                <option value="">-- Todos --</option>
+                                <option value="">-- Todos los países --</option>
                                 <?php foreach ($paisesCat as $pa): ?>
                                 <option value="<?= $pa['id'] ?>"><?= htmlspecialchars($pa['nombre']) ?></option>
                                 <?php endforeach; ?>
@@ -843,7 +1057,7 @@ if ($export) {
                             <label class="form-label small fw-semibold mb-1">Orden</label>
                             <input type="number" name="orden" id="cfg_orden" class="form-control form-control-sm" value="0">
                         </div>
-                        <div class="col-md-8 d-flex align-items-end gap-2">
+                        <div class="col-md-6 d-flex align-items-end gap-2">
                             <button type="submit" class="btn btn-sm btn-primary px-3">
                                 <i class="bi bi-check-lg me-1"></i>Guardar Fila
                             </button>
@@ -903,6 +1117,7 @@ function editarConfig(data) {
     document.getElementById('cfg_coordinador').value = data.coordinador;
     document.getElementById('cfg_etiqueta').value = data.etiqueta;
     document.getElementById('cfg_id_cliente').value = data.id_cliente || '';
+    if (document.getElementById('cfg_id_proveedor')) document.getElementById('cfg_id_proveedor').value = data.id_proveedor || '';
     document.getElementById('cfg_id_pais').value = data.id_pais || '';
     document.getElementById('cfg_grupo').value = data.grupo || 1;
     document.getElementById('cfg_orden').value = data.orden || 0;
@@ -910,14 +1125,39 @@ function editarConfig(data) {
 }
 
 function limpiarFormConfig() {
-    document.getElementById('cfg_id').value = 0;
-    document.getElementById('cfg_coordinador').value = '';
-    document.getElementById('cfg_etiqueta').value = '';
-    document.getElementById('cfg_id_cliente').value = '';
-    document.getElementById('cfg_id_pais').value = '';
-    document.getElementById('cfg_grupo').value = 1;
-    document.getElementById('cfg_orden').value = 0;
+    document.getElementById('frmCoordinador').reset();
+    document.getElementById('cfg_id').value = '0';
+    if (document.getElementById('cfg_id_proveedor')) document.getElementById('cfg_id_proveedor').value = '';
 }
+
+function asignarDirecto(idCliente, idProveedor, idPais, etiquetaSugerida) {
+    limpiarFormConfig();
+    document.getElementById('cfg_id').value = '0';
+    if (idCliente) document.getElementById('cfg_id_cliente').value = idCliente;
+    if (idProveedor && document.getElementById('cfg_id_proveedor')) document.getElementById('cfg_id_proveedor').value = idProveedor;
+    if (idPais) document.getElementById('cfg_id_pais').value = idPais;
+    document.getElementById('cfg_etiqueta').value = etiquetaSugerida || '';
+
+    const modalEl = document.getElementById('modalConfig');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+    setTimeout(() => {
+        const inputCoord = document.getElementById('cfg_coordinador');
+        if (inputCoord) inputCoord.focus();
+    }, 450);
+}
+
+// Auto-seleccionar país si el cliente seleccionado tiene país asociado en BD
+document.getElementById('cfg_id_cliente').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const pais = opt.getAttribute('data-pais');
+    if (pais && !document.getElementById('cfg_id_pais').value) {
+        document.getElementById('cfg_id_pais').value = pais;
+    }
+    if (!document.getElementById('cfg_etiqueta').value && opt.text && this.value) {
+        document.getElementById('cfg_etiqueta').value = opt.text.trim();
+    }
+});
 
 document.getElementById('frmCoordinador').addEventListener('submit', function(e) {
     e.preventDefault();
