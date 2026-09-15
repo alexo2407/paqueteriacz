@@ -33,9 +33,9 @@ $db = (new Conexion())->conectar();
 
 $params = [
     ':hasta1' => $fechaHasta . ' 23:59:59',
-    ':desde2' => $fechaDesde . ' 00:00:00',
-    ':desde3' => $fechaDesde . ' 00:00:00',
-    ':hasta3' => $fechaHasta . ' 23:59:59',
+    ':desde2' => $fechaDesde,
+    ':desde3' => $fechaDesde,
+    ':hasta3' => $fechaHasta,
     ':desde4' => $fechaDesde . ' 00:00:00',
     ':hasta4' => $fechaHasta . ' 23:59:59',
 ];
@@ -76,7 +76,7 @@ if ($idClienteParam > 0) {
 
 // ── Query principal ───────────────────────────────────────────────────────────
 // Stock Inicial = Entradas a bodega (hasta fecha_hasta) menos salidas previas (antes de fecha_desde)
-// Salidas       = pedidos entregados (estado 3 o 14) en el período
+// Salidas       = pedidos entregados (estado 3 o 14) en el período (por fecha de entrega)
 // En Proceso    = pedidos activos en el período
 // Stock Final   = Stock Inicial - Salidas - En Proceso
 $sql = "
@@ -101,7 +101,7 @@ $sql = "
                 INNER JOIN pedidos pe ON pe.id = pp.id_pedido
                 WHERE pp.id_producto = pr.id
                   AND pe.id_estado IN (3, 14)
-                  AND pe.fecha_ingreso < :desde2
+                  AND COALESCE(pe.fecha_entrega, DATE(pe.fecha_ingreso)) < :desde2
                   $whereClienteSalidasIni
             ), 0)
         )                                                               AS stock_inicial,
@@ -113,7 +113,7 @@ $sql = "
             INNER JOIN pedidos pe ON pe.id = pp.id_pedido
             WHERE pp.id_producto = pr.id
               AND pe.id_estado IN (3, 14)
-              AND pe.fecha_ingreso BETWEEN :desde3 AND :hasta3
+              AND COALESCE(pe.fecha_entrega, DATE(pe.fecha_ingreso)) BETWEEN :desde3 AND :hasta3
               $whereClienteSalidas
         ), 0)                                                           AS salidas,
 
