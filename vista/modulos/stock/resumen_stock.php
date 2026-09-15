@@ -28,58 +28,93 @@ $fechaHasta = $_GET['fecha_hasta'] ?? date('Y-m-d');
 $clienteId  = (int)($_GET['id_cliente'] ?? 0);
 $export     = isset($_GET['export']) && $_GET['export'] === '1';
 
-// ── Query principal basada en pedidos ─────────────────────────────────────────
+// ── Condición de fecha ────────────────────────────────────────────────────────
 $db = (new Conexion())->conectar();
 
-// Condición de fecha (aplica sobre fecha_ingreso del pedido)
-$whereFecha = 'pe.fecha_ingreso BETWEEN :desde AND :hasta';
 $params = [
-    ':desde' => $fechaDesde . ' 00:00:00',
-    ':hasta' => $fechaHasta . ' 23:59:59',
+    ':desde'  => $fechaDesde . ' 00:00:00',
+    ':hasta'  => $fechaHasta . ' 23:59:59',
+    ':desde2' => $fechaDesde . ' 00:00:00',
+    ':hasta2' => $fechaHasta . ' 23:59:59',
+    ':desde3' => $fechaDesde . ' 00:00:00',
+    ':hasta3' => $fechaHasta . ' 23:59:59',
 ];
 
-// Condición de cliente
-$whereCliente = '';
+// ── Condición de cliente ──────────────────────────────────────────────────────
+// El universo de productos se limita a los que el cliente tiene en algún pedido.
+// Entradas (tabla stock) se muestran globales para ese producto.
+// Salidas y En Proceso se filtran por cliente.
+$whereClientePedido = '';   // para subconsultas de salidas/en_proceso
+$whereProductoCliente = ''; // para restringir el universo de productos
+
 if ($clienteId > 0) {
-    $whereCliente = 'AND pe.id_cliente = :id_cliente';
-    $params[':id_cliente'] = $clienteId;
+    $whereClientePedido   = 'AND pe.id_cliente = :id_cliente';
+    $whereProductoCliente = "AND pr.id IN (
+        SELECT DISTINCT pp_c.id_producto
+        FROM pedidos_productos pp_c
+        INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
+        WHERE p_c.id_cliente = :id_cliente2
+    )";
+    $params[':id_cliente']  = $clienteId;
+    $params[':id_cliente2'] = $clienteId;
 } elseif (!$isAdmin) {
-    $whereCliente = 'AND pe.id_cliente = :id_cliente';
-    $params[':id_cliente'] = $_SESSION['user_id'] ?? 0;
+    $whereClientePedido   = 'AND pe.id_cliente = :id_cliente';
+    $whereProductoCliente = "AND pr.id IN (
+        SELECT DISTINCT pp_c.id_producto
+        FROM pedidos_productos pp_c
+        INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
+        WHERE p_c.id_cliente = :id_cliente2
+    )";
+    $params[':id_cliente']  = $_SESSION['user_id'] ?? 0;
+    $params[':id_cliente2'] = $_SESSION['user_id'] ?? 0;
 }
 
-// Estados:
-//   Entradas   → id_estado = 1  (En bodega)
-//   Salidas    → id_estado IN (3, 14)  (Entregado / Entregado-liquidado)
-//   En Proceso → cualquier otro estado (2,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19)
+// ── Query principal ───────────────────────────────────────────────────────────
+// Entradas  → tabla stock, tipo_movimiento = 'entrada'  (interfaz / API / Excel masivo)
+// Salidas   → pedidos entregados (id_estado 3 = Entregado, 14 = Entregado-liquidado)
+// En Proceso→ pedidos con cualquier otro estado activo
+// Stock Final = Entradas - Salidas - En Proceso
 $sql = "
     SELECT
         pr.id                                                           AS id_producto,
         pr.nombre                                                       AS producto,
         pr.sku,
-        -- Entradas: pedidos en bodega (estado 1)
-        COALESCE(SUM(CASE WHEN pe.id_estado = 1
-                     THEN pp.cantidad ELSE 0 END), 0)                  AS entradas,
-        -- Salidas: pedidos entregados (estado 3 o 14)
-        COALESCE(SUM(CASE WHEN pe.id_estado IN (3, 14)
-                     THEN pp.cantidad ELSE 0 END), 0)                  AS salidas,
-        -- En Proceso: todos los demás estados
-        COALESCE(SUM(CASE WHEN pe.id_estado NOT IN (1, 3, 14)
-                     THEN pp.cantidad ELSE 0 END), 0)                  AS en_proceso,
-        -- Stock Final = Entradas - Salidas - En Proceso
-        COALESCE(SUM(CASE WHEN pe.id_estado = 1
-                     THEN pp.cantidad ELSE 0 END), 0)
-        - COALESCE(SUM(CASE WHEN pe.id_estado IN (3, 14)
-                     THEN pp.cantidad ELSE 0 END), 0)
-        - COALESCE(SUM(CASE WHEN pe.id_estado NOT IN (1, 3, 14)
-                     THEN pp.cantidad ELSE 0 END), 0)                  AS stock_final
+
+        -- ENTRADAS: movimientos tipo 'entrada' en la tabla stock (interfaz/API/Excel)
+        COALESCE((
+            SELECT SUM(s.cantidad)
+            FROM stock s
+            WHERE s.id_producto = pr.id
+              AND s.tipo_movimiento = 'entrada'
+              AND s.created_at BETWEEN :desde AND :hasta
+        ), 0)                                                           AS entradas,
+
+        -- SALIDAS: unidades en pedidos entregados (estado 3 o 14)
+        COALESCE((
+            SELECT SUM(pp.cantidad)
+            FROM pedidos_productos pp
+            INNER JOIN pedidos pe ON pe.id = pp.id_pedido
+            WHERE pp.id_producto = pr.id
+              AND pe.id_estado IN (3, 14)
+              AND pe.fecha_ingreso BETWEEN :desde2 AND :hasta2
+              $whereClientePedido
+        ), 0)                                                           AS salidas,
+
+        -- EN PROCESO: unidades en pedidos con otros estados activos
+        COALESCE((
+            SELECT SUM(pp.cantidad)
+            FROM pedidos_productos pp
+            INNER JOIN pedidos pe ON pe.id = pp.id_pedido
+            WHERE pp.id_producto = pr.id
+              AND pe.id_estado NOT IN (3, 14)
+              AND pe.fecha_ingreso BETWEEN :desde3 AND :hasta3
+              $whereClientePedido
+        ), 0)                                                           AS en_proceso
+
     FROM productos pr
-    INNER JOIN pedidos_productos pp ON pp.id_producto = pr.id
-    INNER JOIN pedidos pe            ON pe.id = pp.id_pedido
     WHERE pr.activo = 1
-      AND $whereFecha
-      $whereCliente
-    GROUP BY pr.id, pr.nombre, pr.sku
+    $whereProductoCliente
+
     HAVING (entradas <> 0 OR salidas <> 0 OR en_proceso <> 0)
     ORDER BY pr.nombre ASC
 ";
@@ -88,6 +123,12 @@ $stmt = $db->prepare($sql);
 foreach ($params as $k => $v) $stmt->bindValue($k, $v);
 $stmt->execute();
 $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Calcular stock_final en PHP: Entradas - Salidas - En Proceso
+foreach ($filas as &$f) {
+    $f['stock_final'] = (int)$f['entradas'] - (int)$f['salidas'] - (int)$f['en_proceso'];
+}
+unset($f);
 
 // Totales
 $totalStockFinal = array_sum(array_column($filas, 'stock_final'));
