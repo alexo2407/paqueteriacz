@@ -2,7 +2,12 @@
 /**
  * Vista Standalone: Resumen de Stock
  * Accedida via: /stock/resumen_stock
- * Muestra: Stock Final, Entradas, Salidas y Por Procesar por producto y cliente.
+ *
+ * Lógica basada en pedidos (no en movimientos de stock):
+ *   Entradas    = unidades en pedidos con estado 1  (En bodega)
+ *   Salidas     = unidades en pedidos con estado 3  (Entregado) o 14 (Entregado-liquidado)
+ *   En Proceso  = unidades en pedidos con cualquier otro estado activo
+ *   Stock Final = Entradas − Salidas − En Proceso
  */
 $usaDataTables = false;
 
@@ -18,96 +23,66 @@ require_role(['Administrador', 'Proveedor', 'Cliente']);
 $isAdmin = isSuperAdmin() || in_array('Administrador', $_SESSION['roles_nombres'] ?? [], true);
 
 // ── Filtros ──────────────────────────────────────────────────────────────────
-$fechaDesde  = $_GET['fecha_desde'] ?? date('Y-m-01');
-$fechaHasta  = $_GET['fecha_hasta'] ?? date('Y-m-d');
-$clienteId   = (int)($_GET['id_cliente'] ?? 0);
-$export      = isset($_GET['export']) && $_GET['export'] === '1';
+$fechaDesde = $_GET['fecha_desde'] ?? date('Y-m-01');
+$fechaHasta = $_GET['fecha_hasta'] ?? date('Y-m-d');
+$clienteId  = (int)($_GET['id_cliente'] ?? 0);
+$export     = isset($_GET['export']) && $_GET['export'] === '1';
 
-// ── Query principal ───────────────────────────────────────────────────────────
+// ── Query principal basada en pedidos ─────────────────────────────────────────
 $db = (new Conexion())->conectar();
 
-$whereCliente = '';
+// Condición de fecha (aplica sobre fecha_ingreso del pedido)
+$whereFecha = 'pe.fecha_ingreso BETWEEN :desde AND :hasta';
 $params = [
-    ':desde'    => $fechaDesde . ' 00:00:00',
-    ':hasta'    => $fechaHasta . ' 23:59:59',
-    ':hasta_sf' => $fechaHasta . ' 23:59:59',
-    ':desde2'   => $fechaDesde . ' 00:00:00',
-    ':hasta2'   => $fechaHasta . ' 23:59:59',
+    ':desde' => $fechaDesde . ' 00:00:00',
+    ':hasta' => $fechaHasta . ' 23:59:59',
 ];
 
-// ── Construir condición de cliente ────────────────────────────────────────────
-// Cuando hay cliente: el universo de productos es "los que aparecen en sus pedidos"
-// Cuando no hay cliente (admin): el universo es "todos los productos activos con movimiento"
-$joinCliente        = '';
-$whereProductoBase  = 'pr.activo = 1';
-$whereEntradas      = "s.tipo_movimiento = 'entrada' AND s.created_at BETWEEN :desde AND :hasta";
-$whereSalidas       = "s.tipo_movimiento = 'salida'  AND s.created_at BETWEEN :desde2 AND :hasta2";
-$wherePorProcesar   = 'p2.id_estado IN (1, 2)';
-$subStockFinal      = "SELECT SUM(s2.cantidad) FROM stock s2 WHERE s2.id_producto = pr.id AND s2.created_at <= :hasta_sf";
-
+// Condición de cliente
+$whereCliente = '';
 if ($clienteId > 0) {
-    // Limitar a productos que el cliente tiene en algún pedido
-    $joinCliente       = "INNER JOIN (
-                            SELECT DISTINCT pp_c.id_producto
-                            FROM pedidos_productos pp_c
-                            INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
-                            WHERE p_c.id_cliente = :id_cliente
-                          ) AS prod_cliente ON prod_cliente.id_producto = pr.id";
+    $whereCliente = 'AND pe.id_cliente = :id_cliente';
     $params[':id_cliente'] = $clienteId;
-
-    // Filtrar entradas/salidas solo de pedidos de ese cliente
-    $whereEntradas  = "s.tipo_movimiento = 'entrada' AND s.created_at BETWEEN :desde AND :hasta
-                       AND EXISTS (SELECT 1 FROM pedidos px WHERE px.id = s.referencia_id AND s.referencia_tipo='pedido' AND px.id_cliente = :id_cliente_e)";
-    $whereSalidas   = "s.tipo_movimiento = 'salida'  AND s.created_at BETWEEN :desde2 AND :hasta2
-                       AND EXISTS (SELECT 1 FROM pedidos px WHERE px.id = s.referencia_id AND s.referencia_tipo='pedido' AND px.id_cliente = :id_cliente_s)";
-    $wherePorProcesar = "p2.id_estado IN (1, 2) AND p2.id_cliente = :id_cliente_pp";
-    $subStockFinal  = "SELECT SUM(s2.cantidad) FROM stock s2
-                       INNER JOIN pedidos px2 ON px2.id = s2.referencia_id AND s2.referencia_tipo='pedido'
-                       WHERE s2.id_producto = pr.id AND px2.id_cliente = :id_cliente_sf AND s2.created_at <= :hasta_sf";
-
-    $params[':id_cliente_e']  = $clienteId;
-    $params[':id_cliente_s']  = $clienteId;
-    $params[':id_cliente_pp'] = $clienteId;
-    $params[':id_cliente_sf'] = $clienteId;
-
 } elseif (!$isAdmin) {
-    // Proveedor/Cliente sin selección: solo sus propios productos
-    $joinCliente = "INNER JOIN (
-                        SELECT DISTINCT pp_c.id_producto
-                        FROM pedidos_productos pp_c
-                        INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
-                        WHERE p_c.id_cliente = :id_cliente
-                    ) AS prod_cliente ON prod_cliente.id_producto = pr.id";
+    $whereCliente = 'AND pe.id_cliente = :id_cliente';
     $params[':id_cliente'] = $_SESSION['user_id'] ?? 0;
 }
 
+// Estados:
+//   Entradas   → id_estado = 1  (En bodega)
+//   Salidas    → id_estado IN (3, 14)  (Entregado / Entregado-liquidado)
+//   En Proceso → cualquier otro estado (2,4,5,6,7,8,9,10,11,12,13,15,16,17,18,19)
 $sql = "
     SELECT
-        pr.id                                                                         AS id_producto,
-        pr.nombre                                                                     AS producto,
+        pr.id                                                           AS id_producto,
+        pr.nombre                                                       AS producto,
         pr.sku,
-        -- Stock Final acumulado hasta el período
-        COALESCE(($subStockFinal), 0)                                                 AS stock_final,
-        -- Entradas en el período
-        COALESCE(SUM(CASE WHEN $whereEntradas THEN s.cantidad ELSE 0 END), 0)        AS entradas,
-        -- Salidas en el período
-        COALESCE(SUM(CASE WHEN $whereSalidas  THEN ABS(s.cantidad) ELSE 0 END), 0)   AS salidas,
-        -- Por procesar: pedidos pendientes/en proceso con este producto
-        COALESCE(
-            (SELECT SUM(pp2.cantidad)
-             FROM pedidos_productos pp2
-             INNER JOIN pedidos p2 ON p2.id = pp2.id_pedido
-             WHERE pp2.id_producto = pr.id AND $wherePorProcesar),
-        0)                                                                            AS por_procesar
+        -- Entradas: pedidos en bodega (estado 1)
+        COALESCE(SUM(CASE WHEN pe.id_estado = 1
+                     THEN pp.cantidad ELSE 0 END), 0)                  AS entradas,
+        -- Salidas: pedidos entregados (estado 3 o 14)
+        COALESCE(SUM(CASE WHEN pe.id_estado IN (3, 14)
+                     THEN pp.cantidad ELSE 0 END), 0)                  AS salidas,
+        -- En Proceso: todos los demás estados
+        COALESCE(SUM(CASE WHEN pe.id_estado NOT IN (1, 3, 14)
+                     THEN pp.cantidad ELSE 0 END), 0)                  AS en_proceso,
+        -- Stock Final = Entradas - Salidas - En Proceso
+        COALESCE(SUM(CASE WHEN pe.id_estado = 1
+                     THEN pp.cantidad ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN pe.id_estado IN (3, 14)
+                     THEN pp.cantidad ELSE 0 END), 0)
+        - COALESCE(SUM(CASE WHEN pe.id_estado NOT IN (1, 3, 14)
+                     THEN pp.cantidad ELSE 0 END), 0)                  AS stock_final
     FROM productos pr
-    $joinCliente
-    LEFT JOIN stock s ON s.id_producto = pr.id
-    WHERE $whereProductoBase
+    INNER JOIN pedidos_productos pp ON pp.id_producto = pr.id
+    INNER JOIN pedidos pe            ON pe.id = pp.id_pedido
+    WHERE pr.activo = 1
+      AND $whereFecha
+      $whereCliente
     GROUP BY pr.id, pr.nombre, pr.sku
-    HAVING (stock_final <> 0 OR entradas <> 0 OR salidas <> 0 OR por_procesar <> 0)
+    HAVING (entradas <> 0 OR salidas <> 0 OR en_proceso <> 0)
     ORDER BY pr.nombre ASC
 ";
-
 
 $stmt = $db->prepare($sql);
 foreach ($params as $k => $v) $stmt->bindValue($k, $v);
@@ -115,10 +90,11 @@ $stmt->execute();
 $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Totales
-$totalStockFinal  = array_sum(array_column($filas, 'stock_final'));
-$totalEntradas    = array_sum(array_column($filas, 'entradas'));
-$totalSalidas     = array_sum(array_column($filas, 'salidas'));
-$totalPorProcesar = array_sum(array_column($filas, 'por_procesar'));
+$totalStockFinal = array_sum(array_column($filas, 'stock_final'));
+$totalEntradas   = array_sum(array_column($filas, 'entradas'));
+$totalSalidas    = array_sum(array_column($filas, 'salidas'));
+$totalEnProceso  = array_sum(array_column($filas, 'en_proceso'));
+
 
 // ── Lista de clientes (solo admin) ───────────────────────────────────────────
 $clientes = [];
@@ -142,7 +118,7 @@ if ($export) {
     $sheet->setTitle('Resumen Stock');
 
     // Estilos de cabecera
-    $headers = ['Producto', 'SKU', 'Stock Final', 'Entradas', 'Salidas', 'Por Procesar'];
+    $headers = ['Producto', 'SKU', 'Stock Final', 'Entradas (En bodega)', 'Salidas (Entregado)', 'En Proceso (Demás estados)'];
     foreach ($headers as $col => $h) {
         $sheet->setCellValueByColumnAndRow($col + 1, 1, $h);
     }
@@ -159,7 +135,7 @@ if ($export) {
             (int)$f['stock_final'],
             (int)$f['entradas'],
             (int)$f['salidas'],
-            (int)$f['por_procesar'],
+            (int)$f['en_proceso'],
         ];
         foreach ($data as $col => $val) {
             $sheet->setCellValueByColumnAndRow($col + 1, $row + 2, $val);
@@ -172,7 +148,7 @@ if ($export) {
     $sheet->setCellValueByColumnAndRow(3, $lastRow, $totalStockFinal);
     $sheet->setCellValueByColumnAndRow(4, $lastRow, $totalEntradas);
     $sheet->setCellValueByColumnAndRow(5, $lastRow, $totalSalidas);
-    $sheet->setCellValueByColumnAndRow(6, $lastRow, $totalPorProcesar);
+    $sheet->setCellValueByColumnAndRow(6, $lastRow, $totalEnProceso);
     $totalStyle = ['font' => ['bold' => true]];
     $sheet->getStyle("A{$lastRow}:F{$lastRow}")->applyFromArray($totalStyle);
 
@@ -297,7 +273,7 @@ if ($export) {
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <h4><i class="bi bi-bar-chart-line-fill me-2"></i>Resumen de Stock</h4>
-                <small>Stock final, entradas, salidas y unidades por procesar por producto</small>
+                <small>Basado en estados de pedidos: En bodega (entrada), Entregado (salida), demás estados (en proceso)</small>
             </div>
             <!-- Stats rápidos -->
             <div class="d-flex gap-2 flex-wrap">
@@ -314,8 +290,8 @@ if ($export) {
                     <span class="stat-lbl">Salidas</span>
                 </div>
                 <div class="stat-badge stat-procesar">
-                    <span class="stat-val"><?= number_format($totalPorProcesar) ?></span>
-                    <span class="stat-lbl">Por Procesar</span>
+                    <span class="stat-val"><?= number_format($totalEnProceso) ?></span>
+                    <span class="stat-lbl">En Proceso</span>
                 </div>
             </div>
         </div>
@@ -376,9 +352,9 @@ if ($export) {
                     <tr>
                         <th class="th-product">Producto</th>
                         <th class="th-final">Stock Final</th>
-                        <th class="th-entradas">Entradas</th>
-                        <th class="th-salidas">Salidas</th>
-                        <th class="th-procesar">Por Procesar</th>
+                        <th class="th-entradas">Entradas <small class="fw-normal opacity-75">(En bodega)</small></th>
+                        <th class="th-salidas">Salidas <small class="fw-normal opacity-75">(Entregado)</small></th>
+                        <th class="th-procesar">En Proceso <small class="fw-normal opacity-75">(Demás estados)</small></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -393,7 +369,7 @@ if ($export) {
                         <td class="td-final"><?= number_format((int)$f['stock_final']) ?></td>
                         <td class="td-entradas"><?= number_format((int)$f['entradas']) ?></td>
                         <td class="td-salidas"><?= number_format((int)$f['salidas']) ?></td>
-                        <td class="td-procesar"><?= number_format((int)$f['por_procesar']) ?></td>
+                        <td class="td-procesar"><?= number_format((int)$f['en_proceso']) ?></td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -403,7 +379,7 @@ if ($export) {
                         <td>Total: <?= number_format($totalStockFinal) ?></td>
                         <td>Total: <?= number_format($totalEntradas) ?></td>
                         <td>Total: <?= number_format($totalSalidas) ?></td>
-                        <td>Total: <?= number_format($totalPorProcesar) ?></td>
+                        <td>Total: <?= number_format($totalEnProceso) ?></td>
                     </tr>
                 </tfoot>
             </table>
