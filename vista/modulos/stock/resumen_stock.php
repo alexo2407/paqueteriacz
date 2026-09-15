@@ -41,32 +41,29 @@ $params = [
 ];
 
 // ── Condición de cliente ──────────────────────────────────────────────────────
-// El universo de productos se limita a los que el cliente tiene en algún pedido.
-// Entradas (tabla stock) se muestran globales para ese producto.
-// Salidas y En Proceso se filtran por cliente.
-$whereClientePedido = '';   // para subconsultas de salidas/en_proceso
-$whereProductoCliente = ''; // para restringir el universo de productos
+// Cada subconsulta requiere su propio parámetro PDO (no se pueden reutilizar
+// named params en múltiples lugares de la misma sentencia preparada).
+//   :id_cliente_s  → filtro de cliente en subconsulta SALIDAS
+//   :id_cliente_p  → filtro de cliente en subconsulta EN PROCESO
+//   :id_cliente2   → filtro de cliente en restricción del universo de productos
+$whereClienteSalidas  = '';  // para subconsulta salidas
+$whereClienteProceso  = '';  // para subconsulta en_proceso
+$whereProductoCliente = '';  // para restringir universo de productos al cliente
 
-if ($clienteId > 0) {
-    $whereClientePedido   = 'AND pe.id_cliente = :id_cliente';
+$idClienteParam = $clienteId > 0 ? $clienteId : (!$isAdmin ? ($_SESSION['user_id'] ?? 0) : 0);
+
+if ($idClienteParam > 0) {
+    $whereClienteSalidas  = 'AND pe.id_cliente = :id_cliente_s';
+    $whereClienteProceso  = 'AND pe.id_cliente = :id_cliente_p';
     $whereProductoCliente = "AND pr.id IN (
         SELECT DISTINCT pp_c.id_producto
         FROM pedidos_productos pp_c
         INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
         WHERE p_c.id_cliente = :id_cliente2
     )";
-    $params[':id_cliente']  = $clienteId;
-    $params[':id_cliente2'] = $clienteId;
-} elseif (!$isAdmin) {
-    $whereClientePedido   = 'AND pe.id_cliente = :id_cliente';
-    $whereProductoCliente = "AND pr.id IN (
-        SELECT DISTINCT pp_c.id_producto
-        FROM pedidos_productos pp_c
-        INNER JOIN pedidos p_c ON p_c.id = pp_c.id_pedido
-        WHERE p_c.id_cliente = :id_cliente2
-    )";
-    $params[':id_cliente']  = $_SESSION['user_id'] ?? 0;
-    $params[':id_cliente2'] = $_SESSION['user_id'] ?? 0;
+    $params[':id_cliente_s'] = $idClienteParam;
+    $params[':id_cliente_p'] = $idClienteParam;
+    $params[':id_cliente2']  = $idClienteParam;
 }
 
 // ── Query principal ───────────────────────────────────────────────────────────
@@ -97,7 +94,7 @@ $sql = "
             WHERE pp.id_producto = pr.id
               AND pe.id_estado IN (3, 14)
               AND pe.fecha_ingreso BETWEEN :desde2 AND :hasta2
-              $whereClientePedido
+              $whereClienteSalidas
         ), 0)                                                           AS salidas,
 
         -- EN PROCESO: unidades en pedidos con otros estados activos
@@ -108,7 +105,7 @@ $sql = "
             WHERE pp.id_producto = pr.id
               AND pe.id_estado NOT IN (3, 14)
               AND pe.fecha_ingreso BETWEEN :desde3 AND :hasta3
-              $whereClientePedido
+              $whereClienteProceso
         ), 0)                                                           AS en_proceso
 
     FROM productos pr
