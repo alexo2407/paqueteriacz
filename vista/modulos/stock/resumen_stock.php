@@ -72,7 +72,7 @@ $sql = "
              FROM pedidos_productos pp2
              INNER JOIN pedidos p2 ON p2.id = pp2.id_pedido
              WHERE pp2.id_producto = pr.id
-               AND p2.estado IN (1, 2)  -- 1=Pendiente, 2=En proceso
+               AND p2.id_estado IN (1, 2)  -- 1=Pendiente, 2=En proceso
              ),
         0)                                                                            AS por_procesar
     FROM productos pr
