@@ -32,14 +32,12 @@ $export     = isset($_GET['export']) && $_GET['export'] === '1';
 $db = (new Conexion())->conectar();
 
 $params = [
-    ':desde1' => $fechaDesde . ' 00:00:00',
+    ':hasta1' => $fechaHasta . ' 23:59:59',
     ':desde2' => $fechaDesde . ' 00:00:00',
     ':desde3' => $fechaDesde . ' 00:00:00',
     ':hasta3' => $fechaHasta . ' 23:59:59',
     ':desde4' => $fechaDesde . ' 00:00:00',
     ':hasta4' => $fechaHasta . ' 23:59:59',
-    ':desde5' => $fechaDesde . ' 00:00:00',
-    ':hasta5' => $fechaHasta . ' 23:59:59',
 ];
 
 // ── Condición de cliente ──────────────────────────────────────────────────────
@@ -66,26 +64,25 @@ if ($idClienteParam > 0) {
     $params[':cli_prod'] = $idClienteParam;
 }
 
-// ── Query principal con Modelo Kardex ─────────────────────────────────────────
-// Stock Inicial = Entradas previas - Salidas previas a la fecha 'desde'
-// Entradas      = tipo 'entrada' en tabla stock en el período
+// ── Query principal ───────────────────────────────────────────────────────────
+// Stock Inicial = Entradas a bodega (hasta fecha_hasta) menos salidas previas (antes de fecha_desde)
 // Salidas       = pedidos entregados (estado 3 o 14) en el período
 // En Proceso    = pedidos activos en el período
-// Stock Final   = Stock Inicial + Entradas - Salidas - En Proceso
+// Stock Final   = Stock Inicial - Salidas - En Proceso
 $sql = "
     SELECT
         pr.id                                                           AS id_producto,
         pr.nombre                                                       AS producto,
         pr.sku,
 
-        -- STOCK INICIAL: saldo disponible antes de la fecha 'desde'
+        -- STOCK INICIAL: Entradas a bodega hasta la fecha fin menos salidas previas a la fecha inicio
         (
             COALESCE((
                 SELECT SUM(s.cantidad)
                 FROM stock s
                 WHERE s.id_producto = pr.id
                   AND s.tipo_movimiento = 'entrada'
-                  AND s.created_at < :desde1
+                  AND s.created_at <= :hasta1
             ), 0)
             -
             COALESCE((
@@ -99,15 +96,6 @@ $sql = "
             ), 0)
         )                                                               AS stock_inicial,
 
-        -- ENTRADAS: movimientos tipo 'entrada' en el período
-        COALESCE((
-            SELECT SUM(s.cantidad)
-            FROM stock s
-            WHERE s.id_producto = pr.id
-              AND s.tipo_movimiento = 'entrada'
-              AND s.created_at BETWEEN :desde3 AND :hasta3
-        ), 0)                                                           AS entradas,
-
         -- SALIDAS: unidades en pedidos entregados (estado 3 o 14) en el período
         COALESCE((
             SELECT SUM(pp.cantidad)
@@ -115,7 +103,7 @@ $sql = "
             INNER JOIN pedidos pe ON pe.id = pp.id_pedido
             WHERE pp.id_producto = pr.id
               AND pe.id_estado IN (3, 14)
-              AND pe.fecha_ingreso BETWEEN :desde4 AND :hasta4
+              AND pe.fecha_ingreso BETWEEN :desde3 AND :hasta3
               $whereClienteSalidas
         ), 0)                                                           AS salidas,
 
@@ -126,7 +114,7 @@ $sql = "
             INNER JOIN pedidos pe ON pe.id = pp.id_pedido
             WHERE pp.id_producto = pr.id
               AND pe.id_estado NOT IN (3, 14)
-              AND pe.fecha_ingreso BETWEEN :desde5 AND :hasta5
+              AND pe.fecha_ingreso BETWEEN :desde4 AND :hasta4
               $whereClienteProceso
         ), 0)                                                           AS en_proceso
 
@@ -134,7 +122,7 @@ $sql = "
     WHERE pr.activo = 1
     $whereProductoCliente
 
-    HAVING (stock_inicial <> 0 OR entradas <> 0 OR salidas <> 0 OR en_proceso <> 0)
+    HAVING (stock_inicial <> 0 OR salidas <> 0 OR en_proceso <> 0)
     ORDER BY pr.nombre ASC
 ";
 
@@ -143,15 +131,14 @@ foreach ($params as $k => $v) $stmt->bindValue($k, $v);
 $stmt->execute();
 $filas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Calcular stock_final en PHP: Stock Inicial + Entradas - Salidas - En Proceso
+// Calcular stock_final en PHP: Stock Inicial - Salidas - En Proceso
 foreach ($filas as &$f) {
-    $f['stock_final'] = (int)$f['stock_inicial'] + (int)$f['entradas'] - (int)$f['salidas'] - (int)$f['en_proceso'];
+    $f['stock_final'] = (int)$f['stock_inicial'] - (int)$f['salidas'] - (int)$f['en_proceso'];
 }
 unset($f);
 
 // Totales
 $totalStockInicial = array_sum(array_column($filas, 'stock_inicial'));
-$totalEntradas     = array_sum(array_column($filas, 'entradas'));
 $totalSalidas      = array_sum(array_column($filas, 'salidas'));
 $totalEnProceso    = array_sum(array_column($filas, 'en_proceso'));
 $totalStockFinal   = array_sum(array_column($filas, 'stock_final'));
@@ -179,7 +166,7 @@ if ($export) {
     $sheet->setTitle('Resumen Stock');
 
     // Estilos de cabecera
-    $headers = ['Producto', 'SKU', 'Stock Inicial', 'Entradas (En bodega)', 'Salidas (Entregado)', 'En Proceso (Demás estados)', 'Stock Final'];
+    $headers = ['Producto', 'SKU', 'Stock Inicial (En bodega)', 'Salidas (Entregado)', 'En Proceso (Demás estados)', 'Stock Final'];
     foreach ($headers as $col => $h) {
         $sheet->setCellValueByColumnAndRow($col + 1, 1, $h);
     }
@@ -187,14 +174,13 @@ if ($export) {
         'font' => ['bold' => true, 'color' => ['argb' => 'FF000000']],
         'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['argb' => 'FFF8BBD9']],
     ];
-    $sheet->getStyle('A1:G1')->applyFromArray($headerStyle);
+    $sheet->getStyle('A1:F1')->applyFromArray($headerStyle);
 
     foreach ($filas as $row => $f) {
         $data = [
             $f['producto'],
             $f['sku'] ?? '-',
             (int)$f['stock_inicial'],
-            (int)$f['entradas'],
             (int)$f['salidas'],
             (int)$f['en_proceso'],
             (int)$f['stock_final'],
@@ -208,12 +194,11 @@ if ($export) {
     $lastRow = count($filas) + 2;
     $sheet->setCellValueByColumnAndRow(1, $lastRow, 'TOTAL');
     $sheet->setCellValueByColumnAndRow(3, $lastRow, $totalStockInicial);
-    $sheet->setCellValueByColumnAndRow(4, $lastRow, $totalEntradas);
-    $sheet->setCellValueByColumnAndRow(5, $lastRow, $totalSalidas);
-    $sheet->setCellValueByColumnAndRow(6, $lastRow, $totalEnProceso);
-    $sheet->setCellValueByColumnAndRow(7, $lastRow, $totalStockFinal);
+    $sheet->setCellValueByColumnAndRow(4, $lastRow, $totalSalidas);
+    $sheet->setCellValueByColumnAndRow(5, $lastRow, $totalEnProceso);
+    $sheet->setCellValueByColumnAndRow(6, $lastRow, $totalStockFinal);
     $totalStyle = ['font' => ['bold' => true]];
-    $sheet->getStyle("A{$lastRow}:G{$lastRow}")->applyFromArray($totalStyle);
+    $sheet->getStyle("A{$lastRow}:F{$lastRow}")->applyFromArray($totalStyle);
 
     foreach (range(1, count($headers)) as $i) $sheet->getColumnDimensionByColumn($i)->setAutoSize(true);
 
@@ -271,8 +256,7 @@ if ($export) {
     border-bottom: 2px solid rgba(0,0,0,0.06);
 }
 .th-product  { background: #f8d7e8; color: #6b1e44; text-align: left; }
-.th-inicial  { background: #e1bee7; color: #4a148c; text-align: right; }
-.th-entradas { background: #c8e6c9; color: #1b5e20; text-align: right; }
+.th-inicial  { background: #c8e6c9; color: #1b5e20; text-align: right; }
 .th-salidas  { background: #ffccbc; color: #8b2500; text-align: right; }
 .th-procesar { background: #fff9c4; color: #6d5500; text-align: right; }
 .th-final    { background: #b2ebf2; color: #00606d; text-align: right; }
@@ -287,8 +271,7 @@ if ($export) {
 .td-product { font-weight: 500; color: #222; }
 
 /* Celdas de valor con color de fondo suave */
-.td-inicial  { background: rgba(225,190,231,.28); color: #6a1b9a; font-weight: 600; text-align: right; }
-.td-entradas { background: rgba(200,230,201,.28); color: #2e7d32; font-weight: 600; text-align: right; }
+.td-inicial  { background: rgba(200,230,201,.28); color: #2e7d32; font-weight: 600; text-align: right; }
 .td-salidas  { background: rgba(255,204,188,.28); color: #bf360c; font-weight: 600; text-align: right; }
 .td-procesar { background: rgba(255,249,196,.28); color: #f57f17; font-weight: 600; text-align: right; }
 .td-final    { background: rgba(178,235,242,.28); color: #00838f; font-weight: 700; text-align: right; }
@@ -312,8 +295,7 @@ if ($export) {
 }
 .stat-badge .stat-val  { font-size: 1.4rem; font-weight: 700; line-height: 1; }
 .stat-badge .stat-lbl  { font-size: .65rem; opacity: .8; margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
-.stat-inicial  { border: 1px solid rgba(225,190,231,.5); }
-.stat-entradas { border: 1px solid rgba(200,230,201,.5); }
+.stat-inicial  { border: 1px solid rgba(200,230,201,.5); }
 .stat-salidas  { border: 1px solid rgba(255,204,188,.5); }
 .stat-procesar { border: 1px solid rgba(255,249,196,.5); }
 .stat-final    { border: 1px solid rgba(178,235,242,.6); background: rgba(178,235,242,.15); }
@@ -339,17 +321,13 @@ if ($export) {
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <h4><i class="bi bi-bar-chart-line-fill me-2"></i>Resumen de Stock</h4>
-                <small>Fórmula: Stock Final = Stock Inicial + Entradas (en bodega) − Salidas (entregado) − En Proceso</small>
+                <small>Fórmula: Stock Final = Stock Inicial (en bodega) − Salidas (entregado) − En Proceso</small>
             </div>
             <!-- Stats rápidos -->
             <div class="d-flex gap-2 flex-wrap">
                 <div class="stat-badge stat-inicial">
                     <span class="stat-val"><?= number_format($totalStockInicial) ?></span>
                     <span class="stat-lbl">Stock Inicial</span>
-                </div>
-                <div class="stat-badge stat-entradas">
-                    <span class="stat-val"><?= number_format($totalEntradas) ?></span>
-                    <span class="stat-lbl">Entradas</span>
                 </div>
                 <div class="stat-badge stat-salidas">
                     <span class="stat-val"><?= number_format($totalSalidas) ?></span>
@@ -421,8 +399,7 @@ if ($export) {
                 <thead>
                     <tr>
                         <th class="th-product">Producto</th>
-                        <th class="th-inicial">Stock Inicial <small class="fw-normal opacity-75">(Previo)</small></th>
-                        <th class="th-entradas">Entradas <small class="fw-normal opacity-75">(En bodega)</small></th>
+                        <th class="th-inicial">Stock Inicial <small class="fw-normal opacity-75">(En bodega)</small></th>
                         <th class="th-salidas">Salidas <small class="fw-normal opacity-75">(Entregado)</small></th>
                         <th class="th-procesar">En Proceso <small class="fw-normal opacity-75">(Demás estados)</small></th>
                         <th class="th-final">Stock Final</th>
@@ -438,7 +415,6 @@ if ($export) {
                             <?php endif; ?>
                         </td>
                         <td class="td-inicial"><?= number_format((int)$f['stock_inicial']) ?></td>
-                        <td class="td-entradas"><?= number_format((int)$f['entradas']) ?></td>
                         <td class="td-salidas"><?= number_format((int)$f['salidas']) ?></td>
                         <td class="td-procesar"><?= number_format((int)$f['en_proceso']) ?></td>
                         <td class="td-final"><?= number_format((int)$f['stock_final']) ?></td>
@@ -449,7 +425,6 @@ if ($export) {
                     <tr>
                         <td class="tfoot-label">Total: <?= count($filas) ?> productos</td>
                         <td>Total: <?= number_format($totalStockInicial) ?></td>
-                        <td>Total: <?= number_format($totalEntradas) ?></td>
                         <td>Total: <?= number_format($totalSalidas) ?></td>
                         <td>Total: <?= number_format($totalEnProceso) ?></td>
                         <td>Total: <?= number_format($totalStockFinal) ?></td>
