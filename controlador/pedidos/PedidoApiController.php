@@ -785,7 +785,10 @@ class PedidoApiController
         if ($precioLocal !== null && $monedaId !== null) {
             $moneda = PedidosModel::obtenerMonedaPorId($monedaId);
             if ($moneda && isset($moneda['tasa_usd'])) {
-                return round($precioLocal * (float)$moneda['tasa_usd'], 2);
+                $tasa = (float)$moneda['tasa_usd'];
+                if ($tasa > 0) {
+                    return round($precioLocal * $tasa, 2);
+                }
             }
         }
         return null;
@@ -837,8 +840,10 @@ class PedidoApiController
             $moneda = PedidosModel::obtenerMonedaPorId($monedaId);
             if ($moneda && isset($moneda['tasa_usd'])) {
                 $tasa = (float)$moneda['tasa_usd'];
-                $precioTotalUsd = round($precioTotalLocal / $tasa, 2);
-                $tasaConversionUsd = $tasa;
+                if ($tasa > 0) {
+                    $precioTotalUsd = round($precioTotalLocal / $tasa, 2);
+                    $tasaConversionUsd = $tasa;
+                }
             }
         }
 
@@ -1014,8 +1019,12 @@ class PedidoApiController
             'precio_usd' => $pedido['precio_usd'] ?? null,
             // Combo pricing fields
             'precio_total_local' => $pedido['precio_total_local'] ?? null,
-            'precio_total_usd' => $pedido['precio_total_usd'] ?? null,
-            'tasa_conversion_usd' => $pedido['tasa_conversion_usd'] ?? null,
+            'precio_total_usd' => (isset($pedido['precio_total_usd']) && is_numeric($pedido['precio_total_usd']))
+                ? (float)$pedido['precio_total_usd']
+                : ((isset($pedido['precio_total_local']) && is_numeric($pedido['precio_total_local']) && isset($pedido['tasa_conversion_usd']) && is_numeric($pedido['tasa_conversion_usd']) && (float)$pedido['tasa_conversion_usd'] > 0)
+                    ? round((float)$pedido['precio_total_local'] / (float)$pedido['tasa_conversion_usd'], 2)
+                    : null),
+            'tasa_conversion_usd' => (isset($pedido['tasa_conversion_usd']) && is_numeric($pedido['tasa_conversion_usd'])) ? (float)$pedido['tasa_conversion_usd'] : null,
             'es_combo' => $esCombo,
             'fecha_entrega' => $pedido['fecha_entrega'] ?? null,
             'fecha_ingreso' => $pedido['fecha_registro'] ?? $pedido['created_at'] ?? $pedido['fecha_ingreso'] ?? null,
