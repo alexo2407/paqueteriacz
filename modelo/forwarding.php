@@ -715,7 +715,7 @@ class ForwardingModel
         try {
             $db = (new Conexion())->conectar();
 
-            // Intento 1: query completa con JOIN a barrios y columnas extendidas
+            // Intento 1: query completa con JOIN a municipios, barrios, departamentos y columnas extendidas
             try {
                 $stmt = $db->prepare("
                     SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
@@ -727,9 +727,11 @@ class ForwardingModel
                            p.id_barrio       AS _raw_id_barrio,
                            p.id_departamento AS _raw_id_departamento,
                            IFNULL(dep.nombre, '') AS departamento,
+                           IFNULL(mun.nombre, '') AS municipio_nombre,
                            IFNULL(bar.nombre, '') AS barrio_nombre
                     FROM pedidos p
                     LEFT JOIN departamentos dep ON dep.id = p.id_departamento
+                    LEFT JOIN municipios mun ON mun.id = p.id_municipio
                     LEFT JOIN barrios bar ON bar.id = p.id_barrio
                     WHERE p.id = :id
                 ");
@@ -753,6 +755,7 @@ class ForwardingModel
                            NULL AS _raw_id_barrio,
                            NULL AS _raw_id_departamento,
                            ''   AS departamento,
+                           ''   AS municipio_nombre,
                            ''   AS barrio_nombre
                     FROM pedidos p
                     WHERE p.id = :id

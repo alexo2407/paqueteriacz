@@ -16,20 +16,36 @@ require_once __DIR__ . '/BaseProvider.php';
 
 class LogisProProvider extends BaseProvider
 {
-    /** @var array|null Cache de autenticación para esta ejecución */
-    private static $authCache = null;
+    /** @var array Cache de autenticación indexado por clave de proveedor/credenciales */
+    private static $authCache = [];
+
+    /**
+     * Obtener clave única de cache para la instancia actual.
+     *
+     * @return string
+     */
+    private function getCacheKey(): string
+    {
+        return md5($this->baseUrl . '|' . ($this->credentials['userName'] ?? ''));
+    }
 
     /**
      * Autenticarse con LogisPro.
      *
-     * @return array ['token' => string, 'customersId' => int]
+     * @param bool $forceRefresh Forzar obtención de nuevo token ignorando la cache
+     * @return array ['token' => string, 'customersId' => int, 'expires_at' => int]
      * @throws Exception si falla
      */
-    public function authenticate()
+    public function authenticate($forceRefresh = false)
     {
-        // Reutilizar cache si existe (misma ejecución PHP)
-        if (self::$authCache !== null) {
-            return self::$authCache;
+        $cacheKey = $this->getCacheKey();
+
+        // Reutilizar cache si existe y le quedan más de 5 minutos de validez
+        if (!$forceRefresh && isset(self::$authCache[$cacheKey])) {
+            $cached = self::$authCache[$cacheKey];
+            if (!empty($cached['expires_at']) && $cached['expires_at'] > (time() + 300)) {
+                return $cached;
+            }
         }
 
         $url = $this->baseUrl . ($this->config['auth_endpoint'] ?? '/api/AccountApi');
@@ -64,12 +80,31 @@ class LogisProProvider extends BaseProvider
             throw new Exception("LogisPro auth error: " . ($data['Messages'] ?? 'Error desconocido'));
         }
 
-        self::$authCache = [
-            'token'       => $data['Data']['JwtToken'],
+        $jwtToken  = $data['Data']['JwtToken'];
+        $expiresAt = null;
+
+        // Extraer expiración real del payload del JWT si está presente
+        $jwtParts = explode('.', $jwtToken);
+        if (count($jwtParts) === 3) {
+            $payloadJson = base64_decode(strtr($jwtParts[1], '-_', '+/'));
+            $jwtPayload  = json_decode($payloadJson, true);
+            if (!empty($jwtPayload['exp'])) {
+                $expiresAt = (int)$jwtPayload['exp'];
+            }
+        }
+
+        // Fallback: 2 horas de expiración estándar si no se pudo parsear
+        if (!$expiresAt) {
+            $expiresAt = time() + 7000;
+        }
+
+        self::$authCache[$cacheKey] = [
+            'token'       => $jwtToken,
             'customersId' => (int)($data['Data']['CustomersId'] ?? 0),
+            'expires_at'  => $expiresAt,
         ];
 
-        return self::$authCache;
+        return self::$authCache[$cacheKey];
     }
 
     /**
@@ -94,6 +129,25 @@ class LogisProProvider extends BaseProvider
             'Accept: application/json',
             'Authorization: Bearer ' . $authData['token'],
         ], $body, 30);
+
+        // AUTO-REINTENTO ANTE 401: si el token venció o hubo colisión de sesión,
+        // forzar renovación inmediata de token y reintentar la creación una vez.
+        if ($response['http_status'] === 401) {
+            error_log("LogisProProvider: HTTP 401 recibido en createOrder para pedido {$pedido['id']}. Renovando token y reintentando...");
+            try {
+                $authData = $this->authenticate(true);
+                $payload  = $this->mapearCampos($pedido, $productos, $authData);
+                $body     = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+                $response = $this->httpRequest('POST', $url, [
+                    'Content-Type: application/json',
+                    'Accept: application/json',
+                    'Authorization: Bearer ' . $authData['token'],
+                ], $body, 30);
+            } catch (Exception $authEx) {
+                error_log("LogisProProvider: re-autenticación tras 401 falló: " . $authEx->getMessage());
+            }
+        }
 
         if ($response['error']) {
             throw new Exception("Error de conexión con LogisPro (createOrder): " . $response['error']);
@@ -170,7 +224,8 @@ class LogisProProvider extends BaseProvider
         $municipalitiesName =
             !empty($pedido['municipalitiesName'])        ? $pedido['municipalitiesName']
             : (!empty($pedido['municipio'])              ? $pedido['municipio']
-            : (($rawMunicipio && !is_numeric($rawMunicipio)) ? $rawMunicipio : ''));
+            : (!empty($pedido['municipio_nombre'])       ? $pedido['municipio_nombre']
+            : (($rawMunicipio && !is_numeric($rawMunicipio)) ? $rawMunicipio : '')));
 
         $rawDepto = $pedido['_raw_id_departamento'] ?? null;
         $departmentName =
@@ -224,9 +279,15 @@ class LogisProProvider extends BaseProvider
 
     /**
      * Limpiar cache de autenticación (útil para tests o cuando cambian credenciales).
+     *
+     * @param string|null $cacheKey Clave específica o null para limpiar toda la cache
      */
-    public static function clearAuthCache()
+    public static function clearAuthCache($cacheKey = null)
     {
-        self::$authCache = null;
+        if ($cacheKey !== null) {
+            unset(self::$authCache[$cacheKey]);
+        } else {
+            self::$authCache = [];
+        }
     }
 }
