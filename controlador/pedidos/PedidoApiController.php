@@ -146,7 +146,10 @@ class PedidoApiController
         $response = [
             "success" => true,
             "message" => "Pedido creado correctamente.",
-            "data" => $pedidoPayload['numero_orden']
+            "data" => [
+                "pedido_id" => (int)$nuevoId,
+                "numero_orden" => $pedidoPayload['numero_orden']
+            ]
         ];
 
         // Incluir resultado de forwarding si aplica

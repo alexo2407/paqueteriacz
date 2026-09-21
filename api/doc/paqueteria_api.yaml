@@ -316,8 +316,15 @@ components:
         message:
           type: string
         data:
-          type: integer
+          type: object
+          properties:
+            pedido_id:
+              type: integer
+            numero_orden:
+              type: string
       example:
         success: true
         message: Pedido creado correctamente.
-        data: 90001
+        data:
+          pedido_id: 28084
+          numero_orden: "90001"

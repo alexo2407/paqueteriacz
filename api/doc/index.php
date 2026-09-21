@@ -1105,6 +1105,21 @@
                         </tbody>
                     </table>
 
+                    <h4 data-lang="en">✅ Success Response <span class="status-badge status-200">200 OK</span></h4>
+                    <h4 data-lang="es">✅ Respuesta Exitosa <span class="status-badge status-200">200 OK</span></h4>
+
+                    <p data-lang="en">When the order is created successfully, the API returns a <code>200 OK</code> response containing both the internal <code>pedido_id</code> and the external <code>numero_orden</code> in the <code>data</code> object.</p>
+                    <p data-lang="es">Cuando el pedido se crea exitosamente, la API retorna una respuesta <code>200 OK</code> que contiene tanto el <code>pedido_id</code> interno como el <code>numero_orden</code> externo dentro del objeto <code>data</code>.</p>
+
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "success": true,
+    "message": "Pedido creado correctamente.",
+    "data": {
+        "pedido_id": 28084,
+        "numero_orden": 697896
+    }
+}</code></pre>
+
                     <h4 data-lang="en">❌ Error Response (Validation Error)</h4>
                     <h4 data-lang="es">❌ Respuesta de Error (Falla de Validación)</h4>
                     
@@ -2182,6 +2197,7 @@ municipalitySelect.addEventListener('change', (e) => {
             <div class="tab-pane fade" id="historial" role="tabpanel">
 
                 <!-- Descripción general -->
+                <!-- Descripción general -->
                 <div class="section-container">
                     <h2 class="section-title" data-lang="en">Order Status History</h2>
                     <h2 class="section-title" data-lang="es">Historial de Cambios de Estado</h2>
@@ -2189,7 +2205,16 @@ municipalitySelect.addEventListener('change', (e) => {
                     <p data-lang="en">This endpoint allows you to query the full audit trail of status changes for any order. Each record shows the previous state, the new state, the comment left at the time of the change, and who performed it.</p>
                     <p data-lang="es">Este endpoint permite consultar el historial completo de cambios de estado de los pedidos. Cada registro muestra el estado anterior, el estado nuevo, el comentario del cambio y quién lo realizó.</p>
 
-                    <div class="code-block">
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        <a href="#historial-transiciones" class="btn btn-sm btn-outline-primary active">
+                            <span>🔍 <strong>GET /api/pedidos/historial</strong> (<span data-lang="en">Audit Trail</span><span data-lang="es">Historial de Cambios</span>)</span>
+                        </a>
+                        <a href="#historial-estado-actual" class="btn btn-sm btn-outline-secondary">
+                            <span>📦 <strong>GET /api/pedidos/estado_pedidos</strong> (<span data-lang="en">Current Status & Delta Tracking</span><span data-lang="es">Estado Actual y Tracking Delta</span>)</span>
+                        </a>
+                    </div>
+
+                    <div class="code-block" id="historial-transiciones">
                         <span class="badge-endpoint badge-get">GET</span> /api/pedidos/historial
                         <span class="badge bg-primary float-end">🔐 <span data-lang="en">Authenticated</span><span data-lang="es">Autenticado</span></span>
                     </div>
@@ -2227,6 +2252,8 @@ municipalitySelect.addEventListener('change', (e) => {
                                 <tr><td><code>id_estados</code></td><td>string</td><td>—</td><td>Comma-separated state IDs — matches previous <strong>OR</strong> new state</td><td><code>1,2,3</code></td></tr>
                                 <tr><td><code>fecha_desde</code></td><td>date</td><td>—</td><td>Start date of the change (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
                                 <tr><td><code>fecha_hasta</code></td><td>date</td><td>—</td><td>End date of the change (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_desde</code></td><td>datetime/date</td><td>—</td><td>Filter status changes on/after timestamp (alias: <code>fecha_actualizacion</code>)</td><td><code>2026-09-20 14:00:00</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_hasta</code></td><td>datetime/date</td><td>—</td><td>Filter status changes on/before timestamp</td><td><code>2026-09-21 23:59:59</code></td></tr>
                                 <tr><td><code>id_usuario</code></td><td>integer</td><td>—</td><td>Filter by user who made the change</td><td><code>7</code></td></tr>
                                 <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td><td><code>2</code></td></tr>
                                 <tr><td><code>limit</code></td><td>integer</td><td>20</td><td>Records per page (max 100)</td><td><code>50</code></td></tr>
@@ -2254,6 +2281,8 @@ municipalitySelect.addEventListener('change', (e) => {
                                 <tr><td><code>id_estados</code></td><td>string</td><td>—</td><td>IDs de estados separados por coma — coincide con anterior <strong>O</strong> nuevo</td><td><code>1,2,3</code></td></tr>
                                 <tr><td><code>fecha_desde</code></td><td>fecha</td><td>—</td><td>Fecha inicio del cambio (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
                                 <tr><td><code>fecha_hasta</code></td><td>fecha</td><td>—</td><td>Fecha fin del cambio (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_desde</code></td><td>fecha/hora</td><td>—</td><td>Filtrar cambios a partir de fecha/hora (alias: <code>fecha_actualizacion</code>)</td><td><code>2026-09-20 14:00:00</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_hasta</code></td><td>fecha/hora</td><td>—</td><td>Filtrar cambios hasta fecha/hora</td><td><code>2026-09-21 23:59:59</code></td></tr>
                                 <tr><td><code>id_usuario</code></td><td>entero</td><td>—</td><td>Filtrar por usuario que realizó el cambio</td><td><code>7</code></td></tr>
                                 <tr><td><code>page</code></td><td>entero</td><td>1</td><td>Número de página</td><td><code>2</code></td></tr>
                                 <tr><td><code>limit</code></td><td>entero</td><td>20</td><td>Registros por página (máx 100)</td><td><code>50</code></td></tr>
@@ -2669,7 +2698,7 @@ foreach ($response['data'] as $cambio) {
                 </div>
 
                 <!-- Estado actual de pedidos -->
-                <div class="section-container">
+                <div class="section-container" id="historial-estado-actual">
                     <h2 class="section-title" data-lang="en">📦 Current Order Status</h2>
                     <h2 class="section-title" data-lang="es">📦 Estado Actual de Pedidos</h2>
 
@@ -2708,6 +2737,8 @@ foreach ($response['data'] as $cambio) {
                                 <tr><td><code>id_proveedor</code></td><td>integer</td><td>—</td><td>Filter by provider/messenger ID</td><td><code>3</code></td></tr>
                                 <tr><td><code>fecha_desde</code></td><td>date</td><td>—</td><td>Order entry date start (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
                                 <tr><td><code>fecha_hasta</code></td><td>date</td><td>—</td><td>Order entry date end (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_desde</code></td><td>datetime/date</td><td>—</td><td>Delta tracking: orders updated on/after timestamp (alias: <code>fecha_actualizacion</code>)</td><td><code>2026-09-20 14:00:00</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_hasta</code></td><td>datetime/date</td><td>—</td><td>Delta tracking: orders updated on/before timestamp</td><td><code>2026-09-21 23:59:59</code></td></tr>
                                 <tr><td><code>page</code></td><td>integer</td><td>1</td><td>Page number</td><td><code>2</code></td></tr>
                                 <tr><td><code>limit</code></td><td>integer</td><td>20</td><td>Records per page (max 100)</td><td><code>50</code></td></tr>
                             </tbody>
@@ -2724,6 +2755,8 @@ foreach ($response['data'] as $cambio) {
                                 <tr><td><code>id_proveedor</code></td><td>entero</td><td>—</td><td>Filtrar por ID de proveedor/mensajero</td><td><code>3</code></td></tr>
                                 <tr><td><code>fecha_desde</code></td><td>fecha</td><td>—</td><td>Fecha ingreso desde (Y-m-d)</td><td><code>2026-03-01</code></td></tr>
                                 <tr><td><code>fecha_hasta</code></td><td>fecha</td><td>—</td><td>Fecha ingreso hasta (Y-m-d)</td><td><code>2026-03-31</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_desde</code></td><td>fecha/hora</td><td>—</td><td>Tracking delta: pedidos actualizados a partir de fecha/hora (alias: <code>fecha_actualizacion</code>)</td><td><code>2026-09-20 14:00:00</code></td></tr>
+                                <tr><td><code>fecha_actualizacion_hasta</code></td><td>fecha/hora</td><td>—</td><td>Tracking delta: pedidos actualizados hasta fecha/hora</td><td><code>2026-09-21 23:59:59</code></td></tr>
                                 <tr><td><code>page</code></td><td>entero</td><td>1</td><td>Número de página</td><td><code>2</code></td></tr>
                                 <tr><td><code>limit</code></td><td>entero</td><td>20</td><td>Registros por página (máx 100)</td><td><code>50</code></td></tr>
                             </tbody>
@@ -2744,13 +2777,13 @@ Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
                     <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos?numero_orden=81154737
 Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
 
-                    <h5 data-lang="en">3. All orders currently "En bodega"</h5>
-                    <h5 data-lang="es">3. Todos los pedidos actualmente en bodega</h5>
-                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos?id_estado=1&amp;page=1&amp;limit=50
+                    <h5 data-lang="en">3. Delta tracking (incremental updates)</h5>
+                    <h5 data-lang="es">3. Tracking delta (actualizaciones incrementales)</h5>
+                    <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos?fecha_actualizacion_desde=2026-09-20+14:00:00
 Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
 
-                    <h5 data-lang="en">4. Orders by date range</h5>
-                    <h5 data-lang="es">4. Pedidos por rango de fecha</h5>
+                    <h5 data-lang="en">4. Orders by entry date range</h5>
+                    <h5 data-lang="es">4. Pedidos por rango de fecha de ingreso</h5>
                     <pre class="code-block line-numbers"><code class="language-bash">GET /api/pedidos/estado_pedidos?fecha_desde=2026-03-01&amp;fecha_hasta=2026-03-20
 Authorization: Bearer &lt;YOUR_TOKEN&gt;</code></pre>
 

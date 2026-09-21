@@ -160,6 +160,34 @@ try {
         }
     }
 
+    // Filtro por Fecha de Actualización/Cambio de Estado
+    $parseDatetimeFiltro = function ($raw, $nombreCampo, $esFinDeDia = false) {
+        $raw = trim($raw);
+        $raw = str_replace('T', ' ', $raw);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+            return $esFinDeDia ? "$raw 23:59:59" : "$raw 00:00:00";
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $raw)) {
+            return $raw;
+        }
+        responder(false, "Formato de $nombreCampo inválido. Use Y-m-d (ej: 2026-09-21) o Y-m-d H:i:s (ej: 2026-09-21 14:00:00).", null, 400);
+    };
+
+    $fechaActDesde = $_GET['fecha_actualizacion_desde'] ?? $_GET['fecha_actualizacion'] ?? null;
+    if (!empty($fechaActDesde)) {
+        $filtros['fecha_actualizacion_desde'] = $parseDatetimeFiltro($fechaActDesde, 'fecha_actualizacion_desde');
+    }
+
+    if (!empty($_GET['fecha_actualizacion_hasta'])) {
+        $filtros['fecha_actualizacion_hasta'] = $parseDatetimeFiltro($_GET['fecha_actualizacion_hasta'], 'fecha_actualizacion_hasta', true);
+    }
+
+    if (!empty($filtros['fecha_actualizacion_desde']) && !empty($filtros['fecha_actualizacion_hasta'])) {
+        if ($filtros['fecha_actualizacion_desde'] > $filtros['fecha_actualizacion_hasta']) {
+            responder(false, 'fecha_actualizacion_desde no puede ser posterior a fecha_actualizacion_hasta.', null, 400);
+        }
+    }
+
     if (!empty($_GET['id_usuario']) && is_numeric($_GET['id_usuario'])) {
         $filtros['id_usuario'] = (int)$_GET['id_usuario'];
     }

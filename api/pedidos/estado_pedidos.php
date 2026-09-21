@@ -22,6 +22,9 @@
  * | id_proveedor | int    | Solo admins: filtrar por proveedor     |
  * | fecha_desde  | string | Fecha ingreso desde (Y-m-d)            |
  * | fecha_hasta  | string | Fecha ingreso hasta (Y-m-d)            |
+ * | fecha_actualizacion       | string | Alias de fecha_actualizacion_desde     |
+ * | fecha_actualizacion_desde | string | Fecha/hora act. desde (Y-m-d o Y-m-d H:i:s) |
+ * | fecha_actualizacion_hasta | string | Fecha/hora act. hasta (Y-m-d o Y-m-d H:i:s) |
  * | page         | int    | Página (default: 1)                    |
  * | limit        | int    | Registros por página (default: 20, máx: 100) |
  * ------------------------------------------------------------------
@@ -131,6 +134,34 @@ try {
     if (!empty($filtros['fecha_desde']) && !empty($filtros['fecha_hasta'])) {
         if ($filtros['fecha_desde'] > $filtros['fecha_hasta']) {
             responder(false, 'fecha_desde no puede ser posterior a fecha_hasta.', null, 400);
+        }
+    }
+
+    // ── Filtros por Fecha de Actualización (Delta Tracking) ─────────────────
+    $parseDatetimeFiltro = function ($raw, $nombreCampo, $esFinDeDia = false) {
+        $raw = trim($raw);
+        $raw = str_replace('T', ' ', $raw);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+            return $esFinDeDia ? "$raw 23:59:59" : "$raw 00:00:00";
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $raw)) {
+            return $raw;
+        }
+        responder(false, "Formato de $nombreCampo inválido. Use Y-m-d (ej: 2026-09-21) o Y-m-d H:i:s (ej: 2026-09-21 14:00:00).", null, 400);
+    };
+
+    $fechaActDesde = $_GET['fecha_actualizacion_desde'] ?? $_GET['fecha_actualizacion'] ?? null;
+    if (!empty($fechaActDesde)) {
+        $filtros['fecha_actualizacion_desde'] = $parseDatetimeFiltro($fechaActDesde, 'fecha_actualizacion_desde');
+    }
+
+    if (!empty($_GET['fecha_actualizacion_hasta'])) {
+        $filtros['fecha_actualizacion_hasta'] = $parseDatetimeFiltro($_GET['fecha_actualizacion_hasta'], 'fecha_actualizacion_hasta', true);
+    }
+
+    if (!empty($filtros['fecha_actualizacion_desde']) && !empty($filtros['fecha_actualizacion_hasta'])) {
+        if ($filtros['fecha_actualizacion_desde'] > $filtros['fecha_actualizacion_hasta']) {
+            responder(false, 'fecha_actualizacion_desde no puede ser posterior a fecha_actualizacion_hasta.', null, 400);
         }
     }
 

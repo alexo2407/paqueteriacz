@@ -2567,6 +2567,16 @@ class PedidosModel
             $params[':fecha_hasta'] = $filtros['fecha_hasta'];
         }
 
+        if (!empty($filtros['fecha_actualizacion_desde'])) {
+            $where[]  = 'p.updated_at >= :fecha_actualizacion_desde';
+            $params[':fecha_actualizacion_desde'] = $filtros['fecha_actualizacion_desde'];
+        }
+
+        if (!empty($filtros['fecha_actualizacion_hasta'])) {
+            $where[]  = 'p.updated_at <= :fecha_actualizacion_hasta';
+            $params[':fecha_actualizacion_hasta'] = $filtros['fecha_actualizacion_hasta'];
+        }
+
         $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
 
         // Contar total
@@ -2812,6 +2822,14 @@ class PedidosModel
         if (!empty($filtros['fecha_hasta'])) {
             $where[] = "h.created_at <= :fecha_hasta";
             $params[':fecha_hasta'] = $filtros['fecha_hasta'] . " 23:59:59";
+        }
+        if (!empty($filtros['fecha_actualizacion_desde'])) {
+            $where[] = "h.created_at >= :fecha_act_desde";
+            $params[':fecha_act_desde'] = $filtros['fecha_actualizacion_desde'];
+        }
+        if (!empty($filtros['fecha_actualizacion_hasta'])) {
+            $where[] = "h.created_at <= :fecha_act_hasta";
+            $params[':fecha_act_hasta'] = $filtros['fecha_actualizacion_hasta'];
         }
         if (!empty($filtros['id_usuario'])) {
             $where[] = "h.id_usuario = :id_usuario";
