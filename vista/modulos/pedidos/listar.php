@@ -564,6 +564,19 @@ endif;
                         </div>
                     </div>
 
+                    <!-- Opción de Forwarding -->
+                    <div class="form-check form-switch mb-3 p-3 border rounded bg-light">
+                        <div class="d-flex align-items-center">
+                            <input class="form-check-input me-2" type="checkbox" role="switch" id="disparar_forwarding" name="disparar_forwarding" value="1" checked style="cursor:pointer;width:2.2em;height:1.2em;">
+                            <label class="form-check-label fw-bold mb-0 text-dark" for="disparar_forwarding" style="cursor:pointer;">
+                                <i class="bi bi-send-check text-primary me-1"></i> Disparar Forwarding a Proveedor Externo (LogisPro, etc.)
+                            </label>
+                        </div>
+                        <div class="form-text text-muted small mt-1 ms-1">
+                            Si está marcado, evalúa las reglas activas de forwarding del cliente y envía las órdenes a la API externa correspondiente.
+                        </div>
+                    </div>
+
                     <!-- Progreso -->
                     <div id="reasignarProgress" class="progress d-none" style="height:22px;">
                         <div class="progress-bar progress-bar-striped progress-bar-animated w-100" style="background:linear-gradient(135deg,#3b82f6,#2563eb);">Procesando...</div>
@@ -1796,14 +1809,49 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                     </div>`;
 
+            if (s.disparar_forwarding) {
+                html += `
+                    <div class="mt-3 pt-2 border-top">
+                        <div class="fw-bold mb-2 small text-uppercase text-secondary d-flex align-items-center gap-1">
+                            <i class="bi bi-send-check text-primary"></i> Forwarding a Proveedor Externo
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-4">
+                                <div class="text-center rounded-2 p-2 bg-white shadow-sm">
+                                    <div class="fs-4 fw-bold text-success">${s.fwd_exitosos ?? 0}</div>
+                                    <div class="small text-muted">Enviados API</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center rounded-2 p-2 bg-white shadow-sm">
+                                    <div class="fs-4 fw-bold text-secondary">${s.fwd_omitidos ?? 0}</div>
+                                    <div class="small text-muted">Omitidos / Sin regla</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center rounded-2 p-2 bg-white shadow-sm">
+                                    <div class="fs-4 fw-bold text-danger">${s.fwd_errores ?? 0}</div>
+                                    <div class="small text-muted">Fallos API</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
             if (data.detalle_no_encontrados && data.detalle_no_encontrados.length > 0) {
                 html += `<div class="mt-2"><strong class="small">⚠️ No encontrados (max 30):</strong>
                     <div class="small text-muted mt-1">${data.detalle_no_encontrados.join(' · ')}</div></div>`;
             }
             if (data.detalle_errores && data.detalle_errores.length > 0) {
-                html += `<div class="mt-2"><strong class="small">❌ Errores:</strong>
+                html += `<div class="mt-2"><strong class="small">❌ Errores BD:</strong>
                     <ul class="small text-danger mb-0 mt-1">`
                     + data.detalle_errores.map(e => `<li>${e}</li>`).join('')
+                    + `</ul></div>`;
+            }
+            if (data.detalle_fwd_errores && data.detalle_fwd_errores.length > 0) {
+                html += `<div class="mt-2"><strong class="small text-danger">❌ Errores Forwarding API:</strong>
+                    <ul class="small text-danger mb-0 mt-1">`
+                    + data.detalle_fwd_errores.map(e => `<li>${e}</li>`).join('')
                     + `</ul></div>`;
             }
             html += `<div class="small text-muted mt-2">⏱ Tiempo: ${s.tiempo_segundos ?? '?'}s</div></div>`;

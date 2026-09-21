@@ -2062,9 +2062,15 @@ class PedidosController
             exit;
         }
 
-        $modo            = $_POST['modo'] ?? 'A';
-        $proveedorGlobal = !empty($_POST['id_proveedor_global']) ? (int)$_POST['id_proveedor_global'] : null;
-        $tiempoInicio    = microtime(true);
+        $modo               = $_POST['modo'] ?? 'A';
+        $proveedorGlobal    = !empty($_POST['id_proveedor_global']) ? (int)$_POST['id_proveedor_global'] : null;
+        $dispararForwarding = !empty($_POST['disparar_forwarding']);
+        $tiempoInicio       = microtime(true);
+
+        if ($dispararForwarding) {
+            require_once __DIR__ . '/../services/ForwardingService.php';
+            require_once __DIR__ . '/../modelo/forwarding.php';
+        }
 
         // Validar archivo recibido
         if (!isset($_FILES['reasignar_file'])) {
@@ -2148,9 +2154,12 @@ class PedidosController
                 }
             }
 
-            $stmtPed      = $db->prepare("SELECT id FROM pedidos WHERE numero_orden = :n LIMIT 1");
+            $stmtPed      = $db->prepare("SELECT id, id_cliente FROM pedidos WHERE numero_orden = :n LIMIT 1");
             $total         = count($allRows);
             $actualizados  = 0;
+            $fwdExitosos   = 0;
+            $fwdOmitidos   = 0;
+            $fwdErrores    = [];
             $noEncontrados = [];
             $errores       = [];
 
@@ -2171,20 +2180,47 @@ class PedidosController
 
                 // Buscar pedido por numero_orden
                 $stmtPed->execute([':n' => $numeroOrden]);
-                $pedidoId = $stmtPed->fetchColumn();
+                $rowPed = $stmtPed->fetch(PDO::FETCH_ASSOC);
 
-                if (!$pedidoId) {
+                if (!$rowPed || empty($rowPed['id'])) {
                     $noEncontrados[] = "numero_orden: $numeroOrden";
                     continue;
                 }
 
+                $pedidoId  = (int)$rowPed['id'];
+                $idCliente = (int)($rowPed['id_cliente'] ?? 0);
+
                 // Actualizar — el modelo registra auditoría + historial automáticamente
                 try {
                     PedidosModel::actualizarPedido([
-                        'id_pedido'    => (int)$pedidoId,
+                        'id_pedido'    => $pedidoId,
                         'id_proveedor' => $idProveedor,
                     ]);
                     $actualizados++;
+
+                    // Disparar Forwarding a proveedor externo si se activó la opción
+                    if ($dispararForwarding && $idCliente > 0) {
+                        try {
+                            $fwdResults = ForwardingService::evaluarYReenviar($pedidoId, $idCliente);
+                            if ($fwdResults === null) {
+                                $fwdOmitidos++;
+                            } else {
+                                foreach ($fwdResults as $fwdR) {
+                                    if (!empty($fwdR['success']) && empty($fwdR['skipped'])) {
+                                        $fwdExitosos++;
+                                    } elseif (!empty($fwdR['skipped'])) {
+                                        $fwdOmitidos++;
+                                    } else {
+                                        $provName = $fwdR['provider'] ?? 'Forwarding';
+                                        $msgError = $fwdR['message'] ?? 'Error desconocido';
+                                        $fwdErrores[] = "Orden $numeroOrden ($provName): $msgError";
+                                    }
+                                }
+                            }
+                        } catch (Exception $fEx) {
+                            $fwdErrores[] = "Orden $numeroOrden (Forwarding): " . $fEx->getMessage();
+                        }
+                    }
                 } catch (Exception $e) {
                     $errores[] = "numero_orden $numeroOrden: " . $e->getMessage();
                 }
@@ -2196,14 +2232,19 @@ class PedidosController
                 'success' => $actualizados > 0,
                 'message' => "$actualizados pedidos reasignados de $total filas procesadas.",
                 'stats'   => [
-                    'total'           => $total,
-                    'actualizados'    => $actualizados,
-                    'no_encontrados'  => count($noEncontrados),
-                    'errores'         => count($errores),
-                    'tiempo_segundos' => $tiempo,
+                    'total'                  => $total,
+                    'actualizados'           => $actualizados,
+                    'no_encontrados'         => count($noEncontrados),
+                    'errores'                => count($errores),
+                    'disparar_forwarding'    => $dispararForwarding,
+                    'fwd_exitosos'           => $fwdExitosos,
+                    'fwd_omitidos'           => $fwdOmitidos,
+                    'fwd_errores'            => count($fwdErrores),
+                    'tiempo_segundos'        => $tiempo,
                 ],
                 'detalle_no_encontrados' => array_slice($noEncontrados, 0, 30),
                 'detalle_errores'        => array_slice($errores, 0, 30),
+                'detalle_fwd_errores'    => array_slice($fwdErrores, 0, 30),
             ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             echo json_encode([
