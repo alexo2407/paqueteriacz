@@ -315,18 +315,20 @@ class PedidoApiController
     }
 
     /**
-     * Autocompletar campos de ubicación (país, depto, municipio) desde CP
+     * Autocompletar campos de ubicación (país, depto, municipio, CP) desde CP o texto libre
      */
     private function autoCompletarDesdeCP(&$data) {
-        if (empty($data['codigo_postal'])) return;
+        // 0. Fallback: Si no viene codigo_postal pero sí postalCode, adoptarlo
+        if (empty($data['codigo_postal']) && !empty($data['postalCode'])) {
+            $data['codigo_postal'] = (string)$data['postalCode'];
+        }
 
         require_once __DIR__ . '/../../services/AddressService.php';
 
-        // Si no viene id_pais, derivar desde la moneda (paises.id_moneda_local)
+        // Si no viene id_pais, derivar desde la moneda (paises.id_moneda_local) o proveedor
         if (empty($data['id_pais'])) {
             try {
                 $dbCp = (new Conexion())->conectar();
-                // Intentar obtener id_moneda: del request, o derivar del proveedor
                 $monedaParaPais = !empty($data['id_moneda']) ? (int)$data['id_moneda'] : null;
                 if (!$monedaParaPais && !empty($data['id_proveedor'])) {
                     $stMon = $dbCp->prepare("SELECT p.id_moneda_local FROM usuarios u INNER JOIN paises p ON p.id = u.id_pais WHERE u.id = :id LIMIT 1");
@@ -346,40 +348,121 @@ class PedidoApiController
             }
         }
 
-        $cp_norm = AddressService::normalizarCP($data['codigo_postal'], 
-            !empty($data['id_pais']) ? (int)$data['id_pais'] : null);
-        
-        $cp_info = null;
+        // 1. Intentar autocompletar vía Código Postal
+        if (!empty($data['codigo_postal'])) {
+            $cp_norm = AddressService::normalizarCP($data['codigo_postal'], 
+                !empty($data['id_pais']) ? (int)$data['id_pais'] : null);
+            
+            $cp_info = null;
 
-        // 1. Si tenemos id_pais, buscar específico
-        if (!empty($data['id_pais']) && is_numeric($data['id_pais'])) {
-            $cp_info = CodigosPostalesModel::buscar((int)$data['id_pais'], $cp_norm);
-        }
-        
-        // 2. Si no encontró con país específico, buscar globalmente
-        if (!$cp_info) {
-            $global_results = CodigosPostalesModel::buscarGlobal($cp_norm);
-            if (count($global_results) > 0) {
-                // Si hay resultados, e.g. todos pertenecen al mismo país o solo hay uno, lo tomamos
-                $first = $global_results[0];
-                $all_same_location = true;
-                foreach ($global_results as $res) {
-                    if ($res['id_pais'] != $first['id_pais'] || 
-                        $res['id_departamento'] != $first['id_departamento'] || 
-                        $res['id_municipio'] != $first['id_municipio']) {
-                        $all_same_location = false;
-                        break;
+            // 1.1 Si tenemos id_pais, buscar específico
+            if (!empty($data['id_pais']) && is_numeric($data['id_pais'])) {
+                $cp_info = CodigosPostalesModel::buscar((int)$data['id_pais'], $cp_norm);
+            }
+            
+            // 1.2 Si no encontró con país específico, buscar globalmente
+            if (!$cp_info) {
+                $global_results = CodigosPostalesModel::buscarGlobal($cp_norm);
+                if (count($global_results) > 0) {
+                    $first = $global_results[0];
+                    $all_same_location = true;
+                    foreach ($global_results as $res) {
+                        if ($res['id_pais'] != $first['id_pais'] || 
+                            $res['id_departamento'] != $first['id_departamento'] || 
+                            $res['id_municipio'] != $first['id_municipio']) {
+                            $all_same_location = false;
+                            break;
+                        }
+                    }
+                    if ($all_same_location) {
+                        $cp_info = $first;
                     }
                 }
-                if ($all_same_location) {
-                    $cp_info = $first;
+            }
+
+            if ($cp_info) {
+                if (empty($data['id_pais']) && !empty($cp_info['id_pais'])) {
+                    $data['id_pais'] = (int)$cp_info['id_pais'];
+                }
+                if (empty($data['id_codigo_postal']) && !empty($cp_info['id'])) {
+                    $data['id_codigo_postal'] = (int)$cp_info['id'];
+                }
+                if (empty($data['id_departamento']) && !empty($cp_info['id_departamento'])) {
+                    $data['id_departamento'] = (int)$cp_info['id_departamento'];
+                }
+                if (empty($data['id_municipio']) && !empty($cp_info['id_municipio'])) {
+                    $data['id_municipio'] = (int)$cp_info['id_municipio'];
                 }
             }
         }
 
-        if ($cp_info) {
-            if (empty($data['id_pais'])) $data['id_pais'] = $cp_info['id_pais'];
-            // id_departamento, id_municipio, id_barrio: no auto-asignar, solo el cliente los define
+        // 2. Fallback inteligente si no hay CP o no resolvió depto/municipio:
+        //    Deducción por texto libre (departmentName, Location, municipalitiesName)
+        if (empty($data['id_departamento']) || empty($data['id_municipio'])) {
+            try {
+                $dbGeo = (new Conexion())->conectar();
+                $idPaisActual = !empty($data['id_pais']) ? (int)$data['id_pais'] : null;
+
+                // 2.1 Buscar coincidencia de Departamento por nombre en departmentName o Location
+                if (empty($data['id_departamento'])) {
+                    $candidatosDepto = [];
+                    if (!empty($data['departmentName'])) $candidatosDepto[] = trim($data['departmentName']);
+                    if (!empty($data['Location']))       $candidatosDepto[] = trim($data['Location']);
+
+                    foreach ($candidatosDepto as $candDepto) {
+                        $sqlD = "SELECT id, id_pais FROM departamentos WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nom))";
+                        if ($idPaisActual) $sqlD .= " AND id_pais = :id_pais";
+                        $sqlD .= " LIMIT 1";
+                        $stD = $dbGeo->prepare($sqlD);
+                        $paramsD = [':nom' => $candDepto];
+                        if ($idPaisActual) $paramsD[':id_pais'] = $idPaisActual;
+                        $stD->execute($paramsD);
+                        $rowD = $stD->fetch(PDO::FETCH_ASSOC);
+                        if ($rowD) {
+                            $data['id_departamento'] = (int)$rowD['id'];
+                            if (empty($data['id_pais'])) $data['id_pais'] = (int)$rowD['id_pais'];
+                            $idPaisActual = (int)$data['id_pais'];
+                            break;
+                        }
+                    }
+                }
+
+                // 2.2 Deducción Inversa por Municipio (si enviaron la ciudad en municipalitiesName, departmentName o municipio)
+                $candidatosMuni = [];
+                if (!empty($data['municipalitiesName'])) $candidatosMuni[] = trim($data['municipalitiesName']);
+                if (!empty($data['departmentName']))     $candidatosMuni[] = trim($data['departmentName']);
+                if (!empty($data['municipio']))          $candidatosMuni[] = trim($data['municipio']);
+
+                foreach ($candidatosMuni as $candMuni) {
+                    $sqlM = "SELECT m.id, m.id_departamento, d.id_pais 
+                             FROM municipios m
+                             LEFT JOIN departamentos d ON d.id = m.id_departamento
+                             WHERE LOWER(TRIM(m.nombre)) = LOWER(TRIM(:nom))";
+                    if (!empty($data['id_departamento'])) {
+                        $sqlM .= " AND m.id_departamento = :id_depto";
+                    } elseif ($idPaisActual) {
+                        $sqlM .= " AND d.id_pais = :id_pais";
+                    }
+                    $sqlM .= " LIMIT 1";
+                    $stM = $dbGeo->prepare($sqlM);
+                    $paramsM = [':nom' => $candMuni];
+                    if (!empty($data['id_departamento'])) {
+                        $paramsM[':id_depto'] = (int)$data['id_departamento'];
+                    } elseif ($idPaisActual) {
+                        $paramsM[':id_pais'] = $idPaisActual;
+                    }
+                    $stM->execute($paramsM);
+                    $rowM = $stM->fetch(PDO::FETCH_ASSOC);
+                    if ($rowM) {
+                        if (empty($data['id_municipio']))    $data['id_municipio'] = (int)$rowM['id'];
+                        if (empty($data['id_departamento'])) $data['id_departamento'] = (int)$rowM['id_departamento'];
+                        if (empty($data['id_pais']) && !empty($rowM['id_pais'])) $data['id_pais'] = (int)$rowM['id_pais'];
+                        break;
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("PedidoApiController::autoCompletarUbicacion error: " . $e->getMessage());
+            }
         }
     }
 
@@ -903,7 +986,7 @@ class PedidoApiController
             'municipio' => $data['municipio_nombre'] ?? null,
             'barrio' => $data['barrio_nombre'] ?? null,
             'zona' => $data['zona'] ?? null,
-            'codigo_postal' => $data['codigo_postal'] ?? null,
+            'codigo_postal' => $data['codigo_postal'] ?? $data['postalCode'] ?? null,
             'precio_local' => $precioLocal,
             'precio_usd' => $precioUsd,
             // Combo pricing fields
@@ -1017,7 +1100,7 @@ class PedidoApiController
             'municipio' => $pedido['municipio_nombre'] ?? null,
             'barrio' => $pedido['barrio_nombre'] ?? null,
             'zona' => $pedido['zona'] ?? null,
-            'codigo_postal' => $pedido['codigo_postal'] ?? null,
+            'codigo_postal' => $pedido['codigo_postal'] ?? $pedido['postalCode'] ?? null,
             'precio_local' => $pedido['precio_local'] ?? $pedido['precio'] ?? null,
             'precio_usd' => $pedido['precio_usd'] ?? null,
             // Combo pricing fields

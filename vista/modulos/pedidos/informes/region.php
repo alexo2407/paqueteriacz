@@ -87,15 +87,28 @@ if ($isAdmin && $idProveedor > 0) {
 $whereStr = 'WHERE ' . implode(' AND ', $where);
 
 // ── Query: efectividad por región ─────────────────────────────────────────────
-// Homologación de departamento en cascada:
-//   Ruta A: p.id_departamento → departamentos.id              (FK directa)
-//   Ruta B: p.departmentName  → departamentos.nombre          (texto libre, homologado LOWER+TRIM)
-//   Ruta C: p.id_codigo_postal → codigos_postales.id → dep.  (FK numérica de CP)
-//   Ruta D: p.codigo_postal   → codigos_postales.codigo_postal (CP como texto, ej. GT5077)
-//   Ruta E: CONCAT(prefijo_pais, p.codigo_postal) → codigos_postales (CP sin prefijo, ej. 1057→GT1057)
+// Homologación de departamento en cascada inteligente:
+//   Ruta A: p.id_departamento → departamentos.id                   (FK directa)
+//   Ruta B: p.departmentName  → departamentos.nombre               (texto libre, homologado LOWER+TRIM)
+//   Ruta C: p.Location        → departamentos.nombre               (texto libre en Location, ej: VALLE DEL CAUCA)
+//   Ruta D: p.departmentName  → municipios.nombre → dep.           (Deducción inversa si enviaron ciudad en depto, ej: CALI → Valle del Cauca)
+//   Ruta E: p.municipalitiesName → municipios.nombre → dep.        (Deducción inversa si enviaron ciudad en municipio, ej: CALI → Valle del Cauca)
+//   Ruta F: p.id_codigo_postal → codigos_postales.id → dep.       (FK numérica de CP)
+//   Ruta G: p.codigo_postal / p.postalCode → codigos_postales      (CP texto exacto)
+//   Ruta H: CONCAT(prefijo_pais, CP) → codigos_postales           (CP sin prefijo, ej. 1057→GT1057, 76001000→CO76001000)
 $sqlRegion = "
     SELECT
-        COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, d_cptxt.nombre, d_norm.nombre, 'Sin Región') AS provincia,
+        COALESCE(
+            d_fk.nombre,
+            d_name.nombre,
+            d_loc.nombre,
+            d_mun_dep.nombre,
+            d_mun_mun.nombre,
+            d_cp.nombre,
+            d_cptxt.nombre,
+            d_norm.nombre,
+            'Sin Región'
+        ) AS provincia,
         COUNT(*) AS cantidad,
         SUM(CASE WHEN LOWER(ep.nombre_estado) LIKE '%entregado a bodega%' THEN 0
                   WHEN LOWER(ep.nombre_estado) LIKE '%entregado%' THEN 1 ELSE 0 END) AS entregados,
@@ -118,31 +131,57 @@ $sqlRegion = "
     LEFT JOIN departamentos d_name
            ON d_fk.id IS NULL
           AND LOWER(TRIM(d_name.nombre)) = LOWER(TRIM(p.departmentName))
-    -- Ruta C: via id_codigo_postal (FK numérica) → codigos_postales
-    LEFT JOIN codigos_postales cp_hom
+    -- Ruta C: Location homologado por nombre de departamento (ej. 'VALLE DEL CAUCA')
+    LEFT JOIN departamentos d_loc
            ON d_fk.id IS NULL AND d_name.id IS NULL
+          AND LOWER(TRIM(d_loc.nombre)) = LOWER(TRIM(p.Location))
+    -- Ruta D: Deducción inversa si enviaron el municipio/ciudad en departmentName (ej. 'CALI' -> Valle del Cauca)
+    LEFT JOIN municipios mun_dep
+           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_loc.id IS NULL
+          AND LOWER(TRIM(mun_dep.nombre)) = LOWER(TRIM(p.departmentName))
+    LEFT JOIN departamentos d_mun_dep
+           ON d_mun_dep.id = mun_dep.id_departamento
+    -- Ruta E: Deducción inversa si enviaron el municipio/ciudad en municipalitiesName (ej. 'CALI' -> Valle del Cauca)
+    LEFT JOIN municipios mun_mun
+           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_loc.id IS NULL AND mun_dep.id IS NULL
+          AND LOWER(TRIM(mun_mun.nombre)) = LOWER(TRIM(p.municipalitiesName))
+    LEFT JOIN departamentos d_mun_mun
+           ON d_mun_mun.id = mun_mun.id_departamento
+    -- Ruta F: via id_codigo_postal (FK numérica) → codigos_postales
+    LEFT JOIN codigos_postales cp_hom
+           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_loc.id IS NULL AND mun_dep.id IS NULL AND mun_mun.id IS NULL
           AND cp_hom.id = p.id_codigo_postal
     LEFT JOIN departamentos d_cp
            ON d_cp.id = cp_hom.id_departamento
-    -- Ruta D: via codigo_postal (texto exacto, ej. GT5077)
+    -- Ruta G: via codigo_postal o postalCode (texto exacto, ej. GT5077 o 76001000)
     LEFT JOIN codigos_postales cp_txt
-           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_cp.id IS NULL
-          AND cp_txt.codigo_postal = p.codigo_postal
+           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_loc.id IS NULL AND mun_dep.id IS NULL AND mun_mun.id IS NULL AND d_cp.id IS NULL
+          AND cp_txt.codigo_postal = COALESCE(NULLIF(p.codigo_postal, ''), NULLIF(p.postalCode, ''))
     LEFT JOIN departamentos d_cptxt
            ON d_cptxt.id = cp_txt.id_departamento
-    -- Ruta E: CP sin prefijo de país → agregar prefijo y buscar (ej. 1057 + GT → GT1057)
+    -- Ruta H: CP sin prefijo de país → agregar prefijo y buscar (ej. 1057 + GT → GT1057, 76001000 + CO → CO76001000)
     LEFT JOIN paises pa_norm
            ON pa_norm.id = p.id_pais
     LEFT JOIN codigos_postales cp_norm
-           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_cp.id IS NULL AND d_cptxt.id IS NULL
+           ON d_fk.id IS NULL AND d_name.id IS NULL AND d_loc.id IS NULL AND mun_dep.id IS NULL AND mun_mun.id IS NULL AND d_cp.id IS NULL AND d_cptxt.id IS NULL
           AND pa_norm.prefijo_postal IS NOT NULL
-          AND p.codigo_postal NOT LIKE CONCAT(pa_norm.prefijo_postal, '%')
-          AND cp_norm.codigo_postal = CONCAT(pa_norm.prefijo_postal, p.codigo_postal)
+          AND COALESCE(NULLIF(p.codigo_postal, ''), NULLIF(p.postalCode, '')) NOT LIKE CONCAT(pa_norm.prefijo_postal, '%')
+          AND cp_norm.codigo_postal = CONCAT(pa_norm.prefijo_postal, COALESCE(NULLIF(p.codigo_postal, ''), NULLIF(p.postalCode, '')))
     LEFT JOIN departamentos d_norm
            ON d_norm.id = cp_norm.id_departamento
     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
     {$whereStr}
-    GROUP BY COALESCE(d_fk.nombre, d_name.nombre, d_cp.nombre, d_cptxt.nombre, d_norm.nombre, 'Sin Región')
+    GROUP BY COALESCE(
+        d_fk.nombre,
+        d_name.nombre,
+        d_loc.nombre,
+        d_mun_dep.nombre,
+        d_mun_mun.nombre,
+        d_cp.nombre,
+        d_cptxt.nombre,
+        d_norm.nombre,
+        'Sin Región'
+    )
     ORDER BY cantidad DESC
 ";
 $stmtReg = $db->prepare($sqlRegion);
