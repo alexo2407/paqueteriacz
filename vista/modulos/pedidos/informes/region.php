@@ -160,13 +160,18 @@ $sqlRegion = "
     LEFT JOIN departamentos d_cptxt
            ON d_cptxt.id = cp_txt.id_departamento
     -- Ruta H: CP sin prefijo de país → agregar prefijo y buscar (ej. 1057 + GT → GT1057, 76001000 + CO → CO76001000)
+    LEFT JOIN usuarios u_prov ON u_prov.id = p.id_proveedor
+    LEFT JOIN usuarios u_cli  ON u_cli.id  = p.id_cliente
     LEFT JOIN paises pa_norm
-           ON pa_norm.id = p.id_pais
+           ON pa_norm.id = COALESCE(p.id_pais, u_prov.id_pais, u_cli.id_pais)
     LEFT JOIN codigos_postales cp_norm
            ON d_fk.id IS NULL AND d_name.id IS NULL AND d_loc.id IS NULL AND mun_dep.id IS NULL AND mun_mun.id IS NULL AND d_cp.id IS NULL AND d_cptxt.id IS NULL
           AND pa_norm.prefijo_postal IS NOT NULL
           AND COALESCE(NULLIF(p.codigo_postal, ''), NULLIF(p.postalCode, '')) NOT LIKE CONCAT(pa_norm.prefijo_postal, '%')
-          AND cp_norm.codigo_postal = CONCAT(pa_norm.prefijo_postal, COALESCE(NULLIF(p.codigo_postal, ''), NULLIF(p.postalCode, '')))
+          AND (
+              cp_norm.codigo_postal = CONCAT(pa_norm.prefijo_postal, COALESCE(NULLIF(p.codigo_postal, ''), NULLIF(p.postalCode, '')))
+              OR cp_norm.codigo_postal = CONCAT(pa_norm.prefijo_postal, TRIM(LEADING '0' FROM COALESCE(NULLIF(p.codigo_postal, ''), NULLIF(p.postalCode, ''))))
+          )
     LEFT JOIN departamentos d_norm
            ON d_norm.id = cp_norm.id_departamento
     LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado

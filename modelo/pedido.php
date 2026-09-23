@@ -601,11 +601,24 @@ class PedidosModel
                         break;
                     case 'id_pais':
                         // accept numeric id or try to resolve by name/code
-                        $params[':id_pais'] = self::resolvePaisId($data['pais'] ?? null);
+                        $idPaisRes = self::resolvePaisId($data['pais'] ?? $data['id_pais'] ?? null);
+                        if (!$idPaisRes) {
+                            $idUserRef = !empty($data['id_cliente']) ? (int)$data['id_cliente'] : (!empty($data['id_proveedor']) ? (int)$data['id_proveedor'] : null);
+                            if ($idUserRef) {
+                                $stmtUser = $db->prepare('SELECT id_pais FROM usuarios WHERE id = :id LIMIT 1');
+                                $stmtUser->execute([':id' => $idUserRef]);
+                                $uPais = $stmtUser->fetchColumn();
+                                if (!empty($uPais)) {
+                                    $idPaisRes = (int)$uPais;
+                                }
+                            }
+                        }
+                        $params[':id_pais'] = $idPaisRes;
                         break;
                     case 'id_departamento':
                         // try to resolve departamento, optionally using provided pais hint
-                        $params[':id_departamento'] = self::resolveDepartamentoId($data['departamento'] ?? null, $data['pais'] ?? null);
+                        $idPaisHint = self::resolvePaisId($data['pais'] ?? $data['id_pais'] ?? null);
+                        $params[':id_departamento'] = self::resolveDepartamentoId($data['departamento'] ?? $data['id_departamento'] ?? null, $idPaisHint);
                         break;
                     case 'id_municipio':
                         $params[':id_municipio'] = $data['id_municipio'] ?? null;
@@ -640,17 +653,23 @@ class PedidosModel
                         break;
                     case 'id_codigo_postal':
                         // Lógica de homologación
-                        $idPais = self::resolvePaisId($data['pais'] ?? null);
-                        $cp = $data['codigo_postal'] ?? null;
-                        $idCP = null;
-                        if ($idPais && $cp) {
+                        $idPais = $params[':id_pais'] ?? self::resolvePaisId($data['pais'] ?? $data['id_pais'] ?? null);
+                        $cp = $data['codigo_postal'] ?? $data['postalCode'] ?? null;
+                        $idCP = $data['id_codigo_postal'] ?? null;
+                        if (!$idCP && $idPais && $cp) {
                             $homologacion = AddressService::resolverHomologacion($idPais, $cp, [
-                                'id_departamento' => self::resolveDepartamentoId($data['departamento'] ?? null, $idPais),
+                                'id_departamento' => $params[':id_departamento'] ?? self::resolveDepartamentoId($data['departamento'] ?? null, $idPais),
                                 'id_municipio' => $data['id_municipio'] ?? null,
                                 'id_barrio' => $data['id_barrio'] ?? null,
-                                'nombre_localidad' => $data['municipio'] ?? null
+                                'nombre_localidad' => $data['municipio'] ?? $data['Location'] ?? null
                             ]);
                             $idCP = $homologacion['id'] ?? null;
+                            if (empty($params[':id_departamento']) && !empty($homologacion['id_departamento'])) {
+                                $params[':id_departamento'] = (int)$homologacion['id_departamento'];
+                            }
+                            if (empty($params[':id_municipio']) && !empty($homologacion['id_municipio'])) {
+                                $params[':id_municipio'] = (int)$homologacion['id_municipio'];
+                            }
                         }
                         $params[':id_codigo_postal'] = $idCP;
                         break;
@@ -1719,6 +1738,41 @@ class PedidosModel
             // Normalizar fecha de entrega para evitar 00:00:00 al crear
             if (!empty($pedido['fecha_entrega']) && strlen(trim($pedido['fecha_entrega'])) === 10) {
                 $pedido['fecha_entrega'] = trim($pedido['fecha_entrega']) . ' ' . date('H:i:s');
+            }
+
+            // Si id_pais no viene especificado, intentar resolver desde cliente o proveedor
+            if (empty($pedido['id_pais']) && empty($pedido['pais'])) {
+                $userRefId = !empty($pedido['id_cliente']) ? (int)$pedido['id_cliente'] : (!empty($pedido['id_proveedor']) ? (int)$pedido['id_proveedor'] : null);
+                if ($userRefId) {
+                    $stmtUser = $db->prepare('SELECT id_pais FROM usuarios WHERE id = :id LIMIT 1');
+                    $stmtUser->execute([':id' => $userRefId]);
+                    $uPais = $stmtUser->fetchColumn();
+                    if (!empty($uPais)) {
+                        $pedido['id_pais'] = (int)$uPais;
+                    }
+                }
+            } elseif (!empty($pedido['pais']) && empty($pedido['id_pais'])) {
+                $pedido['id_pais'] = self::resolvePaisId($pedido['pais']);
+            }
+
+            // Homologación y resolución de código postal si id_codigo_postal no viene
+            if (!empty($pedido['id_pais']) && (!empty($pedido['codigo_postal']) || !empty($pedido['postalCode'])) && empty($pedido['id_codigo_postal'])) {
+                $cpToResolve = !empty($pedido['codigo_postal']) ? $pedido['codigo_postal'] : $pedido['postalCode'];
+                $homologacion = AddressService::resolverHomologacion($pedido['id_pais'], $cpToResolve, [
+                    'id_departamento' => $pedido['id_departamento'] ?? (!empty($pedido['departmentName']) ? self::resolveDepartamentoId($pedido['departmentName'], $pedido['id_pais']) : null),
+                    'id_municipio'    => $pedido['id_municipio'] ?? null,
+                    'id_barrio'       => $pedido['id_barrio'] ?? null,
+                    'nombre_localidad'=> $pedido['municipio'] ?? $pedido['Location'] ?? $pedido['municipalitiesName'] ?? null,
+                ]);
+                if ($homologacion && !empty($homologacion['id'])) {
+                    $pedido['id_codigo_postal'] = (int)$homologacion['id'];
+                    if (empty($pedido['id_departamento']) && !empty($homologacion['id_departamento'])) {
+                        $pedido['id_departamento'] = (int)$homologacion['id_departamento'];
+                    }
+                    if (empty($pedido['id_municipio']) && !empty($homologacion['id_municipio'])) {
+                        $pedido['id_municipio'] = (int)$homologacion['id_municipio'];
+                    }
+                }
             }
 
             // 2. Insertar el pedido
