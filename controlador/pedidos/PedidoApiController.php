@@ -360,8 +360,8 @@ class PedidoApiController
                 $cp_info = CodigosPostalesModel::buscar((int)$data['id_pais'], $cp_norm);
             }
             
-            // 1.2 Si no encontró con país específico, buscar globalmente
-            if (!$cp_info) {
+            // 1.2 Si no encontró con país específico, buscar globalmente SOLO si no tenemos id_pais
+            if (!$cp_info && empty($data['id_pais'])) {
                 $global_results = CodigosPostalesModel::buscarGlobal($cp_norm);
                 if (count($global_results) > 0) {
                     $first = $global_results[0];
