@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS forwarding_webhook_events;
 DROP TABLE IF EXISTS forwarding_guias;
 
 ALTER TABLE pedidos
-    DROP COLUMN IF EXISTS correo,
-    DROP COLUMN IF EXISTS peso,
-    DROP COLUMN IF EXISTS unidad_peso,
-    DROP COLUMN IF EXISTS bultos;
+    DROP COLUMN correo,
+    DROP COLUMN peso,
+    DROP COLUMN unidad_peso,
+    DROP COLUMN bultos;
