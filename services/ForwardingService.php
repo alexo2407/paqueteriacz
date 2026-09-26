@@ -26,6 +26,7 @@ class ForwardingService
         'logispro'  => 'LogisProProvider',
         'hlexpress' => 'HLExpressProvider',
         'caex'      => 'CAEXProvider',
+        'c807'      => 'C807Provider',
         'dynamic'   => 'DynamicProvider',  // Motor dinámico configurable por UI
     ];
 
@@ -349,9 +350,14 @@ class ForwardingService
 
             $authData = $provider->authenticate();
 
+            $msg = 'Conexión exitosa';
+            if ($slug === 'c807') {
+                $msg = 'Autenticación con C807 Xpress exitosa (Basic Auth a ' . ($config['auth_endpoint'] ?? '/admin.php/sesion/get_token') . '). Se validaron las credenciales y se obtuvo el Bearer Token correctamente (no se creó ninguna guía).';
+            }
+
             return [
                 'success'       => true,
-                'message'       => 'Conexión exitosa',
+                'message'       => $msg,
                 'customersId'   => $authData['customersId'] ?? null,
                 'token_preview' => substr($authData['token'] ?? $authData['userName'] ?? '', 0, 20) . '...',
             ];

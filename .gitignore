@@ -97,3 +97,4 @@ install-workers-production.sh
 # =====================================================
 debug_dump.txt
 force_logout.php
+scratch/

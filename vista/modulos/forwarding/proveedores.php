@@ -135,8 +135,9 @@ $proveedores = ForwardingModel::obtenerProveedores();
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Slug / Driver <small class="text-muted">(tipo de integración)</small></label>
-                        <input type="text" class="form-control" id="provSlug" placeholder="logispro" list="slugSuggestions">
+                        <input type="text" class="form-control" id="provSlug" placeholder="logispro" list="slugSuggestions" oninput="onSlugChange()" onchange="onSlugChange()">
                         <datalist id="slugSuggestions">
+                            <option value="c807">C807 Xpress</option>
                             <option value="logispro">LogisPro (Ecuador, México, etc.)</option>
                             <option value="hlexpress">HL Express</option>
                             <option value="caex">CAEX</option>
@@ -193,6 +194,61 @@ $proveedores = ForwardingModel::obtenerProveedores();
                             </button>
                         </div>
                         <input type="hidden" id="provExistingWebhookSecret" value="">
+                    </div>
+
+                    <!-- ── Sección C807 Xpress (solo visible cuando slug = c807) ── -->
+                    <div class="col-12" id="c807Section" style="display:none;">
+                        <div class="p-3 rounded-3" style="background:#eef7ff;border:1px dashed #0B4EA2;">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-box-seam" style="color:#0B4EA2;font-size:1.2rem;"></i>
+                                    <strong style="color:#061C4C;">Parámetros Operativos C807 Xpress</strong>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnSyncC807Geo" onclick="syncC807Catalogs()">
+                                    <i class="bi bi-cloud-arrow-down me-1"></i>Sincronizar Catálogos C807
+                                </button>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold small">Tipo Entrega</label>
+                                    <select class="form-select form-select-sm" id="c807TipoEntrega">
+                                        <option value="NRML" selected>NRML (Normal)</option>
+                                        <option value="PLUS">PLUS (Entrega Plus)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold small">Tipo Servicio</label>
+                                    <select class="form-select form-select-sm" id="c807TipoServicio">
+                                        <option value="SER" selected>SER (Regular)</option>
+                                        <option value="CCE">CCE (Cobro contra entrega)</option>
+                                        <option value="SEC">SEC (Envío por cobrar)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold small">Unidad de Medida</label>
+                                    <select class="form-select form-select-sm" id="c807UnidadMedida">
+                                        <option value="LB" selected>LB (Libras)</option>
+                                        <option value="KG">KG (Kilogramos)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold small">Sede <small class="text-muted">(opcional)</small></label>
+                                    <input type="number" class="form-control form-control-sm" id="c807Sede" placeholder="1">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Política de Recolecta</label>
+                                    <select class="form-select form-select-sm" id="c807PoliticaRecolecta">
+                                        <option value="siguiente_dia_habil" selected>Siguiente día hábil (09:00 AM)</option>
+                                        <option value="hoy_actual">Mismo día (+2 horas)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold small">Instrucciones de Recolección</label>
+                                    <input type="text" class="form-control form-control-sm" id="c807RecolectaComentario" placeholder="Recolectar en bodega">
+                                </div>
+                            </div>
+                            <div id="syncResultC807" class="mt-2 small text-muted"></div>
+                        </div>
                     </div>
 
                     <!-- ── Sección SOAP (solo visible cuando payload_format = soap) ── -->
@@ -322,9 +378,13 @@ function testConnection() {
         res.style.display = 'block';
         if (data.success) {
             res.className = 'test-result success';
-            res.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i><strong>Conexión exitosa</strong>
-                <div class="mt-2"><strong>CustomersId:</strong> <span class="badge bg-primary">${data.customersId}</span></div>
-                <div><strong>Token:</strong> <code>${data.token_preview || ''}</code></div>`;
+            let extra = '';
+            if (data.customersId !== null && data.customersId !== undefined) {
+                extra += `<div class="mt-2"><strong>CustomersId:</strong> <span class="badge bg-primary">${data.customersId}</span></div>`;
+            }
+            res.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i><strong>${data.message || 'Conexión exitosa'}</strong>
+                ${extra}
+                <div class="mt-1"><strong>Token:</strong> <code>${data.token_preview || ''}</code></div>`;
         } else {
             res.className = 'test-result error';
             res.innerHTML = `<i class="bi bi-x-circle-fill text-danger me-2"></i><strong>Error:</strong> ${data.message}`;
@@ -341,15 +401,78 @@ function testConnection() {
     });
 }
 
+function onSlugChange() {
+    const slug = document.getElementById('provSlug').value.toLowerCase().trim();
+    if (slug === 'c807') {
+        const authEp = document.getElementById('provAuthEp');
+        const orderEp = document.getElementById('provOrderEp');
+        const authM = document.getElementById('provAuthMethod');
+        const fmt = document.getElementById('provPayloadFormat');
+        const baseU = document.getElementById('provBaseUrl');
+
+        if (!authEp.value || authEp.value === '/api/AccountApi') authEp.value = '/admin.php/sesion/get_token';
+        if (!orderEp.value || orderEp.value === '/api/Orders/OrderAndOrderDetail') orderEp.value = '/guia.php/api/set_registro';
+        authM.value = 'basic';
+        fmt.value = 'json';
+        if (!baseU.value) baseU.value = 'https://qaapp.c807.com';
+    }
+    toggleSoapSection();
+    toggleC807Section();
+}
+
 function toggleSoapSection() {
     const fmt = document.getElementById('provPayloadFormat').value;
     document.getElementById('soapSection').style.display = (fmt === 'soap') ? 'block' : 'none';
+}
+
+function toggleC807Section() {
+    const slug = document.getElementById('provSlug').value.toLowerCase().trim();
+    const el = document.getElementById('c807Section');
+    if (el) el.style.display = (slug === 'c807') ? 'block' : 'none';
+}
+
+function syncC807Catalogs() {
+    const btn = document.getElementById('btnSyncC807Geo');
+    const res = document.getElementById('syncResultC807');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin-icon me-1"></i>Sincronizando...';
+    res.innerHTML = '<span class="text-primary"><i class="bi bi-hourglass-split me-1"></i>Consultando catálogos de C807...</span>';
+
+    fetch(BASE + 'ajax/forwarding_providers.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({
+            action: 'sync_c807_catalogs',
+            id: document.getElementById('providerId').value || undefined,
+            base_url: document.getElementById('provBaseUrl').value,
+            auth_endpoint: document.getElementById('provAuthEp').value,
+            userName: document.getElementById('provUserName').value,
+            password: document.getElementById('provPassword').value,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            res.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>${data.message} (${data.departamentos_sincronizados} deptos, ${data.municipios_sincronizados} municipios)</span>`;
+        } else {
+            res.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>${data.message}</span>`;
+        }
+    })
+    .catch(err => {
+        res.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Error de red: ${err.message}</span>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-arrow-down me-1"></i>Sincronizar Catálogos C807';
+    });
 }
 
 function saveProvider() {
     const id     = document.getElementById('providerId').value;
     const action = id ? 'actualizar' : 'crear';
     const fmt    = document.getElementById('provPayloadFormat').value;
+    const slug   = document.getElementById('provSlug').value.toLowerCase().trim();
 
     // Construir soap_config solo si aplica
     let soapConfig = null;
@@ -367,11 +490,24 @@ function saveProvider() {
         };
     }
 
+    // Construir c807_config si aplica
+    let c807Config = null;
+    if (slug === 'c807') {
+        c807Config = {
+            tipo_entrega: document.getElementById('c807TipoEntrega').value,
+            tipo_servicio: document.getElementById('c807TipoServicio').value,
+            unidad_medida: document.getElementById('c807UnidadMedida').value,
+            sede: document.getElementById('c807Sede').value || null,
+            politica_recolecta_fecha: document.getElementById('c807PoliticaRecolecta').value,
+            recolecta_comentario: document.getElementById('c807RecolectaComentario').value,
+        };
+    }
+
     const body = {
         action,
         id: id || undefined,
         nombre:          document.getElementById('provNombre').value,
-        slug:            document.getElementById('provSlug').value,
+        slug:            slug,
         base_url:        document.getElementById('provBaseUrl').value,
         auth_endpoint:   document.getElementById('provAuthEp').value,
         order_endpoint:  document.getElementById('provOrderEp').value,
@@ -382,6 +518,7 @@ function saveProvider() {
         webhook_secret:  document.getElementById('provWebhookSecret').value,
         existing_webhook_secret: document.getElementById('provExistingWebhookSecret').value,
         soap_config:     soapConfig,
+        c807_config:     c807Config,
     };
 
     fetch(BASE + 'ajax/forwarding_providers.php', {
@@ -420,7 +557,7 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
         document.getElementById('modalProviderTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Proveedor';
         document.getElementById('testResultModal').style.display = 'none';
 
-        // Cargar configuración SOAP si existe
+        // Cargar configuración SOAP y C807 si existe
         try {
             const cfg = JSON.parse(this.dataset.defaultconfig || '{}');
             document.getElementById('soapAction').value         = cfg.soap_action || '';
@@ -432,9 +569,20 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
             document.getElementById('soapAuthLoginTag').value   = cfg.soap_auth_login_tag || '';
             document.getElementById('soapAuthPassTag').value    = cfg.soap_auth_pass_tag || '';
             document.getElementById('soapAuthInBody').checked   = !!cfg.soap_auth_in_body;
-        } catch(e) { /* sin config SOAP */ }
+
+            // C807
+            if (document.getElementById('c807TipoEntrega')) {
+                document.getElementById('c807TipoEntrega').value = cfg.tipo_entrega || 'NRML';
+                document.getElementById('c807TipoServicio').value = cfg.tipo_servicio || 'SER';
+                document.getElementById('c807UnidadMedida').value = cfg.unidad_medida || 'LB';
+                document.getElementById('c807Sede').value = cfg.sede || '';
+                document.getElementById('c807PoliticaRecolecta').value = cfg.politica_recolecta_fecha || 'siguiente_dia_habil';
+                document.getElementById('c807RecolectaComentario').value = cfg.recolecta_comentario || '';
+            }
+        } catch(e) { /* sin config */ }
 
         toggleSoapSection();
+        toggleC807Section();
         new bootstrap.Modal(document.getElementById('modalProvider')).show();
     });
 });

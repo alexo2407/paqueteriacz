@@ -139,16 +139,21 @@ switch ($accion) {
                 'numero_orden'       => 'ORD-PRUEBA-001',
                 'destinatario'       => 'Juan Pérez',
                 'telefono'           => '5512345678',
+                'correo'             => 'juan.perez@ejemplo.com',
                 'direccion'          => 'Calle Ejemplo 123',
                 'comentario'         => 'Dejar con portero',
                 'codigo_postal'      => '010101',
                 'postalCode'         => '010101',
                 'precio_total_local' => 250.00,
-                'municipalitiesName' => 'Managua',
-                'departmentName'     => 'Managua',
+                'municipalitiesName' => 'San Salvador',
+                'departmentName'     => 'San Salvador',
+                'municipio_nombre'   => 'San Salvador',
+                'departamento'       => 'San Salvador',
+                'peso'               => 2.5,
+                'betweenStreets'     => 'Entre 1a y 3a Calle',
                 'nit'                => 'CF',
-                'lat'                => 12.136,
-                'lng'                => -86.278,
+                'lat'                => 13.6929,
+                'lng'                => -89.2182,
                 'productos'          => [
                     [
                         'producto_nombre'     => 'Camiseta Talla M',
@@ -170,11 +175,24 @@ switch ($accion) {
 
         try {
             $mapeos  = ForwardingModel::obtenerMapeosDeProveedor($idProvider);
-            if (empty($mapeos)) {
+            $provData = ForwardingModel::obtenerProveedorPorId($idProvider);
+            $slug = $provData['slug'] ?? '';
+
+            if (empty($mapeos) && $slug !== 'c807') {
                 $respuesta = ['success' => false, 'message' => 'No hay mapeos configurados para este proveedor'];
                 break;
             }
-            $payload = PayloadBuilderService::build($pedido, $mapeos);
+
+            if ($slug === 'c807') {
+                require_once __DIR__ . '/../services/providers/C807Provider.php';
+                $cfg = json_decode($provData['default_config'] ?? '{}', true) ?: [];
+                $creds = json_decode($provData['credentials'] ?? '{}', true) ?: [];
+                $provider = new C807Provider($provData['base_url'] ?? 'https://qaapp.c807.com', $creds, $cfg);
+                $payload = $provider->mapearCampos($pedido, $pedido['productos'] ?? [], ['token' => 'preview-token']);
+            } else {
+                $payload = PayloadBuilderService::build($pedido, $mapeos);
+            }
+
             $respuesta = [
                 'success' => true,
                 'payload' => $payload,

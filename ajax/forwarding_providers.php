@@ -200,6 +200,42 @@ if ($method === 'POST') {
             echo json_encode($result);
             break;
 
+        case 'sync_c807_catalogs':
+            try {
+                require_once __DIR__ . '/../services/providers/C807Provider.php';
+                require_once __DIR__ . '/../services/C807CatalogService.php';
+
+                $baseUrl = !empty($input['base_url']) ? rtrim($input['base_url'], '/') : 'https://qaapp.c807.com';
+                $authEp  = !empty($input['auth_endpoint']) ? $input['auth_endpoint'] : '/admin.php/sesion/get_token';
+
+                // Si viene ID de proveedor registrado y password vacía, recuperar credenciales guardadas
+                $userName = $input['userName'] ?? '';
+                $password = $input['password'] ?? '';
+                if (!empty($input['id']) && empty($password)) {
+                    $prov = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
+                    if ($prov) {
+                        $c = json_decode($prov['credentials'] ?? '{}', true);
+                        if (empty($userName)) $userName = $c['userName'] ?? '';
+                        $password = $c['password'] ?? '';
+                    }
+                }
+
+                $c807 = new C807Provider($baseUrl, ['userName' => $userName, 'password' => $password], ['auth_endpoint' => $authEp]);
+                $auth = $c807->authenticate();
+                $token = $auth['token'];
+
+                $sync = C807CatalogService::sincronizarDesdeApi($baseUrl, $token);
+                echo json_encode([
+                    'success'                     => true,
+                    'message'                     => 'Catálogos sincronizados correctamente con C807',
+                    'departamentos_sincronizados' => $sync['departamentos_sincronizados'],
+                    'municipios_sincronizados'    => $sync['municipios_sincronizados'],
+                ]);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            }
+            break;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Acción no reconocida: ' . $action]);
     }
@@ -209,7 +245,7 @@ if ($method === 'POST') {
 echo json_encode(['success' => false, 'message' => 'Método no soportado']);
 
 /**
- * Construir el JSON de default_config mergeando la config existente con el soap_config del request.
+ * Construir el JSON de default_config mergeando la config existente con el soap_config y c807_config del request.
  *
  * @param array       $input         Input del request
  * @param string|null $existingJson  JSON existente en la BD (para merge en actualizar)
@@ -237,6 +273,24 @@ function buildDefaultConfig(array $input, ?string $existingJson = null): ?string
                     $config[$k] = $v;
                 } else {
                     unset($config[$k]); // Limpiar campo vacío
+                }
+            }
+        }
+    }
+
+    // Mergear c807_config si viene en el request
+    if (!empty($input['c807_config']) && is_array($input['c807_config'])) {
+        $c807Fields = [
+            'tipo_entrega', 'tipo_servicio', 'unidad_medida', 'sede',
+            'politica_recolecta_fecha', 'recolecta_comentario',
+        ];
+        foreach ($c807Fields as $k) {
+            if (array_key_exists($k, $input['c807_config'])) {
+                $v = $input['c807_config'][$k];
+                if ($v !== '' && $v !== null) {
+                    $config[$k] = $v;
+                } else {
+                    unset($config[$k]);
                 }
             }
         }
