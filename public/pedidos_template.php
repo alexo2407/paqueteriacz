@@ -250,19 +250,60 @@ foreach ([2, 15] as $fecCol) {
         ->getNumberFormat()->setFormatCode('DD/MM/YYYY');
 }
 
-// ── Obtener catálogos geográficos para la hoja de referencia y validación ───
+// ── Obtener catálogos geográficos según integración del cliente ──────────────
 try {
     $db = (new Conexion())->conectar();
-    $stmtCat = $db->query("
-        SELECT d.nombre AS departamento, m.nombre AS municipio, IFNULL(p.nombre, 'El Salvador') AS pais
-        FROM departamentos d
-        INNER JOIN municipios m ON m.id_departamento = d.id
-        LEFT JOIN paises p ON p.id = d.id_pais
-        ORDER BY p.nombre ASC, d.nombre ASC, m.nombre ASC
-    ");
-    $catalogosGeo = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+
+    // 1. Detectar si el cliente actual tiene una regla activa con C807
+    $esClienteC807 = false;
+    if (!empty($idClienteLogueado)) {
+        $stmtC807 = $db->prepare("
+            SELECT 1 
+            FROM forwarding_rules fr
+            INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
+            WHERE fr.id_cliente = :id_cliente AND fp.slug = 'c807' AND fr.activo = 1 AND fp.activo = 1
+            LIMIT 1
+        ");
+        $stmtC807->execute([':id_cliente' => $idClienteLogueado]);
+        $esClienteC807 = (bool)$stmtC807->fetchColumn();
+    }
+
+    if ($esClienteC807) {
+        // Exclusivo C807: Cargar únicamente catálogo oficial de C807
+        $stmtCat = $db->query("
+            SELECT d.nombre AS departamento, m.nombre AS municipio, 'El Salvador' AS pais
+            FROM c807_departamentos d
+            INNER JOIN c807_municipios m ON m.c807_departamento_id = d.id
+            ORDER BY d.nombre ASC, m.nombre ASC
+        ");
+        $catalogosGeo = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($catalogosGeo)) {
+            // Fallback por si aún no se sincronizó la tabla c807_*
+            $stmtCat = $db->query("
+                SELECT d.nombre AS departamento, m.nombre AS municipio, 'El Salvador' AS pais
+                FROM departamentos d
+                INNER JOIN municipios m ON m.id_departamento = d.id
+                LEFT JOIN paises p ON p.id = d.id_pais
+                WHERE p.nombre LIKE '%Salvador%' OR d.id_pais = 2
+                ORDER BY d.nombre ASC, m.nombre ASC
+            ");
+            $catalogosGeo = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+        }
+    } else {
+        // Cliente estándar: cargar catálogo general de su país o general
+        $stmtCat = $db->query("
+            SELECT d.nombre AS departamento, m.nombre AS municipio, IFNULL(p.nombre, 'General') AS pais
+            FROM departamentos d
+            INNER JOIN municipios m ON m.id_departamento = d.id
+            LEFT JOIN paises p ON p.id = d.id_pais
+            ORDER BY p.nombre ASC, d.nombre ASC, m.nombre ASC
+        ");
+        $catalogosGeo = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+    }
 } catch (Exception $e) {
     $catalogosGeo = [];
+    $esClienteC807 = false;
 }
 
 // ── Hoja de Catálogos Geográficos ───────────────────────────────────────────
@@ -348,8 +389,8 @@ $instrucciones = [
     ['G: zona',                'No',    'Zona de reparto. Ej: Norte, Sur, Centro'],
     ['H: codigo_postal',       'No',    'Código postal. Ej: GT3155'],
     ['I: pais',                'No',    'País en texto libre. Ej: El Salvador, Guatemala'],
-    ['J: departamento',        'SÍ*',   'Departamento de entrega. Usa el desplegable o consulta la pestaña "Catálogos". Requerido para C807.'],
-    ['K: municipio',           'SÍ*',   'Municipio de entrega. Debe coincidir con el catálogo en la pestaña "Catálogos". Requerido para C807.'],
+    ['J: departamento',        $esClienteC807 ? 'SÍ*' : 'No', 'Departamento de entrega. Usa el desplegable o consulta la pestaña "Catálogos".' . ($esClienteC807 ? ' Requerido para C807.' : '')],
+    ['K: municipio',           $esClienteC807 ? 'SÍ*' : 'No', 'Municipio de entrega. Debe coincidir con el catálogo en la pestaña "Catálogos".' . ($esClienteC807 ? ' Requerido para C807.' : '')],
     ['L: barrio',              'No',    'Barrio o colonia en texto libre'],
     ['M: entre_calles',        'No',    'Referencia de calles cruzadas'],
     ['N: estado',              'No',    'Nombre del estado del pedido. Ej: En ruta o proceso, Pendiente'],
@@ -366,7 +407,7 @@ $instrucciones = [
     ['AC-AD: Producto 5 / Cantidad 5','No', 'Quinto producto (opcional).'],
     ['', '', ''],
     ['⚠️ NOTAS IMPORTANTES', '', ''],
-    ['', '', '• Envíos para C807 / El Salvador: DEPARTAMENTO y MUNICIPIO son obligatorios para rutear la entrega.'],
+    ['', '', $esClienteC807 ? '• Envíos para C807 / El Salvador: DEPARTAMENTO y MUNICIPIO son obligatorios para rutear la entrega.' : '• Puedes consultar la pestaña "Catálogos" para verificar departamentos y municipios válidos.'],
     ['', '', '• Consulta la pestaña "Catálogos" para copiar los nombres exactos de departamentos y municipios.'],
     ['', '', '• Los productos deben existir previamente en el sistema.'],
     ['', '', '• Si el nombre del producto no coincide exactamente → fila RECHAZADA.'],

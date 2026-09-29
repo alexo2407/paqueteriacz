@@ -83,6 +83,20 @@ class CSVPedidoValidator
                 $this->vendedoresCache['nombre:' . $nombreNorm] = $v;
             }
             
+            // Cache de clientes con reglas activas de C807
+            try {
+                $db = (new Conexion())->conectar();
+                $stC807 = $db->query("
+                    SELECT DISTINCT fr.id_cliente 
+                    FROM forwarding_rules fr
+                    INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
+                    WHERE fp.slug = 'c807' AND fr.activo = 1 AND fp.activo = 1
+                ");
+                $this->clientesC807 = array_map('intval', $stC807->fetchAll(PDO::FETCH_COLUMN) ?: []);
+            } catch (Exception $eIgnored) {
+                $this->clientesC807 = [];
+            }
+            
         } catch (Exception $e) {
             error_log('Error al cargar caches de validación: ' . $e->getMessage());
         }
@@ -148,11 +162,14 @@ class CSVPedidoValidator
             $advertencias[] = "direccion vacía (recomendado)";
         }
         
-        // 7. Validar departamento y municipio (requerido para C807 y forwarding)
-        $depto = trim($row['departamento'] ?? $row['depto'] ?? '');
-        $muni  = trim($row['municipio'] ?? '');
-        if (empty($depto) || empty($muni)) {
-            $advertencias[] = "Depto/Municipio no especificado (requerido para envíos C807/logística)";
+        // 7. Validar departamento y municipio solo si el cliente está integrado con C807
+        $idClienteRow = !empty($row['cliente']) ? (int)$row['cliente'] : (int)($_SESSION['user_id'] ?? 0);
+        if (!empty($this->clientesC807) && in_array($idClienteRow, $this->clientesC807, true)) {
+            $depto = trim($row['departamento'] ?? $row['depto'] ?? '');
+            $muni  = trim($row['municipio'] ?? '');
+            if (empty($depto) || empty($muni)) {
+                $advertencias[] = "Depto/Municipio no especificado (requerido para tu integración con C807)";
+            }
         }
         
         return [
