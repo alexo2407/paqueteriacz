@@ -148,6 +148,13 @@ class CSVPedidoValidator
             $advertencias[] = "direccion vacía (recomendado)";
         }
         
+        // 7. Validar departamento y municipio (requerido para C807 y forwarding)
+        $depto = trim($row['departamento'] ?? $row['depto'] ?? '');
+        $muni  = trim($row['municipio'] ?? '');
+        if (empty($depto) || empty($muni)) {
+            $advertencias[] = "Depto/Municipio no especificado (requerido para envíos C807/logística)";
+        }
+        
         return [
             'errores' => $errores,
             'advertencias' => $advertencias,

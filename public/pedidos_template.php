@@ -20,10 +20,12 @@ if (!file_exists($autoload)) {
     die('PhpSpreadsheet no instalado. Ejecuta: composer install');
 }
 require_once $autoload;
+require_once __DIR__ . '/../modelo/conexion.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -248,6 +250,89 @@ foreach ([2, 15] as $fecCol) {
         ->getNumberFormat()->setFormatCode('DD/MM/YYYY');
 }
 
+// ── Obtener catálogos geográficos para la hoja de referencia y validación ───
+try {
+    $db = (new Conexion())->conectar();
+    $stmtCat = $db->query("
+        SELECT d.nombre AS departamento, m.nombre AS municipio, IFNULL(p.nombre, 'El Salvador') AS pais
+        FROM departamentos d
+        INNER JOIN municipios m ON m.id_departamento = d.id
+        LEFT JOIN paises p ON p.id = d.id_pais
+        ORDER BY p.nombre ASC, d.nombre ASC, m.nombre ASC
+    ");
+    $catalogosGeo = $stmtCat->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $catalogosGeo = [];
+}
+
+// ── Hoja de Catálogos Geográficos ───────────────────────────────────────────
+$catSheet = $spreadsheet->createSheet();
+$catSheet->setTitle('Catálogos');
+
+$catSheet->getStyle('A1:C1')->applyFromArray([
+    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1D6A3A']],
+    'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true, 'size' => 11, 'name' => 'Calibri'],
+    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+]);
+
+$catSheet->setCellValue('A1', 'DEPARTAMENTO');
+$catSheet->setCellValue('B1', 'MUNICIPIO');
+$catSheet->setCellValue('C1', 'PAÍS');
+
+$catSheet->getColumnDimension('A')->setWidth(25);
+$catSheet->getColumnDimension('B')->setWidth(30);
+$catSheet->getColumnDimension('C')->setWidth(20);
+
+$rowCat = 2;
+$uniqueDeptos = [];
+foreach ($catalogosGeo as $cg) {
+    $dep = trim($cg['departamento']);
+    $mun = trim($cg['municipio']);
+    $pais = trim($cg['pais']);
+    
+    $catSheet->setCellValue("A{$rowCat}", $dep);
+    $catSheet->setCellValue("B{$rowCat}", $mun);
+    $catSheet->setCellValue("C{$rowCat}", $pais);
+    
+    if ($dep !== '' && !in_array($dep, $uniqueDeptos, true)) {
+        $uniqueDeptos[] = $dep;
+    }
+    $rowCat++;
+}
+
+// Columna E con departamentos únicos para lista desplegable
+$catSheet->getStyle('E1')->applyFromArray([
+    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '1F4E79']],
+    'font' => ['color' => ['rgb' => 'FFFFFF'], 'bold' => true, 'size' => 11, 'name' => 'Calibri'],
+    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+]);
+$catSheet->setCellValue('E1', 'DEPTOS ÚNICOS');
+$catSheet->getColumnDimension('E')->setWidth(25);
+
+$rowUD = 2;
+foreach ($uniqueDeptos as $ud) {
+    $catSheet->setCellValue("E{$rowUD}", $ud);
+    $rowUD++;
+}
+
+$totalDeptosUnicos = max(2, $rowUD - 1);
+$catSheet->freezePane('A2');
+
+// Data Validation en columna J (Depto) de la hoja principal (Pedidos)
+$deptoColLetter = Coordinate::stringFromColumnIndex(10); // Columna J
+for ($r = 2; $r <= 200; $r++) {
+    $validation = $sheet->getCell("{$deptoColLetter}{$r}")->getDataValidation();
+    $validation->setType(DataValidation::TYPE_LIST);
+    $validation->setErrorStyle(DataValidation::STYLE_INFORMATION);
+    $validation->setAllowBlank(true);
+    $validation->setShowInputMessage(true);
+    $validation->setShowErrorMessage(true);
+    $validation->setShowDropDown(true);
+    $validation->setErrorTitle('Departamento de Catálogo');
+    $validation->setError('Selecciona un departamento de la lista o consulta la pestaña Catálogos.');
+    $validation->setFormula1("'Catálogos'!\$E\$2:\$E\${$totalDeptosUnicos}");
+}
+
 // ── Hoja de instrucciones ────────────────────────────────────────────────────
 $instrSheet = $spreadsheet->createSheet();
 $instrSheet->setTitle('Instrucciones');
@@ -262,15 +347,15 @@ $instrucciones = [
     ['F: comentario',          'SÍ',    'Notas de entrega o coordenadas GPS. Ej: 14.302022, -90.799585'],
     ['G: zona',                'No',    'Zona de reparto. Ej: Norte, Sur, Centro'],
     ['H: codigo_postal',       'No',    'Código postal. Ej: GT3155'],
-    ['I: pais',                'No',    'País en texto libre. Ej: Guatemala'],
-    ['J: departamento',        'No',    'Departamento en texto libre. Ej: Guatemala'],
-    ['K: municipio',           'No',    'Municipio en texto libre. Ej: Guatemala'],
+    ['I: pais',                'No',    'País en texto libre. Ej: El Salvador, Guatemala'],
+    ['J: departamento',        'SÍ*',   'Departamento de entrega. Usa el desplegable o consulta la pestaña "Catálogos". Requerido para C807.'],
+    ['K: municipio',           'SÍ*',   'Municipio de entrega. Debe coincidir con el catálogo en la pestaña "Catálogos". Requerido para C807.'],
     ['L: barrio',              'No',    'Barrio o colonia en texto libre'],
     ['M: entre_calles',        'No',    'Referencia de calles cruzadas'],
     ['N: estado',              'No',    'Nombre del estado del pedido. Ej: En ruta o proceso, Pendiente'],
     ['O: fecha_entrega',       'No',    'Fecha de entrega prometida en formato DD/MM/YYYY'],
     ['P: precio_total_local',  'SÍ',    'Precio total en moneda local (número mayor a 0). Ej: 870'],
-    ['Q: moneda',              'No',    'Código de moneda. Ej: GTQ, USD'],
+    ['Q: moneda',              'No',    'Código de moneda. Ej: USD, GTQ'],
     ['R: cliente',             'SÍ',    'ID numérico del cliente dueño del pedido (pre-rellenado en la plantilla)'],
     ['S: id_proveedor',        'SÍ',    'ID numérico del proveedor de mensajería'],
     ['T: es_combo',            'SÍ',    '1 = combo / multi-producto  |  0 = estándar (un solo producto)'],
@@ -281,11 +366,13 @@ $instrucciones = [
     ['AC-AD: Producto 5 / Cantidad 5','No', 'Quinto producto (opcional).'],
     ['', '', ''],
     ['⚠️ NOTAS IMPORTANTES', '', ''],
+    ['', '', '• Envíos para C807 / El Salvador: DEPARTAMENTO y MUNICIPIO son obligatorios para rutear la entrega.'],
+    ['', '', '• Consulta la pestaña "Catálogos" para copiar los nombres exactos de departamentos y municipios.'],
     ['', '', '• Los productos deben existir previamente en el sistema.'],
     ['', '', '• Si el nombre del producto no coincide exactamente → fila RECHAZADA.'],
     ['', '', '• Para 1 solo producto: es_combo=0, usar solo Producto 1 / Cantidad 1.'],
     ['', '', '• Para combos/multi: es_combo=1, llenar Producto 1, Producto 2, etc.'],
-    ['', '', '• Usa "Vista Previa" antes de importar para detectar errores fila por fila.'],
+    ['', '', '• Usa "Vista Previa" antes de importar para detectar errores y advertencias fila por fila.'],
 ];
 
 // Encabezado instrucciones
