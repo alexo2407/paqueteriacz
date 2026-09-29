@@ -120,6 +120,80 @@ endif;
                                             </select>
                                         </div>
 
+                                        <?php
+                                        // Cargar catálogos de departamento y municipio según integración del cliente
+                                        $idUserLogueado = (int)($_SESSION['user_id'] ?? ($_SESSION['idUsuario'] ?? 0));
+                                        $esC807Modal = false;
+                                        $deptosOpcionesModal = [];
+                                        $munisOpcionesModal = [];
+                                        try {
+                                            $dbConnM = (new Conexion())->conectar();
+                                            if ($idUserLogueado > 0) {
+                                                $stCheckC807 = $dbConnM->prepare("
+                                                    SELECT 1 
+                                                    FROM forwarding_rules fr
+                                                    INNER JOIN forwarding_providers fp ON fp.id = fr.id_provider
+                                                    WHERE fr.id_cliente = :id_cliente AND fp.slug = 'c807' AND fr.activo = 1 AND fp.activo = 1
+                                                    LIMIT 1
+                                                ");
+                                                $stCheckC807->execute([':id_cliente' => $idUserLogueado]);
+                                                $esC807Modal = (bool)$stCheckC807->fetchColumn();
+                                            }
+
+                                            if ($esC807Modal) {
+                                                $stDep = $dbConnM->query("SELECT id, nombre FROM c807_departamentos ORDER BY nombre ASC");
+                                                $deptosOpcionesModal = $stDep->fetchAll(PDO::FETCH_ASSOC);
+                                                if (empty($deptosOpcionesModal)) {
+                                                    $stDep = $dbConnM->query("SELECT d.id, d.nombre FROM departamentos d INNER JOIN paises p ON p.id = d.id_pais WHERE p.nombre LIKE '%Salvador%' ORDER BY d.nombre ASC");
+                                                    $deptosOpcionesModal = $stDep->fetchAll(PDO::FETCH_ASSOC);
+                                                }
+                                                $stMun = $dbConnM->query("SELECT m.id, m.nombre, d.nombre AS dep_nombre FROM c807_municipios m INNER JOIN c807_departamentos d ON d.id = m.c807_departamento_id ORDER BY d.nombre ASC, m.nombre ASC");
+                                                $munisOpcionesModal = $stMun->fetchAll(PDO::FETCH_ASSOC);
+                                                if (empty($munisOpcionesModal)) {
+                                                    $stMun = $dbConnM->query("SELECT m.id, m.nombre, d.nombre AS dep_nombre FROM municipios m INNER JOIN departamentos d ON d.id = m.id_departamento INNER JOIN paises p ON p.id = d.id_pais WHERE p.nombre LIKE '%Salvador%' ORDER BY d.nombre ASC, m.nombre ASC");
+                                                    $munisOpcionesModal = $stMun->fetchAll(PDO::FETCH_ASSOC);
+                                                }
+                                            } else {
+                                                $stDep = $dbConnM->query("SELECT d.id, d.nombre FROM departamentos d ORDER BY d.nombre ASC");
+                                                $deptosOpcionesModal = $stDep->fetchAll(PDO::FETCH_ASSOC);
+                                                $stMun = $dbConnM->query("SELECT m.id, m.nombre, d.nombre AS dep_nombre FROM municipios m INNER JOIN departamentos d ON d.id = m.id_departamento ORDER BY d.nombre ASC, m.nombre ASC LIMIT 1000");
+                                                $munisOpcionesModal = $stMun->fetchAll(PDO::FETCH_ASSOC);
+                                            }
+                                        } catch (Exception $eGeo) {}
+                                        ?>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label for="default_departamento" class="form-label">
+                                                Departamento por defecto
+                                                <?php if ($esC807Modal): ?>
+                                                    <span class="badge bg-primary ms-1" style="font-size:0.75rem;">C807 / El Salvador</span>
+                                                <?php endif; ?>
+                                            </label>
+                                            <select name="default_departamento" id="default_departamento" class="form-select select2-searchable" data-placeholder="Seleccionar departamento...">
+                                                <option value="">-- No especificar --</option>
+                                                <?php foreach ($deptosOpcionesModal as $depM): ?>
+                                                    <option value="<?= htmlspecialchars($depM['nombre']) ?>"><?= htmlspecialchars($depM['nombre']) ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <div class="form-text">Se aplicará a filas que no traigan departamento</div>
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label for="default_municipio" class="form-label">
+                                                Municipio por defecto
+                                                <?php if ($esC807Modal): ?>
+                                                    <span class="badge bg-primary ms-1" style="font-size:0.75rem;">C807 / El Salvador</span>
+                                                <?php endif; ?>
+                                            </label>
+                                            <select name="default_municipio" id="default_municipio" class="form-select select2-searchable" data-placeholder="Seleccionar municipio...">
+                                                <option value="">-- No especificar --</option>
+                                                <?php foreach ($munisOpcionesModal as $munM): ?>
+                                                    <option value="<?= htmlspecialchars($munM['nombre']) ?>" data-depto="<?= htmlspecialchars($munM['dep_nombre']) ?>"><?= htmlspecialchars($munM['nombre']) ?> (<?= htmlspecialchars($munM['dep_nombre']) ?>)</option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <div class="form-text">Se aplicará a filas que no traigan municipio</div>
+                                        </div>
+
                                         <!-- Es Combo por defecto -->
                                         <div class="col-12 mb-1">
                                             <div class="border rounded-2 px-3 py-2 d-flex align-items-center gap-3" style="background:rgba(99,102,241,.06);">
@@ -127,7 +201,7 @@ endif;
                                                     <input class="form-check-input" type="checkbox" role="switch"
                                                            id="default_es_combo" name="default_es_combo" value="1">
                                                     <label class="form-check-label fw-semibold" for="default_es_combo">
-                                                        Es Combo por defecto
+                                                         Es Combo por defecto
                                                     </label>
                                                 </div>
                                                 <small class="text-muted">
@@ -1391,6 +1465,8 @@ document.addEventListener('DOMContentLoaded', function(){
         const defaultProveedor = $('#default_proveedor').val() ? $('#default_proveedor option:selected').text().trim() : null;
         const defaultMoneda    = $('#default_moneda').val()    ? $('#default_moneda option:selected').text().trim()    : null;
         const defaultVendedor  = $('#default_vendedor').val()  ? $('#default_vendedor option:selected').text().trim()  : null;
+        const defaultDepto     = $('#default_departamento').val() ? $('#default_departamento option:selected').text().trim() : null;
+        const defaultMuni      = $('#default_municipio').val()    ? $('#default_municipio option:selected').text().trim()    : null;
         const defaultEsCombo   = document.getElementById('default_es_combo')?.checked ? true : false;
 
         let defaultsHtml = '';
@@ -1433,6 +1509,13 @@ document.addEventListener('DOMContentLoaded', function(){
             defaultsHtml += `
                 <div class="col-md-2 col-sm-6 mb-1">
                     <strong>Vendedor/Repartidor:</strong> <span class="badge bg-secondary text-wrap">${defaultVendedor}</span>
+                </div>
+            `;
+        }
+        if (defaultDepto || defaultMuni) {
+            defaultsHtml += `
+                <div class="col-md-3 col-sm-6 mb-1">
+                    <strong>Ubicación:</strong> <span class="badge bg-primary text-wrap">${defaultDepto || ''} ${defaultMuni ? ('/ ' + defaultMuni) : ''}</span>
                 </div>
             `;
         }

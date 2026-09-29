@@ -1553,10 +1553,12 @@ class PedidosController
 
             // Obtener valores por defecto desde POST
             $defaultValues = [];
-            if (!empty($_POST['default_estado']))    $defaultValues['estado']    = (int)$_POST['default_estado'];
-            if (!empty($_POST['default_proveedor'])) $defaultValues['proveedor'] = (int)$_POST['default_proveedor'];
-            if (!empty($_POST['default_moneda']))    $defaultValues['moneda']    = (int)$_POST['default_moneda'];
-            if (!empty($_POST['default_vendedor']))  $defaultValues['vendedor']  = (int)$_POST['default_vendedor'];
+            if (!empty($_POST['default_estado']))       $defaultValues['estado']       = (int)$_POST['default_estado'];
+            if (!empty($_POST['default_proveedor']))    $defaultValues['proveedor']    = (int)$_POST['default_proveedor'];
+            if (!empty($_POST['default_moneda']))       $defaultValues['moneda']       = (int)$_POST['default_moneda'];
+            if (!empty($_POST['default_vendedor']))     $defaultValues['vendedor']     = (int)$_POST['default_vendedor'];
+            if (!empty($_POST['default_departamento'])) $defaultValues['departamento'] = trim($_POST['default_departamento']);
+            if (!empty($_POST['default_municipio']))    $defaultValues['municipio']    = trim($_POST['default_municipio']);
             // Checkbox es_combo: solo viene en POST cuando está marcado (value="1").
             // Guardamos null = no forzar (respetar CSV o 0 por defecto del modelo).
             $defaultValues['es_combo'] = isset($_POST['default_es_combo']) ? 1 : null;
@@ -1603,10 +1605,23 @@ class PedidosController
                     }
 
                     // Vendedor/repartidor: default si no hay id_vendedor ni vendedor_nombre
-                    if (!empty($defaultValues['vendedor']) &&
-                        empty($filaPreDefault['id_vendedor']) &&
+                    if (!empty($defaultValues['vendedor']) && 
+                        empty($filaPreDefault['id_vendedor']) && 
                         empty($filaPreDefault['vendedor_nombre'])) {
                         $filaPreDefault['id_vendedor'] = $defaultValues['vendedor'];
+                    }
+
+                    // Departamento: default si viene vacío en la fila
+                    if (!empty($defaultValues['departamento']) && 
+                        empty($filaPreDefault['departamento']) && 
+                        empty($filaPreDefault['depto'])) {
+                        $filaPreDefault['departamento'] = $defaultValues['departamento'];
+                    }
+
+                    // Municipio: default si viene vacío en la fila
+                    if (!empty($defaultValues['municipio']) && 
+                        empty($filaPreDefault['municipio'])) {
+                        $filaPreDefault['municipio'] = $defaultValues['municipio'];
                     }
 
                     // Es Combo: normalizar SIEMPRE a entero 0 o 1.
