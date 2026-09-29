@@ -137,10 +137,10 @@ class C807Provider extends BaseProvider
 
         $config = $this->config;
 
-        // 1. Validar correo obligatorio
+        // 1. Resolver correo (destinatario o fallback si no está presente)
         $correo = trim($pedido['correo'] ?? '');
         if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
-            throw new Exception("C807 requiere un correo electrónico válido para el destinatario (pedido #{$pedido['numero_orden']}).");
+            $correo = trim($config['correo_default'] ?? $config['correo'] ?? 'edona@rutaexlatam.com');
         }
 
         // 2. Resolver departamentos y municipios C807
@@ -181,10 +181,10 @@ class C807Provider extends BaseProvider
             $contenido = mb_substr($contenido, 0, 485, 'UTF-8') . '...';
         }
 
-        // Validar peso real obligatorio
+        // Validar peso real (usar default si no viene especificado en el pedido)
         $peso = isset($pedido['peso']) && is_numeric($pedido['peso']) ? (float)$pedido['peso'] : 0.0;
         if ($peso <= 0) {
-            throw new Exception("C807 requiere especificar el peso físico real del paquete (> 0). Pedido #{$pedido['numero_orden']} no tiene peso registrado.");
+            $peso = (float)($config['peso_default'] ?? 1.0);
         }
 
         // Detalle de paquetes

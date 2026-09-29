@@ -719,7 +719,8 @@ class ForwardingModel
             try {
                 $stmt = $db->prepare("
                     SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
-                           p.comentario, p.postalCode, p.codigo_postal, p.precio_total_local,
+                           p.comentario, p.correo, p.peso, p.unidad_peso, p.bultos,
+                           p.postalCode, p.codigo_postal, p.precio_total_local,
                            p.fecha_entrega, p.id_cliente,
                            p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets,
                            p.zona, p.code_city,
@@ -746,6 +747,10 @@ class ForwardingModel
                            p.comentario, p.codigo_postal, p.precio_total_local,
                            p.fecha_entrega, p.id_cliente,
                            p.zona, p.code_city,
+                           NULL AS correo,
+                           NULL AS peso,
+                           NULL AS unidad_peso,
+                           1    AS bultos,
                            NULL AS postalCode,
                            NULL AS municipalitiesName,
                            NULL AS departmentName,
