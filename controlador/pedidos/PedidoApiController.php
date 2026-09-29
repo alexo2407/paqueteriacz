@@ -464,6 +464,28 @@ class PedidoApiController
                 error_log("PedidoApiController::autoCompletarUbicacion error: " . $e->getMessage());
             }
         }
+
+        // 3. Coherencia Canónica de Jerarquía Geográfica:
+        //    La fuente de la verdad para el departamento de un municipio es la tabla municipios.
+        //    Si tenemos id_municipio, sincronizamos automáticamente su id_departamento e id_pais
+        //    para evitar cualquier incoherencia histórica almacenada en la tabla codigos_postales.
+        if (!empty($data['id_municipio']) && is_numeric($data['id_municipio'])) {
+            try {
+                $muni = MunicipioModel::obtenerPorId((int)$data['id_municipio']);
+                if ($muni && !empty($muni['id_departamento'])) {
+                    $data['id_departamento'] = (int)$muni['id_departamento'];
+
+                    if (empty($data['id_pais'])) {
+                        $depto = DepartamentoModel::obtenerPorId((int)$muni['id_departamento']);
+                        if ($depto && !empty($depto['id_pais'])) {
+                            $data['id_pais'] = (int)$depto['id_pais'];
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                error_log("PedidoApiController::sincronizarJerarquiaMunicipio error: " . $e->getMessage());
+            }
+        }
     }
 
     /**

@@ -34,6 +34,17 @@ class CodigosPostalesModel {
     public static function crear($data) {
         try {
             $db = (new Conexion())->conectar();
+
+            // Garantizar coherencia: el id_departamento debe coincidir con el del municipio si este fue indicado
+            if (!empty($data['id_municipio'])) {
+                $stmtM = $db->prepare("SELECT id_departamento FROM municipios WHERE id = :mid LIMIT 1");
+                $stmtM->execute([':mid' => (int)$data['id_municipio']]);
+                $depMuni = $stmtM->fetchColumn();
+                if ($depMuni) {
+                    $data['id_departamento'] = (int)$depMuni;
+                }
+            }
+
             $stmt = $db->prepare("INSERT INTO codigos_postales
                 (id_pais, codigo_postal, id_departamento, id_municipio, id_barrio, nombre_localidad, activo)
                 VALUES (:id_pais, :cp, :id_dep, :id_mun, :id_barrio, :localidad, 1)");
@@ -122,6 +133,17 @@ class CodigosPostalesModel {
     public static function actualizar($id, $data) {
         try {
             $db = (new Conexion())->conectar();
+
+            // Garantizar coherencia: el id_departamento debe coincidir con el del municipio si este fue indicado
+            if (!empty($data['id_municipio'])) {
+                $stmtM = $db->prepare("SELECT id_departamento FROM municipios WHERE id = :mid LIMIT 1");
+                $stmtM->execute([':mid' => (int)$data['id_municipio']]);
+                $depMuni = $stmtM->fetchColumn();
+                if ($depMuni) {
+                    $data['id_departamento'] = (int)$depMuni;
+                }
+            }
+
             $stmt = $db->prepare("UPDATE codigos_postales SET
                 id_pais         = :id_pais,
                 codigo_postal   = :cp,

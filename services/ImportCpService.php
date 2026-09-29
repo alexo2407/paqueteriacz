@@ -298,6 +298,16 @@ class ImportCpService
                         );
                     }
 
+                    // Garantizar coherencia: si hay idMuni, asegurar que idDepto sea el del municipio
+                    if ($idMuni) {
+                        $stmtCheck = $db->prepare("SELECT id_departamento FROM municipios WHERE id = :mid LIMIT 1");
+                        $stmtCheck->execute([':mid' => (int)$idMuni]);
+                        $depReal = $stmtCheck->fetchColumn();
+                        if ($depReal) {
+                            $idDepto = (int)$depReal;
+                        }
+                    }
+
                     // Resolver / crear Barrio
                     if ($fila['barrio'] !== '' && $idMuni) {
                         $idBarrio = self::resolverOCrearBarrio(

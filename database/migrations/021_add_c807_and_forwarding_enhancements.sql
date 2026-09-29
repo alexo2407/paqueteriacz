@@ -116,7 +116,7 @@ VALUES
     ('c807', '11', NULL, 'Asignado en vehículo', 2, 1, 1),              -- En ruta o proceso
     ('c807', '13', NULL, 'Recogido en origen', 12, 1, 1),               -- Recolectado por mensajería
     ('c807', '14', NULL, 'En ruta a destino', 2, 1, 1),                 -- En ruta o proceso
-    ('c807', '15', NULL, 'Llegó a su destino', 13, 0, 1),               -- Traslado a punto de distribución (es_confirmado=0)
+    ('c807', '15', NULL, 'Llegó a su destino', 3, 1, 1),                -- Entregado (Confirmado por C807)
     ('c807', '16', '105', 'Reprogramación', 4, 1, 1),                  -- Reprogramado
     ('c807', '16', '109', 'Cerrado casa/negocio', 5, 1, 1),            -- Domicilio cerrado
     ('c807', '16', '110', 'Devolución', 7, 1, 1),                      -- Devuelto
