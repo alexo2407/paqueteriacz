@@ -1569,6 +1569,8 @@ class PedidosController
             // Productos inexistentes SIEMPRE rechazan la fila
             $autoCreateProducts = false;
 
+            $forzarUbicacion = !empty($_POST['forzar_default_ubicacion']);
+
             // Pre-aplicar valores por defecto a TODAS las filas ANTES de validar.
             // Así el validador ve el dato completo (ej: si el usuario eligió un
             // "Proveedor por defecto" en Opciones Avanzadas, esa intención se respeta).
@@ -1611,17 +1613,18 @@ class PedidosController
                         $filaPreDefault['id_vendedor'] = $defaultValues['vendedor'];
                     }
 
-                    // Departamento: default si viene vacío en la fila
-                    if (!empty($defaultValues['departamento']) && 
-                        empty($filaPreDefault['departamento']) && 
-                        empty($filaPreDefault['depto'])) {
-                        $filaPreDefault['departamento'] = $defaultValues['departamento'];
+                    // Departamento: default si viene vacío en la fila o si se forzó sobrescritura
+                    if (!empty($defaultValues['departamento'])) {
+                        if ($forzarUbicacion || (empty($filaPreDefault['departamento']) && empty($filaPreDefault['depto']))) {
+                            $filaPreDefault['departamento'] = $defaultValues['departamento'];
+                        }
                     }
 
-                    // Municipio: default si viene vacío en la fila
-                    if (!empty($defaultValues['municipio']) && 
-                        empty($filaPreDefault['municipio'])) {
-                        $filaPreDefault['municipio'] = $defaultValues['municipio'];
+                    // Municipio: default si viene vacío en la fila o si se forzó sobrescritura
+                    if (!empty($defaultValues['municipio'])) {
+                        if ($forzarUbicacion || empty($filaPreDefault['municipio'])) {
+                            $filaPreDefault['municipio'] = $defaultValues['municipio'];
+                        }
                     }
 
                     // Es Combo: normalizar SIEMPRE a entero 0 o 1.

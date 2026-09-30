@@ -194,6 +194,23 @@ endif;
                                             <div class="form-text">Se aplicará a filas que no traigan municipio</div>
                                         </div>
 
+                                        <!-- Forzar sobrescritura de ubicación -->
+                                        <div class="col-12 mb-2">
+                                            <div class="border rounded-2 px-3 py-2 d-flex align-items-center gap-3" style="background:rgba(13,110,253,.06);">
+                                                <div class="form-check form-switch mb-0">
+                                                    <input class="form-check-input" type="checkbox" role="switch"
+                                                           id="forzar_default_ubicacion" name="forzar_default_ubicacion" value="1">
+                                                    <label class="form-check-label fw-semibold text-primary" for="forzar_default_ubicacion">
+                                                        Sobrescribir ubicación del archivo
+                                                    </label>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    Si se activa, el departamento y municipio seleccionados arriba <strong>reemplazarán</strong> los valores del archivo en todas las filas.
+                                                </small>
+                                            </div>
+                                        </div>
+
                                         <!-- Es Combo por defecto -->
                                         <div class="col-12 mb-1">
                                             <div class="border rounded-2 px-3 py-2 d-flex align-items-center gap-3" style="background:rgba(99,102,241,.06);">
