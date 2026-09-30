@@ -889,9 +889,9 @@
                      <table class="table table-sm table-bordered" data-lang="en">
                         <thead><tr><th>Field</th><th>Type</th><th>Validation</th><th>Description</th></tr></thead>
                         <tbody>
-                            <tr><td><code>numero_orden</code></td><td>integer/string</td><td>STRICT</td><td>External order ID</td></tr>
+                            <tr><td><code>numero_orden</code></td><td>integer</td><td>STRICT, > 0</td><td>External order ID (positive integer)</td></tr>
                             <tr><td><code>destinatario</code></td><td>string</td><td>STRICT</td><td>Recipient's full name</td></tr>
-                            <tr><td><code>producto_id</code></td><td>array</td><td>STRICT if <code>requiere_productos</code> is 1 or omitted</td><td>Array of product objects/IDs. Optional when <code>"requiere_productos": 0</code> is sent in the body.</td></tr>
+                            <tr><td><code>productos</code> / <code>producto_id</code></td><td>array / int</td><td>STRICT if <code>requiere_productos</code> is 1 or omitted</td><td>Array of products <code>[{ "producto_id": 184, "cantidad": 2, "precio_unitario": 12.16 }]</code> or single ID. Optional when <code>"requiere_productos": 0</code>.</td></tr>
                             <tr><td><code>id_cliente</code></td><td>integer</td><td>STRICT, exists</td><td>Client ID owner</td></tr>
                             <tr><td><code>id_proveedor</code></td><td>integer</td><td>STRICT, exists</td><td>Messenger/Provider ID assigned</td></tr>
                             <tr><td><code>telefono</code></td><td>string</td><td>STRICT</td><td>Contact phone</td></tr>
@@ -906,9 +906,9 @@
                     <table class="table table-sm table-bordered" data-lang="es">
                         <thead><tr><th>Campo</th><th>Tipo</th><th>Validación</th><th>Descripción</th></tr></thead>
                         <tbody>
-                            <tr><td><code>numero_orden</code></td><td>integer/string</td><td>ESTRICTO</td><td>ID externo del pedido</td></tr>
+                            <tr><td><code>numero_orden</code></td><td>entero</td><td>ESTRICTO, > 0</td><td>ID externo del pedido (entero positivo)</td></tr>
                             <tr><td><code>destinatario</code></td><td>string</td><td>ESTRICTO</td><td>Nombre del destinatario</td></tr>
-                            <tr><td><code>producto_id</code></td><td>array</td><td>ESTRICTO si <code>requiere_productos</code> es 1 u omitido</td><td>Array de productos (objetos o IDs). Opcional cuando se envía <code>"requiere_productos": 0</code> en el body.</td></tr>
+                            <tr><td><code>productos</code> / <code>producto_id</code></td><td>array / entero</td><td>ESTRICTO si <code>requiere_productos</code> es 1 u omitido</td><td>Array de productos <code>[{ "producto_id": 184, "cantidad": 2, "precio_unitario": 12.16 }]</code> o ID simple. Opcional con <code>"requiere_productos": 0</code>.</td></tr>
                             <tr><td><code>id_cliente</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del cliente dueño</td></tr>
                             <tr><td><code>id_proveedor</code></td><td>entero</td><td>ESTRICTO, existe</td><td>ID del proveedor de mensajería asignado</td></tr>
                             <tr><td><code>telefono</code></td><td>string</td><td>ESTRICTO</td><td>Teléfono de contacto</td></tr>

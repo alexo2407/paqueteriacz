@@ -675,6 +675,12 @@ class PedidoApiController
                 if (!isset($pi['cantidad']) || !is_numeric($pi['cantidad']) || (int)$pi['cantidad'] <= 0) {
                     $errores["productos[$i].cantidad"] = "El producto en posición $i requiere 'cantidad' mayor a 0. Recibido: " . json_encode($pi['cantidad'] ?? null) . ".";
                 }
+                if (isset($pi['precio_unitario']) && (!is_numeric($pi['precio_unitario']) || (float)$pi['precio_unitario'] < 0)) {
+                    $errores["productos[$i].precio_unitario"] = "El precio_unitario del producto en posición $i debe ser numérico >= 0. Recibido: " . json_encode($pi['precio_unitario']) . ".";
+                }
+                if (isset($pi['precio_usd']) && (!is_numeric($pi['precio_usd']) || (float)$pi['precio_usd'] < 0)) {
+                    $errores["productos[$i].precio_usd"] = "El precio_usd del producto en posición $i debe ser numérico >= 0. Recibido: " . json_encode($pi['precio_usd']) . ".";
+                }
             }
         }
 
@@ -735,18 +741,49 @@ class PedidoApiController
                 if ($cantidadItem <= 0) {
                     throw new Exception("Cada item en 'productos' debe incluir 'cantidad' mayor a cero.");
                 }
+
+                $precioUnitario = null;
+                if (isset($pi['precio_unitario']) && is_numeric($pi['precio_unitario'])) {
+                    $precioUnitario = (float)$pi['precio_unitario'];
+                } elseif (isset($pi['precio_usd']) && is_numeric($pi['precio_usd'])) {
+                    $precioUnitario = (float)$pi['precio_usd'];
+                } elseif (isset($pi['precio']) && is_numeric($pi['precio'])) {
+                    $precioUnitario = (float)$pi['precio'];
+                }
+
+                $descuento = isset($pi['descuento_porcentaje']) && is_numeric($pi['descuento_porcentaje'])
+                    ? (float)$pi['descuento_porcentaje']
+                    : (isset($pi['descuento']) && is_numeric($pi['descuento']) ? (float)$pi['descuento'] : 0.0);
+
                 $items[] = [
-                    'id_producto'      => $prodId,
-                    'cantidad'         => $cantidadItem,
-                    'cantidad_devuelta' => isset($pi['cantidad_devuelta']) ? (int)$pi['cantidad_devuelta'] : 0,
+                    'id_producto'          => $prodId,
+                    'cantidad'             => $cantidadItem,
+                    'precio_unitario_usd'  => $precioUnitario,
+                    'descuento_porcentaje' => $descuento,
+                    'cantidad_devuelta'    => isset($pi['cantidad_devuelta']) ? (int)$pi['cantidad_devuelta'] : 0,
                 ];
             }
         } elseif (!empty($data['producto_id']) && is_numeric($data['producto_id'])) {
             // Campo simple producto_id
+            $precioUnitario = null;
+            if (isset($data['precio_unitario']) && is_numeric($data['precio_unitario'])) {
+                $precioUnitario = (float)$data['precio_unitario'];
+            } elseif (isset($data['precio_usd']) && is_numeric($data['precio_usd'])) {
+                $precioUnitario = (float)$data['precio_usd'];
+            } elseif (isset($data['precio']) && is_numeric($data['precio'])) {
+                $precioUnitario = (float)$data['precio'];
+            }
+
+            $descuento = isset($data['descuento_porcentaje']) && is_numeric($data['descuento_porcentaje'])
+                ? (float)$data['descuento_porcentaje']
+                : (isset($data['descuento']) && is_numeric($data['descuento']) ? (float)$data['descuento'] : 0.0);
+
             $items[] = [
-                'id_producto'      => (int)$data['producto_id'],
-                'cantidad'         => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
-                'cantidad_devuelta' => isset($data['cantidad_devuelta']) ? (int)$data['cantidad_devuelta'] : 0,
+                'id_producto'          => (int)$data['producto_id'],
+                'cantidad'             => isset($data['cantidad']) ? (int)$data['cantidad'] : 1,
+                'precio_unitario_usd'  => $precioUnitario,
+                'descuento_porcentaje' => $descuento,
+                'cantidad_devuelta'    => isset($data['cantidad_devuelta']) ? (int)$data['cantidad_devuelta'] : 0,
             ];
         }
         // Si no viene ninguno y la validación lo permitió (requiere_productos = 0),
@@ -1161,13 +1198,52 @@ class PedidoApiController
                 $pid = $pi['producto_id'] ?? $pi['id_producto'] ?? $pi['id'] ?? null;
                 $qty = $pi['cantidad'] ?? $pi['qty'] ?? $pi['cantidad_producto'] ?? null;
                 if (!is_numeric($pid) || !is_numeric($qty) || (int)$qty <= 0) continue;
-                $items[] = ['id_producto' => (int)$pid, 'cantidad' => (int)$qty, 'cantidad_devuelta' => 0];
+
+                $precioUnitario = null;
+                if (isset($pi['precio_unitario']) && is_numeric($pi['precio_unitario'])) {
+                    $precioUnitario = (float)$pi['precio_unitario'];
+                } elseif (isset($pi['precio_usd']) && is_numeric($pi['precio_usd'])) {
+                    $precioUnitario = (float)$pi['precio_usd'];
+                } elseif (isset($pi['precio']) && is_numeric($pi['precio'])) {
+                    $precioUnitario = (float)$pi['precio'];
+                }
+
+                $descuento = isset($pi['descuento_porcentaje']) && is_numeric($pi['descuento_porcentaje'])
+                    ? (float)$pi['descuento_porcentaje']
+                    : (isset($pi['descuento']) && is_numeric($pi['descuento']) ? (float)$pi['descuento'] : 0.0);
+
+                $items[] = [
+                    'id_producto'          => (int)$pid,
+                    'cantidad'             => (int)$qty,
+                    'precio_unitario_usd'  => $precioUnitario,
+                    'descuento_porcentaje' => $descuento,
+                    'cantidad_devuelta'    => 0
+                ];
             }
         } else {
             $pid = $pedido['producto_id'] ?? $pedido['id_producto'] ?? null;
             $qty = $pedido['cantidad'] ?? $pedido['cantidad_producto'] ?? null;
             if (is_numeric($pid) && is_numeric($qty) && (int)$qty > 0) {
-                $items[] = ['id_producto' => (int)$pid, 'cantidad' => (int)$qty, 'cantidad_devuelta' => 0];
+                $precioUnitario = null;
+                if (isset($pedido['precio_unitario']) && is_numeric($pedido['precio_unitario'])) {
+                    $precioUnitario = (float)$pedido['precio_unitario'];
+                } elseif (isset($pedido['precio_usd']) && is_numeric($pedido['precio_usd'])) {
+                    $precioUnitario = (float)$pedido['precio_usd'];
+                } elseif (isset($pedido['precio']) && is_numeric($pedido['precio'])) {
+                    $precioUnitario = (float)$pedido['precio'];
+                }
+
+                $descuento = isset($pedido['descuento_porcentaje']) && is_numeric($pedido['descuento_porcentaje'])
+                    ? (float)$pedido['descuento_porcentaje']
+                    : (isset($pedido['descuento']) && is_numeric($pedido['descuento']) ? (float)$pedido['descuento'] : 0.0);
+
+                $items[] = [
+                    'id_producto'          => (int)$pid,
+                    'cantidad'             => (int)$qty,
+                    'precio_unitario_usd'  => $precioUnitario,
+                    'descuento_porcentaje' => $descuento,
+                    'cantidad_devuelta'    => 0
+                ];
             }
         }
 

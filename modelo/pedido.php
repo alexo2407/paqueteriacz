@@ -740,11 +740,17 @@ class PedidosModel
             }
 
             if ($productoId !== null && $cantidad !== null) {
-                $detalle = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
+                $stmtPrecio = $db->prepare('SELECT precio_usd FROM productos WHERE id = :id LIMIT 1');
+                $stmtPrecio->execute([':id' => $productoId]);
+                $pRow = $stmtPrecio->fetch(PDO::FETCH_ASSOC);
+                $pUnitario = ($pRow && isset($pRow['precio_usd']) && is_numeric($pRow['precio_usd'])) ? (float)$pRow['precio_usd'] : 0.00;
+
+                $detalle = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, precio_unitario_usd, descuento_porcentaje, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, :precio_unitario_usd, 0.00, 0)');
                 $detalle->execute([
-                    ':id_pedido' => $pedidoId,
-                    ':id_producto' => $productoId,
-                    ':cantidad' => $cantidad
+                    ':id_pedido'           => $pedidoId,
+                    ':id_producto'         => $productoId,
+                    ':cantidad'            => $cantidad,
+                    ':precio_unitario_usd' => $pUnitario
                 ]);
             }
 
@@ -1094,8 +1100,12 @@ class PedidosModel
                     pp.id_producto,
                     pp.cantidad,
                     pp.cantidad_devuelta,
+                    pp.precio_unitario_usd,
+                    pp.descuento_porcentaje,
+                    pp.subtotal_usd,
                     pr.nombre,
-                    pr.precio_usd
+                    COALESCE(NULLIF(pp.precio_unitario_usd, 0), pr.precio_usd, 0.00) AS precio_usd,
+                    COALESCE(NULLIF(pp.precio_unitario_usd, 0), pr.precio_usd, 0.00) AS precio_unitario
                 FROM pedidos_productos pp
                 INNER JOIN productos pr ON pr.id = pp.id_producto
                 WHERE pp.id_pedido = :id_pedido
@@ -1455,17 +1465,41 @@ class PedidosModel
                 $stmtDel->execute([':id_pedido' => (int)$data['id_pedido']]);
 
                 // Insert new products
-                $stmtIns = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, :cantidad_devuelta)');
+                $stmtIns = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, precio_unitario_usd, descuento_porcentaje, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, :precio_unitario_usd, :descuento_porcentaje, :cantidad_devuelta)');
+                $stmtPrecioBase = $db->prepare('SELECT precio_usd FROM productos WHERE id = :id_producto LIMIT 1');
+
                 foreach ($data['productos'] as $prod) {
-                    if (isset($prod['producto_id']) && isset($prod['cantidad'])) {
-                        // DEBUG
-                        if (defined('DEBUG') && DEBUG) {
+                    $pid = $prod['producto_id'] ?? $prod['id_producto'] ?? null;
+                    $cant = $prod['cantidad'] ?? $prod['cantidad_producto'] ?? null;
+                    if ($pid && $cant) {
+                        $precio = null;
+                        if (isset($prod['precio_unitario_usd']) && is_numeric($prod['precio_unitario_usd'])) {
+                            $precio = (float)$prod['precio_unitario_usd'];
+                        } elseif (isset($prod['precio_unitario']) && is_numeric($prod['precio_unitario'])) {
+                            $precio = (float)$prod['precio_unitario'];
+                        } elseif (isset($prod['precio_usd']) && is_numeric($prod['precio_usd'])) {
+                            $precio = (float)$prod['precio_usd'];
+                        } elseif (isset($prod['precio']) && is_numeric($prod['precio'])) {
+                            $precio = (float)$prod['precio'];
                         }
+
+                        if ($precio === null) {
+                            $stmtPrecioBase->execute([':id_producto' => (int)$pid]);
+                            $pRow = $stmtPrecioBase->fetch(PDO::FETCH_ASSOC);
+                            $precio = ($pRow && isset($pRow['precio_usd']) && is_numeric($pRow['precio_usd'])) ? (float)$pRow['precio_usd'] : 0.00;
+                        }
+
+                        $descuento = isset($prod['descuento_porcentaje']) && is_numeric($prod['descuento_porcentaje'])
+                            ? (float)$prod['descuento_porcentaje']
+                            : 0.0;
+
                         $stmtIns->execute([
-                            ':id_pedido' => (int)$data['id_pedido'],
-                            ':id_producto' => (int)$prod['producto_id'],
-                            ':cantidad' => (int)$prod['cantidad'],
-                            ':cantidad_devuelta' => isset($prod['cantidad_devuelta']) ? (int)$prod['cantidad_devuelta'] : 0
+                            ':id_pedido'            => (int)$data['id_pedido'],
+                            ':id_producto'          => (int)$pid,
+                            ':cantidad'             => (int)$cant,
+                            ':precio_unitario_usd'  => $precio,
+                            ':descuento_porcentaje' => $descuento,
+                            ':cantidad_devuelta'    => isset($prod['cantidad_devuelta']) ? (int)$prod['cantidad_devuelta'] : 0
                         ]);
                     }
                 }
@@ -1474,11 +1508,28 @@ class PedidosModel
                 $stmtDel = $db->prepare('DELETE FROM pedidos_productos WHERE id_pedido = :id_pedido');
                 $stmtDel->execute([':id_pedido' => (int)$data['id_pedido']]);
 
-                $stmtIns = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, 0)');
+                $precio = null;
+                if (isset($data['precio_unitario_usd']) && is_numeric($data['precio_unitario_usd'])) {
+                    $precio = (float)$data['precio_unitario_usd'];
+                } elseif (isset($data['precio_unitario']) && is_numeric($data['precio_unitario'])) {
+                    $precio = (float)$data['precio_unitario'];
+                } elseif (isset($data['precio_usd']) && is_numeric($data['precio_usd'])) {
+                    $precio = (float)$data['precio_usd'];
+                }
+
+                if ($precio === null) {
+                    $stmtPrecioBase = $db->prepare('SELECT precio_usd FROM productos WHERE id = :id_producto LIMIT 1');
+                    $stmtPrecioBase->execute([':id_producto' => (int)$data['producto_id']]);
+                    $pRow = $stmtPrecioBase->fetch(PDO::FETCH_ASSOC);
+                    $precio = ($pRow && isset($pRow['precio_usd']) && is_numeric($pRow['precio_usd'])) ? (float)$pRow['precio_usd'] : 0.00;
+                }
+
+                $stmtIns = $db->prepare('INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, precio_unitario_usd, descuento_porcentaje, cantidad_devuelta) VALUES (:id_pedido, :id_producto, :cantidad, :precio_unitario_usd, 0.00, 0)');
                 $stmtIns->execute([
-                    ':id_pedido' => (int)$data['id_pedido'],
-                    ':id_producto' => (int)$data['producto_id'],
-                    ':cantidad' => (int)$data['cantidad_producto']
+                    ':id_pedido'           => (int)$data['id_pedido'],
+                    ':id_producto'         => (int)$data['producto_id'],
+                    ':cantidad'            => (int)$data['cantidad_producto'],
+                    ':precio_unitario_usd' => $precio
                 ]);
             }
 
@@ -1885,10 +1936,15 @@ class PedidosModel
 
             // 3. Insertar items en pedidos_productos (agrupando por producto para evitar duplicados en la clave primaria)
             $detalleStmt = $db->prepare('
-                INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, cantidad_devuelta)
-                VALUES (:id_pedido, :id_producto, :cantidad, 0)
-                ON DUPLICATE KEY UPDATE cantidad = cantidad + VALUES(cantidad)
+                INSERT INTO pedidos_productos (id_pedido, id_producto, cantidad, precio_unitario_usd, descuento_porcentaje, cantidad_devuelta)
+                VALUES (:id_pedido, :id_producto, :cantidad, :precio_unitario_usd, :descuento_porcentaje, 0)
+                ON DUPLICATE KEY UPDATE 
+                    cantidad = cantidad + VALUES(cantidad),
+                    precio_unitario_usd = VALUES(precio_unitario_usd),
+                    descuento_porcentaje = VALUES(descuento_porcentaje)
             ');
+
+            $stmtPrecioBase = $db->prepare('SELECT precio_usd FROM productos WHERE id = :id_producto LIMIT 1');
 
             $itemsAgrupados = [];
             foreach ($items as $item) {
@@ -1896,17 +1952,45 @@ class PedidosModel
                 $cant   = (int)($item['cantidad'] ?? 1);
                 if ($prodId <= 0 || $cant <= 0) continue;
 
-                if (isset($itemsAgrupados[$prodId])) {
-                    $itemsAgrupados[$prodId] += $cant;
+                $precio = isset($item['precio_unitario_usd']) && is_numeric($item['precio_unitario_usd'])
+                    ? (float)$item['precio_unitario_usd']
+                    : (isset($item['precio_unitario']) && is_numeric($item['precio_unitario'])
+                        ? (float)$item['precio_unitario']
+                        : (isset($item['precio_usd']) && is_numeric($item['precio_usd']) ? (float)$item['precio_usd'] : null));
+
+                $descuento = isset($item['descuento_porcentaje']) && is_numeric($item['descuento_porcentaje'])
+                    ? (float)$item['descuento_porcentaje']
+                    : 0.0;
+
+                if (!isset($itemsAgrupados[$prodId])) {
+                    $itemsAgrupados[$prodId] = [
+                        'cantidad'             => $cant,
+                        'precio_unitario_usd'  => $precio,
+                        'descuento_porcentaje' => $descuento
+                    ];
                 } else {
-                    $itemsAgrupados[$prodId] = $cant;
+                    $itemsAgrupados[$prodId]['cantidad'] += $cant;
+                    if ($precio !== null) {
+                        $itemsAgrupados[$prodId]['precio_unitario_usd'] = $precio;
+                    }
                 }
             }
 
-            foreach ($itemsAgrupados as $prodId => $cant) {
-                $detalleStmt->bindValue(':id_pedido',  $pedidoId, PDO::PARAM_INT);
-                $detalleStmt->bindValue(':id_producto', $prodId,  PDO::PARAM_INT);
-                $detalleStmt->bindValue(':cantidad',    $cant,    PDO::PARAM_INT);
+            foreach ($itemsAgrupados as $prodId => $itemData) {
+                $cant = $itemData['cantidad'];
+                $precio = $itemData['precio_unitario_usd'];
+                if ($precio === null) {
+                    $stmtPrecioBase->execute([':id_producto' => $prodId]);
+                    $pRow = $stmtPrecioBase->fetch(PDO::FETCH_ASSOC);
+                    $precio = ($pRow && isset($pRow['precio_usd']) && is_numeric($pRow['precio_usd'])) ? (float)$pRow['precio_usd'] : 0.00;
+                }
+                $descuento = $itemData['descuento_porcentaje'] ?? 0.0;
+
+                $detalleStmt->bindValue(':id_pedido',            $pedidoId, PDO::PARAM_INT);
+                $detalleStmt->bindValue(':id_producto',          $prodId,   PDO::PARAM_INT);
+                $detalleStmt->bindValue(':cantidad',             $cant,     PDO::PARAM_INT);
+                $detalleStmt->bindValue(':precio_unitario_usd',  $precio);
+                $detalleStmt->bindValue(':descuento_porcentaje', $descuento);
                 $detalleStmt->execute();
             }
 
