@@ -942,6 +942,30 @@
                         <pre class="mt-2 mb-0"><code class="language-json">{ "requiere_productos": 0 }</code></pre>
                     </div>
 
+                    <!-- Box: Line-Item Pricing & Freezing -->
+                    <div class="alert alert-success mt-3" data-lang="en">
+                        <strong>🏷️ Line-Item Pricing & Historical Freezing (<code>precio_unitario</code>)</strong>
+                        <p class="mb-1 mt-2">Each element in the <code>productos</code> array supports custom unit pricing:</p>
+                        <ul class="mb-2">
+                            <li><code>producto_id</code> (integer, required): Product ID from catalog.</li>
+                            <li><code>cantidad</code> (integer, required): Quantity (> 0).</li>
+                            <li><code>precio_unitario</code> (decimal, optional): Specific unit sale price for this line (e.g. <code>12.16</code>). If omitted, current catalog price is automatically captured.</li>
+                            <li><code>descuento_porcentaje</code> (decimal, optional): Line discount percentage (e.g. <code>10.00</code> for 10%).</li>
+                        </ul>
+                        <p class="mb-0 small text-muted"><i class="bi bi-shield-check me-1"></i><strong>Price Snapshot:</strong> Line prices are frozen on the order at creation time. Future updates to the product catalog will not alter historical order details.</p>
+                    </div>
+                    <div class="alert alert-success mt-3" data-lang="es">
+                        <strong>🏷️ Precios por Línea y Congelación Histórica (<code>precio_unitario</code>)</strong>
+                        <p class="mb-1 mt-2">Cada elemento en el array <code>productos</code> soporta precios unitarios personalizados:</p>
+                        <ul class="mb-2">
+                            <li><code>producto_id</code> (entero, obligatorio): ID del producto en el catálogo.</li>
+                            <li><code>cantidad</code> (entero, obligatorio): Cantidad (> 0).</li>
+                            <li><code>precio_unitario</code> (decimal, opcional): Precio unitario de venta específico para esta línea (ej. <code>12.16</code>). Si se omite, se captura automáticamente el precio actual del catálogo.</li>
+                            <li><code>descuento_porcentaje</code> (decimal, opcional): Porcentaje de descuento para la línea (ej. <code>10.00</code> para 10%).</li>
+                        </ul>
+                        <p class="mb-0 small text-muted"><i class="bi bi-shield-check me-1"></i><strong>Congelación de Precios:</strong> Los precios por línea quedan congelados en la orden al momento de su creación. Futuras modificaciones en el catálogo no alterarán los pedidos históricos.</p>
+                    </div>
+
                  <!-- Bulk Orders -->
 
                  <div class="section-container">
@@ -1268,6 +1292,26 @@
     "productos": [
         { "producto_id": 49, "cantidad": 3 },
         { "producto_id": 50, "cantidad": 2 }
+    ]
+}</code></pre>
+
+                    <h4 data-lang="en">🏷️ Example: Order with Custom Line Prices (<code>precio_unitario</code>)</h4>
+                    <h4 data-lang="es">🏷️ Ejemplo: Pedido con Precios Unitarios Personalizados (<code>precio_unitario</code>)</h4>
+                    <pre class="code-block line-numbers"><code class="language-json">{
+    "numero_orden": 697899,
+    "destinatario": "Laura Gutiérrez",
+    "id_cliente": 9,
+    "telefono": "(502) 5555-9876",
+    "direccion": "10 Calle 4-56 Zona 10",
+    "comentario": "Llamar antes de entregar.",
+    "id_proveedor": 12,
+    "codigo_postal": "01010",
+    "fecha_entrega": "2026-03-22",
+    "precio_total_local": 360.00,
+    "es_combo": 1,
+    "productos": [
+        { "producto_id": 184, "cantidad": 2, "precio_unitario": 12.16 },
+        { "producto_id": 49, "cantidad": 1, "precio_unitario": 15.00, "descuento_porcentaje": 5.0 }
     ]
 }</code></pre>
 
