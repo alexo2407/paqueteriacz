@@ -4579,11 +4579,41 @@ class PedidosModel
             $stmt->execute();
             $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Normalizar nombres geográficos y código de moneda ISO por país
+            // Cargar productos asignados a cada pedido en una sola consulta
+            if (!empty($pedidos)) {
+                $pedidoIds = array_map(fn($ped) => (int)$ped['id'], $pedidos);
+                $inQuery = implode(',', $pedidoIds);
+                try {
+                    $stmtProd = $db->query("
+                        SELECT 
+                            pp.id_pedido,
+                            pp.id_producto,
+                            pp.cantidad,
+                            pr.nombre
+                        FROM pedidos_productos pp
+                        INNER JOIN productos pr ON pr.id = pp.id_producto
+                        WHERE pp.id_pedido IN ($inQuery)
+                        ORDER BY pp.id ASC
+                    ");
+                    $prodsByPedido = [];
+                    if ($stmtProd) {
+                        while ($row = $stmtProd->fetch(PDO::FETCH_ASSOC)) {
+                            $prodsByPedido[$row['id_pedido']][] = $row;
+                        }
+                    }
+                } catch (Exception $e) {
+                    $prodsByPedido = [];
+                }
+            } else {
+                $prodsByPedido = [];
+            }
+
+            // Normalizar nombres geográficos, productos y código de moneda ISO por país
             foreach ($pedidos as &$p) {
                 $p['departamento_nombre'] = $p['departamento_nombre_db'] ?: $p['departmentName'];
                 $p['municipio_nombre']    = $p['municipio_nombre_db'] ?: $p['municipalitiesName'];
                 $p['barrio_nombre']       = $p['barrio_nombre_db'] ?: $p['Location'];
+                $p['productos']           = $prodsByPedido[$p['id']] ?? [];
 
                 // Determinar código de moneda normalizado (CRC, USD, NIO, GTQ, COP, MXN, HNL, UYU, ARS)
                 $mCod = strtoupper(trim($p['moneda_codigo'] ?? ''));

@@ -199,25 +199,48 @@ class ThermalLabelService
         $pdf->MultiCell($usableW, 3.4, self::utf8($direccionTexto), 0, 'L');
         $y = $pdf->GetY() + 1;
 
-        // Ref 1: Entre Calles
-        $ref1 = !empty($p['betweenStreets']) ? trim($p['betweenStreets']) : '';
-        if ($ref1 !== '') {
-            $pdf->SetXY($x0, $y);
-            $pdf->SetFont('Arial', 'B', 7);
-            $pdf->Cell(12, 3.3, 'Ref 1:', 0, 0, 'L');
-            $pdf->SetFont('Arial', '', 7);
-            $pdf->Cell($usableW - 12, 3.3, self::utf8(self::truncar($ref1, 40)), 0, 1, 'L');
-            $y += 3.5;
+        // Cargar productos si no vienen en el array
+        if (!isset($p['productos']) && !empty($p['id'])) {
+            try {
+                require_once __DIR__ . '/../modelo/conexion.php';
+                $db = (new Conexion())->conectar();
+                $stmtP = $db->prepare("
+                    SELECT pp.cantidad, pr.nombre
+                    FROM pedidos_productos pp
+                    INNER JOIN productos pr ON pr.id = pp.id_producto
+                    WHERE pp.id_pedido = :id
+                    ORDER BY pp.id ASC
+                ");
+                $stmtP->execute([':id' => (int)$p['id']]);
+                $p['productos'] = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                $p['productos'] = [];
+            }
         }
 
-        // Ref 2: Comentarios / Ubicación
-        $ref2 = !empty($p['comentario']) ? trim($p['comentario']) : (!empty($p['Location']) ? trim($p['Location']) : '');
-        if ($ref2 !== '' && $ref2 !== 'Sin comentarios') {
-            $pdf->SetXY($x0, $y);
-            $pdf->SetFont('Arial', 'B', 7);
-            $pdf->Cell(12, 3.3, 'Ref 2:', 0, 0, 'L');
-            $pdf->SetFont('Arial', '', 7);
-            $pdf->Cell($usableW - 12, 3.3, self::utf8(self::truncar($ref2, 40)), 0, 1, 'L');
+        // ── 4.1 PRODUCTOS Y CANTIDADES ASIGNADAS ─────────────────────────────
+        $pdf->SetXY($x0, $y);
+        $pdf->SetFont('Arial', 'B', 7.5);
+        $pdf->Cell($usableW, 3.5, self::utf8('PRODUCTOS ASIGNADOS:'), 0, 1, 'L');
+        $y += 3.8;
+
+        $productos = $p['productos'] ?? [];
+        if (!empty($productos)) {
+            foreach ($productos as $prod) {
+                $cant = intval($prod['cantidad'] ?? 1);
+                $nombreProd = trim($prod['nombre'] ?? 'Producto');
+
+                $pdf->SetXY($x0 + 1, $y);
+                $pdf->SetFont('Arial', 'B', 7.5);
+                $pdf->Cell(8, 3.3, $cant . 'x', 0, 0, 'L');
+                $pdf->SetFont('Arial', '', 7);
+                $pdf->Cell($usableW - 9, 3.3, self::utf8(self::truncar($nombreProd, 38)), 0, 1, 'L');
+                $y += 3.5;
+            }
+        } else {
+            $pdf->SetXY($x0 + 1, $y);
+            $pdf->SetFont('Arial', 'I', 7);
+            $pdf->Cell($usableW - 1, 3.3, self::utf8('1x Paquete estándar'), 0, 1, 'L');
             $y += 3.5;
         }
 
@@ -291,8 +314,7 @@ class ThermalLabelService
         $qrY = $y;
 
         // Generar QR temporal
-        $baseUrl = defined('RUTA_URL') ? RUTA_URL : 'https://rutaexlatam.com/';
-        $trackingUrl = rtrim($baseUrl, '/') . '/seguimiento/ver/' . ($p['id'] ?? 0);
+        $trackingUrl = 'https://rutaex.com/';
         $tempQrFile = self::generarImagenQR($trackingUrl);
 
         if ($tempQrFile && file_exists($tempQrFile)) {
@@ -300,24 +322,20 @@ class ThermalLabelService
             @unlink($tempQrFile);
         }
 
-        // Texto informativo junto al QR
+        // Texto junto al QR
         $infoX = $qrX + $qrSize + 3;
         $infoW = $usableW - ($qrSize + 5);
         
-        $pdf->SetXY($infoX, $qrY + 1);
-        $pdf->SetFont('Arial', 'B', 7);
-        $pdf->Cell($infoW, 3.2, self::utf8('ESCANEE PARA RASTREO'), 0, 1, 'L');
+        $pdf->SetXY($infoX, $qrY + 2);
+        $pdf->SetFont('Arial', 'B', 7.5);
+        $pdf->Cell($infoW, 3.5, self::utf8('ESCANEA PARA'), 0, 1, 'L');
 
-        $pdf->SetXY($infoX, $qrY + 4.5);
-        $pdf->SetFont('Arial', '', 6.5);
-        $pdf->Cell($infoW, 3, self::utf8('• Seguimiento en tiempo real'), 0, 1, 'L');
+        $pdf->SetXY($infoX, $qrY + 5.5);
+        $pdf->SetFont('Arial', 'B', 7.5);
+        $pdf->Cell($infoW, 3.5, self::utf8('RASTREAR PEDIDO'), 0, 1, 'L');
 
-        $pdf->SetXY($infoX, $qrY + 7.5);
-        $pdf->SetFont('Arial', '', 6.5);
-        $pdf->Cell($infoW, 3, self::utf8('• Soporte y confirmación'), 0, 1, 'L');
-
-        $pdf->SetXY($infoX, $qrY + 11);
-        $pdf->SetFont('Arial', 'I', 6);
+        $pdf->SetXY($infoX, $qrY + 11.5);
+        $pdf->SetFont('Arial', 'I', 6.5);
         $pdf->Cell($infoW, 3, self::utf8('Etiqueta ' . $indice . ' de ' . $total), 0, 1, 'L');
 
         $y += $qrSize + 2.5;
@@ -329,11 +347,11 @@ class ThermalLabelService
         $pdf->SetXY($x0, $y);
         $pdf->SetFont('Arial', 'B', 7.5);
         $pdf->Cell($usableW, 3.5, '* GRACIAS POR SU COMPRA *', 0, 1, 'C');
-        $y += 3.5;
+        $y += 3.8;
 
         $pdf->SetXY($x0, $y);
-        $pdf->SetFont('Arial', '', 6.5);
-        $pdf->Cell($usableW, 3, 'www.rutaexlatam.com', 0, 1, 'C');
+        $pdf->SetFont('Arial', '', 7);
+        $pdf->Cell($usableW, 3.2, 'https://rutaex.com/', 0, 1, 'C');
     }
 
     /**
