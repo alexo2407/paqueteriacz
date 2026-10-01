@@ -154,23 +154,23 @@ class ThermalLabelService
         // Destinatario
         $pdf->SetXY($x0, $y);
         $pdf->SetFont('Arial', 'B', 8);
-        $pdf->Cell(22, 4, 'DESTINATARIO:', 0, 0, 'L');
-        $pdf->SetFont('Arial', 'B', 8);
-        $pdf->Cell($usableW - 22, 4, self::utf8(self::truncar($destinatario, 32)), 0, 1, 'L');
+        $pdf->Cell(25, 4, 'DESTINATARIO: ', 0, 0, 'L');
+        $pdf->SetFont('Arial', '', 8);
+        $pdf->Cell($usableW - 25, 4, self::utf8(self::truncar($destinatario, 30)), 0, 1, 'L');
         $y += 4.5;
 
         // Teléfono
         $pdf->SetXY($x0, $y);
         $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell(18, 3.8, self::utf8('TELÉFONO:'), 0, 0, 'L');
+        $pdf->Cell(20, 3.8, self::utf8('TELÉFONO: '), 0, 0, 'L');
         $pdf->SetFont('Arial', 'B', 8);
-        $pdf->Cell($usableW - 18, 3.8, $telefono, 0, 1, 'L');
+        $pdf->Cell($usableW - 20, 3.8, $telefono, 0, 1, 'L');
         $y += 4.5;
 
         self::dibujarLineaDivisoria($pdf, $x0, $y, $usableW);
         $y += 2.5;
 
-        // ── 4. DIRECCIÓN COMPLETA Y REFERENCIAS (Ref 1 y Ref 2) ──────────────
+        // ── 4. DIRECCIÓN COMPLETA Y PRODUCTOS ASIGNADOS ──────────────────────
         $pdf->SetXY($x0, $y);
         $pdf->SetFont('Arial', 'B', 7.5);
         $pdf->Cell($usableW, 3.5, self::utf8('DIRECCIÓN DE ENTREGA:'), 0, 1, 'L');
@@ -197,7 +197,7 @@ class ThermalLabelService
         $pdf->SetXY($x0, $y);
         $pdf->SetFont('Arial', '', 7.5);
         $pdf->MultiCell($usableW, 3.4, self::utf8($direccionTexto), 0, 'L');
-        $y = $pdf->GetY() + 1;
+        $y = $pdf->GetY() + 1.5;
 
         // Cargar productos si no vienen en el array o si vino vacío
         if (empty($p['productos']) && !empty($p['id'])) {
@@ -221,8 +221,8 @@ class ThermalLabelService
         // ── 4.1 PRODUCTOS Y CANTIDADES ASIGNADAS ─────────────────────────────
         $pdf->SetXY($x0, $y);
         $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell($usableW, 3.5, self::utf8('PRODUCTOS ASIGNADOS:'), 0, 1, 'L');
-        $y += 3.8;
+        $pdf->Cell($usableW, 3.8, self::utf8('PRODUCTOS ASIGNADOS:'), 0, 1, 'L');
+        $y += 4.2;
 
         $productos = $p['productos'] ?? [];
         if (!empty($productos)) {
@@ -231,24 +231,25 @@ class ThermalLabelService
                 $nombreProd = trim($prod['nombre'] ?? 'Producto');
 
                 $pdf->SetXY($x0 + 1, $y);
+                $pdf->SetFont('Arial', 'B', 8);
+                $pdf->Cell(7, 3.8, $cant . 'x', 0, 0, 'L');
                 $pdf->SetFont('Arial', 'B', 7.5);
-                $pdf->Cell(8, 3.3, $cant . 'x', 0, 0, 'L');
-                $pdf->SetFont('Arial', '', 7);
-                $pdf->Cell($usableW - 9, 3.3, self::utf8(self::truncar($nombreProd, 38)), 0, 1, 'L');
-                $y += 3.5;
+                $pdf->Cell($usableW - 8, 3.8, self::utf8(self::truncar($nombreProd, 36)), 0, 1, 'L');
+                $y += 4.2;
             }
         } elseif (!empty($p['observaciones_combo'])) {
             $pdf->SetXY($x0 + 1, $y);
-            $pdf->SetFont('Arial', '', 7);
-            $pdf->Cell($usableW - 1, 3.3, self::utf8(self::truncar($p['observaciones_combo'], 40)), 0, 1, 'L');
-            $y += 3.5;
+            $pdf->SetFont('Arial', 'B', 7.5);
+            $pdf->Cell($usableW - 1, 3.8, self::utf8(self::truncar($p['observaciones_combo'], 38)), 0, 1, 'L');
+            $y += 4.2;
         } else {
             $pdf->SetXY($x0 + 1, $y);
-            $pdf->SetFont('Arial', 'I', 7);
-            $pdf->Cell($usableW - 1, 3.3, self::utf8('1x Paquete estándar'), 0, 1, 'L');
-            $y += 3.5;
+            $pdf->SetFont('Arial', 'I', 7.5);
+            $pdf->Cell($usableW - 1, 3.8, self::utf8('1x Paquete estándar'), 0, 1, 'L');
+            $y += 4.2;
         }
 
+        $y += 1.5;
         self::dibujarLineaDivisoria($pdf, $x0, $y, $usableW);
         $y += 2.5;
 
