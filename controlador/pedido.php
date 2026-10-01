@@ -2301,7 +2301,8 @@ class PedidosController
             || in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true)
             || in_array('Proveedor', $rolesNombres, true)
             || in_array($sessionRol, [4, 5])
-            || (function_exists('isCliente') && isCliente());
+            || (function_exists('isCliente') && isCliente())
+            || (function_exists('isProveedor') && isProveedor());
 
         if (!$isAdmin && !$isCliente) {
             http_response_code(403);
@@ -2358,7 +2359,8 @@ class PedidosController
             || in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true)
             || in_array('Proveedor', $rolesNombres, true)
             || in_array($sessionRol, [4, 5])
-            || (function_exists('isCliente') && isCliente());
+            || (function_exists('isCliente') && isCliente())
+            || (function_exists('isProveedor') && isProveedor());
 
         if (!$isAdmin && !$isCliente) {
             http_response_code(403);

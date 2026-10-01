@@ -34,7 +34,8 @@ $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true)
     || in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true)
     || in_array('Proveedor', $rolesNombres, true)
     || in_array($sessionRol, [4, 5])
-    || (function_exists('isCliente') && isCliente());
+    || (function_exists('isCliente') && isCliente())
+    || (function_exists('isProveedor') && isProveedor());
 
 if (empty($userId) || (!$isAdmin && !$isCliente)) {
     http_response_code(403);

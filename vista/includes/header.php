@@ -431,7 +431,7 @@
             <a href="<?= RUTA_URL ?>pedidos/listar" class="nav-link">
                 <i class="bi bi-box-seam"></i> Pedidos
             </a>
-            <?php if ($isAdmin || $isCliente): ?>
+            <?php if ($isAdmin || $isCliente || $isProveedor): ?>
             <a href="<?= RUTA_URL ?>pedidos/etiquetas" class="nav-link">
                 <i class="bi bi-printer-fill"></i> Etiquetas
             </a>

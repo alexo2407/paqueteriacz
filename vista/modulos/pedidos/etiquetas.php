@@ -27,7 +27,8 @@ $isCliente = in_array(ROL_NOMBRE_CLIENTE, $roles, true)
     || in_array(ROL_NOMBRE_PROVEEDOR, $roles, true)
     || in_array('Proveedor', $roles, true)
     || in_array($sessionRol, [4, 5])
-    || (function_exists('isCliente') && isCliente());
+    || (function_exists('isCliente') && isCliente())
+    || (function_exists('isProveedor') && isProveedor());
 
 if (!$isAdmin && !$isCliente) {
     echo "<script>window.location.href = '" . RUTA_URL . "login';</script>";
