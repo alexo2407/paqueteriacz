@@ -4543,8 +4543,13 @@ class PedidosModel
                     p.id_cliente,
                     p.id_proveedor,
                     p.id_estado,
+                    p.id_pais,
+                    p.id_moneda,
                     ep.nombre_estado,
-                    m.codigo AS moneda_codigo,
+                    COALESCE(m.codigo, mp.codigo, pais.codigo_iso) AS moneda_codigo,
+                    COALESCE(m.nombre, mp.nombre) AS moneda_nombre,
+                    pais.nombre AS pais_nombre,
+                    pais.codigo_iso AS pais_iso,
                     uP.nombre AS proveedor_nombre,
                     uC.nombre AS cliente_nombre,
                     COALESCE(uP.nombre, uC.nombre, 'RutaEx') AS remitente_nombre,
@@ -4556,6 +4561,8 @@ class PedidosModel
                 FROM pedidos p
                 INNER JOIN estados_pedidos ep ON ep.id = p.id_estado
                 LEFT JOIN monedas m ON m.id = p.id_moneda
+                LEFT JOIN paises pais ON pais.id = p.id_pais
+                LEFT JOIN monedas mp ON mp.id = pais.id_moneda_local
                 LEFT JOIN usuarios uP ON uP.id = p.id_proveedor
                 LEFT JOIN usuarios uC ON uC.id = p.id_cliente
                 LEFT JOIN departamentos d ON d.id = p.id_departamento
@@ -4572,11 +4579,35 @@ class PedidosModel
             $stmt->execute();
             $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Normalizar nombres geográficos
+            // Normalizar nombres geográficos y código de moneda ISO por país
             foreach ($pedidos as &$p) {
                 $p['departamento_nombre'] = $p['departamento_nombre_db'] ?: $p['departmentName'];
                 $p['municipio_nombre']    = $p['municipio_nombre_db'] ?: $p['municipalitiesName'];
                 $p['barrio_nombre']       = $p['barrio_nombre_db'] ?: $p['Location'];
+
+                // Determinar código de moneda normalizado (CRC, USD, NIO, GTQ, COP, MXN, HNL, UYU, ARS)
+                $mCod = strtoupper(trim($p['moneda_codigo'] ?? ''));
+                $idPais = (int)($p['id_pais'] ?? 0);
+                if (empty($mCod) || in_array($mCod, ['NI', 'NIC'])) {
+                    $mCod = ($idPais === 1) ? 'NIO' : (($idPais === 2) ? 'CRC' : (($idPais === 6 || $idPais === 10) ? 'GTQ' : (($idPais === 3) ? 'COP' : 'CRC')));
+                } elseif (in_array($mCod, ['CR', 'CRI'])) {
+                    $mCod = 'CRC';
+                } elseif (in_array($mCod, ['GUAT', 'GUATL', 'GT'])) {
+                    $mCod = 'GTQ';
+                } elseif (in_array($mCod, ['CO', 'COL'])) {
+                    $mCod = 'COP';
+                } elseif (in_array($mCod, ['SLV', 'SV', 'PAN', 'PA', 'EC'])) {
+                    $mCod = 'USD';
+                } elseif (in_array($mCod, ['MX', 'MEX'])) {
+                    $mCod = 'MXN';
+                } elseif (in_array($mCod, ['HND', 'HN'])) {
+                    $mCod = 'HNL';
+                } elseif (in_array($mCod, ['URY', 'UY'])) {
+                    $mCod = 'UYU';
+                } elseif (in_array($mCod, ['ARS', 'AR'])) {
+                    $mCod = 'ARS';
+                }
+                $p['moneda_codigo'] = $mCod ?: 'CRC';
             }
             unset($p);
 

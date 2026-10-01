@@ -438,15 +438,34 @@ document.addEventListener('DOMContentLoaded', function () {
             // Fecha de entrega formateada
             let fEntrega = p.fecha_entrega ? p.fecha_entrega.substring(0, 10) : '—';
 
-            // Moneda y Monto
+            // Moneda y Monto por País (Código ISO)
             const totalMonto = parseFloat(p.precio_total_local || p.precio_local || 0);
-            let monedaSym = '₡';
-            if ((p.moneda_codigo || '').toUpperCase() === 'GTQ') monedaSym = 'Q';
-            else if ((p.moneda_codigo || '').toUpperCase() === 'USD') monedaSym = '$';
+            let monedaCod = (p.moneda_codigo || 'CRC').toUpperCase().trim();
+            const idPais = parseInt(p.id_pais || 0, 10);
+            if (!monedaCod || monedaCod === 'NI' || monedaCod === 'NIC') {
+                monedaCod = (idPais === 1) ? 'NIO' : ((idPais === 2) ? 'CRC' : ((idPais === 6 || idPais === 10) ? 'GTQ' : ((idPais === 3) ? 'COP' : 'CRC')));
+            } else if (monedaCod === 'CR' || monedaCod === 'CRI') {
+                monedaCod = 'CRC';
+            } else if (['GUAT', 'GUATL', 'GT'].includes(monedaCod)) {
+                monedaCod = 'GTQ';
+            } else if (['CO', 'COL'].includes(monedaCod)) {
+                monedaCod = 'COP';
+            } else if (['SLV', 'SV', 'PAN', 'PA', 'EC'].includes(monedaCod)) {
+                monedaCod = 'USD';
+            } else if (['MX', 'MEX'].includes(monedaCod)) {
+                monedaCod = 'MXN';
+            } else if (['HND', 'HN'].includes(monedaCod)) {
+                monedaCod = 'HNL';
+            } else if (['URY', 'UY'].includes(monedaCod)) {
+                monedaCod = 'UYU';
+            } else if (['ARS', 'AR'].includes(monedaCod)) {
+                monedaCod = 'ARS';
+            }
+            if (!monedaCod) monedaCod = 'CRC';
 
             const montoHtml = totalMonto > 0 
-                ? `<span class="price-badge">${monedaSym} ${totalMonto.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>`
-                : `<span class="badge bg-light text-secondary border">Sin cobro</span>`;
+                ? `<span class="price-badge">${escapeHtml(monedaCod)} ${totalMonto.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>`
+                : `<span class="badge bg-light text-secondary border">Sin cobro (${escapeHtml(monedaCod)} 0.00)</span>`;
 
             html += `
                 <tr id="row-pedido-${id}">

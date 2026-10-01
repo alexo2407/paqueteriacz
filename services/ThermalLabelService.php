@@ -234,11 +234,29 @@ class ThermalLabelService
         $pdf->Cell($usableW - 25, 3.8, $fechaEntrega, 0, 1, 'L');
         $y += 4.5;
 
-        // Monto
-        $monedaSimbolo = '₡';
-        $monedaCod = strtoupper($p['moneda_codigo'] ?? 'CRC');
-        if ($monedaCod === 'GTQ') $monedaSimbolo = 'Q';
-        elseif ($monedaCod === 'USD') $monedaSimbolo = '$';
+        // Moneda y Monto por País (Código ISO: CRC, USD, NIO, GTQ, COP, MXN, HNL, etc.)
+        $monedaCod = strtoupper(trim($p['moneda_codigo'] ?? ''));
+        $idPais = (int)($p['id_pais'] ?? 0);
+        if (empty($monedaCod) || in_array($monedaCod, ['NI', 'NIC'])) {
+            $monedaCod = ($idPais === 1) ? 'NIO' : (($idPais === 2) ? 'CRC' : (($idPais === 6 || $idPais === 10) ? 'GTQ' : (($idPais === 3) ? 'COP' : 'CRC')));
+        } elseif (in_array($monedaCod, ['CR', 'CRI'])) {
+            $monedaCod = 'CRC';
+        } elseif (in_array($monedaCod, ['GUAT', 'GUATL', 'GT'])) {
+            $monedaCod = 'GTQ';
+        } elseif (in_array($monedaCod, ['CO', 'COL'])) {
+            $monedaCod = 'COP';
+        } elseif (in_array($monedaCod, ['SLV', 'SV', 'PAN', 'PA', 'EC'])) {
+            $monedaCod = 'USD';
+        } elseif (in_array($monedaCod, ['MX', 'MEX'])) {
+            $monedaCod = 'MXN';
+        } elseif (in_array($monedaCod, ['HND', 'HN'])) {
+            $monedaCod = 'HNL';
+        } elseif (in_array($monedaCod, ['URY', 'UY'])) {
+            $monedaCod = 'UYU';
+        } elseif (in_array($monedaCod, ['ARS', 'AR'])) {
+            $monedaCod = 'ARS';
+        }
+        if (empty($monedaCod)) $monedaCod = 'CRC';
 
         $totalCobrar = floatval($p['precio_total_local'] ?? ($p['precio_local'] ?? 0));
 
@@ -257,9 +275,9 @@ class ThermalLabelService
         $pdf->SetFont('Arial', 'B', 12);
         
         if ($totalCobrar > 0) {
-            $montoTexto = $monedaSimbolo . ' ' . number_format($totalCobrar, 2, '.', ',');
+            $montoTexto = $monedaCod . ' ' . number_format($totalCobrar, 2, '.', ',');
         } else {
-            $montoTexto = self::utf8('PAGADO / SIN COBRO (₡ 0.00)');
+            $montoTexto = self::utf8('PAGADO / SIN COBRO (' . $monedaCod . ' 0.00)');
         }
         $pdf->Cell($usableW, 6.5, $montoTexto, 0, 1, 'C');
         $y += 10.5;
