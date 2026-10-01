@@ -199,8 +199,8 @@ class ThermalLabelService
         $pdf->MultiCell($usableW, 3.4, self::utf8($direccionTexto), 0, 'L');
         $y = $pdf->GetY() + 1;
 
-        // Cargar productos si no vienen en el array
-        if (!isset($p['productos']) && !empty($p['id'])) {
+        // Cargar productos si no vienen en el array o si vino vacío
+        if (empty($p['productos']) && !empty($p['id'])) {
             try {
                 require_once __DIR__ . '/../modelo/conexion.php';
                 $db = (new Conexion())->conectar();
@@ -209,7 +209,7 @@ class ThermalLabelService
                     FROM pedidos_productos pp
                     INNER JOIN productos pr ON pr.id = pp.id_producto
                     WHERE pp.id_pedido = :id
-                    ORDER BY pp.id ASC
+                    ORDER BY pp.id_producto ASC
                 ");
                 $stmtP->execute([':id' => (int)$p['id']]);
                 $p['productos'] = $stmtP->fetchAll(PDO::FETCH_ASSOC);
@@ -237,6 +237,11 @@ class ThermalLabelService
                 $pdf->Cell($usableW - 9, 3.3, self::utf8(self::truncar($nombreProd, 38)), 0, 1, 'L');
                 $y += 3.5;
             }
+        } elseif (!empty($p['observaciones_combo'])) {
+            $pdf->SetXY($x0 + 1, $y);
+            $pdf->SetFont('Arial', '', 7);
+            $pdf->Cell($usableW - 1, 3.3, self::utf8(self::truncar($p['observaciones_combo'], 40)), 0, 1, 'L');
+            $y += 3.5;
         } else {
             $pdf->SetXY($x0 + 1, $y);
             $pdf->SetFont('Arial', 'I', 7);

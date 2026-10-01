@@ -4593,7 +4593,7 @@ class PedidosModel
                         FROM pedidos_productos pp
                         INNER JOIN productos pr ON pr.id = pp.id_producto
                         WHERE pp.id_pedido IN ($inQuery)
-                        ORDER BY pp.id ASC
+                        ORDER BY pp.id_pedido ASC, pp.id_producto ASC
                     ");
                     $prodsByPedido = [];
                     if ($stmtProd) {
