@@ -207,7 +207,12 @@ if (!empty($fechaEntregaRaw)) {
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-7 text-md-end mt-3 mt-md-0">
+                    <div class="col-md-7 text-md-end mt-3 mt-md-0 d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+                        <?php if (isset($pedido['id_estado']) && (int)$pedido['id_estado'] === 1 && ($isAdmin || $isCliente)): ?>
+                        <a href="<?= RUTA_URL ?>pedidos/etiqueta/<?= (int)$pedido['id'] ?>" target="_blank" class="btn btn-warning btn-sm text-dark fw-bold px-3 shadow-sm">
+                            <i class="bi bi-printer-fill me-1"></i> Imprimir Etiqueta 80mm
+                        </a>
+                        <?php endif; ?>
                         <span class="order-badge">
                             Estado: <?= htmlspecialchars($pedido['nombre_estado'] ?? $pedido['estado'] ?? 'Desconocido') ?>
                         </span>

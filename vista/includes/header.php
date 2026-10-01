@@ -431,6 +431,11 @@
             <a href="<?= RUTA_URL ?>pedidos/listar" class="nav-link">
                 <i class="bi bi-box-seam"></i> Pedidos
             </a>
+            <?php if ($isAdmin || $isCliente): ?>
+            <a href="<?= RUTA_URL ?>pedidos/etiquetas" class="nav-link">
+                <i class="bi bi-printer-fill"></i> Etiquetas
+            </a>
+            <?php endif; ?>
             <?php if ($isAdmin): ?>
             <a href="<?= RUTA_URL ?>pedidos/crearPedido" class="nav-link">
                 <i class="bi bi-plus-circle"></i> Nuevo Pedido

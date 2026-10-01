@@ -959,6 +959,9 @@ require_once __DIR__ . '/../../../utils/permissions.php';
                             </a></li>
                         </ul>
                     </div>
+                    <a href="<?= RUTA_URL ?>pedidos/etiquetas" class="btn btn-outline-dark fw-semibold">
+                        <i class="bi bi-printer-fill text-warning me-1"></i> Etiquetas
+                    </a>
                     <a href="<?= RUTA_URL ?>Pedidos/referencia" class="btn btn-outline-info">
                         <i class="bi bi-book me-1"></i> Referencia
                     </a>
@@ -1072,12 +1075,18 @@ function buildAcciones(row) {
     const id  = row.ID_Pedido;
     const lat = row.latitud;
     const lng = row.longitud;
+    const idEstado = parseInt(row.id_estado);
     let html = '';
 
     if (IS_SOLO_CLIENTE) {
         html += `<a href="${RUTA_BASE}pedidos/ver/${id}" class="btn btn-info btn-sm text-white"><i class="bi bi-eye"></i> Ver Detalle</a> `;
     } else {
         html += `<a href="${RUTA_BASE}pedidos/editar/${id}" class="btn btn-warning btn-sm">Editar</a> `;
+    }
+
+    // Botón de impresión rápida de etiqueta si está en estado En bodega (ID 1)
+    if (idEstado === 1 && (IS_ADMIN || IS_SOLO_CLIENTE)) {
+        html += `<a href="${RUTA_BASE}pedidos/etiqueta/${id}" target="_blank" class="btn btn-dark btn-sm" title="Imprimir Etiqueta 80mm"><i class="bi bi-printer-fill"></i></a> `;
     }
 
     if (lat && lng && parseFloat(lat) !== 0 && parseFloat(lng) !== 0) {

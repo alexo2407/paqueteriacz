@@ -171,9 +171,25 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
         // El controlador hace exit, pero por si acaso:
         exit;
     }
+
+    if ($accion === 'imprimir-etiquetas' || $accion === 'imprimirEtiquetas') {
+        $ids = $_POST['ids'] ?? [];
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+        $filtros = [
+            'fecha_desde' => $_POST['fecha_desde'] ?? null,
+            'fecha_hasta' => $_POST['fecha_hasta'] ?? null,
+            'tipo_fecha'  => $_POST['tipo_fecha'] ?? 'fecha_entrega',
+            'id_cliente'  => $_POST['id_cliente'] ?? null,
+            'search'      => $_POST['search'] ?? null,
+        ];
+        $ctrl->imprimirEtiquetasMasivas($ids, $filtros);
+        exit;
+    }
 }
 
-// Handler para pedidos GET (API endpoints/AJAX)
+// Handler para pedidos GET (API endpoints/AJAX/PDF)
 if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $accion = isset($ruta[1]) ? $ruta[1] : '';
     
@@ -193,6 +209,36 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
         
         $ctrl = new PedidosController();
         $ctrl->adminTrackingSearch();
+        exit;
+    }
+
+    // Impresión individual de etiqueta térmica 80mm
+    if ($accion === 'etiqueta' || $accion === 'imprimirEtiqueta') {
+        require_once __DIR__ . '/../modelo/pedido.php';
+        require_once __DIR__ . '/../controlador/pedido.php';
+
+        $ctrl = new PedidosController();
+        $id = isset($ruta[2]) ? (int) $ruta[2] : 0;
+        $ctrl->imprimirEtiquetaIndividual($id);
+        exit;
+    }
+
+    // Impresión masiva vía GET (por filtro de fecha o lista de IDs en URL)
+    if ($accion === 'imprimir-etiquetas' || $accion === 'imprimirEtiquetas') {
+        require_once __DIR__ . '/../modelo/pedido.php';
+        require_once __DIR__ . '/../controlador/pedido.php';
+
+        $ctrl = new PedidosController();
+        $idsParam = $_GET['ids'] ?? '';
+        $ids = !empty($idsParam) ? explode(',', $idsParam) : [];
+        $filtros = [
+            'fecha_desde' => $_GET['fecha_desde'] ?? null,
+            'fecha_hasta' => $_GET['fecha_hasta'] ?? null,
+            'tipo_fecha'  => $_GET['tipo_fecha'] ?? 'fecha_entrega',
+            'id_cliente'  => $_GET['id_cliente'] ?? null,
+            'search'      => $_GET['search'] ?? null,
+        ];
+        $ctrl->imprimirEtiquetasMasivas($ids, $filtros);
         exit;
     }
 }

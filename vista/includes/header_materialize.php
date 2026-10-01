@@ -97,6 +97,9 @@ $userName = $_SESSION['nombre'] ?? null;
     <li><div class="divider"></div></li>
     <li><a class="subheader">Operaciones</a></li>
     <li><a href="<?= RUTA_URL ?>pedidos/listar"><i class="material-icons">assignment</i>Pedidos</a></li>
+    <?php if ($isAdmin || $isCliente): ?>
+    <li><a href="<?= RUTA_URL ?>pedidos/etiquetas"><i class="material-icons">print</i>Etiquetas</a></li>
+    <?php endif; ?>
     <?php if ($isAdmin): ?>
     <li><a href="<?= RUTA_URL ?>pedidos/crearPedido"><i class="material-icons">add_circle</i>Nuevo Pedido</a></li>
     <?php endif; ?>

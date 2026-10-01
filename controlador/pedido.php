@@ -2272,4 +2272,117 @@ class PedidosController
         }
         exit;
     }
+
+    /**
+     * Imprime la etiqueta térmica 80mm para un pedido individual en estado 'En bodega'.
+     *
+     * @param int $idPedido ID del pedido
+     */
+    public function imprimirEtiquetaIndividual(int $idPedido)
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            if (function_exists('start_secure_session')) start_secure_session();
+        }
+
+        $userId = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+        $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+        $sessionRol = $_SESSION['rol'] ?? null;
+        $sessionRoles = $_SESSION['roles'] ?? [];
+
+        $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)
+            || in_array('Administrador', $rolesNombres, true)
+            || in_array('admin', $rolesNombres, true)
+            || (function_exists('isAdmin') && isAdmin())
+            || ($sessionRol == 1)
+            || (is_array($sessionRoles) && in_array(1, $sessionRoles));
+
+        $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true)
+            || in_array('Cliente', $rolesNombres, true)
+            || in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true)
+            || in_array('Proveedor', $rolesNombres, true)
+            || in_array($sessionRol, [4, 5])
+            || (function_exists('isCliente') && isCliente());
+
+        if (!$isAdmin && !$isCliente) {
+            http_response_code(403);
+            die('<div style="font-family:sans-serif;padding:20px;color:#721c24;background:#f8d7da;border:1px solid #f5c6cb;border-radius:6px;"><strong>Acceso denegado:</strong> Solo administradores y clientes dueños del pedido pueden imprimir etiquetas.</div>');
+        }
+
+        require_once __DIR__ . '/../services/ThermalLabelService.php';
+        require_once __DIR__ . '/../modelo/pedido.php';
+
+        $pedidos = PedidosModel::obtenerPedidosParaEtiquetas([$idPedido], [], $userId, $isAdmin);
+
+        if (empty($pedidos)) {
+            http_response_code(404);
+            die('<div style="font-family:sans-serif;padding:20px;color:#856404;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px;"><strong>Etiqueta no disponible:</strong> El pedido solicitado no existe, no pertenece a su cuenta o no se encuentra en estado <em>En bodega</em>.</div>');
+        }
+
+        // Limpiar cualquier buffer previo para enviar el binario PDF limpio
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="Etiqueta_Orden_' . ($pedidos[0]['numero_orden'] ?? $idPedido) . '.pdf"');
+        ThermalLabelService::generarPDF($pedidos, 'I');
+        exit;
+    }
+
+    /**
+     * Imprime etiquetas térmicas 80mm de forma masiva (por selección de IDs o por filtros).
+     *
+     * @param array $ids Lista de IDs seleccionados
+     * @param array $filtros Filtros de fecha / búsqueda
+     */
+    public function imprimirEtiquetasMasivas(array $ids = [], array $filtros = [])
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            if (function_exists('start_secure_session')) start_secure_session();
+        }
+
+        $userId = (int)($_SESSION['user_id'] ?? $_SESSION['idUsuario'] ?? 0);
+        $rolesNombres = $_SESSION['roles_nombres'] ?? [];
+        $sessionRol = $_SESSION['rol'] ?? null;
+        $sessionRoles = $_SESSION['roles'] ?? [];
+
+        $isAdmin = in_array(ROL_NOMBRE_ADMIN, $rolesNombres, true)
+            || in_array('Administrador', $rolesNombres, true)
+            || in_array('admin', $rolesNombres, true)
+            || (function_exists('isAdmin') && isAdmin())
+            || ($sessionRol == 1)
+            || (is_array($sessionRoles) && in_array(1, $sessionRoles));
+
+        $isCliente = in_array(ROL_NOMBRE_CLIENTE, $rolesNombres, true)
+            || in_array('Cliente', $rolesNombres, true)
+            || in_array(ROL_NOMBRE_PROVEEDOR, $rolesNombres, true)
+            || in_array('Proveedor', $rolesNombres, true)
+            || in_array($sessionRol, [4, 5])
+            || (function_exists('isCliente') && isCliente());
+
+        if (!$isAdmin && !$isCliente) {
+            http_response_code(403);
+            die('Acceso denegado.');
+        }
+
+        require_once __DIR__ . '/../services/ThermalLabelService.php';
+        require_once __DIR__ . '/../modelo/pedido.php';
+
+        $pedidos = PedidosModel::obtenerPedidosParaEtiquetas($ids, $filtros, $userId, $isAdmin);
+
+        if (empty($pedidos)) {
+            http_response_code(404);
+            die('<div style="font-family:sans-serif;padding:20px;color:#856404;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px;"><strong>No se encontraron pedidos elegibles:</strong> Ninguno de los pedidos seleccionados se encuentra en estado <em>En bodega</em> o autorizado para su usuario.</div>');
+        }
+
+        if (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="Etiquetas_Lote_' . date('Ymd_His') . '.pdf"');
+        ThermalLabelService::generarPDF($pedidos, 'I');
+        exit;
+    }
 }
+

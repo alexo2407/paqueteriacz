@@ -4453,4 +4453,142 @@ class PedidosModel
             return [];
         }
     }
+
+    /**
+     * Obtiene los datos detallados para etiquetas térmicas 80mm de pedidos en estado 'En bodega' (ID 1).
+     * Aplica validaciones estrictas de rol: Admin puede consultar cualquier pedido; Cliente solo sus propios pedidos.
+     *
+     * @param array $ids Lista opcional de IDs de pedidos específicos
+     * @param array $filtros Filtros adicionales (fecha_desde, fecha_hasta, tipo_fecha, search, id_cliente_filtro)
+     * @param int|null $userId ID del usuario en sesión
+     * @param bool $isAdmin Si el usuario es Administrador
+     * @return array
+     */
+    public static function obtenerPedidosParaEtiquetas(array $ids = [], array $filtros = [], ?int $userId = null, bool $isAdmin = false): array
+    {
+        try {
+            $db = (new Conexion())->conectar();
+
+            $whereClauses = ['p.id_estado = 1']; // Regla estricta: Solo pedidos en estado "En bodega"
+            $params = [];
+
+            // 1. Control de acceso por Rol
+            if (!$isAdmin) {
+                if (empty($userId)) {
+                    return []; // Sin autenticación no hay acceso
+                }
+                $whereClauses[] = '(p.id_cliente = :user_id OR p.id_proveedor = :user_id)';
+                $params[':user_id'] = $userId;
+            } else {
+                // Admin puede filtrar por cliente específico si lo desea
+                if (!empty($filtros['id_cliente'])) {
+                    $whereClauses[] = '(p.id_cliente = :cli_id OR p.id_proveedor = :cli_id)';
+                    $params[':cli_id'] = (int)$filtros['id_cliente'];
+                }
+            }
+
+            // 2. Filtro por lista explícita de IDs
+            if (!empty($ids)) {
+                $sanitizedIds = array_filter(array_map('intval', $ids), fn($id) => $id > 0);
+                if (empty($sanitizedIds)) {
+                    return [];
+                }
+                $placeholders = [];
+                foreach ($sanitizedIds as $k => $idVal) {
+                    $ph = ':id_elem_' . $k;
+                    $placeholders[] = $ph;
+                    $params[$ph] = $idVal;
+                }
+                $whereClauses[] = 'p.id IN (' . implode(',', $placeholders) . ')';
+            }
+
+            // 3. Filtros por Rango de Fecha
+            $tipoFecha = !empty($filtros['tipo_fecha']) && $filtros['tipo_fecha'] === 'fecha_ingreso' 
+                ? 'p.fecha_ingreso' 
+                : 'p.fecha_entrega';
+
+            if (!empty($filtros['fecha_desde'])) {
+                $whereClauses[] = "DATE($tipoFecha) >= :fecha_desde";
+                $params[':fecha_desde'] = $filtros['fecha_desde'];
+            }
+            if (!empty($filtros['fecha_hasta'])) {
+                $whereClauses[] = "DATE($tipoFecha) <= :fecha_hasta";
+                $params[':fecha_hasta'] = $filtros['fecha_hasta'];
+            }
+
+            // 4. Filtro por búsqueda textual (orden, destinatario, teléfono)
+            if (!empty($filtros['search'])) {
+                $whereClauses[] = "(p.numero_orden LIKE :search OR p.destinatario LIKE :search OR p.telefono LIKE :search)";
+                $params[':search'] = '%' . trim($filtros['search']) . '%';
+            }
+
+            $whereSql = implode(' AND ', $whereClauses);
+
+            $sql = "
+                SELECT 
+                    p.id,
+                    p.numero_orden,
+                    p.numero_traking,
+                    p.destinatario,
+                    p.telefono,
+                    p.direccion,
+                    p.betweenStreets,
+                    p.Location,
+                    p.comentario,
+                    p.codigo_postal,
+                    p.fecha_entrega,
+                    p.fecha_ingreso,
+                    p.precio_total_local,
+                    p.precio_local,
+                    p.id_cliente,
+                    p.id_proveedor,
+                    p.id_estado,
+                    ep.nombre_estado,
+                    m.codigo AS moneda_codigo,
+                    uP.nombre AS proveedor_nombre,
+                    uC.nombre AS cliente_nombre,
+                    COALESCE(uP.nombre, uC.nombre, 'RutaEx') AS remitente_nombre,
+                    d.nombre AS departamento_nombre_db,
+                    mu.nombre AS municipio_nombre_db,
+                    b.nombre AS barrio_nombre_db,
+                    p.departmentName,
+                    p.municipalitiesName
+                FROM pedidos p
+                INNER JOIN estados_pedidos ep ON ep.id = p.id_estado
+                LEFT JOIN monedas m ON m.id = p.id_moneda
+                LEFT JOIN usuarios uP ON uP.id = p.id_proveedor
+                LEFT JOIN usuarios uC ON uC.id = p.id_cliente
+                LEFT JOIN departamentos d ON d.id = p.id_departamento
+                LEFT JOIN municipios mu ON mu.id = p.id_municipio
+                LEFT JOIN barrios b ON b.id = p.id_barrio
+                WHERE $whereSql
+                ORDER BY p.fecha_entrega ASC, p.id DESC
+            ";
+
+            $stmt = $db->prepare($sql);
+            foreach ($params as $k => $v) {
+                $stmt->bindValue($k, $v);
+            }
+            $stmt->execute();
+            $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Normalizar nombres geográficos
+            foreach ($pedidos as &$p) {
+                $p['departamento_nombre'] = $p['departamento_nombre_db'] ?: $p['departmentName'];
+                $p['municipio_nombre']    = $p['municipio_nombre_db'] ?: $p['municipalitiesName'];
+                $p['barrio_nombre']       = $p['barrio_nombre_db'] ?: $p['Location'];
+            }
+            unset($p);
+
+            return $pedidos;
+        } catch (Exception $e) {
+            error_log('Error en PedidosModel::obtenerPedidosParaEtiquetas: ' . $e->getMessage());
+            return [];
+        }
+    }
 }
+
+if (!class_exists('PedidoModel', false)) {
+    class_alias('PedidosModel', 'PedidoModel');
+}
+
