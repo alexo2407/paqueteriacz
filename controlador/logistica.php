@@ -321,13 +321,12 @@ class LogisticaController {
                     // Solo si aún faltan datos y el CP no tenía ya el prefijo
                     $idPaisEfectivo = null;
                     if ((!$nomDepto || !$nomMuni || !$nomBarrio)) {
-                        if (!empty($p['id_moneda'])) {
+                        if (!empty($p['id_pais'])) {
+                            $idPaisEfectivo = (int)$p['id_pais'];
+                        } elseif (!empty($p['id_moneda'])) {
                             $stP = $dbExcel->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
                             $stP->execute([':m' => (int)$p['id_moneda']]);
                             $idPaisEfectivo = (int)($stP->fetchColumn() ?: 0) ?: null;
-                        }
-                        if (!$idPaisEfectivo && !empty($p['id_pais'])) {
-                            $idPaisEfectivo = (int)$p['id_pais'];
                         }
                         if ($idPaisEfectivo) {
                             require_once __DIR__ . '/../services/AddressService.php';

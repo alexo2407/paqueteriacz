@@ -312,16 +312,17 @@ include("vista/includes/header.php");
 
                                     try {
                                         $dbTmp = (new Conexion())->conectar();
-                                        // Priorizar moneda sobre id_pais para derivar país
-                                        if (!empty($pedido['id_moneda'])) {
+                                        // 1. Priorizar siempre id_pais del pedido
+                                        if (!empty($pedido['id_pais'])) {
+                                            $st = $dbTmp->prepare("SELECT nombre FROM paises WHERE id = :id LIMIT 1");
+                                            $st->execute([':id' => (int)$pedido['id_pais']]);
+                                            $nomPais = $st->fetchColumn() ?: null;
+                                        }
+                                        // 2. Fallback por moneda solo si id_pais no viene definido
+                                        if (!$nomPais && !empty($pedido['id_moneda'])) {
                                             $st = $dbTmp->prepare("SELECT p.nombre FROM paises p WHERE p.id_moneda_local = :m LIMIT 1");
                                             $st->execute([':m' => (int)$pedido['id_moneda']]);
                                             $nomPais = $st->fetchColumn() ?: null;
-                                        }
-                                        if (!$nomPais && !empty($pedido['id_pais'])) {
-                                            $st = $dbTmp->prepare("SELECT nombre FROM paises WHERE id = :id LIMIT 1");
-                                            $st->execute([':id' => $pedido['id_pais']]);
-                                            $nomPais = $st->fetchColumn();
                                         }
                                         if (!empty($pedido['id_departamento'])) {
                                             $st = $dbTmp->prepare("SELECT nombre FROM departamentos WHERE id = :id LIMIT 1");
@@ -354,15 +355,14 @@ include("vista/includes/header.php");
                                             $stChk->execute([':cp' => $cpBruto]);
                                             if ((int)$stChk->fetchColumn() > 0) { $cpFound = true; }
 
-                                            // Nivel 1: con prefijo de país
+                                            // Nivel 1: con prefijo de país (priorizar id_pais sobre id_moneda)
                                             if (!$cpFound) {
-                                                if (!empty($pedido['id_moneda'])) {
+                                                if (!empty($pedido['id_pais'])) {
+                                                    $idPaisEfectivo = (int)$pedido['id_pais'];
+                                                } elseif (!empty($pedido['id_moneda'])) {
                                                     $stP = $dbTmp->prepare("SELECT id FROM paises WHERE id_moneda_local = :m LIMIT 1");
                                                     $stP->execute([':m' => (int)$pedido['id_moneda']]);
                                                     $idPaisEfectivo = (int)($stP->fetchColumn() ?: 0) ?: null;
-                                                }
-                                                if (!$idPaisEfectivo && !empty($pedido['id_pais'])) {
-                                                    $idPaisEfectivo = (int)$pedido['id_pais'];
                                                 }
                                                 if ($idPaisEfectivo) {
                                                     require_once __DIR__ . '/../../../services/AddressService.php';
