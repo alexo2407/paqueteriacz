@@ -72,6 +72,12 @@ class ThermalLabelService
         $x0 = self::MARGIN_LEFT_MM;
         $y = self::MARGIN_TOP_MM;
 
+        // Resetear estilos y colores por defecto para evitar arrastre de estados entre páginas
+        $pdf->SetTextColor(0, 0, 0);
+        $pdf->SetDrawColor(0, 0, 0);
+        $pdf->SetFillColor(0, 0, 0);
+        $pdf->SetLineWidth(0.2);
+
         // ── 1. ENCABEZADO CORPORATIVO: LOGO "RutaEx | Latam" ─────────────────
         $pdf->SetFont('Arial', 'B', 13);
         $wRuta  = $pdf->GetStringWidth('Ruta');
@@ -220,33 +226,73 @@ class ThermalLabelService
 
         // ── 4.1 PRODUCTOS Y CANTIDADES ASIGNADAS ─────────────────────────────
         $pdf->SetXY($x0, $y);
-        $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell($usableW, 3.8, self::utf8('PRODUCTOS ASIGNADOS:'), 0, 1, 'L');
-        $y += 4.2;
+        $pdf->SetFont('Arial', 'B', 6.5);
+        $pdf->SetTextColor(70, 70, 70);
+        $pdf->Cell($usableW, 3.2, self::utf8('PRODUCTOS ASIGNADOS:'), 0, 1, 'L');
+        $pdf->SetTextColor(0, 0, 0);
+        $y += 3.6;
 
         $productos = $p['productos'] ?? [];
+        $numProd = count($productos);
+
         if (!empty($productos)) {
+            // Ajustar dinámicamente el tamaño según cantidad de ítems para máxima legibilidad
+            if ($numProd === 1) {
+                $baseFontCant = 12.5;
+                $baseFontProd = 11.5;
+                $lineH = 5.2;
+            } elseif ($numProd === 2) {
+                $baseFontCant = 11.5;
+                $baseFontProd = 10.5;
+                $lineH = 4.8;
+            } else {
+                $baseFontCant = 10;
+                $baseFontProd = 9;
+                $lineH = 4.2;
+            }
+
             foreach ($productos as $prod) {
                 $cant = intval($prod['cantidad'] ?? 1);
                 $nombreProd = trim($prod['nombre'] ?? 'Producto');
+                $cantText = $cant . 'x';
 
                 $pdf->SetXY($x0 + 1, $y);
-                $pdf->SetFont('Arial', 'B', 8);
-                $pdf->Cell(7, 3.8, $cant . 'x', 0, 0, 'L');
-                $pdf->SetFont('Arial', 'B', 7.5);
-                $pdf->Cell($usableW - 8, 3.8, self::utf8(self::truncar($nombreProd, 36)), 0, 1, 'L');
-                $y += 4.2;
+                $pdf->SetFont('Arial', 'B', $baseFontCant);
+                $wCant = $pdf->GetStringWidth($cantText . ' ');
+                $pdf->Cell($wCant, $lineH, $cantText . ' ', 0, 0, 'L');
+
+                $fontProd = $baseFontProd;
+                $pdf->SetFont('Arial', 'B', $fontProd);
+                $maxWProd = $usableW - $wCant - 2;
+
+                // Reducir gradualmente la fuente si el nombre es extenso para evitar desbordes
+                while ($fontProd > 7.5 && $pdf->GetStringWidth(self::utf8($nombreProd)) > $maxWProd) {
+                    $fontProd -= 0.5;
+                    $pdf->SetFont('Arial', 'B', $fontProd);
+                }
+
+                $pdf->Cell($maxWProd, $lineH, self::utf8(self::truncar($nombreProd, 45)), 0, 1, 'L');
+                $y += $lineH + 0.5;
             }
         } elseif (!empty($p['observaciones_combo'])) {
+            $comboText = trim($p['observaciones_combo']);
             $pdf->SetXY($x0 + 1, $y);
-            $pdf->SetFont('Arial', 'B', 7.5);
-            $pdf->Cell($usableW - 1, 3.8, self::utf8(self::truncar($p['observaciones_combo'], 38)), 0, 1, 'L');
-            $y += 4.2;
+            $fontProd = 10.5;
+            $pdf->SetFont('Arial', 'B', $fontProd);
+            $maxW = $usableW - 2;
+            while ($fontProd > 7.5 && $pdf->GetStringWidth(self::utf8($comboText)) > $maxW) {
+                $fontProd -= 0.5;
+                $pdf->SetFont('Arial', 'B', $fontProd);
+            }
+            $pdf->Cell($maxW, 5.0, self::utf8(self::truncar($comboText, 45)), 0, 1, 'L');
+            $y += 5.5;
         } else {
             $pdf->SetXY($x0 + 1, $y);
-            $pdf->SetFont('Arial', 'I', 7.5);
-            $pdf->Cell($usableW - 1, 3.8, self::utf8('1x Paquete estándar'), 0, 1, 'L');
-            $y += 4.2;
+            $pdf->SetFont('Arial', 'B', 12.0);
+            $pdf->Cell(8, 5.0, '1x ', 0, 0, 'L');
+            $pdf->SetFont('Arial', 'B', 10.5);
+            $pdf->Cell($usableW - 10, 5.0, self::utf8('Paquete estándar'), 0, 1, 'L');
+            $y += 5.5;
         }
 
         $y += 1.5;
@@ -299,6 +345,7 @@ class ThermalLabelService
         $pdf->SetFillColor(245, 245, 245);
         $pdf->SetDrawColor(0, 0, 0);
         $pdf->Rect($x0, $y, $usableW, 8.5, 'DF');
+        $pdf->SetFillColor(0, 0, 0); // Restaurar inmediatamente a negro
 
         $pdf->SetXY($x0, $y + 1);
         $pdf->SetFont('Arial', 'B', 12);

@@ -271,7 +271,8 @@ class PDF_Code128 extends FPDF
 
         $modWidth = ($modTotal > 0) ? ($w / $modTotal) : 0.25;
 
-        // Dibujar barras vectoriales
+        // Dibujar barras vectoriales (forzar siempre color negro para evitar heredar rellenos previos)
+        $this->SetFillColor(0, 0, 0);
         $curX = $x;
         for ($i = 0; $i < strlen($crypt); $i++) {
             $c = ord($crypt[$i]);
