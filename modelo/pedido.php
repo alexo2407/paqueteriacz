@@ -4477,13 +4477,16 @@ class PedidosModel
                 if (empty($userId)) {
                     return []; // Sin autenticación no hay acceso
                 }
-                $whereClauses[] = '(p.id_cliente = :user_id OR p.id_proveedor = :user_id)';
-                $params[':user_id'] = $userId;
+                $whereClauses[] = '(p.id_cliente = :user_id_cli OR p.id_proveedor = :user_id_prov OR p.id_vendedor = :user_id_vend)';
+                $params[':user_id_cli'] = $userId;
+                $params[':user_id_prov'] = $userId;
+                $params[':user_id_vend'] = $userId;
             } else {
                 // Admin puede filtrar por cliente específico si lo desea
                 if (!empty($filtros['id_cliente'])) {
-                    $whereClauses[] = '(p.id_cliente = :cli_id OR p.id_proveedor = :cli_id)';
-                    $params[':cli_id'] = (int)$filtros['id_cliente'];
+                    $whereClauses[] = '(p.id_cliente = :cli_id_c OR p.id_proveedor = :cli_id_p)';
+                    $params[':cli_id_c'] = (int)$filtros['id_cliente'];
+                    $params[':cli_id_p'] = (int)$filtros['id_cliente'];
                 }
             }
 
@@ -4518,8 +4521,11 @@ class PedidosModel
 
             // 4. Filtro por búsqueda textual (orden, destinatario, teléfono)
             if (!empty($filtros['search'])) {
-                $whereClauses[] = "(p.numero_orden LIKE :search OR p.destinatario LIKE :search OR p.telefono LIKE :search)";
-                $params[':search'] = '%' . trim($filtros['search']) . '%';
+                $whereClauses[] = "(p.numero_orden LIKE :search1 OR p.destinatario LIKE :search2 OR p.telefono LIKE :search3)";
+                $searchVal = '%' . trim($filtros['search']) . '%';
+                $params[':search1'] = $searchVal;
+                $params[':search2'] = $searchVal;
+                $params[':search3'] = $searchVal;
             }
 
             $whereSql = implode(' AND ', $whereClauses);
