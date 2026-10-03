@@ -49,10 +49,12 @@ class PayloadBuilderService
             ['key' => 'productos[].precio_unitario_usd', 'label' => 'Productos → Precio Unitario USD'],
             ['key' => 'productos[].nombre_con_cantidad', 'label' => 'Productos → Nombre formateado con cantidad (ej: 2x Producto)'],
             // Claves virtuales especiales
-            ['key' => '_total_units',   'label' => 'Total de Unidades (suma cantidad_neta) — genera N elementos vacíos repetidos'],
-            ['key' => '_now_datetime',  'label' => 'Fecha y Hora Actual (ISO 8601: 2024-01-15T10:30:00)'],
-            ['key' => '_today',         'label' => 'Fecha Actual (YYYY-MM-DD)'],
-            ['key' => '_caex_poblado',  'label' => 'Código Poblado CAEX (busca por municipalitiesName en catálogo CAEX)'],
+            ['key' => '_total_units',          'label' => 'Total de Unidades (suma cantidad_neta) — genera N elementos vacíos repetidos'],
+            ['key' => '_now_datetime',         'label' => 'Fecha y Hora Actual (ISO 8601: 2024-01-15T10:30:00)'],
+            ['key' => '_today',                'label' => 'Fecha Actual (YYYY-MM-DD)'],
+            ['key' => '_caex_poblado',         'label' => 'Código Poblado CAEX (busca por municipalitiesName en catálogo CAEX)'],
+            ['key' => '_tipo_servicio',        'label' => 'Tipo de Servicio Dinámico (SER si total=0, CCE si total>0)'],
+            ['key' => '_referencia_extendida', 'label' => 'Referencia Extendida (Location + betweenStreets + zona)'],
         ];
     }
 
@@ -78,6 +80,18 @@ class PayloadBuilderService
         $pedido['_total_units']  = max(1, $totalUnits);
         $pedido['_now_datetime'] = date('Y-m-d\TH:i:s');
         $pedido['_today']        = date('Y-m-d');
+
+        // _tipo_servicio: CCE si precio_total_local > 0, sino SER
+        $montoTotal = (float)($pedido['precio_total_local'] ?? 0);
+        $pedido['_tipo_servicio'] = ($montoTotal > 0) ? 'CCE' : 'SER';
+
+        // _referencia_extendida: Location + betweenStreets + zona
+        $refPartes = array_filter([
+            trim($pedido['Location'] ?? ''),
+            trim($pedido['betweenStreets'] ?? ''),
+            trim($pedido['zona'] ?? ''),
+        ], fn($s) => $s !== '');
+        $pedido['_referencia_extendida'] = implode(' - ', $refPartes);
 
         // _caex_poblado: buscar codigo en la tabla caex_poblados por municipio del pedido
         $pedido['_caex_poblado'] = self::buscarCodigoCaexPoblado(
@@ -215,8 +229,18 @@ class PayloadBuilderService
      */
     private static function resolverValorSimple(array $pedido, array $m)
     {
-        $internalKey = $m['internal_key'];
-        $valor       = $pedido[$internalKey] ?? $m['default_value'] ?? null;
+        $internalKey = $m['internal_key'] ?? '';
+        $rule        = $m['transform_rule'] ?? null;
+
+        if (strpos($internalKey, 'constante:') === 0) {
+            $valor = substr($internalKey, 10);
+        } elseif ($rule === 'Location + betweenStreets + zona' || $internalKey === '_referencia_extendida') {
+            $valor = $pedido['_referencia_extendida'] ?? '';
+        } elseif ($rule === 'SER / CCE' || $internalKey === '_tipo_servicio') {
+            $valor = $pedido['_tipo_servicio'] ?? 'SER';
+        } else {
+            $valor = $pedido[$internalKey] ?? $m['default_value'] ?? null;
+        }
 
         if ($valor === null || $valor === '') {
             if ((int)$m['is_required']) {
@@ -227,7 +251,7 @@ class PayloadBuilderService
             $valor = $m['default_value'];
         }
 
-        return self::castear($valor, $m['field_type'] ?? 'string', $m['transform_rule'] ?? null);
+        return self::castear($valor, $m['field_type'] ?? 'string', $rule);
     }
 
     /**
@@ -283,9 +307,29 @@ class PayloadBuilderService
                 foreach ($campos as $campo) {
                     $subPath     = $campo['sub_path'];
                     $m           = $campo['mapping'];
-                    $internalKey = ltrim(str_replace('productos[].', '', $m['internal_key']), 'productos[].');
-                    $valor       = $prod[$internalKey] ?? $m['default_value'] ?? null;
-                    $valor       = self::castear($valor, $m['field_type'] ?? 'string', $m['transform_rule'] ?? null);
+                    $internalKey = $m['internal_key'] ?? '';
+                    $rule        = $m['transform_rule'] ?? null;
+
+                    // Condición especial para monto_cce: omitir si tipo_servicio no es CCE
+                    if ($subPath === 'monto_cce' || str_ends_with($m['field_path'], 'monto_cce')) {
+                        $currentTs = $item['tipo_servicio'] ?? $pedido['_tipo_servicio'] ?? 'SER';
+                        if ($currentTs !== 'CCE') {
+                            continue; // Condición: tipo_servicio == CCE
+                        }
+                    }
+
+                    if (strpos($internalKey, 'constante:') === 0) {
+                        $valor = substr($internalKey, 10);
+                    } elseif ($rule === 'Location + betweenStreets + zona' || $internalKey === '_referencia_extendida') {
+                        $valor = $pedido['_referencia_extendida'] ?? '';
+                    } elseif ($rule === 'SER / CCE' || $internalKey === '_tipo_servicio') {
+                        $valor = $pedido['_tipo_servicio'] ?? 'SER';
+                    } else {
+                        $prodKey = ltrim(str_replace('productos[].', '', $internalKey), 'productos[].');
+                        $valor   = $prod[$prodKey] ?? $pedido[$internalKey] ?? $m['default_value'] ?? null;
+                    }
+
+                    $valor = self::castear($valor, $m['field_type'] ?? 'string', $rule);
 
                     if ($subPath !== '') {
                         self::setDotPath($item, $subPath, $valor);
@@ -330,16 +374,17 @@ class PayloadBuilderService
      *
      * @param mixed  $valor
      * @param string $type          string | int | float | boolean | array
-     * @param string|null $rule     to_int, to_float, to_bool, limit:N, upper, lower
+     * @param string|null $rule     to_int, to_float, to_bool, limit:N, upper, lower, SER / CCE
      * @return mixed
      */
     private static function castear($valor, string $type, ?string $rule)
     {
         // Primero aplicar transform_rule si existe
         if ($rule) {
+            if ($rule === 'SER / CCE' || $rule === 'ser_cce') return ((float)$valor > 0 || $valor === 'CCE') ? 'CCE' : 'SER';
             if ($rule === 'to_int')   return (int)$valor;
             if ($rule === 'to_float') return (float)$valor;
-            if ($rule === 'to_bool')  return (bool)$valor;
+            if ($rule === 'to_bool')  return filter_var($valor, FILTER_VALIDATE_BOOLEAN);
             if ($rule === 'upper')    return strtoupper((string)$valor);
             if ($rule === 'lower')    return strtolower((string)$valor);
             if (strpos($rule, 'limit:') === 0) {
@@ -352,7 +397,7 @@ class PayloadBuilderService
         switch ($type) {
             case 'int':     return (int)$valor;
             case 'float':   return (float)$valor;
-            case 'boolean': return (bool)$valor;
+            case 'boolean': return filter_var($valor, FILTER_VALIDATE_BOOLEAN);
             case 'array':   return is_array($valor) ? $valor : [];
             default:        return (string)($valor ?? '');
         }

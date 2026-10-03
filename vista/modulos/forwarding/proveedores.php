@@ -219,7 +219,8 @@ $proveedores = ForwardingModel::obtenerProveedores();
                                 <div class="col-md-3">
                                     <label class="form-label fw-semibold small">Tipo Servicio</label>
                                     <select class="form-select form-select-sm" id="c807TipoServicio">
-                                        <option value="SER" selected>SER (Regular)</option>
+                                        <option value="AUTO" selected>Dinámico (SER / CCE)</option>
+                                        <option value="SER">SER (Regular)</option>
                                         <option value="CCE">CCE (Cobro contra entrega)</option>
                                         <option value="SEC">SEC (Envío por cobrar)</option>
                                     </select>
@@ -573,7 +574,7 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
             // C807
             if (document.getElementById('c807TipoEntrega')) {
                 document.getElementById('c807TipoEntrega').value = cfg.tipo_entrega || 'NRML';
-                document.getElementById('c807TipoServicio').value = cfg.tipo_servicio || 'SER';
+                document.getElementById('c807TipoServicio').value = cfg.tipo_servicio || 'AUTO';
                 document.getElementById('c807UnidadMedida').value = cfg.unidad_medida || 'LB';
                 document.getElementById('c807Sede').value = cfg.sede || '';
                 document.getElementById('c807PoliticaRecolecta').value = cfg.politica_recolecta_fecha || 'siguiente_dia_habil';

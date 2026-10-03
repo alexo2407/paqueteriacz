@@ -196,41 +196,82 @@ class C807Provider extends BaseProvider
                 foreach ($parsed as $idx => $pkg) {
                     $pkgPeso = (float)($pkg['peso'] ?? 0);
                     if ($pkgPeso <= 0) throw new Exception("El paquete #" . ($idx + 1) . " tiene un peso inválido.");
-                    $detallePaquetes[] = [
-                        'codigo'        => (string)($pkg['codigo'] ?? ($idx + 1)),
+                    $pkgItem = [
                         'peso'          => $pkgPeso,
                         'contenido'     => (string)($pkg['contenido'] ?? $contenido),
                         'unidad_medida' => strtoupper($pkg['unidad_medida'] ?? $unidadMedida),
                     ];
+                    if (!empty($pkg['codigo'])) {
+                        $pkgItem['codigo'] = mb_substr(trim((string)$pkg['codigo']), 0, 25, 'UTF-8');
+                    }
+                    $detallePaquetes[] = $pkgItem;
                 }
             }
         }
 
         if (empty($detallePaquetes)) {
-            $detallePaquetes[] = [
+            $singlePkg = [
                 'peso'          => $peso,
                 'contenido'     => $contenido,
                 'unidad_medida' => $unidadMedida,
             ];
+            // Si hay un SKU identificable en el pedido o en el producto, enviarlo en codigo (máx 25 caracteres)
+            $sku = trim((string)($pedido['sku'] ?? $productos[0]['sku'] ?? ''));
+            if ($sku !== '') {
+                $singlePkg['codigo'] = mb_substr($sku, 0, 25, 'UTF-8');
+            }
+            $detallePaquetes[] = $singlePkg;
         }
 
         // 4. Parámetros operativos
         $tipoEntrega = strtoupper(trim($config['tipo_entrega'] ?? 'NRML')); // NRML o PLUS
-        $tipoServicio = strtoupper(trim($config['tipo_servicio'] ?? 'SER')); // SER, CCE o SEC
 
-        // Si es CCE (cobro contra entrega / COD), validar monto_cce
+        $montoTotal = isset($pedido['precio_total_local']) && is_numeric($pedido['precio_total_local'])
+            ? (float)$pedido['precio_total_local']
+            : 0.0;
+
+        // guias[].tipo_servicio: regla dinámica -> SER / CCE
+        // Si precio_total_local > 0 => CCE (Cobro contra entrega)
+        // Si precio_total_local <= 0 => SER (Servicio Regular sin cobro)
+        $cfgTipoServicio = strtoupper(trim($config['tipo_servicio'] ?? 'AUTO'));
+        if (!empty($pedido['tipo_servicio'])) {
+            $tipoServicio = strtoupper(trim($pedido['tipo_servicio']));
+        } elseif ($cfgTipoServicio === 'CCE') {
+            $tipoServicio = 'CCE';
+        } elseif ($cfgTipoServicio === 'SER') {
+            $tipoServicio = 'SER';
+        } elseif ($cfgTipoServicio === 'SEC') {
+            $tipoServicio = 'SEC';
+        } else {
+            // Dinámico según importe
+            $tipoServicio = ($montoTotal > 0) ? 'CCE' : 'SER';
+        }
+
+        // guias[].monto_cce: precio_total_local + condición: tipo_servicio == CCE
         $montoCce = null;
         if ($tipoServicio === 'CCE') {
-            $montoCce = isset($pedido['precio_total_local']) && is_numeric($pedido['precio_total_local'])
-                ? (float)$pedido['precio_total_local']
-                : 0.0;
+            $montoCce = $montoTotal;
             if ($montoCce <= 0) {
-                throw new Exception("El servicio está configurado como CCE (Cobro contra entrega), pero el importe del pedido es 0.");
+                throw new Exception("El tipo de servicio es CCE (Cobro contra entrega), pero el importe del pedido (precio_total_local) es 0 o menor.");
             }
         }
 
         // Política de recolecta_fecha
         $recolectaFecha = $this->calcularRecolectaFecha($config);
+
+        // guias[].referencia: Transformación combinada Location + betweenStreets + zona
+        $refPartes = array_filter([
+            trim($pedido['Location'] ?? ''),
+            trim($pedido['betweenStreets'] ?? ''),
+            trim($pedido['zona'] ?? ''),
+        ], fn($s) => $s !== '');
+        $referencia = implode(' - ', $refPartes);
+        if (mb_strlen($referencia, 'UTF-8') > 500) {
+            $referencia = mb_substr($referencia, 0, 500, 'UTF-8');
+        }
+
+        // guias[].indicaciones: comentario
+        $indicaciones = !empty($pedido['comentario']) ? mb_substr(trim($pedido['comentario']), 0, 500, 'UTF-8') : '';
 
         // Estructura de la Guía individual
         $guiaItem = [
@@ -242,14 +283,15 @@ class C807Provider extends BaseProvider
             'tipo_servicio'          => $tipoServicio,
             'departamento_id'        => $c807DepId,
             'municipio_id'           => $c807MunId,
-            'referencia'             => !empty($pedido['betweenStreets']) ? mb_substr(trim($pedido['betweenStreets']), 0, 500, 'UTF-8') : '',
-            'indicaciones'           => !empty($pedido['comentario']) ? mb_substr(trim($pedido['comentario']), 0, 500, 'UTF-8') : '',
+            'referencia'             => $referencia,
+            'indicaciones'           => $indicaciones,
             'liquidacion_documentos' => false,
             'seguro'                 => false,
             'detalle'                => $detallePaquetes,
         ];
 
-        if ($montoCce !== null) {
+        // guias[].monto_cce: sólo incluir si tipo_servicio == CCE
+        if ($tipoServicio === 'CCE' && $montoCce !== null) {
             $guiaItem['monto_cce'] = $montoCce;
         }
 
@@ -265,6 +307,7 @@ class C807Provider extends BaseProvider
             'guias'           => [$guiaItem],
         ];
 
+        // recolecta_comentario: sin mapping / omitir (solo enviar si está configurado en config fija)
         if (!empty($config['recolecta_comentario'])) {
             $payload['recolecta_comentario'] = mb_substr(trim($config['recolecta_comentario']), 0, 1000, 'UTF-8');
         }

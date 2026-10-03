@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header.php") ?>
+<?php include("vista/includes/header.php") ?>
 
 <?php
 require_once __DIR__ . '/../../../modelo/forwarding.php';
@@ -151,7 +151,13 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
                                     </td>
                                     <td>
                                         <?php if ($c['internal_key']): ?>
-                                            <span class="badge bg-light text-dark border"><?= htmlspecialchars($c['internal_key']) ?></span>
+                                            <?php if (str_starts_with($c['internal_key'], 'constante:')): ?>
+                                                <span class="badge bg-info bg-opacity-10 text-primary border border-info">
+                                                    <i class="bi bi-pin-angle me-1"></i><?= htmlspecialchars($c['internal_key']) ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge bg-light text-dark border"><?= htmlspecialchars($c['internal_key']) ?></span>
+                                            <?php endif; ?>
                                             <?php if ($c['transform_rule']): ?>
                                                 <span class="badge bg-warning text-dark ms-1 small"><?= htmlspecialchars($c['transform_rule']) ?></span>
                                             <?php endif; ?>
@@ -300,16 +306,29 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
                     <div class="col-12">
                         <div class="mapping-col">
                             <h6><i class="bi bi-database me-1 text-info"></i>Campo del Sistema (Interno)</h6>
-                            <select class="form-select" id="mapeoInternalKey">
+                            <select class="form-select" id="mapeoInternalKey" onchange="toggleConstanteInput()">
                                 <option value="">— Selecciona el campo del sistema —</option>
                                 <!-- Se puebla por JS -->
                             </select>
+                            <div id="wrapperValorConstante" style="display:none;" class="mt-3 p-3 bg-white rounded border">
+                                <label class="form-label fw-semibold small text-primary mb-1">
+                                    <i class="bi bi-pin-angle-fill me-1"></i>Valor Fijo de la Constante <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="mapeoConstanteValor" placeholder="Ej: NRML, 1, false, LB, CCE...">
+                                <div class="form-text small">
+                                    Se enviará este valor fijo para todos los pedidos (se guardará como <code>constante:TU_VALOR</code>).
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">Transformación <small class="text-muted">(opcional)</small></label>
                         <select class="form-select" id="mapeoTransform">
                             <option value="">Sin transformación</option>
+                            <option value="SER / CCE">SER / CCE — Dinámico según monto (CCE si > 0, sino SER)</option>
+                            <option value="Location + betweenStreets + zona">Location + betweenStreets + zona — Concatenar ubicación</option>
+                            <option value="Homologación C807">Homologación C807 — Catálogo C807</option>
+                            <option value="Condición: tipo_servicio == CCE">Condición: tipo_servicio == CCE</option>
                             <option value="to_int">to_int — Convertir a entero</option>
                             <option value="to_float">to_float — Convertir a decimal</option>
                             <option value="to_bool">to_bool — Convertir a booleano</option>
@@ -373,14 +392,31 @@ function renderCamposInternos(campos) {
 function poblarSelectInterno(campos) {
     const sel = document.getElementById('mapeoInternalKey');
     if (!sel) return;
-    // Limpiar y re-poblar
-    sel.innerHTML = '<option value="">— Selecciona el campo del sistema —</option>';
+    sel.innerHTML = '<option value="">— Selecciona el campo del sistema —</option>' +
+                    '<optgroup label="Valores Especiales">' +
+                    '  <option value="__constante__">🔒 Valor Fijo / Constante (personalizado)</option>' +
+                    '</optgroup>' +
+                    '<optgroup label="Campos del Pedido">';
     campos.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.key;
         opt.textContent = `${c.key}  —  ${c.label}`;
         sel.appendChild(opt);
     });
+    sel.innerHTML += '</optgroup>';
+}
+
+function toggleConstanteInput() {
+    const sel = document.getElementById('mapeoInternalKey');
+    const wrap = document.getElementById('wrapperValorConstante');
+    const inp = document.getElementById('mapeoConstanteValor');
+    if (sel.value === '__constante__') {
+        wrap.style.display = 'block';
+        inp.focus();
+    } else {
+        wrap.style.display = 'none';
+        inp.value = '';
+    }
 }
 
 // ── Guardar nuevo Campo de API ─────────────────────────────
@@ -453,11 +489,26 @@ document.addEventListener('click', function(e) {
     document.getElementById('mapeoFieldPath').textContent = btn.dataset.path;
     document.getElementById('mapeoFieldLabel').textContent = btn.dataset.label;
 
+    const internal = btn.dataset.internal || '';
+    const transform = btn.dataset.transform || '';
+
     // Esperar a que se pueble el select antes de seleccionar el valor
     setTimeout(() => {
         const sel = document.getElementById('mapeoInternalKey');
-        sel.value = btn.dataset.internal || '';
-        document.getElementById('mapeoTransform').value = btn.dataset.transform || '';
+        const wrap = document.getElementById('wrapperValorConstante');
+        const inp = document.getElementById('mapeoConstanteValor');
+
+        if (internal.startsWith('constante:')) {
+            sel.value = '__constante__';
+            inp.value = internal.substring(10);
+            wrap.style.display = 'block';
+        } else {
+            sel.value = internal;
+            inp.value = '';
+            wrap.style.display = 'none';
+        }
+
+        document.getElementById('mapeoTransform').value = transform;
     }, 50);
 
     new bootstrap.Modal(document.getElementById('modalMapeo')).show();
@@ -465,11 +516,20 @@ document.addEventListener('click', function(e) {
 
 // ── Guardar Mapeo ──────────────────────────────────────────
 function guardarMapeo() {
-    const idApiField   = document.getElementById('mapeoApiFieldId').value;
-    const internalKey  = document.getElementById('mapeoInternalKey').value;
-    const transform    = document.getElementById('mapeoTransform').value;
+    const idApiField  = document.getElementById('mapeoApiFieldId').value;
+    let internalKey   = document.getElementById('mapeoInternalKey').value;
+    const transform   = document.getElementById('mapeoTransform').value;
 
     if (!internalKey) { Swal.fire({ icon:'warning', title:'Selecciona un campo del sistema' }); return; }
+
+    if (internalKey === '__constante__') {
+        const valorConst = document.getElementById('mapeoConstanteValor').value.trim();
+        if (!valorConst) {
+            Swal.fire({ icon:'warning', title:'Valor requerido', text:'Por favor ingresa el valor de la constante.' });
+            return;
+        }
+        internalKey = 'constante:' + valorConst;
+    }
 
     const body = new FormData();
     body.append('accion', 'guardar_mapeo');

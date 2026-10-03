@@ -2,12 +2,35 @@
 -- Migración 021: Soporte para integración de proveedor C807 Xpress y mejoras de Forwarding
 -- =============================================================================
 
--- 1. Nuevas columnas en tabla pedidos para datos de empaque y contacto
-ALTER TABLE pedidos 
-    ADD COLUMN correo VARCHAR(150) NULL DEFAULT NULL COMMENT 'Correo electrónico del destinatario',
-    ADD COLUMN peso DECIMAL(10,2) NULL DEFAULT NULL COMMENT 'Peso físico real para envíos',
-    ADD COLUMN unidad_peso VARCHAR(10) NULL DEFAULT NULL COMMENT 'Unidad de peso (LB, KG)',
-    ADD COLUMN bultos INT NULL DEFAULT 1 COMMENT 'Cantidad de paquetes/bultos físicos';
+-- 1. Nuevas columnas en tabla pedidos para datos de empaque y contacto (compatible MySQL 5.7 / 8.0 / MariaDB)
+
+-- Columna correo
+SET @exist_correo := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'correo');
+SET @sqlstmt_correo := IF(@exist_correo > 0, 'DO 0', 'ALTER TABLE pedidos ADD COLUMN correo VARCHAR(150) NULL DEFAULT NULL COMMENT \'Correo electrónico del destinatario\'');
+PREPARE stmt_correo FROM @sqlstmt_correo;
+EXECUTE stmt_correo;
+DEALLOCATE PREPARE stmt_correo;
+
+-- Columna peso
+SET @exist_peso := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'peso');
+SET @sqlstmt_peso := IF(@exist_peso > 0, 'DO 0', 'ALTER TABLE pedidos ADD COLUMN peso DECIMAL(10,2) NULL DEFAULT NULL COMMENT \'Peso físico real para envíos\'');
+PREPARE stmt_peso FROM @sqlstmt_peso;
+EXECUTE stmt_peso;
+DEALLOCATE PREPARE stmt_peso;
+
+-- Columna unidad_peso
+SET @exist_upeso := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'unidad_peso');
+SET @sqlstmt_upeso := IF(@exist_upeso > 0, 'DO 0', 'ALTER TABLE pedidos ADD COLUMN unidad_peso VARCHAR(10) NULL DEFAULT NULL COMMENT \'Unidad de peso (LB, KG)\'');
+PREPARE stmt_upeso FROM @sqlstmt_upeso;
+EXECUTE stmt_upeso;
+DEALLOCATE PREPARE stmt_upeso;
+
+-- Columna bultos
+SET @exist_bultos := (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'pedidos' AND column_name = 'bultos');
+SET @sqlstmt_bultos := IF(@exist_bultos > 0, 'DO 0', 'ALTER TABLE pedidos ADD COLUMN bultos INT NULL DEFAULT 1 COMMENT \'Cantidad de paquetes/bultos físicos\'');
+PREPARE stmt_bultos FROM @sqlstmt_bultos;
+EXECUTE stmt_bultos;
+DEALLOCATE PREPARE stmt_bultos;
 
 -- 2. Tabla para registrar guías generadas por proveedores (1 pedido puede tener múltiples guías/paquetes)
 CREATE TABLE IF NOT EXISTS forwarding_guias (
@@ -156,9 +179,7 @@ INSERT INTO forwarding_api_fields
 SELECT @c807_id, 'recolecta_comentario', 'Comentario / Observaciones de Recolecta', 'string', 0, 'Recolectar en bodega principal', 30
 WHERE @c807_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'recolecta_comentario');
 
-INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
-SELECT id, 'comentario', NULL FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'recolecta_comentario'
-ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key);
+-- recolecta_comentario: sin mapping / omitir por defecto
 
 INSERT INTO forwarding_api_fields 
     (id_provider, field_path, label, field_type, is_required, default_value, sort_order)
@@ -220,8 +241,8 @@ SELECT @c807_id, 'guias[].tipo_servicio', 'Tipo de Servicio (SER, CCE, SEC)', 's
 WHERE @c807_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].tipo_servicio');
 
 INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
-SELECT id, 'constante:CCE', 'Sin transformación' FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].tipo_servicio'
-ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key);
+SELECT id, '_tipo_servicio', 'SER / CCE' FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].tipo_servicio'
+ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key), transform_rule = VALUES(transform_rule);
 
 INSERT INTO forwarding_api_fields 
     (id_provider, field_path, label, field_type, is_required, default_value, sort_order)
@@ -229,8 +250,8 @@ SELECT @c807_id, 'guias[].monto_cce', 'Monto Contra Entrega (COD)', 'float', 0, 
 WHERE @c807_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].monto_cce');
 
 INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
-SELECT id, 'precio_total_local', 'Sin transformación' FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].monto_cce'
-ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key);
+SELECT id, 'precio_total_local', 'Condición: tipo_servicio == CCE' FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].monto_cce'
+ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key), transform_rule = VALUES(transform_rule);
 
 INSERT INTO forwarding_api_fields 
     (id_provider, field_path, label, field_type, is_required, default_value, sort_order)
@@ -256,8 +277,8 @@ SELECT @c807_id, 'guias[].referencia', 'Referencia / Entre Calles', 'string', 0,
 WHERE @c807_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].referencia');
 
 INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
-SELECT id, 'betweenStreets', NULL FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].referencia'
-ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key);
+SELECT id, '_referencia_extendida', 'Location + betweenStreets + zona' FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].referencia'
+ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key), transform_rule = VALUES(transform_rule);
 
 INSERT INTO forwarding_api_fields 
     (id_provider, field_path, label, field_type, is_required, default_value, sort_order)
@@ -311,5 +332,14 @@ WHERE @c807_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM forwarding_api_fields W
 
 INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
 SELECT id, 'constante:LB', 'Sin transformación' FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].detalle[].unidad_medida'
+ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key);
+
+INSERT INTO forwarding_api_fields 
+    (id_provider, field_path, label, field_type, is_required, default_value, sort_order)
+SELECT @c807_id, 'guias[].detalle[].codigo', 'Código / SKU del Paquete (Opcional)', 'string', 0, NULL, 210
+WHERE @c807_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].detalle[].codigo');
+
+INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
+SELECT id, 'productos[].sku', 'Sin transformación' FROM forwarding_api_fields WHERE id_provider = @c807_id AND field_path = 'guias[].detalle[].codigo'
 ON DUPLICATE KEY UPDATE internal_key = VALUES(internal_key);
 
