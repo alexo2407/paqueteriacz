@@ -294,13 +294,13 @@ class PedidosModel
                                 $params[':id_barrio'] = $row['id_barrio'] ?? null;
                                 break;
                             case 'municipalitiesName':
-                                $params[':municipalitiesName'] = $row['municipalitiesName'] ?? null;
+                                $params[':municipalitiesName'] = !empty($row['municipalitiesName']) ? $row['municipalitiesName'] : (!empty($row['municipio']) ? $row['municipio'] : (!empty($municipio) ? $municipio : null));
                                 break;
                             case 'postalCode':
-                                $params[':postalCode'] = $row['postalCode'] ?? null;
+                                $params[':postalCode'] = $row['postalCode'] ?? $row['codigo_postal'] ?? null;
                                 break;
                             case 'departmentName':
-                                $params[':departmentName'] = $row['departmentName'] ?? null;
+                                $params[':departmentName'] = !empty($row['departmentName']) ? $row['departmentName'] : (!empty($row['departamento']) ? $row['departamento'] : (!empty($departamento) ? $departamento : null));
                                 break;
                             case 'Location':
                                 // Location = barrio/colonia para LogisPro.
@@ -422,8 +422,9 @@ class PedidosModel
                         if (!empty($productosAInsertar)) {
                             $datosAuditoria['productos_insertados'] = $productosAInsertar;
                             // Compat: primer producto para sistemas que lo usen
-                            $datosAuditoria['producto_id'] = $productosAInsertar[0]['id'];
-                            $datosAuditoria['cantidad']    = $productosAInsertar[0]['cantidad'];
+                            $primerProd = reset($productosAInsertar);
+                            $datosAuditoria['producto_id'] = $primerProd['id'] ?? null;
+                            $datosAuditoria['cantidad']    = $primerProd['cantidad'] ?? 1;
                         }
 
                         AuditoriaModel::registrar(
@@ -680,13 +681,13 @@ class PedidosModel
                         $params[':id_estado'] = 1;
                         break;
                     case 'municipalitiesName':
-                        $params[':municipalitiesName'] = $data['municipalitiesName'] ?? null;
+                        $params[':municipalitiesName'] = !empty($data['municipalitiesName']) ? $data['municipalitiesName'] : (!empty($data['municipio']) ? $data['municipio'] : null);
                         break;
                     case 'postalCode':
-                        $params[':postalCode'] = $data['postalCode'] ?? null;
+                        $params[':postalCode'] = $data['postalCode'] ?? $data['codigo_postal'] ?? null;
                         break;
                     case 'departmentName':
-                        $params[':departmentName'] = $data['departmentName'] ?? null;
+                        $params[':departmentName'] = !empty($data['departmentName']) ? $data['departmentName'] : (!empty($data['departamento']) ? $data['departamento'] : null);
                         break;
                     case 'Location':
                         // Location = barrio/colonia para LogisPro.

@@ -1545,8 +1545,11 @@ class PedidosController
                 }
 
                 // Alias de columnas del XLSX → campos internos del sistema
-                if (!empty($fila['id_cliente']) && empty($fila['id_cliente'])) {
-                    // ya mapeado por normalizeHeaders
+                if (empty($fila['departmentName']) && !empty($fila['departamento'])) {
+                    $fila['departmentName'] = $fila['departamento'];
+                }
+                if (empty($fila['municipalitiesName']) && !empty($fila['municipio'])) {
+                    $fila['municipalitiesName'] = $fila['municipio'];
                 }
             }
             unset($fila);
@@ -1781,17 +1784,24 @@ class PedidosController
                 }
             }
 
-            // ── ENCOLAR FORWARDING ASINCRÓNICO PARA PEDIDOS CREADOS ────────────
+            // ── FORWARDING PARA PEDIDOS CREADOS (Síncrono si FORWARDING_SYNC_MODE, asíncrono para lotes grandes) ──
             if (!empty($todosPedidosCreados) && defined('FORWARDING_ENABLED') && FORWARDING_ENABLED) {
                 try {
+                    require_once __DIR__ . '/../services/ForwardingService.php';
                     require_once __DIR__ . '/../services/LogisticsQueueService.php';
+                    $syncMode = defined('FORWARDING_SYNC_MODE') && FORWARDING_SYNC_MODE && count($todosPedidosCreados) <= 50;
+
                     foreach ($todosPedidosCreados as $ped) {
-                        LogisticsQueueService::queue('forwarding_eval', $ped['id'], [
-                            'id_cliente' => $ped['id_cliente']
-                        ]);
+                        if ($syncMode) {
+                            ForwardingService::evaluarYReenviar((int)$ped['id'], (int)$ped['id_cliente']);
+                        } else {
+                            LogisticsQueueService::queue('forwarding_eval', $ped['id'], [
+                                'id_cliente' => $ped['id_cliente']
+                            ]);
+                        }
                     }
                 } catch (Throwable $queueEx) {
-                    error_log('[CSV Import] Error al encolar forwarding: ' . $queueEx->getMessage());
+                    error_log('[CSV Import] Error en forwarding: ' . $queueEx->getMessage());
                 }
             }
 

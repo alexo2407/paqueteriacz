@@ -146,8 +146,8 @@ class C807Provider extends BaseProvider
         // 2. Resolver departamentos y municipios C807
         $depIdInterno  = $pedido['_raw_id_departamento'] ?? $pedido['id_departamento'] ?? null;
         $munIdInterno  = $pedido['_raw_id_municipio'] ?? $pedido['id_municipio'] ?? null;
-        $depNombre     = $pedido['departamento'] ?? $pedido['departmentName'] ?? '';
-        $munNombre     = $pedido['municipio_nombre'] ?? $pedido['municipalitiesName'] ?? '';
+        $depNombre     = !empty($pedido['departmentName']) ? trim($pedido['departmentName']) : (!empty($pedido['departamento']) ? trim($pedido['departamento']) : '');
+        $munNombre     = !empty($pedido['municipalitiesName']) ? trim($pedido['municipalitiesName']) : (!empty($pedido['municipio_nombre']) ? trim($pedido['municipio_nombre']) : (!empty($pedido['municipio']) ? trim($pedido['municipio']) : ''));
 
         $geo = C807CatalogService::resolverUbicacionC807(
             $depIdInterno ? (int)$depIdInterno : null,
