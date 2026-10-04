@@ -139,6 +139,16 @@ class ThermalLabelService
             $pdf->SetFont('Arial', '', 7);
             $pdf->Cell($usableW, 3, 'Tracking: ' . $p['numero_traking'], 0, 1, 'C');
             $y += 3.5;
+        } elseif (!empty($p['c807_guia'])) {
+            $pdf->SetXY($x0, $y);
+            $pdf->SetFont('Arial', 'B', 7.5);
+            $pdf->Cell($usableW, 3, self::utf8('Guía C807: ' . $p['c807_guia']), 0, 1, 'C');
+            $y += 3.5;
+        } elseif (((int)($p['id_cliente'] ?? 0)) === 42) {
+            $pdf->SetXY($x0, $y);
+            $pdf->SetFont('Arial', '', 7);
+            $pdf->Cell($usableW, 3, 'Ref: EXLATA-' . $numOrden, 0, 1, 'C');
+            $y += 3.5;
         }
 
         self::dibujarLineaDivisoria($pdf, $x0, $y, $usableW);
@@ -366,9 +376,21 @@ class ThermalLabelService
         $qrX = $x0 + 2;
         $qrY = $y;
 
-        // Generar QR temporal
-        $trackingUrl = 'https://rutaex.com/';
-        $tempQrFile = self::generarImagenQR($trackingUrl);
+        // Determinar contenido del QR:
+        $idCliente = (int)($p['id_cliente'] ?? 0);
+        $esClienteC807 = ($idCliente === 42) || !empty($p['c807_guia']);
+
+        if ($esClienteC807) {
+            // Texto plano para pistolas y escáneres de bodega (C807 / RutaEx)
+            $qrData = !empty($p['c807_guia']) ? (string)$p['c807_guia'] : ('EXLATA-' . $numOrden);
+            $textoGuiaVisible = $qrData;
+        } else {
+            $qrData = 'https://rutaex.com/';
+            $textoGuiaVisible = null;
+        }
+
+        // Generar QR temporal con texto plano
+        $tempQrFile = self::generarImagenQR($qrData);
 
         if ($tempQrFile && file_exists($tempQrFile)) {
             $pdf->Image($tempQrFile, $qrX, $qrY, $qrSize, $qrSize, 'PNG');
@@ -379,13 +401,19 @@ class ThermalLabelService
         $infoX = $qrX + $qrSize + 3;
         $infoW = $usableW - ($qrSize + 5);
         
-        $pdf->SetXY($infoX, $qrY + 2);
-        $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell($infoW, 3.5, self::utf8('ESCANEA PARA'), 0, 1, 'L');
+        $pdf->SetXY($infoX, $qrY + 1.2);
+        $pdf->SetFont('Arial', 'B', 7);
+        $pdf->Cell($infoW, 3.2, self::utf8('ESCANEA PARA'), 0, 1, 'L');
 
-        $pdf->SetXY($infoX, $qrY + 5.5);
-        $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell($infoW, 3.5, self::utf8('RASTREAR PEDIDO'), 0, 1, 'L');
+        $pdf->SetXY($infoX, $qrY + 4.4);
+        $pdf->SetFont('Arial', 'B', 7);
+        $pdf->Cell($infoW, 3.2, self::utf8('RASTREAR PEDIDO'), 0, 1, 'L');
+
+        if ($textoGuiaVisible) {
+            $pdf->SetXY($infoX, $qrY + 8.0);
+            $pdf->SetFont('Arial', 'B', 6.2);
+            $pdf->Cell($infoW, 3, self::utf8('GUIA: ' . self::truncar($textoGuiaVisible, 16)), 0, 1, 'L');
+        }
 
         $pdf->SetXY($infoX, $qrY + 11.5);
         $pdf->SetFont('Arial', 'I', 6.5);

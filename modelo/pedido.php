@@ -4564,7 +4564,11 @@ class PedidosModel
                     mu.nombre AS municipio_nombre_db,
                     b.nombre AS barrio_nombre_db,
                     p.departmentName,
-                    p.municipalitiesName
+                    p.municipalitiesName,
+                    COALESCE(
+                        (SELECT fg.numero_guia FROM forwarding_guias fg WHERE fg.id_pedido = p.id ORDER BY fg.id DESC LIMIT 1),
+                        (SELECT fl.external_order_id FROM forwarding_log fl WHERE fl.id_pedido = p.id AND fl.status = 'success' ORDER BY fl.id DESC LIMIT 1)
+                    ) AS c807_guia
                 FROM pedidos p
                 INNER JOIN estados_pedidos ep ON ep.id = p.id_estado
                 LEFT JOIN monedas m ON m.id = p.id_moneda
