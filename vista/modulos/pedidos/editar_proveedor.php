@@ -1399,14 +1399,14 @@ document.getElementById('es_combo').addEventListener('change', function() {
 
 <script>
 // Recolección (Origen) cascading and toggle logic for edit
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
     const habilitarCheck = document.getElementById('habilitar_recoleccion');
     const seccionRec = document.getElementById('seccion_recoleccion');
     const recPaisSelect = document.getElementById('recoleccion_id_pais');
     const recDeptSelect = document.getElementById('recoleccion_id_departamento');
     const recMunSelect = document.getElementById('recoleccion_id_municipio');
 
-    if (!habilitarCheck || !seccionRec) return;
+    if (!habilitarCheck || !seccionRec || !recPaisSelect || !recDeptSelect || !recMunSelect) return;
 
     const departamentos = <?php echo json_encode($departamentosAll); ?>;
     const municipios = <?php echo json_encode($municipiosAll); ?>;
@@ -1414,71 +1414,122 @@ document.getElementById('es_combo').addEventListener('change', function() {
     const initialRecDep = <?= json_encode($rec['id_departamento'] ?? '') ?>;
     const initialRecMun = <?= json_encode($rec['id_municipio'] ?? '') ?>;
 
-    function initSelect2Recoleccion() {
+    function initSelect2Element(el) {
+        if (!el) return;
         if (typeof $ !== 'undefined' && $.fn.select2) {
-            $('.select2-recoleccion').each(function() {
-                if (!$(this).hasClass('select2-hidden-accessible')) {
-                    $(this).select2({
-                        theme: 'bootstrap-5',
-                        placeholder: $(this).data('placeholder') || 'Seleccionar...',
-                        allowClear: true,
-                        width: '100%',
-                        dropdownParent: $(this).closest('.tab-pane')
-                    });
-                }
-            });
+            const $el = $(el);
+            if (!$el.hasClass('select2-hidden-accessible')) {
+                const placeholder = $el.data('placeholder') || 'Seleccionar...';
+                $el.select2({
+                    theme: 'bootstrap-5',
+                    placeholder: placeholder,
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $el.closest('.tab-pane').length ? $el.closest('.tab-pane') : undefined
+                });
+            }
         }
+    }
+
+    function initSelect2Recoleccion() {
+        initSelect2Element(recPaisSelect);
+        initSelect2Element(recDeptSelect);
+        initSelect2Element(recMunSelect);
     }
 
     function populateRecDepartamentos(paisId, selectedDepId) {
-        if (typeof $ !== 'undefined' && $.fn.select2 && $(recDeptSelect).hasClass('select2-hidden-accessible')) {
-            $(recDeptSelect).select2('destroy');
-        }
         recDeptSelect.innerHTML = '<option value="">Selecciona un departamento</option>';
-        departamentos.forEach(d => {
-            if (!paisId || parseInt(d.id_pais) === parseInt(paisId)) {
-                const opt = document.createElement('option');
-                opt.value = d.id;
-                opt.textContent = d.nombre;
-                recDeptSelect.appendChild(opt);
-            }
-        });
-        if (selectedDepId) recDeptSelect.value = selectedDepId;
-        initSelect2Recoleccion();
-        populateRecMunicipios(recDeptSelect.value, initialRecMun);
+
+        if (paisId) {
+            departamentos.forEach(d => {
+                if (parseInt(d.id_pais) === parseInt(paisId)) {
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = d.nombre;
+                    if (selectedDepId && parseInt(selectedDepId) === parseInt(d.id)) {
+                        opt.selected = true;
+                    }
+                    recDeptSelect.appendChild(opt);
+                }
+            });
+        }
+
+        if (selectedDepId) {
+            recDeptSelect.value = selectedDepId;
+        } else {
+            recDeptSelect.value = '';
+        }
+
+        initSelect2Element(recDeptSelect);
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(recDeptSelect).val(recDeptSelect.value).trigger('change.select2');
+        }
+
+        populateRecMunicipios(recDeptSelect.value, selectedDepId ? initialRecMun : null);
     }
 
     function populateRecMunicipios(depId, selectedMunId) {
-        if (typeof $ !== 'undefined' && $.fn.select2 && $(recMunSelect).hasClass('select2-hidden-accessible')) {
-            $(recMunSelect).select2('destroy');
-        }
         recMunSelect.innerHTML = '<option value="">Selecciona un municipio</option>';
-        municipios.forEach(m => {
-            if (!depId || parseInt(m.id_departamento) === parseInt(depId)) {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = m.nombre;
-                recMunSelect.appendChild(opt);
-            }
-        });
-        if (selectedMunId) recMunSelect.value = selectedMunId;
-        initSelect2Recoleccion();
+
+        if (depId) {
+            municipios.forEach(m => {
+                if (parseInt(m.id_departamento) === parseInt(depId)) {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = m.nombre;
+                    if (selectedMunId && parseInt(selectedMunId) === parseInt(m.id)) {
+                        opt.selected = true;
+                    }
+                    recMunSelect.appendChild(opt);
+                }
+            });
+        }
+
+        if (selectedMunId) {
+            recMunSelect.value = selectedMunId;
+        } else {
+            recMunSelect.value = '';
+        }
+
+        initSelect2Element(recMunSelect);
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $(recMunSelect).val(recMunSelect.value).trigger('change.select2');
+        }
+    }
+
+    function onPaisChange() {
+        populateRecDepartamentos(recPaisSelect.value, null);
+    }
+
+    function onDeptChange() {
+        populateRecMunicipios(recDeptSelect.value, null);
+    }
+
+    recPaisSelect.addEventListener('change', onPaisChange);
+    recDeptSelect.addEventListener('change', onDeptChange);
+
+    if (typeof $ !== 'undefined') {
+        $(recPaisSelect).on('change change.select2 select2:select select2:clear', onPaisChange);
+        $(recDeptSelect).on('change change.select2 select2:select select2:clear', onDeptChange);
     }
 
     habilitarCheck.addEventListener('change', function() {
         if (this.checked) {
             seccionRec.style.display = 'block';
             initSelect2Recoleccion();
+
             if (!recPaisSelect.value) {
                 const delivPais = document.getElementById('id_pais');
                 if (delivPais && delivPais.value) {
                     recPaisSelect.value = delivPais.value;
                     if (typeof $ !== 'undefined' && $.fn.select2) {
-                        $(recPaisSelect).trigger('change');
+                        $(recPaisSelect).val(delivPais.value).trigger('change');
                     } else {
-                        populateRecDepartamentos(recPaisSelect.value, null);
+                        populateRecDepartamentos(delivPais.value, null);
                     }
                 }
+            } else {
+                populateRecDepartamentos(recPaisSelect.value, recDeptSelect.value || initialRecDep);
             }
         } else {
             seccionRec.style.display = 'none';
@@ -1486,26 +1537,23 @@ document.getElementById('es_combo').addEventListener('change', function() {
     });
 
     if (typeof $ !== 'undefined') {
-        $(recPaisSelect).on('change', function() {
-            populateRecDepartamentos(this.value, null);
-        });
-        $(recDeptSelect).on('change', function() {
-            populateRecMunicipios(this.value, null);
-        });
-    } else {
-        recPaisSelect.addEventListener('change', function() {
-            populateRecDepartamentos(this.value, null);
-        });
-        recDeptSelect.addEventListener('change', function() {
-            populateRecMunicipios(this.value, null);
+        $('button[data-bs-toggle="pill"]').on('shown.bs.tab', function() {
+            if (habilitarCheck.checked && seccionRec.style.display !== 'none') {
+                initSelect2Recoleccion();
+            }
         });
     }
 
     // Inicializar valores precargados si está activo
     if (habilitarCheck.checked && recPaisSelect.value) {
+        seccionRec.style.display = 'block';
+        initSelect2Recoleccion();
         populateRecDepartamentos(recPaisSelect.value, initialRecDep);
+        if (initialRecDep) {
+            populateRecMunicipios(initialRecDep, initialRecMun);
+        }
     }
-})();
+});
 </script>
 
 <?php include("vista/includes/footer.php"); ?>
