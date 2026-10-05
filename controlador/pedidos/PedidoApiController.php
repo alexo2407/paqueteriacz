@@ -103,7 +103,7 @@ class PedidoApiController
         // Crear pedido — capturar errores de negocio del modelo (stock, producto)
         // para devolver mensajes claros al cliente en lugar de un 500 genérico.
         try {
-            $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items);
+            $nuevoId = PedidosModel::crearPedidoConProductos($pedidoPayload, $items, $requestOriginal);
         } catch (Exception $modelEx) {
             $msg = $modelEx->getMessage();
             error_log('[PedidoApiController::crear] Error modelo: ' . $msg);
@@ -256,7 +256,7 @@ class PedidoApiController
             }
 
             try {
-                $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items);
+                $nuevoId = PedidosModel::crearPedidoConProductos($modelPayload, $items, $requestOriginal);
                 $itemResult['success'] = true;
                 $itemResult['id_pedido'] = $nuevoId;
 

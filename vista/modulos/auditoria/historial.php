@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $usaDataTables = true;
 require_once __DIR__ . '/../../../config/config.php';
 require_once __DIR__ . '/../../../utils/session.php';
@@ -87,9 +87,10 @@ $fechaFin    = $_GET['fecha_fin']    ?? $anchorDate;
 $filtros = [];
 
 // Si se filtra por pedido: buscar en todas las tablas y sin restricción de fechas
+// Si se filtra por pedido: buscar en tablas de pedidos y api_requests sin restricción de fechas
 if ($pedidoFiltro !== '' && $pedidoIdInterno !== null) {
     $filtros['id_registro'] = $pedidoIdInterno;
-    $filtros['tabla'] = 'pedidos';
+    $filtros['tabla'] = ['pedidos', 'api_requests'];
     // Aplicar fechas solo si el usuario las cambió manualmente
     if (isset($_GET['fecha_inicio'])) $filtros['fecha_inicio'] = $fechaInicio;
     if (isset($_GET['fecha_fin']))   $filtros['fecha_fin']    = $fechaFin;
@@ -98,70 +99,64 @@ if ($pedidoFiltro !== '' && $pedidoIdInterno !== null) {
     $filtros['fecha_fin']    = $fechaFin;
 }
 
-if ($tablaFiltro && $pedidoFiltro === '') $filtros['tabla'] = $tablaFiltro;
+if ($tablaFiltro && $pedidoFiltro === '') {
+    if ($tablaFiltro === 'pedidos') {
+        $filtros['tabla'] = ['pedidos', 'api_requests'];
+    } else {
+        $filtros['tabla'] = $tablaFiltro;
+    }
+}
 if ($accionFiltro) $filtros['accion'] = $accionFiltro;
 if ($usuarioFiltro) $filtros['id_usuario'] = (int)$usuarioFiltro;
 
-// Para no-admins: forzar tabla=pedidos y filtrar solo sus pedidos via subquery
+// Para no-admins: forzar tabla=pedidos + api_requests y filtrar solo sus pedidos via subquery
 if ($filtroPropietario !== null) {
-    $filtros['tabla'] = 'pedidos';
+    $filtros['tabla'] = ['pedidos', 'api_requests'];
     $filtros['propietario'] = $filtroPropietario;
 }
 
 // Obtener registros de auditoría
 $registrosBrutos = AuditoriaModel::listar($filtros, 500);
 
-// Unificar api_requests con pedidos para evitar duplicidad visual
+// Unificar api_requests con pedidos para evitar duplicidad visual y mostrar el JSON original
 $registros = [];
 $skipIds = [];
-$agrupar = ($tablaFiltro === '' || $tablaFiltro === 'pedidos');
+$agrupar = ($tablaFiltro === '' || $tablaFiltro === 'pedidos' || !empty($pedidoFiltro) || $filtroPropietario !== null);
 
 if ($agrupar) {
+    // Indexar por id_registro para emparejar instantáneamente pedidos con sus api_requests
+    $apiPorRegistro = [];
+    $pedidosPorRegistro = [];
+    foreach ($registrosBrutos as $i => $r) {
+        $idReg = $r['id_registro'] ?? null;
+        if (!$idReg) continue;
+        if ($r['tabla'] === 'api_requests' && $r['accion'] === 'crear') {
+            $apiPorRegistro[$idReg] = $i;
+        } elseif ($r['tabla'] === 'pedidos' && $r['accion'] === 'crear') {
+            $pedidosPorRegistro[$idReg] = $i;
+        }
+    }
+
     foreach ($registrosBrutos as $idx => $reg) {
         if (isset($skipIds[$idx])) continue;
 
-        if ($reg['tabla'] === 'pedidos' && $reg['accion'] === 'crear') {
-            $apiReqIdx = -1;
-            // Buscar hacia adelante un api_requests (crear) con el mismo id_registro
-            for ($j = $idx + 1; $j < min(count($registrosBrutos), $idx + 15); $j++) {
-                if (isset($skipIds[$j])) continue;
-                if ($registrosBrutos[$j]['tabla'] === 'api_requests' && 
-                    $registrosBrutos[$j]['id_registro'] == $reg['id_registro'] &&
-                    $registrosBrutos[$j]['accion'] === 'crear') {
-                    $apiReqIdx = $j;
-                    break;
-                }
-            }
-            if ($apiReqIdx !== -1) {
-                // Unificar: el de 'pedidos' absorberá el payload del api_requests
-                $skipIds[$apiReqIdx] = true;
-                if (empty($reg['datos_anteriores'])) {
-                    $reg['datos_anteriores'] = $registrosBrutos[$apiReqIdx]['datos_anteriores'];
-                }
+        $idReg = $reg['id_registro'] ?? null;
+
+        if ($reg['tabla'] === 'pedidos' && $reg['accion'] === 'crear' && $idReg && isset($apiPorRegistro[$idReg])) {
+            $apiIdx = $apiPorRegistro[$idReg];
+            $skipIds[$apiIdx] = true;
+            if (empty($reg['datos_anteriores'])) {
+                $reg['datos_anteriores'] = $registrosBrutos[$apiIdx]['datos_anteriores'];
             }
             $registros[] = $reg;
-        } elseif ($reg['tabla'] === 'api_requests' && $reg['accion'] === 'crear') {
-            // A veces el api_requests tiene un timestamp ligeramente mayor y llega antes
-            $pedidosIdx = -1;
-            for ($j = $idx + 1; $j < min(count($registrosBrutos), $idx + 15); $j++) {
-                if (isset($skipIds[$j])) continue;
-                if ($registrosBrutos[$j]['tabla'] === 'pedidos' && 
-                    $registrosBrutos[$j]['id_registro'] == $reg['id_registro'] &&
-                    $registrosBrutos[$j]['accion'] === 'crear') {
-                    $pedidosIdx = $j;
-                    break;
-                }
+        } elseif ($reg['tabla'] === 'api_requests' && $reg['accion'] === 'crear' && $idReg && isset($pedidosPorRegistro[$idReg])) {
+            $pedIdx = $pedidosPorRegistro[$idReg];
+            $pedidoAUnificar = $registrosBrutos[$pedIdx];
+            $skipIds[$pedIdx] = true;
+            if (empty($pedidoAUnificar['datos_anteriores'])) {
+                $pedidoAUnificar['datos_anteriores'] = $reg['datos_anteriores'];
             }
-            if ($pedidosIdx !== -1) {
-                $pedidoAUnificar = $registrosBrutos[$pedidosIdx];
-                $skipIds[$pedidosIdx] = true;
-                if (empty($pedidoAUnificar['datos_anteriores'])) {
-                    $pedidoAUnificar['datos_anteriores'] = $reg['datos_anteriores'];
-                }
-                $registros[] = $pedidoAUnificar;
-            } else {
-                $registros[] = $reg; // No se encontró el pedido
-            }
+            $registros[] = $pedidoAUnificar;
         } else {
             $registros[] = $reg;
         }
@@ -277,6 +272,7 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
         }
         .audit-diff-header.antes  { background:#fff1f1; color:#c0392b; border-bottom:1px solid #fad4d4; }
         .audit-diff-header.despues{ background:#f0fff4; color:#1a7f4b; border-bottom:1px solid #c3f0d4; }
+        .audit-diff-header.payload{ background:#eff6ff; color:#1d4ed8; border-bottom:1px solid #bfdbfe; }
         .audit-diff-body {
             background: #fafafa;
             padding: 12px 14px;
@@ -725,12 +721,16 @@ $(document).ready(function () {
 
         /* Diffs — etiqueta según tipo de acción */
         var labelAntes, labelDespues, iconAntes, iconDespues;
+        $('#amLabelAntes').removeClass('payload antes').addClass('antes');
         switch (d.accion) {
             case 'crear':
-                labelAntes   = d.antes ? 'Request API Payload' : null;
-                iconAntes    = 'bi-arrow-right-circle-fill';
-                iconDespues  = 'bi-plus-circle-fill';
-                labelDespues = d.tabla === 'api_requests' ? 'Response Status' : 'Datos del registro creado';
+                labelAntes   = d.antes ? 'JSON Original Enviado por el Cliente (API Payload)' : null;
+                iconAntes    = 'bi-file-earmark-code-fill';
+                iconDespues  = 'bi-check-circle-fill';
+                labelDespues = d.tabla === 'api_requests' ? 'Response Status' : 'Datos del registro creado en BD';
+                if (d.antes) {
+                    $('#amLabelAntes').removeClass('antes').addClass('payload');
+                }
                 break;
             case 'eliminar':
                 iconAntes    = 'bi-trash-fill';

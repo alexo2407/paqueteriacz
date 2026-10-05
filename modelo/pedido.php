@@ -1686,7 +1686,7 @@ class PedidosModel
      * @return int ID del pedido creado
      * @throws Exception Si no hay items, stock insuficiente o error en la transacción.
      */
-    public static function crearPedidoConProductos(array $pedido, array $items)
+    public static function crearPedidoConProductos(array $pedido, array $items, ?array $requestOriginal = null)
     {
         // DEBUG: Log method entry
         if (defined('DEBUG') && DEBUG) {
@@ -2098,7 +2098,7 @@ class PedidosModel
                     $pedidoId,
                     'crear',
                     AuditoriaModel::getIdUsuarioActual(),
-                    null,
+                    $requestOriginal,
                     $datosAuditoria
                 );
             } catch (Exception $e) {

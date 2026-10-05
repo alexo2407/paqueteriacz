@@ -588,8 +588,18 @@ class AuditoriaModel
             $params = [];
             
             if (!empty($filtros['tabla'])) {
-                $where[] = 'a.tabla = :tabla';
-                $params[':tabla'] = $filtros['tabla'];
+                if (is_array($filtros['tabla'])) {
+                    $inPlaceholders = [];
+                    foreach ($filtros['tabla'] as $idx => $t) {
+                        $paramKey = ':tabla_' . $idx;
+                        $inPlaceholders[] = $paramKey;
+                        $params[$paramKey] = $t;
+                    }
+                    $where[] = 'a.tabla IN (' . implode(', ', $inPlaceholders) . ')';
+                } else {
+                    $where[] = 'a.tabla = :tabla';
+                    $params[':tabla'] = $filtros['tabla'];
+                }
             }
             
             if (!empty($filtros['accion'])) {
@@ -652,7 +662,7 @@ class AuditoriaModel
                         p.numero_orden
                     FROM auditoria_cambios a
                     LEFT JOIN usuarios u ON u.id = a.id_usuario
-                    LEFT JOIN pedidos p ON (a.tabla = 'pedidos' AND a.id_registro = p.id)
+                    LEFT JOIN pedidos p ON (a.tabla IN ('pedidos', 'api_requests') AND a.id_registro = p.id)
                     {$whereClause}
                     ORDER BY a.created_at DESC
                     LIMIT :limite";
