@@ -772,6 +772,8 @@ class ForwardingModel
             if (!$pedido) return null;
 
             $pedido['productos'] = self::obtenerProductosPedido($idPedido);
+            require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+            $pedido['recoleccion'] = PedidoRecoleccionService::obtenerPorPedidoId($idPedido, $db);
             return $pedido;
         } catch (Exception $e) {
             error_log("ForwardingModel::obtenerPedidoParaForwarding error fatal para id={$idPedido}: " . $e->getMessage());

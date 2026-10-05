@@ -171,6 +171,45 @@ class CSVPedidoValidator
                 $advertencias[] = "Depto/Municipio no especificado (requerido para tu integración con C807)";
             }
         }
+
+        // 8. Validar datos de recolección (origen) si se informó alguno
+        $camposRecoleccion = [
+            'pais_recoleccion', 'id_pais_recoleccion',
+            'departamento_recoleccion', 'id_departamento_recoleccion',
+            'municipio_recoleccion', 'id_municipio_recoleccion',
+            'direccion_recoleccion', 'contacto_recoleccion',
+            'telefono_recoleccion', 'referencia_recoleccion'
+        ];
+        $tieneDatoRecoleccion = false;
+        foreach ($camposRecoleccion as $cr) {
+            if (isset($row[$cr]) && trim((string)$row[$cr]) !== '') {
+                $tieneDatoRecoleccion = true;
+                break;
+            }
+        }
+
+        if ($tieneDatoRecoleccion) {
+            require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+            $inputRec = [
+                'id_pais'         => $row['id_pais_recoleccion'] ?? null,
+                'pais'            => $row['pais_recoleccion'] ?? null,
+                'id_departamento' => $row['id_departamento_recoleccion'] ?? null,
+                'departamento'    => $row['departamento_recoleccion'] ?? null,
+                'id_municipio'    => $row['id_municipio_recoleccion'] ?? null,
+                'municipio'       => $row['municipio_recoleccion'] ?? null,
+                'direccion'       => $row['direccion_recoleccion'] ?? null,
+                'contacto'        => $row['contacto_recoleccion'] ?? null,
+                'telefono'        => $row['telefono_recoleccion'] ?? null,
+                'referencia'      => $row['referencia_recoleccion'] ?? null,
+            ];
+            $resRec = PedidoRecoleccionService::validarYNormalizar($inputRec);
+            if (!$resRec['success']) {
+                foreach ($resRec['errors'] as $key => $msg) {
+                    $colName = str_replace('recoleccion.', '', $key) . '_recoleccion';
+                    $errores[] = "Columna [{$colName}]: {$msg}";
+                }
+            }
+        }
         
         return [
             'errores' => $errores,
@@ -480,6 +519,41 @@ class CSVPedidoValidator
             $nombre = mb_strtolower(trim($row['vendedor_nombre']));
             if (isset($this->vendedoresCache['nombre:' . $nombre])) {
                 $row['id_vendedor'] = $this->vendedoresCache['nombre:' . $nombre]['id'];
+            }
+        }
+
+        // Recolección: resolver nombres e IDs hacia _recoleccion
+        $camposRecoleccion = [
+            'pais_recoleccion', 'id_pais_recoleccion',
+            'departamento_recoleccion', 'id_departamento_recoleccion',
+            'municipio_recoleccion', 'id_municipio_recoleccion',
+            'direccion_recoleccion', 'contacto_recoleccion',
+            'telefono_recoleccion', 'referencia_recoleccion'
+        ];
+        $tieneRec = false;
+        foreach ($camposRecoleccion as $cr) {
+            if (isset($row[$cr]) && trim((string)$row[$cr]) !== '') {
+                $tieneRec = true;
+                break;
+            }
+        }
+        if ($tieneRec) {
+            require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+            $inputRec = [
+                'id_pais'         => $row['id_pais_recoleccion'] ?? null,
+                'pais'            => $row['pais_recoleccion'] ?? null,
+                'id_departamento' => $row['id_departamento_recoleccion'] ?? null,
+                'departamento'    => $row['departamento_recoleccion'] ?? null,
+                'id_municipio'    => $row['id_municipio_recoleccion'] ?? null,
+                'municipio'       => $row['municipio_recoleccion'] ?? null,
+                'direccion'       => $row['direccion_recoleccion'] ?? null,
+                'contacto'        => $row['contacto_recoleccion'] ?? null,
+                'telefono'        => $row['telefono_recoleccion'] ?? null,
+                'referencia'      => $row['referencia_recoleccion'] ?? null,
+            ];
+            $resRec = PedidoRecoleccionService::validarYNormalizar($inputRec);
+            if ($resRec['success']) {
+                $row['_recoleccion'] = $resRec['data'];
             }
         }
     }

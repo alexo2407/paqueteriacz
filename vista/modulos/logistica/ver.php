@@ -293,6 +293,15 @@ include("vista/includes/header.php");
                         <div class="col-12">
                             <hr class="my-2">
                         </div>
+
+                        <?php if (!empty($pedido['recoleccion'])): ?>
+                        <div class="col-12 mb-3">
+                            <?php 
+                            $recoleccion = $pedido['recoleccion'];
+                            include __DIR__ . '/../pedidos/tarjeta_recoleccion_detalle.php'; 
+                            ?>
+                        </div>
+                        <?php endif; ?>
                         
                         <div class="col-12 mt-1">
                             <label class="small text-muted fw-bold text-uppercase">Dirección de Entrega</label>

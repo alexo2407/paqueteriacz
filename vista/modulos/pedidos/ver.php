@@ -317,8 +317,13 @@ if (!empty($fechaEntregaRaw)) {
                             </div>
                         </div>
 
-                            <div class="info-section">
-                                <div class="info-section-title mb-3">
+                        <?php 
+                        $recoleccion = $pedido['recoleccion'] ?? null;
+                        include __DIR__ . '/tarjeta_recoleccion_detalle.php';
+                        ?>
+
+                        <div class="info-section">
+                            <div class="info-section-title mb-3">
                                     <i class="bi bi-geo-alt-fill"></i>
                                     Ubicación de Entrega
                                 </div>

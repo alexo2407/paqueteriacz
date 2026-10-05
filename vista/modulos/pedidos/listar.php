@@ -396,6 +396,54 @@ endif;
                                         <td class="text-muted">0 / 1</td>
                                         <td><code>1</code> = multi-producto &nbsp;|&nbsp; <code>0</code> = un solo producto.</td>
                                     </tr>
+                                    <!-- DATOS DE RECOLECCIÓN (ORIGEN) -->
+                                    <tr>
+                                        <td colspan="4" class="py-1 px-2 fw-bold text-white" style="background:#0B4EA2;font-size:0.74rem;">
+                                            <i class="bi bi-box-arrow-up me-1"></i> DATOS DE RECOLECCIÓN (ORIGEN) — Columnas Opcionales U → AA (si se llena alguna, país, depto, muni y dirección son requeridos)
+                                        </td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">U</td>
+                                        <td><code>pais_recoleccion</code> <span class="badge bg-warning text-dark">OPT*</span></td>
+                                        <td class="text-muted">texto / ID</td>
+                                        <td>País origen donde se recoge el paquete.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">V</td>
+                                        <td><code>departamento_recoleccion</code> <span class="badge bg-warning text-dark">OPT*</span></td>
+                                        <td class="text-muted">texto / ID</td>
+                                        <td>Departamento de recolección (requerido si se indica recolección).</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">W</td>
+                                        <td><code>municipio_recoleccion</code> <span class="badge bg-warning text-dark">OPT*</span></td>
+                                        <td class="text-muted">texto / ID</td>
+                                        <td>Municipio de recolección (requerido si se indica recolección).</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">X</td>
+                                        <td><code>direccion_recoleccion</code> <span class="badge bg-warning text-dark">OPT*</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Dirección completa de recolección.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">Y</td>
+                                        <td><code>contacto_recoleccion</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Nombre de la persona o negocio que entrega el paquete.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">Z</td>
+                                        <td><code>telefono_recoleccion</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Teléfono del contacto en recolección.</td>
+                                    </tr>
+                                    <tr class="table-warning bg-opacity-25">
+                                        <td class="text-muted text-center fw-bold">AA</td>
+                                        <td><code>referencia_recoleccion</code> <span class="badge bg-warning text-dark">OPT</span></td>
+                                        <td class="text-muted">texto</td>
+                                        <td>Punto de referencia del lugar de recolección.</td>
+                                    </tr>
                                     <!-- MULTI-PRODUCTO -->
                                     <tr>
                                         <td colspan="4" class="py-1 px-2 fw-bold text-white" style="background:#1D6A3A;font-size:0.74rem;">
@@ -403,13 +451,13 @@ endif;
                                         </td>
                                     </tr>
                                     <tr style="background:rgba(29,106,58,0.07);">
-                                        <td class="text-muted text-center fw-bold">U, W…</td>
+                                        <td class="text-muted text-center fw-bold">AB, AD…</td>
                                         <td><code>Producto <em>N</em></code> <span class="badge" style="background:#1D6A3A;color:#fff;">PROD</span></td>
                                         <td class="text-muted">texto</td>
                                         <td>Nombre <strong>exacto</strong> del producto (debe existir). Si no se encuentra → fila <strong class="text-danger">rechazada</strong>.<br><small class="text-muted">Ver productos disponibles en "Ver IDs disponibles".</small></td>
                                     </tr>
                                     <tr style="background:rgba(29,106,58,0.07);">
-                                        <td class="text-muted text-center fw-bold">V, X…</td>
+                                        <td class="text-muted text-center fw-bold">AC, AE…</td>
                                         <td><code>Cantidad <em>N</em></code> <span class="badge bg-warning text-dark">OPT</span></td>
                                         <td class="text-muted">entero</td>
                                         <td>Cantidad del producto N (default <code>1</code>). Vacío = se omite ese producto.</td>

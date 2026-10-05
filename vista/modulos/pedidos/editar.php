@@ -154,6 +154,22 @@ if ($old_edit) {
     if (isset($old_edit['productos']) && is_array($old_edit['productos'])) {
         $pedido['productos'] = $old_edit['productos'];
     }
+    // override recolección from old edit if present
+    if (isset($old_edit['recoleccion_presente'])) {
+        if (!empty($old_edit['habilitar_recoleccion'])) {
+            $pedido['recoleccion'] = [
+                'id_pais' => $old_edit['recoleccion_id_pais'] ?? null,
+                'id_departamento' => $old_edit['recoleccion_id_departamento'] ?? null,
+                'id_municipio' => $old_edit['recoleccion_id_municipio'] ?? null,
+                'direccion' => $old_edit['recoleccion_direccion'] ?? '',
+                'contacto' => $old_edit['recoleccion_contacto'] ?? '',
+                'telefono' => $old_edit['recoleccion_telefono'] ?? '',
+                'referencia' => $old_edit['recoleccion_referencia'] ?? '',
+            ];
+        } else {
+            $pedido['recoleccion'] = null;
+        }
+    }
 }
 
 // Si no tiene proveedor, asignar el primero por defecto para que se seleccione
@@ -544,6 +560,76 @@ if (empty($pedido['es_combo']) || $pedido['es_combo'] == 0) {
                                 </div>
                             </div>
                         </div>
+
+                        <!-- CARD: DATOS DE RECOLECCIÓN (ORIGEN) -->
+                        <?php 
+                        $rec = $pedido['recoleccion'] ?? null; 
+                        $tieneRecoleccion = !empty($rec);
+                        ?>
+                        <div class="card mb-4 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <input type="hidden" name="recoleccion_presente" value="1">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="mb-0 text-primary">
+                                        <i class="bi bi-box-arrow-up me-2"></i>Datos de Recolección (Origen)
+                                    </h5>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="habilitar_recoleccion" name="habilitar_recoleccion" value="1" <?= $tieneRecoleccion ? 'checked' : '' ?>>
+                                        <label class="form-check-label fw-bold user-select-none" for="habilitar_recoleccion">Habilitar Recolección</label>
+                                    </div>
+                                </div>
+                                <p class="text-muted small mb-3">Activa esta opción si el paquete se recolecta en una dirección de origen específica (remitente/sucursal). Desmarca para retirar la recolección.</p>
+
+                                <div id="seccion_recoleccion" style="display: <?= $tieneRecoleccion ? 'block' : 'none' ?>;">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label for="recoleccion_id_pais" class="form-label fw-bold">País de Recolección <span class="text-danger">*</span></label>
+                                            <select class="form-select select2-recoleccion" id="recoleccion_id_pais" name="recoleccion_id_pais" data-placeholder="Selecciona país...">
+                                                <option value="">Selecciona un país</option>
+                                                <?php foreach ($paises as $p): ?>
+                                                    <option value="<?= (int)$p['id'] ?>" <?= ($tieneRecoleccion && (int)($rec['id_pais'] ?? 0) === (int)$p['id']) ? 'selected' : '' ?>>
+                                                        <?= htmlspecialchars($p['nombre']) ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="recoleccion_id_departamento" class="form-label fw-bold">Departamento de Recolección <span class="text-danger">*</span></label>
+                                            <select class="form-select select2-recoleccion" id="recoleccion_id_departamento" name="recoleccion_id_departamento" data-placeholder="Selecciona departamento...">
+                                                <option value="">Selecciona un departamento</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <label for="recoleccion_id_municipio" class="form-label fw-bold">Municipio de Recolección <span class="text-danger">*</span></label>
+                                            <select class="form-select select2-recoleccion" id="recoleccion_id_municipio" name="recoleccion_id_municipio" data-placeholder="Selecciona municipio...">
+                                                <option value="">Selecciona un municipio</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="col-12 mb-3">
+                                            <label for="recoleccion_direccion" class="form-label fw-bold">Dirección de Recolección <span class="text-danger">*</span></label>
+                                            <textarea class="form-control" id="recoleccion_direccion" name="recoleccion_direccion" rows="2" placeholder="Dirección completa donde se recogerá el paquete"><?= htmlspecialchars($rec['direccion'] ?? '') ?></textarea>
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label for="recoleccion_contacto" class="form-label fw-bold">Persona o Negocio de Contacto</label>
+                                            <input type="text" class="form-control" id="recoleccion_contacto" name="recoleccion_contacto" placeholder="Nombre de quien entrega el paquete" maxlength="150" value="<?= htmlspecialchars($rec['contacto'] ?? '') ?>">
+                                        </div>
+
+                                        <div class="col-md-6 mb-3">
+                                            <label for="recoleccion_telefono" class="form-label fw-bold">Teléfono de Contacto</label>
+                                            <input type="tel" class="form-control" id="recoleccion_telefono" name="recoleccion_telefono" placeholder="+50588888888" maxlength="30" value="<?= htmlspecialchars($rec['telefono'] ?? '') ?>">
+                                        </div>
+
+                                        <div class="col-12 mb-2">
+                                            <label for="recoleccion_referencia" class="form-label fw-bold">Punto de Referencia</label>
+                                            <input type="text" class="form-control" id="recoleccion_referencia" name="recoleccion_referencia" placeholder="Ej: Portón azul, frente a gasolinera..." maxlength="255" value="<?= htmlspecialchars($rec['referencia'] ?? '') ?>">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-between">
                              <button type="button" class="btn btn-outline-secondary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-info-tab')); t.show();"><i class="bi bi-arrow-left"></i> Anterior</button>
                              <button type="button" class="btn btn-primary" onclick="var t = new bootstrap.Tab(document.querySelector('#pills-productos-tab')); t.show();">Siguiente <i class="bi bi-arrow-right"></i></button>
@@ -1490,6 +1576,117 @@ document.getElementById('es_combo').addEventListener('change', function() {
         // Esto previene pérdida de datos si el usuario activa/desactiva accidentalmente
     }
 });
+</script>
+
+<script>
+// Recolección (Origen) cascading and toggle logic for edit
+(function() {
+    const habilitarCheck = document.getElementById('habilitar_recoleccion');
+    const seccionRec = document.getElementById('seccion_recoleccion');
+    const recPaisSelect = document.getElementById('recoleccion_id_pais');
+    const recDeptSelect = document.getElementById('recoleccion_id_departamento');
+    const recMunSelect = document.getElementById('recoleccion_id_municipio');
+
+    if (!habilitarCheck || !seccionRec) return;
+
+    const departamentos = <?php echo json_encode($departamentosAll); ?>;
+    const municipios = <?php echo json_encode($municipiosAll); ?>;
+
+    const initialRecDep = <?= json_encode($rec['id_departamento'] ?? '') ?>;
+    const initialRecMun = <?= json_encode($rec['id_municipio'] ?? '') ?>;
+
+    function initSelect2Recoleccion() {
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('.select2-recoleccion').each(function() {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        theme: 'bootstrap-5',
+                        placeholder: $(this).data('placeholder') || 'Seleccionar...',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $(this).closest('.tab-pane')
+                    });
+                }
+            });
+        }
+    }
+
+    function populateRecDepartamentos(paisId, selectedDepId) {
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(recDeptSelect).hasClass('select2-hidden-accessible')) {
+            $(recDeptSelect).select2('destroy');
+        }
+        recDeptSelect.innerHTML = '<option value="">Selecciona un departamento</option>';
+        departamentos.forEach(d => {
+            if (!paisId || parseInt(d.id_pais) === parseInt(paisId)) {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.textContent = d.nombre;
+                recDeptSelect.appendChild(opt);
+            }
+        });
+        if (selectedDepId) recDeptSelect.value = selectedDepId;
+        initSelect2Recoleccion();
+        populateRecMunicipios(recDeptSelect.value, initialRecMun);
+    }
+
+    function populateRecMunicipios(depId, selectedMunId) {
+        if (typeof $ !== 'undefined' && $.fn.select2 && $(recMunSelect).hasClass('select2-hidden-accessible')) {
+            $(recMunSelect).select2('destroy');
+        }
+        recMunSelect.innerHTML = '<option value="">Selecciona un municipio</option>';
+        municipios.forEach(m => {
+            if (!depId || parseInt(m.id_departamento) === parseInt(depId)) {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.nombre;
+                recMunSelect.appendChild(opt);
+            }
+        });
+        if (selectedMunId) recMunSelect.value = selectedMunId;
+        initSelect2Recoleccion();
+    }
+
+    habilitarCheck.addEventListener('change', function() {
+        if (this.checked) {
+            seccionRec.style.display = 'block';
+            initSelect2Recoleccion();
+            if (!recPaisSelect.value) {
+                const delivPais = document.getElementById('id_pais');
+                if (delivPais && delivPais.value) {
+                    recPaisSelect.value = delivPais.value;
+                    if (typeof $ !== 'undefined' && $.fn.select2) {
+                        $(recPaisSelect).trigger('change');
+                    } else {
+                        populateRecDepartamentos(recPaisSelect.value, null);
+                    }
+                }
+            }
+        } else {
+            seccionRec.style.display = 'none';
+        }
+    });
+
+    if (typeof $ !== 'undefined') {
+        $(recPaisSelect).on('change', function() {
+            populateRecDepartamentos(this.value, null);
+        });
+        $(recDeptSelect).on('change', function() {
+            populateRecMunicipios(this.value, null);
+        });
+    } else {
+        recPaisSelect.addEventListener('change', function() {
+            populateRecDepartamentos(this.value, null);
+        });
+        recDeptSelect.addEventListener('change', function() {
+            populateRecMunicipios(this.value, null);
+        });
+    }
+
+    // Inicializar valores precargados si está activo
+    if (habilitarCheck.checked && recPaisSelect.value) {
+        populateRecDepartamentos(recPaisSelect.value, initialRecDep);
+    }
+})();
 </script>
 
 

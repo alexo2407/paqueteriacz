@@ -61,6 +61,13 @@ $headersFijos = [
     'Cliente (ID)',
     'Proveedor (ID)',
     'Es Combo (0/1)',
+    'País Recolección',
+    'Depto. Recolección',
+    'Municipio Recolección',
+    'Dirección Recolección',
+    'Contacto Recolección',
+    'Teléfono Recolección',
+    'Referencia Recolección',
 ];
 $numFijos = count($headersFijos);
 
@@ -94,12 +101,20 @@ $ejemplo = [
     $idClienteLogueado,                                            // R: cliente (ID)
     '12',                                                          // S: id_proveedor
     '1',                                                           // T: es_combo
+    // Datos de Recolección (Origen - Opcionales)
+    'Nicaragua',                                                   // U: pais_recoleccion
+    'Managua',                                                     // V: departamento_recoleccion
+    'Tipitapa',                                                    // W: municipio_recoleccion
+    'Km 15 Carretera Norte, Bodega 4',                             // X: direccion_recoleccion
+    'Distribuidora Central',                                       // Y: contacto_recoleccion
+    '+50588888888',                                                // Z: telefono_recoleccion
+    'Frente a gasolinera',                                         // AA: referencia_recoleccion
     // Productos
-    'INMUSTEN',             '2',   // U-V: Producto 1 / Cantidad 1
-    'FLEXOSAMINE CAPSULAS', '1',   // W-X: Producto 2 / Cantidad 2
-    '',                     '',    // Y-Z
-    '',                     '',    // AA-AB
-    '',                     '',    // AC-AD
+    'INMUSTEN',             '2',   // AB-AC: Producto 1 / Cantidad 1
+    'FLEXOSAMINE CAPSULAS', '1',   // AD-AE: Producto 2 / Cantidad 2
+    '',                     '',
+    '',                     '',
+    '',                     '',
 ];
 
 // ── Crear Spreadsheet ────────────────────────────────────────────────────────
@@ -217,6 +232,13 @@ $anchos = [
     18 => 10,  // Cliente ID
     19 => 12,  // Proveedor ID
     20 => 13,  // Es Combo
+    21 => 16,  // País Recolección
+    22 => 18,  // Depto. Recolección
+    23 => 18,  // Municipio Recolección
+    24 => 40,  // Dirección Recolección
+    25 => 22,  // Contacto Recolección
+    26 => 16,  // Teléfono Recolección
+    27 => 25,  // Referencia Recolección
 ];
 foreach ($anchos as $colNum => $width) {
     $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($colNum))->setWidth($width);
@@ -400,15 +422,23 @@ $instrucciones = [
     ['R: cliente',             'SÍ',    'ID numérico del cliente dueño del pedido (pre-rellenado en la plantilla)'],
     ['S: id_proveedor',        'SÍ',    'ID numérico del proveedor de mensajería'],
     ['T: es_combo',            'SÍ',    '1 = combo / multi-producto  |  0 = estándar (un solo producto)'],
-    ['U-V: Producto 1 / Cantidad 1', 'SÍ*', 'Nombre exacto del producto + cantidad. El producto DEBE existir en el sistema.'],
-    ['W-X: Producto 2 / Cantidad 2', 'No',  'Segundo producto (opcional). Dejar vacío si no aplica.'],
-    ['Y-Z: Producto 3 / Cantidad 3', 'No',  'Tercer producto (opcional).'],
-    ['AA-AB: Producto 4 / Cantidad 4','No', 'Cuarto producto (opcional).'],
-    ['AC-AD: Producto 5 / Cantidad 5','No', 'Quinto producto (opcional).'],
+    ['U: pais_recoleccion',         'No',    'País origen de recolección (opcional; si se omite, pedido sin recolección)'],
+    ['V: departamento_recoleccion', 'No*',   'Departamento de recolección (obligatorio si se especifica recolección)'],
+    ['W: municipio_recoleccion',    'No*',   'Municipio de recolección (obligatorio si se especifica recolección)'],
+    ['X: direccion_recoleccion',    'No*',   'Dirección completa de recolección (obligatoria si se especifica recolección)'],
+    ['Y: contacto_recoleccion',     'No',    'Persona o negocio que entrega el paquete en recolección'],
+    ['Z: telefono_recoleccion',     'No',    'Teléfono del punto de recolección'],
+    ['AA: referencia_recoleccion',  'No',    'Referencia o indicaciones del punto de recolección'],
+    ['AB-AC: Producto 1 / Cantidad 1', 'SÍ*', 'Nombre exacto del producto + cantidad. El producto DEBE existir en el sistema.'],
+    ['AD-AE: Producto 2 / Cantidad 2', 'No',  'Segundo producto (opcional). Dejar vacío si no aplica.'],
+    ['AF-AG: Producto 3 / Cantidad 3', 'No',  'Tercer producto (opcional).'],
+    ['AH-AI: Producto 4 / Cantidad 4', 'No',  'Cuarto producto (opcional).'],
+    ['AJ-AK: Producto 5 / Cantidad 5', 'No',  'Quinto producto (opcional).'],
     ['', '', ''],
     ['⚠️ NOTAS IMPORTANTES', '', ''],
     ['', '', $esClienteC807 ? '• Envíos para C807 / El Salvador: DEPARTAMENTO y MUNICIPIO son obligatorios para rutear la entrega.' : '• Puedes consultar la pestaña "Catálogos" para verificar departamentos y municipios válidos.'],
     ['', '', '• Consulta la pestaña "Catálogos" para copiar los nombres exactos de departamentos y municipios.'],
+    ['', '', '• Recolección (Origen): es 100% opcional. Si se llena cualquier campo de recolección, país, departamento, municipio y dirección son obligatorios.'],
     ['', '', '• Los productos deben existir previamente en el sistema.'],
     ['', '', '• Si el nombre del producto no coincide exactamente → fila RECHAZADA.'],
     ['', '', '• Para 1 solo producto: es_combo=0, usar solo Producto 1 / Cantidad 1.'],
@@ -432,7 +462,7 @@ foreach ($instrucciones as $rowIdx => $row) {
 // Color columna REQ.
 for ($r = 2; $r <= count($instrucciones); $r++) {
     $val = $instrSheet->getCell('B' . $r)->getValue();
-    if ($val === 'SÍ' || $val === 'SÍ*') {
+    if ($val === 'SÍ' || $val === 'SÍ*' || $val === 'No*') {
         $instrSheet->getStyle('B' . $r)->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'C0392B']],
         ]);
@@ -444,7 +474,7 @@ for ($r = 2; $r <= count($instrucciones); $r++) {
 }
 
 // Fila de notas
-$notaRow = 29; // fila de "NOTAS IMPORTANTES"
+$notaRow = 36; // fila de "NOTAS IMPORTANTES"
 $instrSheet->getStyle("A{$notaRow}")->applyFromArray([
     'font' => ['bold' => true, 'color' => ['rgb' => '873600'], 'size' => 11],
     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FDEBD0']],

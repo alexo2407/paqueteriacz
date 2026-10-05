@@ -718,6 +718,26 @@ class PedidoApiController
             }
         }
 
+        // 6. Validar datos de recolección (origen) si se incluyen
+        if (array_key_exists('recoleccion', $data)) {
+            $rec = $data['recoleccion'];
+            if ($rec !== null) {
+                if (!is_array($rec)) {
+                    $errores['recoleccion'] = "El campo recoleccion debe ser un objeto con los datos de recolección o null.";
+                } elseif (empty($rec)) {
+                    $errores['recoleccion'] = "El objeto recoleccion no puede estar vacío si se incluye.";
+                } else {
+                    require_once __DIR__ . '/../../services/PedidoRecoleccionService.php';
+                    $valRec = PedidoRecoleccionService::validarYNormalizar($rec);
+                    if (!$valRec['success']) {
+                        foreach ($valRec['errors'] as $fieldKey => $msg) {
+                            $errores[$fieldKey] = $msg;
+                        }
+                    }
+                }
+            }
+        }
+
         if (!empty($errores)) {
             return ["success" => false, "message" => "VALIDATION_ERROR", "fields" => $errores];
         }
@@ -1072,6 +1092,10 @@ class PedidoApiController
             'requiere_productos' => isset($data['requiere_productos']) ? (int)$data['requiere_productos'] : 1,
         ];
 
+        if (!empty($data['recoleccion']) && is_array($data['recoleccion'])) {
+            $payload['recoleccion'] = $data['recoleccion'];
+        }
+
         // Normalizar valores 0 a null
         if ($payload['vendedor'] === 0) $payload['vendedor'] = null;
         if ($payload['proveedor'] === 0) $payload['proveedor'] = null;
@@ -1187,6 +1211,12 @@ class PedidoApiController
             // Código de ciudad para HLExpress (city_dane_code). Se usa como prioridad en HLExpressProvider.
             'code_city'          => !empty($pedido['code_city']) ? trim($pedido['code_city']) : '',
         ];
+
+        if (!empty($pedido['recoleccion']) && is_array($pedido['recoleccion'])) {
+            $payload['recoleccion'] = $pedido['recoleccion'];
+        }
+
+        return $payload;
     }
 
     private function procesarProductosMultiple(array $pedido): array
@@ -1370,8 +1400,9 @@ class PedidoApiController
             ];
         }
         
-        // Verificar que sea el proveedor del pedido
-        if ($pedido['id_proveedor'] != $userId) {
+        // Verificar que sea el proveedor o cliente del pedido
+        $isOwner = ((int)($pedido['id_proveedor'] ?? 0) === $userId) || ((int)($pedido['id_cliente'] ?? 0) === $userId);
+        if (!$isOwner) {
             return [
                 'permitido' => false,
                 'mensaje' => 'Solo puedes editar tus propios pedidos'

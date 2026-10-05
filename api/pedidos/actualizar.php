@@ -54,7 +54,9 @@ try {
     if ($result['success']) {
         responder(true, $result['message'], null, 200);
     } else {
-        responder(false, $result['message'], null, 400);
+        $httpCode = (isset($result['fields']) || ($result['message'] ?? '') === 'VALIDATION_ERROR') ? 422 : 400;
+        $extra = isset($result['fields']) ? ['fields' => $result['fields']] : [];
+        responder(false, $result['message'], $result['data'] ?? null, $httpCode, $extra);
     }
 } catch (Exception $e) {
     error_log('[api/pedidos/actualizar] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());

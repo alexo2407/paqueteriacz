@@ -90,6 +90,15 @@ if (isset($ruta[0]) && $ruta[0] === 'pedidos' && $_SERVER['REQUEST_METHOD'] === 
             'Location'           => $_POST['Location'] ?? ($_POST['barrio'] ?? null),
             'betweenStreets'     => $_POST['betweenStreets'] ?? ($_POST['entre_calles'] ?? null),
             'postalCode'         => isset($_POST['postalCode']) && $_POST['postalCode'] !== '' ? (int)$_POST['postalCode'] : null,
+            // Campos de recolección (origen)
+            'habilitar_recoleccion'       => !empty($_POST['habilitar_recoleccion']) ? 1 : 0,
+            'recoleccion_id_pais'         => $_POST['recoleccion_id_pais'] ?? null,
+            'recoleccion_id_departamento' => $_POST['recoleccion_id_departamento'] ?? null,
+            'recoleccion_id_municipio'    => $_POST['recoleccion_id_municipio'] ?? null,
+            'recoleccion_direccion'       => $_POST['recoleccion_direccion'] ?? null,
+            'recoleccion_contacto'        => $_POST['recoleccion_contacto'] ?? null,
+            'recoleccion_telefono'        => $_POST['recoleccion_telefono'] ?? null,
+            'recoleccion_referencia'      => $_POST['recoleccion_referencia'] ?? null,
         ];
         
         if (defined('DEBUG') && DEBUG) {

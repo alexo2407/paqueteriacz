@@ -104,17 +104,45 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PedidoCreate'
-            example:
-              numero_orden: 90001
-              destinatario: Cliente Prueba
-              telefono: '0999999999'
-              producto: Producto X
-              cantidad: 1
-              coordenadas: '-0.180653,-78.467838'
-              direccion: Calle Falsa 123
-              pais: EC
-              departamento: Pichincha
-              municipio: Quito
+            examples:
+              con_recoleccion:
+                summary: Pedido con datos de recolección (Origen)
+                value:
+                  numero_orden: "ORD-2026-101"
+                  id_proveedor: 12
+                  id_pais: 1
+                  id_departamento: 161
+                  id_municipio: 3800
+                  destinatario: "Cliente Destino"
+                  telefono: "+50588881234"
+                  direccion: "Semáforos de Plaza España 1c al sur"
+                  precio_total_local: 250.00
+                  id_moneda: 1
+                  productos:
+                    - id_producto: 185
+                      cantidad: 2
+                      precio_unitario: 125.00
+                  recoleccion:
+                    id_pais: 1
+                    id_departamento: 161
+                    id_municipio: 3800
+                    direccion: "Km 5 Carretera Norte, Bodega 4"
+                    contacto: "Distribuidora Central S.A."
+                    telefono: "+50522445566"
+                    referencia: "Portón blanco con logo azul"
+              estandar:
+                summary: Pedido estándar sin recolección
+                value:
+                  numero_orden: 90001
+                  destinatario: "Cliente Prueba"
+                  telefono: "0999999999"
+                  producto: "Producto X"
+                  cantidad: 1
+                  coordenadas: "-0.180653,-78.467838"
+                  direccion: "Calle Falsa 123"
+                  pais: "EC"
+                  departamento: "Pichincha"
+                  municipio: "Quito"
       responses:
         '200':
           description: Pedido creado
@@ -128,6 +156,68 @@ paths:
           description: Token inválido o expirado
         '422':
           description: Validación fallida
+  /api/pedidos/actualizar:
+    post:
+      summary: Actualizar un pedido existente
+      description: |
+        Actualiza un pedido.
+        Semántica de `recoleccion`:
+        - Omitido: conserva la recolección existente.
+        - Objeto: upsert/actualización parcial de la recolección.
+        - `null`: elimina el registro de recolección.
+        - `{}`: error de validación 422.
+      tags: [Pedidos]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_pedido]
+              properties:
+                id_pedido:
+                  type: integer
+                destinatario:
+                  type: string
+                telefono:
+                  type: string
+                direccion:
+                  type: string
+                recoleccion:
+                  $ref: '#/components/schemas/PedidoRecoleccion'
+      responses:
+        '200':
+          description: Pedido actualizado exitosamente
+        '401':
+          description: No autenticado
+        '403':
+          description: No autorizado
+        '422':
+          description: Error de validación
+  /api/pedidos/ver:
+    get:
+      summary: Consultar detalle de un pedido
+      tags: [Pedidos]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: id
+          schema:
+            type: integer
+          description: ID del pedido
+        - in: query
+          name: numero_orden
+          schema:
+            type: string
+          description: Número de orden externo
+      responses:
+        '200':
+          description: Detalle del pedido con objeto 'recoleccion' (o null si no tiene)
+        '404':
+          description: Pedido no encontrado
   /api/monedas/listar:
     get:
       summary: Listar monedas
@@ -259,7 +349,44 @@ components:
           format: float
         id_moneda:
           type: integer
+        recoleccion:
+          $ref: '#/components/schemas/PedidoRecoleccion'
       required: [numero_orden, destinatario, telefono, producto]
+    PedidoRecoleccion:
+      type: object
+      description: Datos de recolección (origen del paquete).
+      properties:
+        id_pais:
+          type: integer
+          description: ID interno del país en el catálogo (o usar alias 'pais').
+        id_departamento:
+          type: integer
+          description: ID interno del departamento (o usar alias 'departamento').
+        id_municipio:
+          type: integer
+          description: ID interno del municipio (o usar alias 'municipio').
+        pais:
+          type: string
+          description: Nombre del país para resolución automática.
+        departamento:
+          type: string
+          description: Nombre del departamento para resolución automática.
+        municipio:
+          type: string
+          description: Nombre del municipio para resolución automática.
+        direccion:
+          type: string
+          description: Dirección completa del punto de recolección.
+        contacto:
+          type: string
+          description: Nombre o negocio que entrega el paquete (opcional).
+        telefono:
+          type: string
+          description: Teléfono de contacto en recolección (opcional, conserva formato internacional).
+        referencia:
+          type: string
+          nullable: true
+          description: Punto de referencia o indicaciones adicionales (opcional).
     PedidoItem:
       type: object
       properties:

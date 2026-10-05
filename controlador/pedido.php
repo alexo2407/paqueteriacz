@@ -362,21 +362,41 @@ class PedidosController
      */
     public function actualizarPedido($data)
     {
-        $resultado = PedidosModel::actualizarPedido($data);
-        if ($resultado) {
-            // Notificación logística al actualizar datos del pedido
-            $idPedido = (int)($data['id_pedido'] ?? 0);
-            if ($idPedido > 0) {
-                LogisticaNotifHelper::notificarPedido($idPedido, LogisticaNotifHelper::ACCION_ACTUALIZADO);
+        try {
+            $resultado = PedidosModel::actualizarPedido($data);
+            if ($resultado) {
+                // Notificación logística al actualizar datos del pedido
+                $idPedido = (int)($data['id_pedido'] ?? 0);
+                if ($idPedido > 0) {
+                    LogisticaNotifHelper::notificarPedido($idPedido, LogisticaNotifHelper::ACCION_ACTUALIZADO);
+                }
+                return [
+                    "success" => true,
+                    "message" => "Pedido actualizado correctamente."
+                ];
+            } else {
+                return [
+                    "success" => false,
+                    "message" => "No se realizaron cambios en el pedido."
+                ];
+            }
+        } catch (InvalidArgumentException $e) {
+            $decoded = json_decode($e->getMessage(), true);
+            if (is_array($decoded)) {
+                return [
+                    "success" => false,
+                    "message" => "VALIDATION_ERROR",
+                    "fields"  => $decoded
+                ];
             }
             return [
-                "success" => true,
-                "message" => "Pedido actualizado correctamente."
+                "success" => false,
+                "message" => $e->getMessage()
             ];
-        } else {
+        } catch (Exception $e) {
             return [
                 "success" => false,
-                "message" => "No se realizaron cambios en el pedido."
+                "message" => $e->getMessage()
             ];
         }
     }
@@ -883,6 +903,30 @@ class PedidosController
         }
 
 
+        // 4. Resolver Recolección (Origen) si fue habilitada o enviada
+        if (!empty($data['habilitar_recoleccion']) || !empty($data['recoleccion_direccion']) || !empty($data['recoleccion_id_pais'])) {
+            $recData = [
+                'id_pais' => !empty($data['recoleccion_id_pais']) ? (int)$data['recoleccion_id_pais'] : null,
+                'id_departamento' => !empty($data['recoleccion_id_departamento']) ? (int)$data['recoleccion_id_departamento'] : null,
+                'id_municipio' => !empty($data['recoleccion_id_municipio']) ? (int)$data['recoleccion_id_municipio'] : null,
+                'direccion' => isset($data['recoleccion_direccion']) ? trim((string)$data['recoleccion_direccion']) : '',
+                'contacto' => isset($data['recoleccion_contacto']) ? trim((string)$data['recoleccion_contacto']) : '',
+                'telefono' => isset($data['recoleccion_telefono']) ? trim((string)$data['recoleccion_telefono']) : '',
+                'referencia' => isset($data['recoleccion_referencia']) ? trim((string)$data['recoleccion_referencia']) : '',
+            ];
+
+            require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+            $recoleccionService = new PedidoRecoleccionService();
+            $erroresRec = $recoleccionService->validar($recData, false);
+            if (!empty($erroresRec)) {
+                return [
+                    'success' => false,
+                    'message' => 'Error en datos de recolección: ' . implode(', ', array_values($erroresRec))
+                ];
+            }
+            $payload['recoleccion'] = $recData;
+        }
+
         try {
             $nuevoId = PedidosModel::crearPedidoConProductos($payload, $items);
             error_log("guardarPedidoFormulario EXITO. Nuevo ID: " . $nuevoId);
@@ -1132,6 +1176,40 @@ class PedidosController
                 }
             }
 
+            // Manejo de recolección en edición
+            if (isset($data['recoleccion_presente'])) {
+                if (!empty($data['habilitar_recoleccion'])) {
+                    $recData = [
+                        'id_pais' => !empty($data['recoleccion_id_pais']) ? (int)$data['recoleccion_id_pais'] : null,
+                        'id_departamento' => !empty($data['recoleccion_id_departamento']) ? (int)$data['recoleccion_id_departamento'] : null,
+                        'id_municipio' => !empty($data['recoleccion_id_municipio']) ? (int)$data['recoleccion_id_municipio'] : null,
+                        'direccion' => isset($data['recoleccion_direccion']) ? trim((string)$data['recoleccion_direccion']) : '',
+                        'contacto' => isset($data['recoleccion_contacto']) ? trim((string)$data['recoleccion_contacto']) : '',
+                        'telefono' => isset($data['recoleccion_telefono']) ? trim((string)$data['recoleccion_telefono']) : '',
+                        'referencia' => isset($data['recoleccion_referencia']) ? trim((string)$data['recoleccion_referencia']) : '',
+                    ];
+
+                    require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+                    $recoleccionService = new PedidoRecoleccionService();
+                    $erroresRec = $recoleccionService->validar($recData, false);
+                    if (!empty($erroresRec)) {
+                        $msgRec = 'Error en recolección: ' . implode(', ', array_values($erroresRec));
+                        if ($isAjax) {
+                            $sendJson(['success' => false, 'message' => $msgRec, 'errors' => $erroresRec], 422);
+                        }
+                        $persistOldEdit($data);
+                        require_once __DIR__ . '/../utils/session.php';
+                        set_flash('error', $msgRec);
+                        header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido']);
+                        exit;
+                    }
+                    $data['recoleccion'] = $recData;
+                } else {
+                    // Desmarcado explícitamente: retirar la recolección
+                    $data['recoleccion'] = null;
+                }
+            }
+
             // Leer code_city ANTES de actualizar para detectar si fue recién asignado
             $codeCityAntes = '';
             try {
@@ -1185,6 +1263,16 @@ class PedidosController
                 header('Location: ' . RUTA_URL . 'pedidos/editar/' . $data['id_pedido'] . '/error');
                 exit;
             }
+        } catch (InvalidArgumentException $e) {
+            $msg = $e->getMessage();
+            if ($isAjax) {
+                $sendJson(['success' => false, 'message' => $msg], 422);
+            }
+            $persistOldEdit($data);
+            require_once __DIR__ . '/../utils/session.php';
+            set_flash('error', $msg);
+            header('Location: ' . RUTA_URL . 'pedidos/editar/' . ($data['id_pedido'] ?? ''));
+            exit;
         } catch (Exception $e) {
             $msg = 'Error interno: ' . $e->getMessage();
             if ($isAjax) {

@@ -405,6 +405,41 @@ class PedidosModel
                         ]);
                     }
 
+                    // Guardar datos de recolección si se proporcionaron en la fila
+                    require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+                    $datosRec = $row['_recoleccion'] ?? null;
+                    if (!$datosRec) {
+                        $inputRec = [
+                            'id_pais'         => $row['id_pais_recoleccion'] ?? null,
+                            'pais'            => $row['pais_recoleccion'] ?? null,
+                            'id_departamento' => $row['id_departamento_recoleccion'] ?? null,
+                            'departamento'    => $row['departamento_recoleccion'] ?? null,
+                            'id_municipio'    => $row['id_municipio_recoleccion'] ?? null,
+                            'municipio'       => $row['municipio_recoleccion'] ?? null,
+                            'direccion'       => $row['direccion_recoleccion'] ?? null,
+                            'contacto'        => $row['contacto_recoleccion'] ?? null,
+                            'telefono'        => $row['telefono_recoleccion'] ?? null,
+                            'referencia'      => $row['referencia_recoleccion'] ?? null,
+                        ];
+                        $hayRec = false;
+                        foreach ($inputRec as $v) {
+                            if ($v !== null && trim((string)$v) !== '') {
+                                $hayRec = true;
+                                break;
+                            }
+                        }
+                        if ($hayRec) {
+                            $resRec = PedidoRecoleccionService::validarYNormalizar($inputRec, $db);
+                            if (!$resRec['success']) {
+                                throw new Exception("Error en datos de recolección: " . implode('; ', $resRec['errors']));
+                            }
+                            $datosRec = $resRec['data'];
+                        }
+                    }
+                    if (!empty($datosRec)) {
+                        PedidoRecoleccionService::guardar($pedidoId, $datosRec, $db);
+                    }
+
                     $db->commit();
                     $resultado['inserted']++;
                     $resultado['pedidos_creados'][] = [
@@ -840,7 +875,10 @@ class PedidosModel
 
             // Verificar si se encontró un resultado
             if ($stmt->rowCount() > 0) {
-                return $stmt->fetch(PDO::FETCH_ASSOC); // Devuelve los datos como un array asociativo
+                $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
+                require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+                $pedido['recoleccion'] = PedidoRecoleccionService::obtenerPorPedidoId((int)$pedido['id'], $db);
+                return $pedido;
             } else {
                 return null; // No se encontró el pedido
             }
@@ -1114,6 +1152,10 @@ class PedidosModel
             $detalle->bindParam(':id_pedido', $id_pedido, PDO::PARAM_INT);
             $detalle->execute();
             $pedido['productos'] = $detalle->fetchAll(PDO::FETCH_ASSOC);
+
+            // Cargar datos de recolección (origen) si existen
+            require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+            $pedido['recoleccion'] = PedidoRecoleccionService::obtenerPorPedidoId((int)$id_pedido, $db);
 
             return $pedido;
         } catch (Exception $e) {
@@ -1532,6 +1574,27 @@ class PedidosModel
                     ':cantidad'            => (int)$data['cantidad_producto'],
                     ':precio_unitario_usd' => $precio
                 ]);
+            }
+
+            // Actualizar o eliminar datos de recolección si viene la clave en $data
+            if (array_key_exists('recoleccion', $data)) {
+                require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+                $recInput = $data['recoleccion'];
+                if ($recInput === null) {
+                    PedidoRecoleccionService::eliminar((int)$data['id_pedido'], $db);
+                } elseif (is_array($recInput)) {
+                    if (empty($recInput)) {
+                        throw new InvalidArgumentException("El objeto 'recoleccion' no puede estar vacío si se proporciona.");
+                    }
+                    $existente = PedidoRecoleccionService::obtenerPorPedidoId((int)$data['id_pedido'], $db);
+                    $valRec = PedidoRecoleccionService::validarYNormalizar($recInput, $db, true, $existente);
+                    if (!$valRec['success']) {
+                        throw new InvalidArgumentException(json_encode($valRec['errors'], JSON_UNESCAPED_UNICODE));
+                    }
+                    PedidoRecoleccionService::guardar((int)$data['id_pedido'], $valRec['data'], $db);
+                } else {
+                    throw new InvalidArgumentException("El campo 'recoleccion' debe ser un objeto o null.");
+                }
             }
 
             $db->commit();
@@ -2005,6 +2068,16 @@ class PedidosModel
             require_once __DIR__ . '/../services/PedidoService.php';
             $estadoInicial = 1; // Siempre En Bodega al crear
             PedidoService::aplicarStockPorEstado($pedidoId, $estadoInicial, $resolvedFallbackUser, $db);
+
+            // 5. Guardar datos de recolección (origen) si se proporcionaron
+            if (!empty($pedido['recoleccion']) && is_array($pedido['recoleccion'])) {
+                require_once __DIR__ . '/../services/PedidoRecoleccionService.php';
+                $valRec = PedidoRecoleccionService::validarYNormalizar($pedido['recoleccion'], $db);
+                if (!$valRec['success']) {
+                    throw new Exception("Error en datos de recolección: " . implode(', ', $valRec['errors']));
+                }
+                PedidoRecoleccionService::guardar($pedidoId, $valRec['data'], $db);
+            }
 
             if (defined('DEBUG') && DEBUG) {
                 error_log("[DEBUG] Committing transaction for pedido ID: " . $pedidoId);

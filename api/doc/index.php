@@ -966,6 +966,69 @@
                         <p class="mb-0 small text-muted"><i class="bi bi-shield-check me-1"></i><strong>Congelación de Precios:</strong> Los precios por línea quedan congelados en la orden al momento de su creación. Futuras modificaciones en el catálogo no alterarán los pedidos históricos.</p>
                     </div>
 
+                    <!-- Box: Datos de Recolección (Origen) -->
+                    <div class="alert alert-primary mt-3" data-lang="en">
+                        <strong>📦 Pickup Details (Origin) / <code>recoleccion</code></strong>
+                        <p class="mb-1 mt-2">You can optionally provide the origin address where the package must be picked up:</p>
+                        <ul class="mb-2">
+                            <li><strong>Optional Block:</strong> If omitted or absent, the order is created without pickup data.</li>
+                            <li><strong>Required fields when provided:</strong> <code>direccion</code>, along with geographic hierarchy (<code>id_pais</code>, <code>id_departamento</code>, <code>id_municipio</code> or their text aliases <code>pais</code>, <code>departamento</code>, <code>municipio</code>).</li>
+                            <li><strong>Optional fields:</strong> <code>contacto</code> (max 150), <code>telefono</code> (max 30, text preserving international prefix), <code>referencia</code> (max 255).</li>
+                            <li><strong>Update Semantics:</strong>
+                                <ul>
+                                    <li><code>recoleccion</code> omitted: Existing pickup data is preserved.</li>
+                                    <li><code>recoleccion: { ... }</code>: Upsert (partial updates merged with existing data).</li>
+                                    <li><code>recoleccion: null</code>: Deletes the pickup record if permissions permit.</li>
+                                    <li><code>recoleccion: {}</code>: Returns HTTP 422 validation error.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="alert alert-primary mt-3" data-lang="es">
+                        <strong>📦 Datos de Recolección (Origen) / <code>recoleccion</code></strong>
+                        <p class="mb-1 mt-2">Puedes enviar opcionalmente los datos del origen donde se recolecta el paquete:</p>
+                        <ul class="mb-2">
+                            <li><strong>Bloque Opcional:</strong> Si se omite, el pedido se crea sin datos de recolección.</li>
+                            <li><strong>Campos obligatorios si se envía:</strong> <code>direccion</code>, junto a la jerarquía geográfica (<code>id_pais</code>, <code>id_departamento</code>, <code>id_municipio</code> o sus alias de texto <code>pais</code>, <code>departamento</code>, <code>municipio</code>).</li>
+                            <li><strong>Campos opcionales:</strong> <code>contacto</code> (máx 150), <code>telefono</code> (máx 30, texto conservando prefijo internacional), <code>referencia</code> (máx 255).</li>
+                            <li><strong>Semántica de Actualización:</strong>
+                                <ul>
+                                    <li><code>recoleccion</code> omitido: Se conservan los datos existentes de recolección.</li>
+                                    <li><code>recoleccion: { ... }</code>: Crear o actualizar (actualizaciones parciales fusionadas con datos existentes).</li>
+                                    <li><code>recoleccion: null</code>: Elimina el registro de recolección si los permisos lo permiten.</li>
+                                    <li><code>recoleccion: {}</code>: Retorna error HTTP 422 de validación.</li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <h5 class="mt-4" data-lang="en">📋 Example Request with Pickup (Recolección)</h5>
+                    <h5 class="mt-4" data-lang="es">📋 Ejemplo de Petición con Recolección</h5>
+                    <pre class="code-block"><code class="language-json">{
+  "numero_orden": "ORD-2026-101",
+  "id_proveedor": 12,
+  "id_pais": 1,
+  "id_departamento": 161,
+  "id_municipio": 3800,
+  "destinatario": "Cliente Destino",
+  "telefono": "+50588881234",
+  "direccion": "Semáforos de Plaza España 1c al sur",
+  "precio_total_local": 250.00,
+  "id_moneda": 1,
+  "productos": [
+    { "id_producto": 185, "cantidad": 2, "precio_unitario": 125.00 }
+  ],
+  "recoleccion": {
+    "id_pais": 1,
+    "id_departamento": 161,
+    "id_municipio": 3800,
+    "direccion": "Km 5 Carretera Norte, Bodega 4",
+    "contacto": "Distribuidora Central S.A.",
+    "telefono": "+50522445566",
+    "referencia": "Portón blanco con logo azul"
+  }
+}</code></pre>
+
                  <!-- Bulk Orders -->
 
                  <div class="section-container">
