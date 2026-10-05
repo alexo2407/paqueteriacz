@@ -91,6 +91,245 @@ class ForwardingService
     }
 
     /**
+     * Evaluar y reenviar un lote de pedidos recién importados masivamente (CSV/Excel).
+     * Si el proveedor soporta despacho en lote (como C807), se agrupan en una única
+     * solicitud con un solo código de recolección para todo el lote.
+     * Si el proveedor no soporta lote, se procesan según la política individual.
+     *
+     * @param array $todosPedidosCreados Array de pedidos creados [['id' => int, 'numero_orden' => string, 'id_cliente' => int, ...]]
+     * @return array Resumen de resultados de forwarding por lote
+     */
+    public static function evaluarYReenviarLote(array $todosPedidosCreados): array
+    {
+        if (empty($todosPedidosCreados) || !defined('FORWARDING_ENABLED') || !FORWARDING_ENABLED) {
+            return [];
+        }
+
+        // Agrupar pedidos por id_cliente
+        $pedidosPorCliente = [];
+        foreach ($todosPedidosCreados as $ped) {
+            $idCliente = (int)($ped['id_cliente'] ?? 0);
+            if ($idCliente > 0) {
+                $pedidosPorCliente[$idCliente][] = $ped;
+            }
+        }
+
+        $resumenLote = [];
+
+        foreach ($pedidosPorCliente as $idCliente => $pedidosCliente) {
+            $reglas = ForwardingModel::obtenerReglasActivasPorCliente($idCliente);
+            if (empty($reglas)) {
+                error_log("ForwardingService::evaluarYReenviarLote: sin reglas activas para cliente {$idCliente}. Forwarding omitido.");
+                continue;
+            }
+
+            foreach ($reglas as $regla) {
+                $slug = $regla['slug'] ?? '';
+                $provider = self::crearProvider($regla);
+
+                // Si el proveedor tiene soporte para despacho en lote (ej. C807Provider)
+                if (method_exists($provider, 'createOrdersBatch')) {
+                    $res = self::ejecutarForwardingLote($pedidosCliente, $regla, $provider);
+                    $resumenLote[] = $res;
+                } else {
+                    // Proveedores tradicionales individuales (LogisPro, CAEX, HL Express)
+                    $syncMode = defined('FORWARDING_SYNC_MODE') && FORWARDING_SYNC_MODE && count($pedidosCliente) <= 50;
+                    foreach ($pedidosCliente as $ped) {
+                        if ($syncMode) {
+                            self::evaluarYReenviar((int)$ped['id'], $idCliente);
+                        } else {
+                            if (file_exists(__DIR__ . '/LogisticsQueueService.php')) {
+                                require_once __DIR__ . '/LogisticsQueueService.php';
+                                LogisticsQueueService::queue('forwarding_eval', $ped['id'], [
+                                    'id_cliente' => $idCliente
+                                ]);
+                            }
+                        }
+                    }
+                    $resumenLote[] = [
+                        'provider' => $slug,
+                        'mode'     => 'individual',
+                        'count'    => count($pedidosCliente),
+                    ];
+                }
+            }
+        }
+
+        return $resumenLote;
+    }
+
+    /**
+     * Ejecutar el forwarding en lote para un conjunto de pedidos y una regla batch (como C807).
+     *
+     * @param array $pedidosBasicos Array de pedidos recién creados (con 'id', 'numero_orden', etc.)
+     * @param array $regla Datos de la regla de forwarding
+     * @param BaseProvider $provider Instancia del proveedor (ej. C807Provider)
+     * @return array Resumen de la ejecución en lote
+     */
+    public static function ejecutarForwardingLote(array $pedidosBasicos, array $regla, $provider): array
+    {
+        $slug = $regla['slug'] ?? 'unknown';
+
+        // 1. Filtrar los que ya fueron enviados previamente
+        $pedidosPendientes = [];
+        foreach ($pedidosBasicos as $pb) {
+            $idPed = (int)($pb['id'] ?? 0);
+            if ($idPed > 0 && !ForwardingModel::yaFueEnviadoExitosamente($idPed, (int)$regla['id'])) {
+                $pedidosPendientes[] = $pb;
+            } else {
+                error_log("ForwardingService::ejecutarForwardingLote: Pedido {$idPed} ya enviado previamente a {$slug}. Omitido.");
+            }
+        }
+
+        if (empty($pedidosPendientes)) {
+            return [
+                'provider' => $slug,
+                'success'  => true,
+                'skipped'  => true,
+                'message'  => 'Todos los pedidos del lote ya fueron enviados exitosamente con anterioridad.',
+            ];
+        }
+
+        // 2. Cargar información completa de cada pedido para forwarding
+        $pedidosCompletos = [];
+        foreach ($pedidosPendientes as $pb) {
+            $pComp = ForwardingModel::obtenerPedidoParaForwarding((int)$pb['id']);
+            if ($pComp) {
+                $pedidosCompletos[] = $pComp;
+            }
+        }
+
+        if (empty($pedidosCompletos)) {
+            return [
+                'provider' => $slug,
+                'success'  => false,
+                'message'  => 'No se pudieron cargar los datos completos de los pedidos para forwarding.',
+            ];
+        }
+
+        try {
+            // 3. Autenticación con el proveedor
+            $authData = $provider->authenticate();
+
+            // 4. Dividir en chunks si el lote es muy grande (máximo 100 pedidos por solicitud)
+            $chunks = array_chunk($pedidosCompletos, 100);
+            $totalExitosos = 0;
+            $totalFallidos = 0;
+            $recolectas = [];
+
+            foreach ($chunks as $chunk) {
+                // Registrar log inicial en estado 'pending' para cada pedido del chunk
+                $logIdsPorOrden = [];
+                foreach ($chunk as $p) {
+                    $logId = ForwardingModel::registrarLog([
+                        'id_pedido'       => (int)$p['id'],
+                        'id_provider'     => (int)$regla['id_provider'],
+                        'id_rule'         => (int)$regla['id'],
+                        'status'          => 'pending',
+                        'request_payload' => 'Preparando despacho en lote (' . $slug . ')...',
+                    ]);
+                    $logIdsPorOrden[(string)$p['numero_orden']] = $logId;
+                }
+
+                try {
+                    $batchResult = $provider->createOrdersBatch($chunk, $authData);
+                    $recolecta = $batchResult['recolecta'] ?? null;
+                    if ($recolecta) {
+                        $recolectas[] = $recolecta;
+                    }
+                    $porOrden      = $batchResult['por_orden'] ?? [];
+                    $erroresMapeo  = $batchResult['errores_mapeo'] ?? [];
+                    $jsonPayload   = $batchResult['request_payload'] ?? null;
+
+                    foreach ($chunk as $p) {
+                        $numOrden = (string)$p['numero_orden'];
+                        $logId    = $logIdsPorOrden[$numOrden] ?? null;
+                        if (!$logId) continue;
+
+                        if (isset($porOrden[$numOrden]) && !empty($porOrden[$numOrden])) {
+                            $guiasEstaOrden = $porOrden[$numOrden];
+                            $guiasNums = array_filter(array_map(fn($g) => $g['guia'] ?? null, $guiasEstaOrden));
+                            $extId = implode(', ', $guiasNums);
+
+                            ForwardingModel::actualizarLog($logId, [
+                                'status'            => 'success',
+                                'http_status'       => 200,
+                                'external_order_id' => $extId,
+                                'response_payload'  => json_encode([
+                                    'recolecta' => $recolecta,
+                                    'guias'     => $guiasEstaOrden,
+                                ], JSON_UNESCAPED_UNICODE),
+                                'request_payload'   => $jsonPayload,
+                                'error_message'     => null,
+                            ]);
+                            ForwardingModel::marcarLogsPreviosResueltos((int)$p['id'], (int)$regla['id'], (int)$logId);
+                            $totalExitosos++;
+                        } elseif (isset($erroresMapeo[$numOrden])) {
+                            ForwardingModel::actualizarLog($logId, [
+                                'status'          => 'failed',
+                                'http_status'     => 422,
+                                'error_message'   => substr($erroresMapeo[$numOrden], 0, 1000),
+                                'request_payload' => $jsonPayload,
+                            ]);
+                            $totalFallidos++;
+                        } else {
+                            ForwardingModel::actualizarLog($logId, [
+                                'status'           => 'failed',
+                                'http_status'      => 200,
+                                'error_message'    => 'El proveedor no incluyó la guía para esta orden en la respuesta del lote.',
+                                'response_payload' => json_encode($batchResult['response'] ?? [], JSON_UNESCAPED_UNICODE),
+                                'request_payload'  => $jsonPayload,
+                            ]);
+                            $totalFallidos++;
+                        }
+                    }
+
+                } catch (Throwable $chunkEx) {
+                    error_log("ForwardingService::ejecutarForwardingLote error en chunk de {$slug}: " . $chunkEx->getMessage());
+                    $httpStatus = $chunkEx->getCode() ?: 500;
+                    $rawResp = method_exists($provider, 'getLastResponse') ? ($provider->getLastResponse()['body'] ?? null) : null;
+
+                    foreach ($chunk as $p) {
+                        $numOrden = (string)$p['numero_orden'];
+                        $logId    = $logIdsPorOrden[$numOrden] ?? null;
+                        if ($logId) {
+                            ForwardingModel::actualizarLog($logId, [
+                                'status'           => 'failed',
+                                'http_status'      => $httpStatus,
+                                'error_message'    => substr($chunkEx->getMessage(), 0, 1000),
+                                'response_payload' => $rawResp,
+                            ]);
+                        }
+                        $totalFallidos++;
+                        // Si es modo sync y falla el batch por red/servidor, encolar reintento
+                        if ($httpStatus < 400 || $httpStatus >= 500 || $httpStatus === 429) {
+                            self::encolarReintento((int)$p['id'], $regla, $chunkEx->getMessage());
+                        }
+                    }
+                }
+            }
+
+            return [
+                'provider'       => $slug,
+                'success'        => $totalFallidos === 0,
+                'total_orders'   => count($pedidosCompletos),
+                'successful'     => $totalExitosos,
+                'failed'         => $totalFallidos,
+                'recolectas'     => array_values(array_unique($recolectas)),
+                'message'        => "Lote procesado para {$slug}: {$totalExitosos} guías generadas exitosamente" . (!empty($recolectas) ? " bajo recolección: " . implode(', ', array_unique($recolectas)) : "") . ($totalFallidos > 0 ? " ({$totalFallidos} fallidas)" : ""),
+            ];
+
+        } catch (Throwable $e) {
+            error_log("ForwardingService::ejecutarForwardingLote fallo general [{$slug}]: " . $e->getMessage());
+            return [
+                'provider' => $slug,
+                'success'  => false,
+                'message'  => 'Error al inicializar lote: ' . $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Ejecutar el forwarding de un pedido a un proveedor según una regla.
      *
      * @param array $pedido Datos del pedido
@@ -266,7 +505,8 @@ class ForwardingService
         // Usar provider_config (alias del query JOIN) con fallback a default_config (columna directa de r.*)
         // Ambas rutas son seguras: si la columna no existe, el ?? '{}' retorna array vacío.
         $defaultConfig = json_decode($regla['provider_config'] ?? $regla['default_config'] ?? '{}', true) ?: [];
-        $config = array_merge($defaultConfig, [
+        $ruleOverride  = json_decode($regla['config_override'] ?? '{}', true) ?: [];
+        $config = array_merge($defaultConfig, $ruleOverride, [
             'auth_endpoint'   => $regla['auth_endpoint']  ?? '/api/AccountApi',
             'order_endpoint'  => $regla['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
             'auth_method'     => $regla['auth_method']    ?? 'bearer_jwt',

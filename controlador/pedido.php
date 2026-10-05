@@ -1872,24 +1872,14 @@ class PedidosController
                 }
             }
 
-            // ── FORWARDING PARA PEDIDOS CREADOS (Síncrono si FORWARDING_SYNC_MODE, asíncrono para lotes grandes) ──
+            // ── FORWARDING PARA PEDIDOS CREADOS (En lote consolidado para C807 y políticas de importación) ──
+            $fwdLoteResultados = [];
             if (!empty($todosPedidosCreados) && defined('FORWARDING_ENABLED') && FORWARDING_ENABLED) {
                 try {
                     require_once __DIR__ . '/../services/ForwardingService.php';
-                    require_once __DIR__ . '/../services/LogisticsQueueService.php';
-                    $syncMode = defined('FORWARDING_SYNC_MODE') && FORWARDING_SYNC_MODE && count($todosPedidosCreados) <= 50;
-
-                    foreach ($todosPedidosCreados as $ped) {
-                        if ($syncMode) {
-                            ForwardingService::evaluarYReenviar((int)$ped['id'], (int)$ped['id_cliente']);
-                        } else {
-                            LogisticsQueueService::queue('forwarding_eval', $ped['id'], [
-                                'id_cliente' => $ped['id_cliente']
-                            ]);
-                        }
-                    }
+                    $fwdLoteResultados = ForwardingService::evaluarYReenviarLote($todosPedidosCreados);
                 } catch (Throwable $queueEx) {
-                    error_log('[CSV Import] Error en forwarding: ' . $queueEx->getMessage());
+                    error_log('[CSV Import] Error en forwarding por lote: ' . $queueEx->getMessage());
                 }
             }
 
@@ -1952,6 +1942,10 @@ class PedidosController
 
             if ($archivoErrores) {
                 $responseData['error_file_url'] = 'logs/' . $archivoErrores;
+            }
+
+            if (!empty($fwdLoteResultados)) {
+                $responseData['forwarding'] = $fwdLoteResultados;
             }
 
             if ($isAjax) {

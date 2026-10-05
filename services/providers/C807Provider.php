@@ -123,15 +123,23 @@ class C807Provider extends BaseProvider
     }
 
     /**
-     * Mapear campos de un pedido interno a la estructura JSON requerida por C807 /set_registro.
+     * Indica si este proveedor soporta procesamiento y despacho en lote.
+     * C807 permite consolidar múltiples guías bajo una única recolección.
+     */
+    public function supportsBatch(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Mapear un pedido individual a la estructura de un elemento de 'guias' para C807.
      *
      * @param array $pedido
      * @param array $productos
-     * @param array $authData
-     * @return array
-     * @throws Exception
+     * @return array Estructura de guía individual
+     * @throws Exception Si la homologación geográfica u otros datos requeridos fallan
      */
-    public function mapearCampos(array $pedido, array $productos, array $authData)
+    public function mapearGuiaIndividual(array $pedido, array $productos = []): array
     {
         require_once __DIR__ . '/../C807CatalogService.php';
 
@@ -224,8 +232,6 @@ class C807Provider extends BaseProvider
         }
 
         // 4. Parámetros operativos
-        $tipoEntrega = strtoupper(trim($config['tipo_entrega'] ?? 'NRML')); // NRML o PLUS
-
         $montoTotal = isset($pedido['precio_total_local']) && is_numeric($pedido['precio_total_local'])
             ? (float)$pedido['precio_total_local']
             : 0.0;
@@ -255,9 +261,6 @@ class C807Provider extends BaseProvider
                 throw new Exception("El tipo de servicio es CCE (Cobro contra entrega), pero el importe del pedido (precio_total_local) es 0 o menor.");
             }
         }
-
-        // Política de recolecta_fecha
-        $recolectaFecha = $this->calcularRecolectaFecha($config);
 
         // guias[].referencia: Transformación combinada Location + betweenStreets + zona
         $refPartes = array_filter([
@@ -300,14 +303,27 @@ class C807Provider extends BaseProvider
             $guiaItem['agencia_destino'] = (int)$config['agencia_destino'];
         }
 
-        // Estructura de la Solicitud
+        return $guiaItem;
+    }
+
+    /**
+     * Construir la cabecera del payload con el arreglo de guías.
+     *
+     * @param array $guias Arreglo de items de guías ya mapeadas
+     * @return array Payload listo para set_registro
+     */
+    public function construirPayloadLote(array $guias): array
+    {
+        $config = $this->config;
+        $tipoEntrega = strtoupper(trim($config['tipo_entrega'] ?? 'NRML'));
+        $recolectaFecha = $this->calcularRecolectaFecha($config);
+
         $payload = [
             'recolecta_fecha' => $recolectaFecha,
             'tipo_entrega'    => $tipoEntrega,
-            'guias'           => [$guiaItem],
+            'guias'           => array_values($guias),
         ];
 
-        // recolecta_comentario: sin mapping / omitir (solo enviar si está configurado en config fija)
         if (!empty($config['recolecta_comentario'])) {
             $payload['recolecta_comentario'] = mb_substr(trim($config['recolecta_comentario']), 0, 1000, 'UTF-8');
         }
@@ -321,6 +337,21 @@ class C807Provider extends BaseProvider
         }
 
         return $payload;
+    }
+
+    /**
+     * Mapear campos de un pedido interno a la estructura JSON requerida por C807 /set_registro.
+     *
+     * @param array $pedido
+     * @param array $productos
+     * @param array $authData
+     * @return array
+     * @throws Exception
+     */
+    public function mapearCampos(array $pedido, array $productos, array $authData)
+    {
+        $guiaItem = $this->mapearGuiaIndividual($pedido, $productos);
+        return $this->construirPayloadLote([$guiaItem]);
     }
 
     /**
@@ -464,6 +495,139 @@ class C807Provider extends BaseProvider
     }
 
     /**
+     * Crear múltiples órdenes en lote en C807 Xpress bajo una única recolección.
+     * Consolida todas las órdenes del CSV/Excel en una sola llamada a /guia.php/api/set_registro.
+     *
+     * @param array $pedidos Lista de pedidos completos con productos y datos de recolección
+     * @param array $authData Datos de autenticación
+     * @return array
+     * @throws Exception
+     */
+    public function createOrdersBatch(array $pedidos, array $authData): array
+    {
+        if (empty($pedidos)) {
+            return [
+                'success'         => true,
+                'recolecta'       => null,
+                'guias'           => [],
+                'por_orden'       => [],
+                'errores_mapeo'   => [],
+                'pedidos_validos' => [],
+                'http_status'     => 200,
+            ];
+        }
+
+        require_once __DIR__ . '/../C807CatalogService.php';
+
+        $guiasPayload   = [];
+        $erroresMapeo   = [];
+        $pedidosValidos = [];
+
+        foreach ($pedidos as $pedido) {
+            $numOrden = (string)($pedido['numero_orden'] ?? '');
+            try {
+                $guiaItem = $this->mapearGuiaIndividual($pedido, $pedido['productos'] ?? []);
+                $guiasPayload[] = $guiaItem;
+                $pedidosValidos[$numOrden] = $pedido;
+            } catch (Throwable $e) {
+                $erroresMapeo[$numOrden] = $e->getMessage();
+                error_log("C807Provider::createOrdersBatch - Orden {$numOrden} no incluida en lote: " . $e->getMessage());
+            }
+        }
+
+        if (empty($guiasPayload)) {
+            return [
+                'success'         => false,
+                'recolecta'       => null,
+                'guias'           => [],
+                'por_orden'       => [],
+                'errores_mapeo'   => $erroresMapeo,
+                'pedidos_validos' => [],
+                'message'         => 'Ninguna orden del lote superó la validación u homologación geográfica.',
+                'http_status'     => 422,
+            ];
+        }
+
+        $payload = $this->construirPayloadLote($guiasPayload);
+        $orderEndpoint = $this->config['order_endpoint'] ?? '/guia.php/api/set_registro';
+        $url = $this->baseUrl . $orderEndpoint;
+
+        $headers = [
+            "Authorization: Bearer " . $authData['token'],
+            "Content-Type: application/json",
+            "Accept: application/json",
+        ];
+
+        $jsonBody = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        // En lote permitimos hasta 60 segundos de timeout
+        $response = $this->httpRequest('POST', $url, $headers, $jsonBody, 60);
+
+        if ($response['error']) {
+            throw new Exception("Error de red con C807 en lote: " . $response['error']);
+        }
+
+        // Si retorna 401, re-intentar con token fresco una vez
+        if ($response['http_status'] === 401) {
+            self::clearAuthCache();
+            $authData = $this->authenticate(true);
+            $headers[0] = "Authorization: Bearer " . $authData['token'];
+            $response = $this->httpRequest('POST', $url, $headers, $jsonBody, 60);
+        }
+
+        if ($response['http_status'] !== 200) {
+            $msg = null;
+            if (!empty($response['decoded']['errores']) && is_array($response['decoded']['errores'])) {
+                $errMsgs = [];
+                foreach ($response['decoded']['errores'] as $err) {
+                    $errMsgs[] = ($err['mensaje'] ?? 'Error') . ' (código ' . ($err['codigo'] ?? '?') . ')';
+                }
+                $msg = implode(', ', $errMsgs);
+            }
+            if (!$msg) {
+                $msg = is_array($response['decoded']) ? json_encode($response['decoded']) : ($response['body'] ?: "HTTP {$response['http_status']}");
+            }
+            throw new Exception("C807 set_registro lote error (HTTP {$response['http_status']}): {$msg}", $response['http_status']);
+        }
+
+        $decoded = $response['decoded'];
+        if (!$decoded || !is_array($decoded)) {
+            throw new Exception("C807 set_registro lote: Respuesta inválida (no JSON): " . substr($response['body'], 0, 200));
+        }
+
+        $guias = $decoded['guias'] ?? [];
+        if (empty($guias) || !is_array($guias)) {
+            throw new Exception("C807 set_registro lote: Respuesta HTTP 200 pero no incluye arreglo 'guias'. Body: " . substr($response['body'], 0, 250));
+        }
+
+        $recolecta = $decoded['recolecta'] ?? null;
+
+        // Guardar guías en forwarding_guias para todos los pedidos del lote
+        $this->guardarGuiasLoteEnBD($decoded, $pedidosValidos);
+
+        // Agrupar guías retornadas por número de orden
+        $porOrden = [];
+        foreach ($guias as $g) {
+            $numOrd = (string)($g['orden'] ?? '');
+            if ($numOrd !== '') {
+                $porOrden[$numOrd][] = $g;
+            }
+        }
+
+        return [
+            'success'         => true,
+            'recolecta'       => $recolecta,
+            'guias'           => $guias,
+            'por_orden'       => $porOrden,
+            'errores_mapeo'   => $erroresMapeo,
+            'pedidos_validos' => $pedidosValidos,
+            'response'        => $decoded,
+            'request_payload' => $jsonBody,
+            'http_status'     => 200,
+        ];
+    }
+
+    /**
      * Consultar si una guía ya existe para un número de orden en C807.
      * Endpoint: GET /guia.php/reporte/guias?orden={orden}
      *
@@ -558,9 +722,20 @@ class C807Provider extends BaseProvider
     }
 
     /**
-     * Guardar las guías retornadas por C807 en la tabla forwarding_guias.
+     * Guardar las guías retornadas por C807 en la tabla forwarding_guias para un solo pedido.
      */
     private function guardarGuiasEnBD(int $idPedido, array $c807Response): void
+    {
+        $firstGuia = $c807Response['guias'][0] ?? [];
+        $orden = (string)($firstGuia['orden'] ?? '');
+        $this->guardarGuiasLoteEnBD($c807Response, [$orden => ['id' => $idPedido]]);
+    }
+
+    /**
+     * Guardar las guías retornadas por C807 en la tabla forwarding_guias para múltiples pedidos.
+     * Vincula cada guía con su pedido respectivo mediante el número de orden.
+     */
+    public function guardarGuiasLoteEnBD(array $c807Response, array $pedidosPorOrden): void
     {
         try {
             require_once __DIR__ . '/../../modelo/conexion.php';
@@ -583,12 +758,34 @@ class C807Provider extends BaseProvider
                     recolecta       = VALUES(recolecta)
             ");
 
+            // Cache auxiliar para resolver id_pedido si no viniera en el mapa
+            $cacheIds = [];
+
             foreach ($c807Response['guias'] ?? [] as $g) {
                 if (empty($g['guia'])) continue;
+                $numOrden = (string)($g['orden'] ?? '');
+                $idPedido = 0;
+
+                if (isset($pedidosPorOrden[$numOrden]['id'])) {
+                    $idPedido = (int)$pedidosPorOrden[$numOrden]['id'];
+                } elseif (isset($cacheIds[$numOrden])) {
+                    $idPedido = $cacheIds[$numOrden];
+                } else {
+                    $st = $db->prepare("SELECT id FROM pedidos WHERE numero_orden = :ord LIMIT 1");
+                    $st->execute([':ord' => $numOrden]);
+                    $idPedido = (int)$st->fetchColumn();
+                    $cacheIds[$numOrden] = $idPedido;
+                }
+
+                if ($idPedido <= 0) {
+                    error_log("C807Provider::guardarGuiasLoteEnBD: no se encontró id_pedido para la orden {$numOrden}");
+                    continue;
+                }
+
                 $stmt->execute([
                     ':id_pedido'       => $idPedido,
                     ':id_provider'     => $idProvider,
-                    ':numero_orden'    => $g['orden'] ?? '',
+                    ':numero_orden'    => $numOrden,
                     ':numero_guia'     => $g['guia'],
                     ':codigo_paquete'  => $g['codigo'] ?? null,
                     ':recolecta'       => $recolecta,
@@ -598,7 +795,7 @@ class C807Provider extends BaseProvider
                 ]);
             }
         } catch (Throwable $e) {
-            error_log("C807Provider::guardarGuiasEnBD error: " . $e->getMessage());
+            error_log("C807Provider::guardarGuiasLoteEnBD error: " . $e->getMessage());
         }
     }
 }
