@@ -84,7 +84,7 @@ class C807Provider extends BaseProvider
             throw new Exception("C807 Auth (HTTP 401): Credenciales inválidas. Verifica usuario y contraseña.", 401);
         }
 
-        if ($response['http_status'] !== 200) {
+        if ($response['http_status'] < 200 || $response['http_status'] >= 300) {
             $msg = null;
             if (!empty($response['decoded']['errores']) && is_array($response['decoded']['errores'])) {
                 $errMsgs = [];
@@ -397,10 +397,37 @@ class C807Provider extends BaseProvider
     public function createOrder(array $pedido, array $productos, array $authData)
     {
         $numeroOrden = (string)$pedido['numero_orden'];
+        $idPedido = (int)($pedido['id'] ?? 0);
+
+        // 0. Verificación previa en BD local (anti-duplicados local)
+        $guiaLocal = $this->obtenerGuiaLocal($idPedido, $numeroOrden);
+        if ($guiaLocal) {
+            return [
+                'success'           => true,
+                'external_order_id' => $guiaLocal['numero_guia'],
+                'numero_guia'       => $guiaLocal['numero_guia'],
+                'recolecta'         => $guiaLocal['recolecta'] ?? null,
+                'seguimiento'       => $guiaLocal['seguimiento_url'] ?? null,
+                'response'          => [
+                    'mensaje'   => 'Guía recuperada desde base de datos local (anti-duplicado)',
+                    'recolecta' => $guiaLocal['recolecta'] ?? null,
+                    'guias'     => [[
+                        'orden'       => $numeroOrden,
+                        'guia'        => $guiaLocal['numero_guia'],
+                        'seguimiento' => $guiaLocal['seguimiento_url'] ?? null,
+                    ]],
+                ],
+                'http_status'       => 200,
+            ];
+        }
 
         // 1. Verificación previa anti-duplicados consultando a C807 si la orden ya existe
         $guiaExistente = $this->consultarGuiaPorOrden($numeroOrden, $authData['token']);
         if ($guiaExistente) {
+            $this->guardarGuiasEnBD($idPedido, [
+                'recolecta' => $guiaExistente['solicitud'] ?? null,
+                'guias'     => [$guiaExistente],
+            ]);
             return [
                 'success'           => true,
                 'external_order_id' => $guiaExistente['guia'],
@@ -437,6 +464,10 @@ class C807Provider extends BaseProvider
             // Consultar a C807 si a pesar del timeout la guía fue creada
             $reconciled = $this->consultarGuiaPorOrden($numeroOrden, $authData['token']);
             if ($reconciled) {
+                $this->guardarGuiasEnBD($idPedido, [
+                    'recolecta' => $reconciled['solicitud'] ?? null,
+                    'guias'     => [$reconciled],
+                ]);
                 return [
                     'success'           => true,
                     'external_order_id' => $reconciled['guia'],
@@ -458,7 +489,7 @@ class C807Provider extends BaseProvider
             $response = $this->httpRequest('POST', $url, $headers, $jsonBody, 30);
         }
 
-        if ($response['http_status'] !== 200) {
+        if ($response['http_status'] < 200 || $response['http_status'] >= 300) {
             $msg = is_array($response['decoded']) ? json_encode($response['decoded']) : ($response['body'] ?: "HTTP {$response['http_status']}");
             throw new Exception("C807 set_registro error (HTTP {$response['http_status']}): {$msg}", $response['http_status']);
         }
@@ -471,7 +502,7 @@ class C807Provider extends BaseProvider
         // Validar que la respuesta contenga el array de guías con la guía esperada
         $guias = $decoded['guias'] ?? [];
         if (empty($guias) || !is_array($guias)) {
-            throw new Exception("C807 set_registro: Respuesta HTTP 200 pero no incluye arreglo 'guias'. Body: " . substr($response['body'], 0, 250));
+            throw new Exception("C807 set_registro: Respuesta HTTP {$response['http_status']} pero no incluye arreglo 'guias'. Body: " . substr($response['body'], 0, 250));
         }
 
         $primeraGuia = $guias[0] ?? null;
@@ -480,8 +511,8 @@ class C807Provider extends BaseProvider
             throw new Exception("C807 set_registro: Respuesta sin número de guía válido. Body: " . substr($response['body'], 0, 250));
         }
 
-        // Guardar relación en forwarding_guias para trazabilidad
-        $this->guardarGuiasEnBD((int)$pedido['id'], $decoded);
+        // Guardar relación en forwarding_guias y pedidos para trazabilidad
+        $this->guardarGuiasEnBD($idPedido, $decoded);
 
         return [
             'success'           => true,
@@ -519,12 +550,48 @@ class C807Provider extends BaseProvider
 
         require_once __DIR__ . '/../C807CatalogService.php';
 
-        $guiasPayload   = [];
-        $erroresMapeo   = [];
-        $pedidosValidos = [];
+        $guiasPayload    = [];
+        $erroresMapeo    = [];
+        $pedidosValidos  = [];
+        $guiasExistentes = [];
+        $porOrden        = [];
 
         foreach ($pedidos as $pedido) {
             $numOrden = (string)($pedido['numero_orden'] ?? '');
+            $idPed    = (int)($pedido['id'] ?? 0);
+
+            // 1. Verificación previa en BD local (anti-duplicado local)
+            $guiaLocal = $this->obtenerGuiaLocal($idPed, $numOrden);
+            if ($guiaLocal) {
+                $gItem = [
+                    'orden'       => $numOrden,
+                    'guia'        => $guiaLocal['numero_guia'],
+                    'seguimiento' => $guiaLocal['seguimiento_url'] ?? null,
+                    'codigo'      => $guiaLocal['codigo_paquete'] ?? null,
+                ];
+                $guiasExistentes[] = $gItem;
+                $porOrden[$numOrden][] = $gItem;
+                $pedidosValidos[$numOrden] = $pedido;
+                error_log("C807Provider::createOrdersBatch: Orden {$numOrden} ya posee guía local {$guiaLocal['numero_guia']}. Omitida de set_registro.");
+                continue;
+            }
+
+            // 2. Verificación remota en C807 si ya existe la guía para esta orden
+            $guiaRemota = $this->consultarGuiaPorOrden($numOrden, $authData['token']);
+            if ($guiaRemota) {
+                $guiasExistentes[] = $guiaRemota;
+                $porOrden[$numOrden][] = $guiaRemota;
+                $pedidosValidos[$numOrden] = $pedido;
+                // Guardar en BD para persistencia futura
+                $this->guardarGuiasEnBD($idPed, [
+                    'recolecta' => $guiaRemota['solicitud'] ?? null,
+                    'guias'     => [$guiaRemota],
+                ]);
+                error_log("C807Provider::createOrdersBatch: Orden {$numOrden} recuperada pre-existente en C807 ({$guiaRemota['guia']}). Omitida de set_registro.");
+                continue;
+            }
+
+            // 3. Mapear para envío a C807
             try {
                 $guiaItem = $this->mapearGuiaIndividual($pedido, $pedido['productos'] ?? []);
                 $guiasPayload[] = $guiaItem;
@@ -535,7 +602,24 @@ class C807Provider extends BaseProvider
             }
         }
 
+        // Si ninguna orden requiere llamada a set_registro porque todas ya existían
         if (empty($guiasPayload)) {
+            if (!empty($guiasExistentes)) {
+                return [
+                    'success'         => true,
+                    'recolecta'       => null,
+                    'guias'           => $guiasExistentes,
+                    'por_orden'       => $porOrden,
+                    'errores_mapeo'   => $erroresMapeo,
+                    'pedidos_validos' => $pedidosValidos,
+                    'response'        => [
+                        'mensaje' => 'Todas las órdenes contaban con guía en C807 o base de datos (anti-duplicado)',
+                        'guias'   => $guiasExistentes,
+                    ],
+                    'request_payload' => json_encode(['info' => 'Guías pre-existentes recuperadas']),
+                    'http_status'     => 200,
+                ];
+            }
             return [
                 'success'         => false,
                 'recolecta'       => null,
@@ -575,7 +659,7 @@ class C807Provider extends BaseProvider
             $response = $this->httpRequest('POST', $url, $headers, $jsonBody, 60);
         }
 
-        if ($response['http_status'] !== 200) {
+        if ($response['http_status'] < 200 || $response['http_status'] >= 300) {
             $msg = null;
             if (!empty($response['decoded']['errores']) && is_array($response['decoded']['errores'])) {
                 $errMsgs = [];
@@ -595,35 +679,36 @@ class C807Provider extends BaseProvider
             throw new Exception("C807 set_registro lote: Respuesta inválida (no JSON): " . substr($response['body'], 0, 200));
         }
 
-        $guias = $decoded['guias'] ?? [];
-        if (empty($guias) || !is_array($guias)) {
-            throw new Exception("C807 set_registro lote: Respuesta HTTP 200 pero no incluye arreglo 'guias'. Body: " . substr($response['body'], 0, 250));
+        $nuevasGuias = $decoded['guias'] ?? [];
+        if (empty($nuevasGuias) || !is_array($nuevasGuias)) {
+            throw new Exception("C807 set_registro lote: Respuesta HTTP {$response['http_status']} pero no incluye arreglo 'guias'. Body: " . substr($response['body'], 0, 250));
         }
 
         $recolecta = $decoded['recolecta'] ?? null;
 
-        // Guardar guías en forwarding_guias para todos los pedidos del lote
+        // Guardar guías en forwarding_guias y pedidos para todos los pedidos del lote
         $this->guardarGuiasLoteEnBD($decoded, $pedidosValidos);
 
         // Agrupar guías retornadas por número de orden
-        $porOrden = [];
-        foreach ($guias as $g) {
+        foreach ($nuevasGuias as $g) {
             $numOrd = (string)($g['orden'] ?? '');
             if ($numOrd !== '') {
                 $porOrden[$numOrd][] = $g;
             }
         }
 
+        $todasLasGuias = array_merge($guiasExistentes, $nuevasGuias);
+
         return [
             'success'         => true,
             'recolecta'       => $recolecta,
-            'guias'           => $guias,
+            'guias'           => $todasLasGuias,
             'por_orden'       => $porOrden,
             'errores_mapeo'   => $erroresMapeo,
             'pedidos_validos' => $pedidosValidos,
             'response'        => $decoded,
             'request_payload' => $jsonBody,
-            'http_status'     => 200,
+            'http_status'     => $response['http_status'],
         ];
     }
 
@@ -644,7 +729,7 @@ class C807Provider extends BaseProvider
                 "Accept: application/json",
             ];
             $res = $this->httpRequest('GET', $url, $headers, null, 10);
-            if ($res['http_status'] === 200 && is_array($res['decoded']) && !empty($res['decoded'])) {
+            if ($res['http_status'] >= 200 && $res['http_status'] < 300 && is_array($res['decoded']) && !empty($res['decoded'])) {
                 // Retorna arreglo de guías encontradas
                 foreach ($res['decoded'] as $g) {
                     if (isset($g['orden']) && (string)$g['orden'] === $numeroOrden && !empty($g['guia'])) {
@@ -676,7 +761,7 @@ class C807Provider extends BaseProvider
         ];
 
         $res = $this->httpRequest('GET', $url, $headers, null, 15);
-        if ($res['http_status'] !== 200) {
+        if ($res['http_status'] < 200 || $res['http_status'] >= 300) {
             throw new Exception("Error al obtener historia C807 de guía {$numeroGuia} (HTTP {$res['http_status']}): " . $res['body']);
         }
 
@@ -708,7 +793,7 @@ class C807Provider extends BaseProvider
         }
 
         $res = $this->httpRequest('POST', $url, $headers, json_encode($body), 20);
-        if ($res['http_status'] !== 200) {
+        if ($res['http_status'] < 200 || $res['http_status'] >= 300) {
             throw new Exception("Error al obtener PDF C807 (HTTP {$res['http_status']}): " . $res['body']);
         }
 
@@ -719,6 +804,80 @@ class C807Provider extends BaseProvider
         }
 
         return $base64;
+    }
+
+    /**
+     * Buscar si una orden ya tiene guía registrada localmente en forwarding_guias o en pedidos.
+     * Candado local anti-duplicados.
+     *
+     * @param int $idPedido
+     * @param string $numeroOrden
+     * @return array|null
+     */
+    public function obtenerGuiaLocal(int $idPedido, string $numeroOrden): ?array
+    {
+        try {
+            require_once __DIR__ . '/../../modelo/conexion.php';
+            $db = (new Conexion())->conectar();
+            $idProvider = (int)($this->config['id_provider'] ?? 0);
+
+            // 1. Buscar en forwarding_guias
+            $sql = "SELECT numero_guia, recolecta, seguimiento_url, codigo_paquete 
+                    FROM forwarding_guias 
+                    WHERE numero_guia IS NOT NULL AND numero_guia != '' ";
+            $params = [];
+            if ($idProvider > 0) {
+                $sql .= " AND id_provider = :id_prov ";
+                $params[':id_prov'] = $idProvider;
+            }
+            if ($idPedido > 0 && $numeroOrden !== '') {
+                $sql .= " AND (id_pedido = :id_ped OR numero_orden = :num_ord) ";
+                $params[':id_ped'] = $idPedido;
+                $params[':num_ord'] = $numeroOrden;
+            } elseif ($idPedido > 0) {
+                $sql .= " AND id_pedido = :id_ped ";
+                $params[':id_ped'] = $idPedido;
+            } else {
+                $sql .= " AND numero_orden = :num_ord ";
+                $params[':num_ord'] = $numeroOrden;
+            }
+            $sql .= " ORDER BY id DESC LIMIT 1";
+
+            $st = $db->prepare($sql);
+            $st->execute($params);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['numero_guia'])) {
+                return $row;
+            }
+
+            // 2. Buscar en pedidos si ya tiene tracking asignado de C807 (EXLATA-)
+            if ($idPedido > 0 || $numeroOrden !== '') {
+                $sqlP = "SELECT numero_traking FROM pedidos WHERE numero_traking LIKE 'EXLATA-%' ";
+                $pParams = [];
+                if ($idPedido > 0) {
+                    $sqlP .= " AND id = :id ";
+                    $pParams[':id'] = $idPedido;
+                } else {
+                    $sqlP .= " AND numero_orden = :ord ";
+                    $pParams[':ord'] = $numeroOrden;
+                }
+                $sqlP .= " LIMIT 1";
+                $stP = $db->prepare($sqlP);
+                $stP->execute($pParams);
+                $trk = $stP->fetchColumn();
+                if ($trk) {
+                    return [
+                        'numero_guia'     => $trk,
+                        'recolecta'       => null,
+                        'seguimiento_url' => "https://app.c807.com/guia.php/seguimiento/" . urlencode($trk),
+                        'codigo_paquete'  => null,
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            error_log("C807Provider::obtenerGuiaLocal error: " . $e->getMessage());
+        }
+        return null;
     }
 
     /**
@@ -733,7 +892,7 @@ class C807Provider extends BaseProvider
 
     /**
      * Guardar las guías retornadas por C807 en la tabla forwarding_guias para múltiples pedidos.
-     * Vincula cada guía con su pedido respectivo mediante el número de orden.
+     * Vincula cada guía con su pedido respectivo mediante el número de orden y sincroniza pedidos.
      */
     public function guardarGuiasLoteEnBD(array $c807Response, array $pedidosPorOrden): void
     {
@@ -756,6 +915,13 @@ class C807Provider extends BaseProvider
                     entrega_min     = VALUES(entrega_min),
                     entrega_max     = VALUES(entrega_max),
                     recolecta       = VALUES(recolecta)
+            ");
+
+            $stmtUpdatePedido = $db->prepare("
+                UPDATE pedidos 
+                SET numero_traking = :guia, 
+                    courier_service = COALESCE(NULLIF(courier_service, ''), 'C807 Xpress') 
+                WHERE id = :id_pedido AND (numero_traking IS NULL OR numero_traking = '')
             ");
 
             // Cache auxiliar para resolver id_pedido si no viniera en el mapa
@@ -793,6 +959,13 @@ class C807Provider extends BaseProvider
                     ':entrega_min'     => !empty($g['entrega_min']) ? $g['entrega_min'] : null,
                     ':entrega_max'     => !empty($g['entrega_max']) ? $g['entrega_max'] : null,
                 ]);
+
+                try {
+                    $stmtUpdatePedido->execute([
+                        ':guia'      => $g['guia'],
+                        ':id_pedido' => $idPedido,
+                    ]);
+                } catch (Throwable $exP) {}
             }
         } catch (Throwable $e) {
             error_log("C807Provider::guardarGuiasLoteEnBD error: " . $e->getMessage());

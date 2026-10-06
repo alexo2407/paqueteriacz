@@ -378,14 +378,23 @@ class ForwardingModel
         try {
             $db   = (new Conexion())->conectar();
             $stmt = $db->prepare("
-                SELECT COUNT(*) FROM forwarding_log
-                WHERE id_pedido = :id_pedido
-                  AND id_rule   = :id_rule
-                  AND status    = 'success'
+                SELECT (
+                    (SELECT COUNT(*) FROM forwarding_log
+                     WHERE id_pedido = :id_pedido
+                       AND id_rule   = :id_rule
+                       AND status    = 'success')
+                    +
+                    (SELECT COUNT(*) FROM forwarding_guias fg
+                     INNER JOIN forwarding_rules fr ON fr.id_provider = fg.id_provider
+                     WHERE fg.id_pedido = :id_pedido2
+                       AND fr.id        = :id_rule2)
+                ) AS total
             ");
             $stmt->execute([
-                ':id_pedido' => $idPedido,
-                ':id_rule'   => $idRule,
+                ':id_pedido'  => $idPedido,
+                ':id_rule'    => $idRule,
+                ':id_pedido2' => $idPedido,
+                ':id_rule2'   => $idRule,
             ]);
             return (int)$stmt->fetchColumn() > 0;
         } catch (Exception $e) {
@@ -418,7 +427,24 @@ class ForwardingModel
                 ':id_rule'   => $idRule,
             ]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $row ?: null;
+            if ($row) return $row;
+
+            // Fallback: verificar si ya existe en forwarding_guias
+            $stmt2 = $db->prepare("
+                SELECT fg.id, fg.numero_guia AS external_order_id, fg.created_at
+                FROM forwarding_guias fg
+                INNER JOIN forwarding_rules fr ON fr.id_provider = fg.id_provider
+                WHERE fg.id_pedido = :id_pedido
+                  AND fr.id        = :id_rule
+                ORDER BY fg.id DESC
+                LIMIT 1
+            ");
+            $stmt2->execute([
+                ':id_pedido' => $idPedido,
+                ':id_rule'   => $idRule,
+            ]);
+            $row2 = $stmt2->fetch(PDO::FETCH_ASSOC);
+            return $row2 ?: null;
         } catch (Exception $e) {
             error_log("ForwardingModel::obtenerLogExitoso error: " . $e->getMessage());
             return null;

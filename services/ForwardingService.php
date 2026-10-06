@@ -253,7 +253,7 @@ class ForwardingService
 
                             ForwardingModel::actualizarLog($logId, [
                                 'status'            => 'success',
-                                'http_status'       => 200,
+                                'http_status'       => $batchResult['http_status'] ?? 200,
                                 'external_order_id' => $extId,
                                 'response_payload'  => json_encode([
                                     'recolecta' => $recolecta,
@@ -263,6 +263,27 @@ class ForwardingService
                                 'error_message'     => null,
                             ]);
                             ForwardingModel::marcarLogsPreviosResueltos((int)$p['id'], (int)$regla['id'], (int)$logId);
+
+                            // Sincronizar tracking y courier en la tabla pedidos
+                            if ($extId !== '') {
+                                try {
+                                    $dbPed = (new Conexion())->conectar();
+                                    $stUpd = $dbPed->prepare("
+                                        UPDATE pedidos 
+                                        SET numero_traking = :traking,
+                                            courier_service = COALESCE(NULLIF(courier_service, ''), :courier)
+                                        WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
+                                    ");
+                                    $stUpd->execute([
+                                        ':traking' => $extId,
+                                        ':courier' => $regla['provider_nombre'] ?? 'C807 Xpress',
+                                        ':id'      => (int)$p['id'],
+                                    ]);
+                                } catch (Exception $exUpd) {
+                                    error_log("ForwardingService::ejecutarForwardingLote error al actualizar tracking en pedidos: " . $exUpd->getMessage());
+                                }
+                            }
+
                             $totalExitosos++;
                         } elseif (isset($erroresMapeo[$numOrden])) {
                             ForwardingModel::actualizarLog($logId, [
@@ -407,6 +428,27 @@ class ForwardingService
 
             // Marcar cualquier otro log previo fallido/pendiente de este pedido y regla como resuelto
             ForwardingModel::marcarLogsPreviosResueltos((int)$pedido['id'], (int)$regla['id'], (int)$logId);
+
+            // Sincronizar tracking y courier en la tabla pedidos si vino external_order_id
+            $extId = (string)($resultado['external_order_id'] ?? $resultado['numero_guia'] ?? '');
+            if ($extId !== '') {
+                try {
+                    $dbPed = (new Conexion())->conectar();
+                    $stUpd = $dbPed->prepare("
+                        UPDATE pedidos 
+                        SET numero_traking = :traking,
+                            courier_service = COALESCE(NULLIF(courier_service, ''), :courier)
+                        WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
+                    ");
+                    $stUpd->execute([
+                        ':traking' => $extId,
+                        ':courier' => $regla['provider_nombre'] ?? 'C807 Xpress',
+                        ':id'      => (int)$pedido['id'],
+                    ]);
+                } catch (Exception $exUpd) {
+                    error_log("ForwardingService::ejecutarForwarding error al actualizar tracking en pedidos: " . $exUpd->getMessage());
+                }
+            }
 
             return [
                 'provider'          => $slug,
