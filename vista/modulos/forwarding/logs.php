@@ -91,12 +91,15 @@ $proveedores = ForwardingModel::obtenerProveedores();
                     </div>
                 </div>
                 <div class="row mt-2">
-                    <div class="col-12 d-flex gap-2 justify-content-end">
+                    <div class="col-12 d-flex gap-2 justify-content-end flex-wrap">
                         <button class="btn btn-sm btn-outline-warning" onclick="cancelAllLogs()" title="Cancelar todos los logs fallidos/pendientes de la base de datos">
                             <i class="bi bi-x-circle me-1"></i>Cancelar todo
                         </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="deleteCancelledLogs()" title="Eliminar permanentemente solo los logs cancelados">
+                            <i class="bi bi-trash me-1"></i>Eliminar cancelados
+                        </button>
                         <button class="btn btn-sm btn-outline-danger" onclick="deleteFailedLogs()" title="Eliminar permanentemente los logs fallidos y cancelados de la base de datos">
-                            <i class="bi bi-trash me-1"></i>Eliminar fallas
+                            <i class="bi bi-trash-fill me-1"></i>Eliminar fallas
                         </button>
                     </div>
                 </div>
@@ -277,6 +280,10 @@ function renderLogs(logs, total) {
                     <button class="btn btn-sm btn-outline-danger btn-retry" id="btn-cancel-${l.id}"
                             onclick="cancelLog(${l.id}, this)" title="Cancelar e ignorar reintentos">
                         <i class="bi bi-x-circle"></i>
+                    </button>` : ''}
+                    ${(l.status === 'cancelled' || l.status === 'failed') ? `
+                    <button class="btn btn-sm btn-outline-danger btn-retry" onclick="deleteSingleLog(${l.id})" title="Eliminar este log">
+                        <i class="bi bi-trash"></i>
                     </button>` : ''}
                     <a class="btn btn-sm btn-outline-secondary btn-retry" href="${BASE}pedidos/editar/${l.id_pedido}" title="Ir al pedido" target="_blank">
                         <i class="bi bi-box-arrow-up-right"></i>
@@ -614,6 +621,99 @@ function cancelAllLogs() {
             .catch(err => {
                 Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
             });
+        }
+    });
+}
+
+function deleteCancelledLogs() {
+    const provider = document.getElementById('filterProvider').value;
+    const providerName = provider ? document.getElementById('filterProvider').options[document.getElementById('filterProvider').selectedIndex].text : 'todos los proveedores';
+
+    Swal.fire({
+        title: '¿Eliminar registros cancelados?',
+        text: `Esta acción ELIMINARÁ DEFINITIVAMENTE todos los logs con estado "Cancelado" de la base de datos para ${providerName}. Esta operación no se puede deshacer.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar cancelados',
+        cancelButtonText: 'No, mantener'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.showLoading();
+
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'delete_logs', 
+                    status: 'cancelled',
+                    id_provider: provider ? parseInt(provider) : null 
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminados con éxito',
+                        text: data.message,
+                        timer: 2500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        currentOffset = 0;
+                        loadLogs();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'No se pudieron eliminar los registros cancelados.'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+            });
+        }
+    });
+}
+
+function deleteSingleLog(id) {
+    Swal.fire({
+        title: '¿Eliminar este registro?',
+        text: 'Esta acción eliminará permanentemente este log de la base de datos. Esta operación no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            Swal.showLoading();
+            fetch(BASE + 'ajax/forwarding_logs.php', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete_logs', ids: [id] })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado',
+                        text: data.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => loadLogs());
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message || 'No se pudo eliminar el registro.' });
+                }
+            })
+            .catch(err => Swal.fire({ icon: 'error', title: 'Error de red', text: err.message }));
         }
     });
 }
