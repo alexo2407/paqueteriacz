@@ -36,8 +36,22 @@ if (!$numeroOrden) {
     exit;
 }
 
+// Scoping por usuario para clientes/proveedores (evita colisiones cuando 2 clientes tienen el mismo numero_orden)
+$userData     = $validacion['data'] ?? [];
+$authUserId   = (int)($userData['id'] ?? 0);
+$authUserRole = (int)($userData['rol'] ?? 0);
+$isAdmin      = ($authUserRole === (defined('ROL_ADMIN') ? ROL_ADMIN : 1));
+
+// Si es admin, puede buscar globalmente o filtrar por ?id_cliente si se envía
+$idClienteFilter = null;
+if (!$isAdmin) {
+    $idClienteFilter = $authUserId;
+} elseif (!empty($_GET['id_cliente']) && is_numeric($_GET['id_cliente'])) {
+    $idClienteFilter = (int)$_GET['id_cliente'];
+}
+
 $pedidoController = new PedidosController();
-$response = $pedidoController->buscarPedidoPorNumero($numeroOrden);
+$response = $pedidoController->buscarPedidoPorNumero($numeroOrden, $idClienteFilter);
 
 // Usar el helper responder() para mantener el sobre de respuesta consistente
 if (isset($response['success']) && $response['success']) {

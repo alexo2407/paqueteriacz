@@ -83,18 +83,19 @@ if (($now - $rl['window_start']) > $rl_window) {
 @file_put_contents($rl_file, json_encode($rl));
 
 // ── Validar parámetro ─────────────────────────────────────────────────────────
-$numero_orden = trim($_GET['numero_orden'] ?? '');
+$codigo   = trim($_GET['numero_orden'] ?? $_GET['numero_traking'] ?? $_GET['tracking'] ?? $_GET['guia'] ?? '');
+$telefono = trim($_GET['telefono'] ?? $_GET['phone'] ?? '');
 
-if (empty($numero_orden)) {
+if (empty($codigo)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'El parámetro numero_orden es requerido.']);
+    echo json_encode(['success' => false, 'message' => 'El parámetro numero_orden o numero_traking es requerido.']);
     exit;
 }
 
 // Solo alfanuméricos, guiones y puntos — máx 100 chars
-if (!preg_match('/^[a-zA-Z0-9\-\_\.]+$/', $numero_orden) || strlen($numero_orden) > 100) {
+if (!preg_match('/^[a-zA-Z0-9\-\_\.]+$/', $codigo) || strlen($codigo) > 100) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Número de orden inválido.']);
+    echo json_encode(['success' => false, 'message' => 'Número de orden o código de tracking inválido.']);
     exit;
 }
 
@@ -110,28 +111,90 @@ try {
 
 // ── Consultar pedido y su historial ──────────────────────────────────────────
 try {
-    // 1. Buscar el pedido por numero_orden (sin filtro de rol → acceso global)
-    $pedidosResult = PedidosModel::obtenerConFiltros(['numero_orden' => $numero_orden]);
-    $pedido        = !empty($pedidosResult) ? $pedidosResult[0] : null;
+    $db = (new Conexion())->conectar();
 
-    if (!$pedido) {
-        http_response_code(404);
-        echo json_encode([
-            'success' => false,
-            'message' => 'No se encontró ningún pedido con ese número de orden.',
-        ]);
-        exit;
+    // 1. Buscar primero por número de tracking (identificador logístico único)
+    $stmtTrk = $db->prepare("
+        SELECT 
+            p.id AS ID_Pedido,
+            p.id,
+            p.numero_orden AS Numero_Orden,
+            p.numero_orden,
+            p.numero_traking,
+            p.destinatario AS Cliente,
+            p.telefono AS Telefono,
+            p.telefono,
+            p.fecha_entrega,
+            p.comentario,
+            ep.nombre_estado AS Estado,
+            ep.nombre_estado
+        FROM pedidos p
+        LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+        WHERE p.numero_traking = :trk
+        LIMIT 1
+    ");
+    $stmtTrk->execute([':trk' => $codigo]);
+    $trkPedido = $stmtTrk->fetch(PDO::FETCH_ASSOC);
+
+    if ($trkPedido) {
+        $pedido = $trkPedido;
+    } else {
+        // 2. Si no es tracking, buscar por numero_orden
+        $pedidosResult = PedidosModel::obtenerConFiltros(['numero_orden' => $codigo]);
+
+        if (empty($pedidosResult)) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No se encontró ningún pedido con ese número de orden o tracking.',
+            ]);
+            exit;
+        }
+
+        // Si existen múltiples pedidos con el mismo número de orden (distintos clientes):
+        if (count($pedidosResult) > 1) {
+            if (!empty($telefono)) {
+                $cleanTel = preg_replace('/\D/', '', $telefono);
+                $filtrados = array_filter($pedidosResult, function($p) use ($cleanTel) {
+                    $pTel = preg_replace('/\D/', '', $p['Telefono'] ?? $p['telefono'] ?? '');
+                    if (empty($pTel) || empty($cleanTel)) return false;
+                    return (str_ends_with($pTel, $cleanTel) || str_ends_with($cleanTel, $pTel));
+                });
+                if (!empty($filtrados)) {
+                    $pedido = reset($filtrados);
+                } else {
+                    http_response_code(404);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'El teléfono ingresado no coincide con el número de orden.',
+                    ]);
+                    exit;
+                }
+            } else {
+                // Protección de datos: requerir teléfono para desambiguar
+                http_response_code(422);
+                echo json_encode([
+                    'success'           => false,
+                    'requiere_telefono' => true,
+                    'message'           => 'Existen múltiples pedidos asociados a este número. Por tu seguridad, ingresa el número de teléfono registrado para consultar tu entrega.',
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+        } else {
+            $pedido = $pedidosResult[0];
+        }
     }
 
-    // 2. Obtener historial de cambios de estado
+    // 3. Obtener historial de cambios de estado específico del pedido encontrado
+    $idPedido = (int)($pedido['ID_Pedido'] ?? $pedido['id'] ?? 0);
     $historialResult = PedidosModel::obtenerHistorialEstadosFiltrado(
-        ['numero_orden' => $numero_orden],
+        ['id_pedido' => $idPedido],
         1,
         50
     );
     $historial = $historialResult['data'] ?? [];
 
-    // 3. Formatear timeline (solo datos públicos)
+    // 4. Formatear timeline (solo datos públicos)
     $timeline = [];
     $tz = new DateTimeZone('America/Managua');
     foreach ($historial as $cambio) {
@@ -154,7 +217,7 @@ try {
     // El más reciente primero
     $timeline = array_reverse($timeline);
 
-    // 4. Estado actual del pedido
+    // 5. Estado actual del pedido
     $estadoActual = $pedido['Estado'] ?? $pedido['nombre_estado'] ?? 'Desconocido';
 
     // Descripción pública por estado
@@ -180,16 +243,17 @@ try {
 
     $descripcion  = $descripciones[$estadoActual] ?? 'Estado de tu envío actualizado.';
     $fechaEntrega = $pedido['Fecha_Entrega'] ?? $pedido['fecha_entrega'] ?? null;
-    $numeroOrden  = $pedido['Numero_Orden']  ?? $pedido['numero_orden']  ?? $numero_orden;
+    $numeroOrden  = $pedido['Numero_Orden']  ?? $pedido['numero_orden']  ?? $codigo;
 
-    // 5. Respuesta pública — SIN datos sensibles
+    // 6. Respuesta pública — SIN datos sensibles
     echo json_encode([
-        'success'       => true,
-        'numero_orden'  => (string) $numeroOrden,
-        'estado'        => $estadoActual,
-        'descripcion'   => $descripcion,
-        'fecha_entrega' => $fechaEntrega,
-        'timeline'      => $timeline,
+        'success'        => true,
+        'numero_orden'   => (string) $numeroOrden,
+        'numero_traking' => $pedido['numero_traking'] ?? null,
+        'estado'         => $estadoActual,
+        'descripcion'    => $descripcion,
+        'fecha_entrega'  => $fechaEntrega,
+        'timeline'       => $timeline,
     ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 } catch (Throwable $e) {
     error_log('[api/pedidos/rastreo] Error: ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());

@@ -100,8 +100,9 @@ try {
     }
 
     foreach ($numeros as $numeroOrden) {
-        // Buscar el pedido
-        $resultadoBusqueda = $controller->buscarPedidoPorNumero($numeroOrden);
+        // Buscar el pedido (filtrando por cliente si no es admin para evitar colisiones)
+        $clienteFilter = $isAdmin ? null : $authUserId;
+        $resultadoBusqueda = $controller->buscarPedidoPorNumero($numeroOrden, $clienteFilter);
         
         $itemStatus = [
             'numero_orden' => $numeroOrden,

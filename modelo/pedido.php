@@ -822,10 +822,11 @@ class PedidosModel
      * Obtener un pedido por su número de orden.
      *
      * @param int|string $numeroOrden
+     * @param int|null $idCliente ID de cliente o proveedor para restringir la búsqueda a su cuenta.
      * @return array|null Array asociativo con los campos seleccionados o null si no existe.
      * @throws Exception En caso de error en la consulta.
      */
-    public function obtenerPedidoPorNumero($numeroOrden)
+    public function obtenerPedidoPorNumero($numeroOrden, $idCliente = null)
     {
         try {
 
@@ -864,11 +865,21 @@ class PedidosModel
                     LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
                     WHERE p.numero_orden = :numero_orden";
 
+            if ($idCliente !== null) {
+                $sql .= " AND (p.id_cliente = :id_cliente OR p.id_proveedor = :id_proveedor)";
+            }
+
+            $sql .= " ORDER BY p.id DESC LIMIT 1";
+
             // Preparar la consulta
             $stmt = $db->prepare($sql);
 
             // Asignar el parámetro
             $stmt->bindParam(':numero_orden', $numeroOrden, PDO::PARAM_STR);
+            if ($idCliente !== null) {
+                $stmt->bindParam(':id_cliente', $idCliente, PDO::PARAM_INT);
+                $stmt->bindParam(':id_proveedor', $idCliente, PDO::PARAM_INT);
+            }
 
             // Ejecutar la consulta
             $stmt->execute();

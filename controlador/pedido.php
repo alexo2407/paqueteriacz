@@ -118,13 +118,14 @@ class PedidosController
      * Buscar un pedido por su número de orden.
      *
      * @param int|string $numeroOrden Número de orden a buscar (se acepta string o int).
+     * @param int|null $idCliente ID de cliente o proveedor opcional para acotar búsqueda.
      * @return array Envelope: ['success' => bool, 'message' => string, 'data' => array|null]
      */
-    public function buscarPedidoPorNumero($numeroOrden)
+    public function buscarPedidoPorNumero($numeroOrden, $idCliente = null)
     {
         try {
             $model = new PedidosModel();
-            $res = $model->obtenerPedidoPorNumero($numeroOrden);
+            $res = $model->obtenerPedidoPorNumero($numeroOrden, $idCliente);
             if ($res) {
                 return [
                     'success' => true,
