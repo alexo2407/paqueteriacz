@@ -307,14 +307,25 @@ try {
             continue;
         }
 
-        // Buscar pedido por numero_orden
+        // Extraer número de orden base si viene con prefijo (ej. "21-10791377" -> "10791377")
+        $parsedNum = $orderNumber;
+        if (str_contains($orderNumber, '-')) {
+            $parts = explode('-', $orderNumber);
+            $parsedNum = end($parts);
+        }
+
+        // Buscar pedido por numero_orden plano o prefijado
         $stmt = $db->prepare("
             SELECT p.id, p.id_estado, p.id_cliente, p.id_proveedor, p.numero_orden, p.fecha_entrega, p.fecha_liquidacion, ep.nombre_estado 
             FROM pedidos p 
             LEFT JOIN estados_pedidos ep ON p.id_estado = ep.id
-            WHERE p.numero_orden = :numero_orden LIMIT 1
+            WHERE p.numero_orden = :numero_orden OR p.numero_orden = :parsed_num
+            ORDER BY p.id DESC LIMIT 1
         ");
-        $stmt->execute([':numero_orden' => $orderNumber]);
+        $stmt->execute([
+            ':numero_orden' => $orderNumber,
+            ':parsed_num'   => $parsedNum,
+        ]);
         $pedido = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$pedido) {

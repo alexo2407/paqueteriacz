@@ -242,9 +242,15 @@ class LogisProProvider extends BaseProvider
         // ─────────────────────────────────────────────────────────────────────
 
         // Construir order con todos los campos requeridos por LogisPro.
+        // Componer orderNumber con prefijo de id_cliente (ej: "21-10791377") para garantizar
+        // unicidad estricta por tienda en LogisPro y evitar "The ordernumber is already registered".
+        $orderNumber = !empty($pedido['id_cliente'])
+            ? $pedido['id_cliente'] . '-' . $pedido['numero_orden']
+            : (string)$pedido['numero_orden'];
+
         $order = [
             'customersId'        => $authData['customersId'],
-            'orderNumber'        => (string)$pedido['numero_orden'],
+            'orderNumber'        => $orderNumber,
             'clientName'         => $pedido['destinatario'] ?? '',
             'municipalitiesName' => $municipalitiesName,
             'postalCode'         => $postalCode,
