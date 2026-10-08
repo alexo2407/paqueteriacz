@@ -50,6 +50,12 @@ if ($isPublicLink) {
     $stmtRol->execute([':id' => $pubU]);
     $pubRol  = (int)$stmtRol->fetchColumn();
 
+    $stmtMC = $dbPub->prepare("SELECT mostrar_courier, alias_courier FROM usuarios WHERE id = :id");
+    $stmtMC->execute([':id' => $pubU]);
+    $uDataPub = $stmtMC->fetch(PDO::FETCH_ASSOC);
+    $puedeVerCourier = (int)($uDataPub['mostrar_courier'] ?? 0) === 1;
+    $aliasCourierPub = !empty($uDataPub['alias_courier']) ? trim($uDataPub['alias_courier']) : null;
+
     $isAdmin        = false;
     $isProveedorExt = ($pubRol == ROL_CLIENTE);   // rol 5 en BD → aparece en id_proveedor
     $isClienteExt   = ($pubRol == ROL_PROVEEDOR); // rol 4 en BD → aparece en id_cliente
@@ -58,6 +64,7 @@ if ($isPublicLink) {
 
 } else {
     // Acceso normal con sesión
+    $puedeVerCourier = canViewCourier();
     require_login();
     $isAdmin        = isSuperAdmin();
     $currRol        = $_SESSION['rol'] ?? 0;
@@ -355,7 +362,11 @@ if ($export && !empty($pedidosExport)) {
         $sheet->setCellValue($coord($c++, $excelRow), $ped['direccion']);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['zona']);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['comentario']);
-        $sheet->setCellValue($coord($c++, $excelRow), $ped['courier_service'] ?? '');
+        $courierExcel = '';
+        if ($puedeVerCourier) {
+            $courierExcel = $isPublicLink ? ($aliasCourierPub ?: ($ped['courier_service'] ?? '')) : (getDisplayCourierName($ped['courier_service'] ?? '') ?? '');
+        }
+        $sheet->setCellValue($coord($c++, $excelRow), $courierExcel);
         $sheet->setCellValue($coord($c++, $excelRow), $ped['numero_traking'] ?? '');
 
         // Estado actual con color
@@ -711,8 +722,10 @@ if ($export && !empty($pedidosExport)) {
                                 <?= htmlspecialchars($ped['comentario'] ?? '—') ?>
                             </td>
                             <td>
-                                <?php if (!empty($ped['courier_service'])): ?>
-                                    <span class="badge" style="background:#0dcaf0;color:#000;"><?= htmlspecialchars($ped['courier_service']) ?></span>
+                                <?php if ($puedeVerCourier && !empty($ped['courier_service'])): 
+                                    $nombreCourierMostrar = $isPublicLink ? ($aliasCourierPub ?: $ped['courier_service']) : (getDisplayCourierName($ped['courier_service']) ?? $ped['courier_service']);
+                                ?>
+                                    <span class="badge" style="background:#0dcaf0;color:#000;"><?= htmlspecialchars($nombreCourierMostrar) ?></span>
                                 <?php else: ?>
                                     &mdash;
                                 <?php endif; ?>

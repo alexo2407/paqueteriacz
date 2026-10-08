@@ -151,6 +151,25 @@ try {
     $stmtData->execute();
     $rows = $stmtData->fetchAll(PDO::FETCH_ASSOC);
 
+    // Si el usuario no tiene permisos para ver courier externo, sanitizar a null
+    if (!canViewCourier()) {
+        foreach ($rows as &$r) {
+            $r['courier_service'] = null;
+        }
+        unset($r);
+    } elseif (!isAdmin()) {
+        // Si no es admin y tiene alias configurado, mostrar el alias en lugar del courier real
+        $alias = getCourierAlias();
+        if (!empty($alias)) {
+            foreach ($rows as &$r) {
+                if (!empty($r['courier_service'])) {
+                    $r['courier_service'] = $alias;
+                }
+            }
+            unset($r);
+        }
+    }
+
     echo json_encode([
         'draw'            => $draw,
         'recordsTotal'    => $recordsTotal,

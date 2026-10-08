@@ -1,7 +1,9 @@
 <?php
 $usaDataTables = true;
 require_once "utils/authorization.php";
+require_once "utils/permissions.php";
 require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
+$puedeVerCourier = canViewCourier();
 
 include("vista/includes/header.php");
 ?>
@@ -1033,7 +1035,9 @@ require_once __DIR__ . '/../../../utils/permissions.php';
                         <th>Tracking</th>
                         <th>Número de Orden</th>
                         <th>Destinatario</th>
+                        <?php if ($puedeVerCourier): ?>
                         <th>Courier</th>
+                        <?php endif; ?>
                         <th>Comentario</th>
                         <th>Estado</th>
                         <th>Acciones</th>
@@ -1157,20 +1161,24 @@ $(document).ready(function() {
                 console.error('DataTables SSP error:', err, thrown, xhr.responseText);
             }
         },
-        columns: [
-            {
-                data: 'numero_traking',
-                title: 'Tracking',
-                orderable: false,
-                render: function(data) {
-                    if (!data) return '<span class="text-muted">—</span>';
-                    return '<span class="badge fw-normal" style="background:#0d6efd;color:#fff;font-size:.7rem;letter-spacing:.02em;font-family:monospace">'
-                         + '<i class="bi bi-upc" style="font-size:.65rem;"></i> ' + data + '</span>';
-                }
-            },
-            { data: 'Numero_Orden',   title: 'Nº Orden' },
-            { data: 'Cliente',        title: 'Destinatario' },
-            {
+        columns: (function() {
+            var cols = [
+                {
+                    data: 'numero_traking',
+                    title: 'Tracking',
+                    orderable: false,
+                    render: function(data) {
+                        if (!data) return '<span class="text-muted">—</span>';
+                        return '<span class="badge fw-normal" style="background:#0d6efd;color:#fff;font-size:.7rem;letter-spacing:.02em;font-family:monospace">'
+                             + '<i class="bi bi-upc" style="font-size:.65rem;"></i> ' + data + '</span>';
+                    }
+                },
+                { data: 'Numero_Orden',   title: 'Nº Orden' },
+                { data: 'Cliente',        title: 'Destinatario' }
+            ];
+
+            <?php if ($puedeVerCourier): ?>
+            cols.push({
                 data: 'courier_service',
                 title: 'Courier',
                 orderable: false,
@@ -1178,25 +1186,31 @@ $(document).ready(function() {
                     if (!data) return '<span class="text-muted">—</span>';
                     return '<span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i>' + data + '</span>';
                 }
-            },
-            { data: 'Comentario',     title: 'Comentario', orderable: false },
-            {
-                data: null,
-                title: 'Estado',
-                orderable: false,
-                render: function(data, type, row) {
-                    return buildEstadoSelect(row.ID_Pedido, row.id_estado, row.Estado);
+            });
+            <?php endif; ?>
+
+            cols.push(
+                { data: 'Comentario',     title: 'Comentario', orderable: false },
+                {
+                    data: null,
+                    title: 'Estado',
+                    orderable: false,
+                    render: function(data, type, row) {
+                        return buildEstadoSelect(row.ID_Pedido, row.id_estado, row.Estado);
+                    }
+                },
+                {
+                    data: null,
+                    title: 'Acciones',
+                    orderable: false,
+                    render: function(data, type, row) {
+                        return buildAcciones(row);
+                    }
                 }
-            },
-            {
-                data: null,
-                title: 'Acciones',
-                orderable: false,
-                render: function(data, type, row) {
-                    return buildAcciones(row);
-                }
-            }
-        ],
+            );
+
+            return cols;
+        })(),
         order: [[1, 'desc']],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],

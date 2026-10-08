@@ -392,4 +392,91 @@ function isAdmin() {
     return isSuperAdmin();
 }
 
+/**
+ * Verifica si el usuario actual tiene permiso para ver el nombre del courier/transportista externo.
+ * - Administrador: SIEMPRE puede ver el courier.
+ * - Otros roles (Cliente, Proveedor): Solo si tienen mostrar_courier = 1 en la tabla usuarios.
+ *
+ * @return bool
+ */
+function canViewCourier(): bool {
+    if (isAdmin()) {
+        return true;
+    }
+
+    if (isset($_SESSION['mostrar_courier'])) {
+        return (bool)$_SESSION['mostrar_courier'];
+    }
+
+    $userId = getCurrentUserId();
+    if (!$userId) {
+        return false;
+    }
+
+    try {
+        require_once __DIR__ . '/../modelo/conexion.php';
+        $db = (new Conexion())->conectar();
+        $stmt = $db->prepare("SELECT mostrar_courier FROM usuarios WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $userId]);
+        $val = (int)$stmt->fetchColumn();
+        $_SESSION['mostrar_courier'] = $val;
+        return (bool)$val;
+    } catch (\Throwable $e) {
+        return false;
+    }
+}
+
+/**
+ * Obtiene el alias personalizado del courier configurado para el usuario actual (si existe).
+ *
+ * @return string|null
+ */
+function getCourierAlias(): ?string {
+    if (isset($_SESSION['alias_courier'])) {
+        $a = trim((string)$_SESSION['alias_courier']);
+        return $a !== '' ? $a : null;
+    }
+
+    $userId = getCurrentUserId();
+    if (!$userId) {
+        return null;
+    }
+
+    try {
+        require_once __DIR__ . '/../modelo/conexion.php';
+        $db = (new Conexion())->conectar();
+        $stmt = $db->prepare("SELECT alias_courier FROM usuarios WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $userId]);
+        $val = $stmt->fetchColumn();
+        $_SESSION['alias_courier'] = $val ?: null;
+        $a = trim((string)$val);
+        return $a !== '' ? $a : null;
+    } catch (\Throwable $e) {
+        return null;
+    }
+}
+
+/**
+ * Obtiene el nombre del courier que debe mostrarse según permisos y alias:
+ * - Si no tiene permiso para ver courier o está vacío: retorna null.
+ * - Si es Administrador: SIEMPRE retorna el nombre técnico real (ej. C807 Xpress).
+ * - Si es Cliente con alias configurado: retorna el alias (ej. RutaEx Express).
+ * - Si es Cliente sin alias: retorna el nombre técnico original.
+ *
+ * @param string|null $realCourier
+ * @return string|null
+ */
+function getDisplayCourierName(?string $realCourier): ?string {
+    if (!canViewCourier() || empty($realCourier)) {
+        return null;
+    }
+    if (isAdmin()) {
+        return $realCourier;
+    }
+    $alias = getCourierAlias();
+    return !empty($alias) ? $alias : $realCourier;
+}
+
+
+
 

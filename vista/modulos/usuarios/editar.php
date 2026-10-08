@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header.php"); ?>
+<?php include("vista/includes/header.php"); ?>
 
 <?php
 $params = isset($parametros) ? $parametros : [];
@@ -289,6 +289,45 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
                             </div>
                             <div class="form-text mt-2">El primer rol marcado se usará como rol principal.</div>
                         </div>
+
+                        <!-- Preferencias y Visibilidad Logística -->
+                        <?php 
+                        require_once __DIR__ . '/../../../utils/permissions.php';
+                        if (isAdmin()): 
+                        ?>
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="bi bi-eye"></i>
+                                Preferencias y Visibilidad Logística
+                            </div>
+                            <div class="form-check form-switch p-0 d-flex align-items-start gap-3">
+                                <input class="form-check-input ms-0 mt-1" type="checkbox" role="switch" id="mostrar_courier" name="mostrar_courier" value="1" style="width:2.5rem;height:1.35rem;cursor:pointer;" <?= (!empty($usuario['mostrar_courier'])) ? 'checked' : '' ?>>
+                                <div>
+                                    <label class="form-check-label fw-bold text-dark mb-0" for="mostrar_courier" style="cursor:pointer;">
+                                        Permitir ver Courier / Transportista externo (C807 Xpress, LogisPro, etc.)
+                                    </label>
+                                    <div class="text-muted small mt-1">
+                                        Si está <strong>desactivado</strong> (por defecto), este usuario navegará con <strong>marca blanca</strong> y no verá qué empresa externa de paquetería realiza los envíos.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Input para alias personalizado -->
+                            <div id="wrapper_alias_courier" class="mt-3 ps-md-4" style="<?= empty($usuario['mostrar_courier']) ? 'display:none;' : '' ?>">
+                                <label class="form-label small fw-bold text-dark mb-1" for="alias_courier">
+                                    <i class="bi bi-tag-fill text-primary me-1"></i>Nombre o Alias personalizado del Courier (Opcional):
+                                </label>
+                                <div class="col-md-7 px-0">
+                                    <input type="text" class="form-control form-control-sm" id="alias_courier" name="alias_courier" 
+                                           placeholder="Ej. RutaEx Express, Envío Local, Mensajería Privada" 
+                                           value="<?= htmlspecialchars($usuario['alias_courier'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                                </div>
+                                <div class="form-text small text-muted mt-1">
+                                    Si escribes un nombre aquí, el cliente verá este texto en sus pedidos en lugar de <em>C807 Xpress</em> o <em>LogisPro</em>. Si lo dejas vacío, verá el nombre original del proveedor. Los administradores siempre verán el nombre real.
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
                         
                         <!-- Seguridad -->
                         <div class="form-section">
@@ -339,4 +378,17 @@ document.querySelectorAll('.role-card input[type="checkbox"]').forEach(checkbox 
         }
     });
 });
+
+// Toggle alias_courier input based on switch
+const switchCourier = document.getElementById('mostrar_courier');
+const wrapperAlias = document.getElementById('wrapper_alias_courier');
+if (switchCourier && wrapperAlias) {
+    switchCourier.addEventListener('change', function() {
+        if (this.checked) {
+            wrapperAlias.style.display = 'block';
+        } else {
+            wrapperAlias.style.display = 'none';
+        }
+    });
+}
 </script>

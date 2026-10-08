@@ -47,8 +47,11 @@ if ($userId) {
                             <td><?= htmlspecialchars($p['destinatario']) ?></td>
                             <td><span class="badge bg-secondary"><?= htmlspecialchars($p['nombre_estado'] ?? 'N/D') ?></span></td>
                             <td>
-                                <?php if (!empty($p['courier_service'])): ?>
-                                    <span class="badge bg-info text-dark"><?= htmlspecialchars($p['courier_service']) ?></span>
+                                <?php 
+                                require_once __DIR__ . '/../../../utils/permissions.php';
+                                if (canViewCourier() && !empty($p['courier_service'])): 
+                                ?>
+                                    <span class="badge bg-info text-dark"><?= htmlspecialchars(getDisplayCourierName($p['courier_service']) ?? '') ?></span>
                                 <?php else: ?>
                                     <span class="text-muted">—</span>
                                 <?php endif; ?>

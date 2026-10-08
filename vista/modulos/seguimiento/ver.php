@@ -109,9 +109,12 @@ $lng = (float)($pedido['longitud'] ?? -86.2504);
                         <dd class="col-sm-8"><?= nl2br(htmlspecialchars($pedido['comentario'])) ?></dd>
                         <?php endif; ?>
 
-                        <?php if (!empty($pedido['courier_service'])): ?>
+                        <?php 
+                        require_once __DIR__ . '/../../../utils/permissions.php';
+                        if (canViewCourier() && !empty($pedido['courier_service'])): 
+                        ?>
                         <dt class="col-sm-4">Courier Service</dt>
-                        <dd class="col-sm-8"><span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars($pedido['courier_service']) ?></span></dd>
+                        <dd class="col-sm-8"><span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars(getDisplayCourierName($pedido['courier_service']) ?? '') ?></span></dd>
                         <?php endif; ?>
 
                         <?php if (!empty($pedido['precio_local']) || !empty($pedido['precio_usd'])): ?>

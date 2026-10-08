@@ -608,9 +608,9 @@ include "vista/includes/header.php";
                                         <i class="bi bi-telephone me-1"></i> <?= htmlspecialchars($p['telefono']) ?>
                                     </div>
 
-                                    <?php if (!empty($p['courier_service'])): ?>
+                                    <?php if (canViewCourier() && !empty($p['courier_service'])): ?>
                                     <div class="d-flex align-items-center mb-2">
-                                        <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars($p['courier_service']) ?></span>
+                                        <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars(getDisplayCourierName($p['courier_service']) ?? '') ?></span>
                                     </div>
                                     <?php endif; ?>
 
@@ -919,8 +919,8 @@ include "vista/includes/header.php";
                                         <small class="text-muted"><?= htmlspecialchars($p['direccion']) ?></small>
                                     </td>
                                     <td>
-                                        <?php if (!empty($p['courier_service'])): ?>
-                                            <span class="badge bg-info text-dark"><?= htmlspecialchars($p['courier_service']) ?></span>
+                                        <?php if (canViewCourier() && !empty($p['courier_service'])): ?>
+                                            <span class="badge bg-info text-dark"><?= htmlspecialchars(getDisplayCourierName($p['courier_service']) ?? '') ?></span>
                                         <?php else: ?>
                                             <span class="text-muted small">—</span>
                                         <?php endif; ?>

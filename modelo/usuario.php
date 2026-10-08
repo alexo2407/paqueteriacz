@@ -26,7 +26,7 @@ class UsuarioModel {
         $db = (new Conexion())->conectar();
 
     // No dependas de usuarios.id_rol: los roles se obtienen exclusivamente desde usuarios_roles
-    $sql = "SELECT id, nombre, contrasena FROM usuarios WHERE email = :email";
+    $sql = "SELECT id, nombre, contrasena, mostrar_courier, alias_courier FROM usuarios WHERE email = :email";
         $stmt = $db->prepare($sql);
         $stmt->bindParam(':email', $email);
 
@@ -49,7 +49,9 @@ class UsuarioModel {
                 'Usuario' => $user['nombre'],
                 'Rol' => $roles['ids'][0] ?? null, // compat: primer rol
                 'Roles' => $roles['ids'],
-                'RolesNombres' => $roles['nombres']
+                'RolesNombres' => $roles['nombres'],
+                'mostrar_courier' => (int)($user['mostrar_courier'] ?? 0),
+                'alias_courier' => $user['alias_courier'] ?? null
             ];
         }
 
@@ -91,7 +93,9 @@ class UsuarioModel {
                     'Usuario' => $user['nombre'],
                     'Rol' => $roles['ids'][0] ?? null,
                     'Roles' => $roles['ids'],
-                    'RolesNombres' => $roles['nombres']
+                    'RolesNombres' => $roles['nombres'],
+                    'mostrar_courier' => (int)($user['mostrar_courier'] ?? 0),
+                    'alias_courier' => $user['alias_courier'] ?? null
                 ];
             }
         }
@@ -141,7 +145,7 @@ class UsuarioModel {
         try {
             $db = (new Conexion())->conectar();
             // Evitar seleccionar u.id_rol: esquema migrado a pivot usuarios_roles
-            $stmt = $db->prepare('SELECT u.id, u.nombre, u.telefono, u.email, u.id_pais, u.activo, u.id_estado FROM usuarios u WHERE u.id = :id');
+            $stmt = $db->prepare('SELECT u.id, u.nombre, u.telefono, u.email, u.id_pais, u.activo, u.id_estado, u.mostrar_courier, u.alias_courier FROM usuarios u WHERE u.id = :id');
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -217,6 +221,17 @@ class UsuarioModel {
                 }
             }
 
+            if (array_key_exists('mostrar_courier', $data)) {
+                $fields[] = 'mostrar_courier = :mostrar_courier';
+                $params[':mostrar_courier'] = [!empty($data['mostrar_courier']) ? 1 : 0, PDO::PARAM_INT];
+            }
+
+            if (array_key_exists('alias_courier', $data)) {
+                $alias = !empty($data['alias_courier']) ? trim($data['alias_courier']) : null;
+                $fields[] = 'alias_courier = :alias_courier';
+                $params[':alias_courier'] = [$alias, $alias !== null ? PDO::PARAM_STR : PDO::PARAM_NULL];
+            }
+
             if (!empty($data['contrasena'])) {
                 $fields[] = 'contrasena = :contrasena';
                 $params[':contrasena'] = [password_hash($data['contrasena'], PASSWORD_DEFAULT), PDO::PARAM_STR];
@@ -285,8 +300,8 @@ class UsuarioModel {
         try {
             $db = (new Conexion())->conectar();
 
-            $sql = "INSERT INTO usuarios (nombre, email, contrasena, telefono, id_pais, activo, id_estado, created_at) 
-                    VALUES (:nombre, :email, :contrasena, :telefono, :id_pais, :activo, :id_estado, NOW())";
+            $sql = "INSERT INTO usuarios (nombre, email, contrasena, telefono, id_pais, activo, id_estado, mostrar_courier, alias_courier, created_at) 
+                    VALUES (:nombre, :email, :contrasena, :telefono, :id_pais, :activo, :id_estado, :mostrar_courier, :alias_courier, NOW())";
             
             $stmt = $db->prepare($sql);
 
@@ -305,6 +320,12 @@ class UsuarioModel {
 
             $idEstado = !empty($data['id_estado']) ? (int)$data['id_estado'] : null;
             $stmt->bindValue(':id_estado', $idEstado, $idEstado ? PDO::PARAM_INT : PDO::PARAM_NULL);
+
+            $mostrarCourier = isset($data['mostrar_courier']) ? (int)$data['mostrar_courier'] : 0;
+            $stmt->bindValue(':mostrar_courier', $mostrarCourier, PDO::PARAM_INT);
+
+            $aliasCourier = !empty($data['alias_courier']) ? trim($data['alias_courier']) : null;
+            $stmt->bindValue(':alias_courier', $aliasCourier, $aliasCourier !== null ? PDO::PARAM_STR : PDO::PARAM_NULL);
 
             if ($stmt->execute()) {
                 $nuevoId = (int)$db->lastInsertId();

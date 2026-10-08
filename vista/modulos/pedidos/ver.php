@@ -459,10 +459,13 @@ if (!empty($fechaEntregaRaw)) {
                                         <dd><?= htmlspecialchars($pedido['betweenStreets']) ?></dd>
                                     </div>
                                     <?php endif; ?>
-                                    <?php if (!empty($pedido['courier_service'])): ?>
+                                    <?php 
+                                    require_once __DIR__ . '/../../../utils/permissions.php';
+                                    if (canViewCourier() && !empty($pedido['courier_service'])): 
+                                    ?>
                                     <div class="col-12">
                                         <dt>Courier Service</dt>
-                                        <dd><?= htmlspecialchars($pedido['courier_service']) ?></dd>
+                                        <dd><?= htmlspecialchars(getDisplayCourierName($pedido['courier_service']) ?? '') ?></dd>
                                     </div>
                                     <?php endif; ?>
                                     <?php endif; ?>
