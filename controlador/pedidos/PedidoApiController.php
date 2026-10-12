@@ -582,7 +582,19 @@ class PedidoApiController
             'cortesia' => [
                 'required' => false, 'in' => [0, 1],
                 'messages' => [
-                    'in' => 'El campo cortesia solo acepta 0 (pedido normal) o 1 (pedido de cortesía sin costo). Valor recibido: "%s".',
+                    'in' => 'El campo cortesia solo acepta 0 (pedido normal), 1 o true (pedido de cortesía sin costo). Valor recibido: "%s".',
+                ],
+            ],
+            'permitir_precio_cero' => [
+                'required' => false, 'in' => [0, 1],
+                'messages' => [
+                    'in' => 'El campo permitir_precio_cero solo acepta 0 (normal) o 1 / true (permitir precio en 0). Valor recibido: "%s".',
+                ],
+            ],
+            'precio_cero' => [
+                'required' => false, 'in' => [0, 1],
+                'messages' => [
+                    'in' => 'El campo precio_cero solo acepta 0 (normal) o 1 / true. Valor recibido: "%s".',
                 ],
             ],
             'requiere_productos' => [
@@ -639,14 +651,16 @@ class PedidoApiController
             }
         }
 
-        // 1b. Validar precio_total_local según flag cortesia
-        // cortesia=1 → se permite precio 0 (pedido gratuito/muestra)
-        // cortesia=0 o no enviado → precio debe ser > 0
+        // 1b. Validar precio_total_local según flag cortesia / permitir_precio_cero
+        // cortesia / permitir_precio_cero = 1 o true → se permite precio 0 (pedido gratuito/muestra)
+        // si no se envía o es 0/false → precio debe ser > 0
         if (!isset($errores['precio_total_local'])) {
-            $esCortesia = isset($data['cortesia']) && (int)$data['cortesia'] === 1;
+            $esCortesia = (isset($data['cortesia']) && ($data['cortesia'] === 1 || $data['cortesia'] === true || $data['cortesia'] === '1'))
+                       || (isset($data['permitir_precio_cero']) && ($data['permitir_precio_cero'] === 1 || $data['permitir_precio_cero'] === true || $data['permitir_precio_cero'] === '1'))
+                       || (isset($data['precio_cero']) && ($data['precio_cero'] === 1 || $data['precio_cero'] === true || $data['precio_cero'] === '1'));
             $precioVal  = (float)($data['precio_total_local'] ?? 0);
             if (!$esCortesia && $precioVal <= 0) {
-                $errores['precio_total_local'] = 'El precio_total_local debe ser mayor a 0. Si el pedido es de cortesía (sin costo), envía "cortesia": 1.';
+                $errores['precio_total_local'] = 'El precio_total_local debe ser mayor a 0. Si el pedido es de cortesía (sin costo), envía "cortesia": 1 o "permitir_precio_cero": 1.';
             }
         }
 
@@ -1090,6 +1104,10 @@ class PedidoApiController
             'code_city'          => !empty($data['code_city']) ? trim($data['code_city']) : '',
             // Flag de control de productos — se pasa al modelo para que respete la regla
             'requiere_productos' => isset($data['requiere_productos']) ? (int)$data['requiere_productos'] : 1,
+            // Flag de cortesía / permitir precio cero
+            'cortesia'           => ((isset($data['cortesia']) && ($data['cortesia'] === 1 || $data['cortesia'] === true || $data['cortesia'] === '1'))
+                                  || (isset($data['permitir_precio_cero']) && ($data['permitir_precio_cero'] === 1 || $data['permitir_precio_cero'] === true || $data['permitir_precio_cero'] === '1'))
+                                  || (isset($data['precio_cero']) && ($data['precio_cero'] === 1 || $data['precio_cero'] === true || $data['precio_cero'] === '1'))) ? 1 : 0,
         ];
 
         if (!empty($data['recoleccion']) && is_array($data['recoleccion'])) {
@@ -1210,6 +1228,12 @@ class PedidoApiController
             'courier_service'    => !empty($pedido['courier_service']) ? trim($pedido['courier_service']) : null,
             // Código de ciudad para HLExpress (city_dane_code). Se usa como prioridad en HLExpressProvider.
             'code_city'          => !empty($pedido['code_city']) ? trim($pedido['code_city']) : '',
+            // Flag de control de productos
+            'requiere_productos' => isset($pedido['requiere_productos']) ? (int)$pedido['requiere_productos'] : 1,
+            // Flag de cortesía / permitir precio cero
+            'cortesia'           => ((isset($pedido['cortesia']) && ($pedido['cortesia'] === 1 || $pedido['cortesia'] === true || $pedido['cortesia'] === '1'))
+                                  || (isset($pedido['permitir_precio_cero']) && ($pedido['permitir_precio_cero'] === 1 || $pedido['permitir_precio_cero'] === true || $pedido['permitir_precio_cero'] === '1'))
+                                  || (isset($pedido['precio_cero']) && ($pedido['precio_cero'] === 1 || $pedido['precio_cero'] === true || $pedido['precio_cero'] === '1'))) ? 1 : 0,
         ];
 
         if (!empty($pedido['recoleccion']) && is_array($pedido['recoleccion'])) {

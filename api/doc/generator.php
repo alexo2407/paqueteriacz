@@ -866,12 +866,14 @@ function buildCrear(c) {
       ['<code>telefono</code>',      'string',     'ESTRICTO',            'Teléfono de contacto'],
       ['<code>direccion</code>',     'string',     'ESTRICTO',            'Dirección completa'],
       ['<code>comentario</code>',    'string',     'ESTRICTO',            'Notas de entrega'],
-      ['<code>precio_total_local</code>', 'decimal', 'ESTRICTO, > 0',    'Precio total en moneda local'],
+      ['<code>precio_total_local</code>', 'decimal', 'ESTRICTO, > 0 (o 0 con cortesía)', 'Precio total en moneda local (puede ser 0 con cortesia: 1)'],
       ['<code>es_combo</code>',      'entero',     'ESTRICTO (0 ó 1)',    '1 si es combo, 0 si estándar'],
       ['<code>fecha_entrega</code>', 'string',     'ESTRICTO YYYY-MM-DD','Fecha estimada de entrega'],
     ])}
     <p class="print-label" style="margin-top:12px">⚙️ Campos Opcionales</p>
     ${table(['Campo','Tipo','Descripción'],[
+      ['<code>cortesia</code> / <code>permitir_precio_cero</code>', 'int / bool', 'Flag (1 ó true). Permite enviar <code>precio_total_local: 0</code> sin costo para muestras, garantías o prepagados.'],
+      ['<code>requiere_productos</code>', 'entero', '1 (requeridos) ó 0 (opcionales). Si se envía 0 permite crear pedidos sin items de productos.'],
       ['<code>courier_service</code>', 'string', 'Nombre del servicio de mensajería / courier (ej: DHL, FedEx, UPS). Máx 100 chars.'],
       ['<code>numero_traking</code>',  'string', 'Número de tracking o guía del operador logístico. Visible para el cliente y el proveedor. Puede actualizarse vía importación masiva Excel.'],
       ['<code>zona</code>',            'string', 'Zona de entrega'],

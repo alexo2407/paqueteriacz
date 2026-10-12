@@ -1834,21 +1834,28 @@ class PedidosModel
             }
 
             // Lógica de precios:
+            // Si es CORTESÍA (pedido sin costo / muestra), forzar precios a 0.00
             // Si es COMBO, usar los precios totales proporcionados en el payload
             // Si NO es combo (o es null), usar el cálculo automático basado en productos
             $esCombo = !empty($pedido['es_combo']);
+            $esCortesia = !empty($pedido['cortesia']);
 
-            if (!$esCombo) {
+            if ($esCortesia) {
+                $pedido['precio_usd'] = 0.00;
+                $pedido['precio_total_usd'] = 0.00;
+                $pedido['precio_total_local'] = 0.00;
+                $pedido['precio_local'] = 0.00;
+            } elseif (!$esCombo) {
                 // Si NO es combo, forzamos el precio calculado
                 $pedido['precio_usd'] = $calculatedTotalUSD; // legacy
                 $pedido['precio_total_usd'] = $calculatedTotalUSD; // new field
 
                 // Si tenemos tasa y no tenemos precio local total, calcularlo
-                if (empty($pedido['precio_total_local']) && !empty($pedido['tasa_conversion_usd'])) {
+                if ((!isset($pedido['precio_total_local']) || $pedido['precio_total_local'] === '' || $pedido['precio_total_local'] === null) && !empty($pedido['tasa_conversion_usd'])) {
                     $pedido['precio_total_local'] = $calculatedTotalUSD * (float)$pedido['tasa_conversion_usd'];
                 }
                 // Legacy support
-                if (empty($pedido['precio_local']) && !empty($pedido['tasa_conversion_usd'])) {
+                if ((!isset($pedido['precio_local']) || $pedido['precio_local'] === '' || $pedido['precio_local'] === null) && !empty($pedido['tasa_conversion_usd'])) {
                     $pedido['precio_local'] = $calculatedTotalUSD * (float)$pedido['tasa_conversion_usd'];
                 }
             } else {
@@ -1904,7 +1911,7 @@ class PedidosModel
             // 2. Insertar el pedido
             // Construir INSERT dinámico según columnas disponibles
             $columns = ['fecha_ingreso', 'numero_orden', 'destinatario', 'telefono'];
-            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service', 'code_city'];
+            $candidates = ['precio_local', 'precio_usd', 'precio_total_local', 'precio_total_usd', 'tasa_conversion_usd', 'es_combo', 'cortesia', 'id_pais', 'id_departamento', 'id_municipio', 'id_barrio', 'municipio', 'barrio', 'direccion', 'municipalitiesName', 'postalCode', 'departmentName', 'Location', 'betweenStreets', 'codigo_postal', 'id_codigo_postal', 'zona', 'comentario', 'coordenadas', 'id_estado', 'id_moneda', 'id_vendedor', 'id_proveedor', 'id_cliente', 'fecha_entrega', 'courier_service', 'code_city'];
 
             foreach ($candidates as $c) {
                 if (self::tableHasColumn($db, 'pedidos', $c)) {

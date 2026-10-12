@@ -897,7 +897,7 @@
                             <tr><td><code>telefono</code></td><td>string</td><td>STRICT</td><td>Contact phone</td></tr>
                             <tr><td><code>direccion</code></td><td>string</td><td>STRICT</td><td>Full delivery address</td></tr>
                             <tr><td><code>comentario</code></td><td>string</td><td>STRICT</td><td>Delivery notes</td></tr>
-                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>STRICT, > 0</td><td>Total local price</td></tr>
+                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>STRICT, > 0 (or 0 if cortesia)</td><td>Total local price (can be 0 with <code>cortesia: 1</code> or <code>permitir_precio_cero: 1</code>)</td></tr>
                             <tr><td><code>es_combo</code></td><td>integer</td><td>STRICT (0 or 1)</td><td>1 for combo, 0 for standard</td></tr>
                             <tr><td><code>fecha_entrega</code></td><td>string</td><td>STRICT, format YYYY-MM-DD</td><td>Estimated delivery date (e.g. "2026-03-15")</td></tr>
                         </tbody>
@@ -914,12 +914,32 @@
                             <tr><td><code>telefono</code></td><td>string</td><td>ESTRICTO</td><td>Teléfono de contacto</td></tr>
                             <tr><td><code>direccion</code></td><td>string</td><td>ESTRICTO</td><td>Dirección completa</td></tr>
                             <tr><td><code>comentario</code></td><td>string</td><td>ESTRICTO</td><td>Notas de entrega</td></tr>
-                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>ESTRICTO, > 0</td><td>Precio total local</td></tr>
+                            <tr><td><code>precio_total_local</code></td><td>decimal</td><td>ESTRICTO, > 0 (o 0 si cortesía)</td><td>Precio total local (puede ser 0 con <code>cortesia: 1</code> o <code>permitir_precio_cero: 1</code>)</td></tr>
                             <tr><td><code>es_combo</code></td><td>entero</td><td>ESTRICTO (0 o 1)</td><td>1 si es combo, 0 si estándar</td></tr>
                             <tr><td><code>fecha_entrega</code></td><td>string</td><td>ESTRICTO, formato YYYY-MM-DD</td><td>Fecha estimada de entrega (ej. "2026-03-15")</td></tr>
                         </tbody>
                     </table>
                     
+                    <!-- Flag: cortesia / permitir_precio_cero -->
+                    <div class="alert alert-info mt-3" data-lang="en">
+                        <strong>🚩 Body Flag: <code>cortesia</code> / <code>permitir_precio_cero</code></strong>
+                        <p class="mb-1 mt-2">Allows creating orders with <code>precio_total_local: 0</code> (e.g. warranty replacements, free samples, gifts, prepaid orders):</p>
+                        <ul class="mb-0">
+                            <li><strong>Omitted or <code>0</code> / <code>false</code></strong> → <code>precio_total_local</code> must be strictly <strong>&gt; 0</strong>.</li>
+                            <li><strong><code>1</code> or <code>true</code></strong> → <code>precio_total_local</code> is allowed to be <strong>0</strong>. Order prices are safely set to 0.00 without being overwritten by product catalog prices.</li>
+                        </ul>
+                        <pre class="mt-2 mb-0"><code class="language-json">{ "precio_total_local": 0, "cortesia": 1 }</code></pre>
+                    </div>
+                    <div class="alert alert-info mt-3" data-lang="es">
+                        <strong>🚩 Bandera en el Body: <code>cortesia</code> / <code>permitir_precio_cero</code></strong>
+                        <p class="mb-1 mt-2">Permite crear pedidos con <code>precio_total_local: 0</code> (ej. muestras gratis, garantías, cortesías o pedidos prepagados sin cobro contra entrega):</p>
+                        <ul class="mb-0">
+                            <li><strong>Omitido o <code>0</code> / <code>false</code></strong> → <code>precio_total_local</code> debe ser estrictamente <strong>&gt; 0</strong>.</li>
+                            <li><strong><code>1</code> o <code>true</code></strong> → Se permite <code>precio_total_local: 0</code>. Los precios del pedido se fijan en 0.00 sin ser sobreescritos por el catálogo.</li>
+                        </ul>
+                        <pre class="mt-2 mb-0"><code class="language-json">{ "precio_total_local": 0, "cortesia": 1 }</code></pre>
+                    </div>
+
                     <!-- Flag: requiere_productos -->
                     <div class="alert alert-warning mt-3" data-lang="en">
                         <strong>🚩 Body Flag: <code>requiere_productos</code></strong>
