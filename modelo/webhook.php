@@ -11,19 +11,28 @@ require_once __DIR__ . '/conexion.php';
  */
 class WebhookModel
 {
+    private static $jwtCache = [];
+    private static $configCache = [];
+    private static $estadosCache = null;
+
     /**
-     * Obtener configuración de webhook para un cliente.
+     * Obtener configuración de webhook para un cliente con caché en memoria.
      *
      * @param int $idCliente ID del cliente (id_cliente en pedidos)
      * @return array|null Config del webhook o null si no tiene
      */
     public static function obtenerConfigPorCliente(int $idCliente): ?array
     {
+        if (isset(self::$configCache[$idCliente])) {
+            return self::$configCache[$idCliente] ?: null;
+        }
+
         try {
             $db = (new Conexion())->conectar();
             $stmt = $db->prepare('SELECT * FROM webhooks_clientes WHERE id_cliente = :id AND activo = 1 LIMIT 1');
             $stmt->execute([':id' => $idCliente]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            self::$configCache[$idCliente] = $result ?: false;
             return $result ?: null;
         } catch (Exception $e) {
             error_log('[Webhook] Error obteniendo config: ' . $e->getMessage());
@@ -33,12 +42,22 @@ class WebhookModel
 
     /**
      * Autenticarse en el API del cliente para obtener JWT token.
+     * Reutiliza tokens en memoria válidos para evitar logins repetitivos.
      *
      * @param array $config Registro de webhooks_clientes
+     * @param bool $forceRefresh Forzar nuevo login si el token expiró
      * @return string|null JWT token o null si falla
      */
-    public static function login(array $config): ?string
+    public static function login(array $config, bool $forceRefresh = false): ?string
     {
+        $cacheKey = (int)($config['id'] ?? 0) . '_' . ($config['auth_user'] ?? '');
+        if (!$forceRefresh && isset(self::$jwtCache[$cacheKey])) {
+            $cached = self::$jwtCache[$cacheKey];
+            if (time() < ($cached['expires_at'] ?? 0)) {
+                return $cached['token'];
+            }
+        }
+
         $payload = json_encode([
             'userName' => $config['auth_user'],
             'password' => $config['auth_password']
@@ -53,7 +72,7 @@ class WebhookModel
                 'Accept: application/json'
             ],
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_TIMEOUT        => 8,
             CURLOPT_SSL_VERIFYPEER => true,
         ]);
 
@@ -71,7 +90,12 @@ class WebhookModel
 
         // LogisPro devuelve: { "HasError": false, "Data": { "JwtToken": "..." } }
         if ($httpCode === 200 && isset($data['Data']['JwtToken'])) {
-            return $data['Data']['JwtToken'];
+            $token = $data['Data']['JwtToken'];
+            self::$jwtCache[$cacheKey] = [
+                'token'      => $token,
+                'expires_at' => time() + 900 // 15 minutos
+            ];
+            return $token;
         }
 
         error_log("[Webhook] Login fallido HTTP $httpCode: " . substr($response, 0, 500));
@@ -247,6 +271,181 @@ class WebhookModel
 
         } catch (Exception $e) {
             error_log('[Webhook] Excepción en dispararSiAplica: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Disparar webhooks para un lote de pedidos de forma eficiente.
+     * 
+     * Optimizaciones:
+     * - Resuelve clientes y números de orden faltantes en 1 sola consulta SQL.
+     * - Agrupa por cliente y reutiliza el token JWT obtenido.
+     * - Si el cliente no tiene webhook activo, descarta sin coste HTTP.
+     * - Envía en paralelo mediante curl_multi (lotes de hasta 15 concurrentes).
+     *
+     * @param array $items Array con ['id_pedido', 'numero_orden', 'id_estado_nuevo', 'notes', 'id_cliente']
+     */
+    public static function dispararLote(array $items): void
+    {
+        if (empty($items)) return;
+
+        try {
+            $db = (new Conexion())->conectar();
+
+            // 1. Cargar catálogo de estados si no está en caché
+            if (self::$estadosCache === null) {
+                self::$estadosCache = [];
+                $st = $db->query('SELECT id, nombre_estado FROM estados_pedidos');
+                foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    self::$estadosCache[(int)$row['id']] = $row['nombre_estado'];
+                }
+            }
+
+            // 2. Detectar pedidos a los que les falte id_cliente o numero_orden
+            $pedidosFaltantes = [];
+            foreach ($items as $item) {
+                if (empty($item['numero_orden']) || empty($item['id_cliente'])) {
+                    $pedidosFaltantes[] = (int)$item['id_pedido'];
+                }
+            }
+
+            $datosPedidos = [];
+            if (!empty($pedidosFaltantes)) {
+                $chunks = array_chunk(array_unique($pedidosFaltantes), 500);
+                foreach ($chunks as $chunk) {
+                    $ph = implode(',', array_fill(0, count($chunk), '?'));
+                    $st = $db->prepare("SELECT id, numero_orden, id_cliente FROM pedidos WHERE id IN ($ph)");
+                    $st->execute($chunk);
+                    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $p) {
+                        $datosPedidos[(int)$p['id']] = $p;
+                    }
+                }
+            }
+
+            // 3. Normalizar y agrupar por cliente
+            $itemsPorCliente = [];
+            foreach ($items as $item) {
+                $idPed = (int)$item['id_pedido'];
+                $numOrden = !empty($item['numero_orden']) ? (string)$item['numero_orden'] : ($datosPedidos[$idPed]['numero_orden'] ?? null);
+                $idCli = (int)(!empty($item['id_cliente']) ? $item['id_cliente'] : ($datosPedidos[$idPed]['id_cliente'] ?? 0));
+                $idEstado = (int)$item['id_estado_nuevo'];
+                $nombreEstado = self::$estadosCache[$idEstado] ?? "Estado $idEstado";
+                $notes = is_string($item['notes'] ?? null) ? trim($item['notes']) : '';
+
+                if ($numOrden && $idCli > 0) {
+                    $itemsPorCliente[$idCli][] = [
+                        'id_pedido'     => $idPed,
+                        'numero_orden'  => (string)$numOrden,
+                        'estado_nombre' => $nombreEstado,
+                        'notes'         => $notes,
+                    ];
+                }
+            }
+
+            if (empty($itemsPorCliente)) return;
+
+            // 4. Procesar clientes configurados
+            foreach ($itemsPorCliente as $idCliente => $pedidos) {
+                $config = self::obtenerConfigPorCliente($idCliente);
+                if (!$config) {
+                    continue; // Cliente sin webhook configurado o inactivo
+                }
+
+                $jwt = self::login($config);
+                if (!$jwt) {
+                    foreach ($pedidos as $p) {
+                        self::registrarLog($config['id'], $p['id_pedido'], $p['numero_orden'], $p['estado_nombre'], null, null, 'error', 'Login fallido - no se obtuvo JWT');
+                    }
+                    continue;
+                }
+
+                // Despacho concurrente con curl_multi
+                self::enviarLoteMulti($jwt, $config, $pedidos);
+            }
+        } catch (\Throwable $e) {
+            error_log('[Webhook] Excepción en dispararLote: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Enviar lote de cambios de estado vía cURL Multi en bloques concurrentes.
+     */
+    private static function enviarLoteMulti(string $jwt, array $config, array $pedidos, int $concurrency = 15): void
+    {
+        $chunks = array_chunk($pedidos, $concurrency);
+        foreach ($chunks as $chunk) {
+            $mh = curl_multi_init();
+            $handles = [];
+
+            foreach ($chunk as $idx => $p) {
+                $payload = json_encode([
+                    'customersId' => (int)$config['customers_id'],
+                    'orderNumber' => $p['numero_orden'],
+                    'state'       => $p['estado_nombre'],
+                    'auditUser'   => $config['auth_user'],
+                    'Notes'       => $p['notes']
+                ]);
+
+                $ch = curl_init($config['url_cambio_estado']);
+                curl_setopt_array($ch, [
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => $payload,
+                    CURLOPT_HTTPHEADER     => [
+                        'Content-Type: application/json',
+                        'Accept: application/json',
+                        'Authorization: Bearer ' . $jwt
+                    ],
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 8,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                ]);
+
+                curl_multi_add_handle($mh, $ch);
+                $handles[$idx] = [
+                    'ch'      => $ch,
+                    'pedido'  => $p,
+                    'payload' => $payload
+                ];
+            }
+
+            $running = null;
+            do {
+                $status = curl_multi_exec($mh, $running);
+                if ($running) {
+                    curl_multi_select($mh, 0.1);
+                }
+            } while ($running > 0 && $status === CURLM_OK);
+
+            foreach ($handles as $h) {
+                $ch = $h['ch'];
+                $p = $h['pedido'];
+                $payload = $h['payload'];
+
+                $response  = curl_multi_getcontent($ch);
+                $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlError = curl_error($ch);
+
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+
+                $success   = ($httpCode >= 200 && $httpCode < 300);
+                $statusStr = $success ? 'ok' : 'error';
+                $errMsg    = $curlError ?: ($success ? null : substr($response, 0, 500));
+
+                self::registrarLog(
+                    (int)$config['id'],
+                    (int)$p['id_pedido'],
+                    (string)$p['numero_orden'],
+                    (string)$p['estado_nombre'],
+                    $payload,
+                    $httpCode ?: null,
+                    $statusStr,
+                    $errMsg,
+                    $response ?: null
+                );
+            }
+
+            curl_multi_close($mh);
         }
     }
 

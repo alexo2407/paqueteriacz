@@ -18,6 +18,8 @@ require_once __DIR__ . '/../modelo/producto.php';
 class CSVPedidoValidator
 {
     private $pedidosExistentes = [];
+    private $pedidosExistentesMap = [];
+    private $pedidosVistosEnLote = [];
     private $productosCache = [];
     private $estadosCache = [];
     private $proveedoresCache = [];
@@ -38,8 +40,8 @@ class CSVPedidoValidator
     private function cargarCaches()
     {
         try {
-            // Cache de números de orden existentes
-            $this->pedidosExistentes = PedidosModel::obtenerNumerosOrdenExistentes();
+            // Nota de optimización: Ya no traemos toda la tabla pedidos a memoria de golpe.
+            // Los números de orden se precargan por lote acotado en precargarOrdenesLote() O(1).
             
             // Cache de productos
             $productos = ProductoModel::listarConInventario();
@@ -101,6 +103,38 @@ class CSVPedidoValidator
             error_log('Error al cargar caches de validación: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Precargar en un hash map O(1) únicamente los números de orden
+     * que aparecen en el lote actual para verificar si ya existen en la BD.
+     */
+    public function precargarOrdenesLote(array $rows): void
+    {
+        $numeros = [];
+        foreach ($rows as $r) {
+            $no = trim((string)($r['numero_orden'] ?? ''));
+            if ($no !== '' && preg_match('/^\d+$/', $no)) {
+                $numeros[] = $no;
+            }
+        }
+
+        if (empty($numeros)) return;
+
+        try {
+            $db = (new Conexion())->conectar();
+            $chunks = array_chunk(array_unique($numeros), 1000);
+            foreach ($chunks as $chunk) {
+                $ph = implode(',', array_fill(0, count($chunk), '?'));
+                $stmt = $db->prepare("SELECT numero_orden FROM pedidos WHERE numero_orden IN ($ph)");
+                $stmt->execute($chunk);
+                while ($val = $stmt->fetchColumn()) {
+                    $this->pedidosExistentesMap[(string)$val] = true;
+                }
+            }
+        } catch (Exception $e) {
+            error_log('Error al precargar números de orden en lote: ' . $e->getMessage());
+        }
+    }
     
     /**
      * Validar una fila completa del CSV
@@ -115,13 +149,17 @@ class CSVPedidoValidator
         $advertencias = [];
         
         // 1. Validar número de orden
-        $numeroOrden = trim($row['numero_orden'] ?? '');
+        $numeroOrden = trim((string)($row['numero_orden'] ?? ''));
         if ($numeroOrden === '') {
             $errores[] = "numero_orden vacío";
         } elseif (!preg_match('/^\d+$/', $numeroOrden)) {
             $errores[] = "numero_orden debe ser numérico entero";
-        } elseif (in_array($numeroOrden, $this->pedidosExistentes)) {
+        } elseif (isset($this->pedidosExistentesMap[$numeroOrden]) || in_array($numeroOrden, $this->pedidosExistentes, true)) {
             $errores[] = "numero_orden {$numeroOrden} ya existe en la base de datos";
+        } elseif (isset($this->pedidosVistosEnLote[$numeroOrden])) {
+            $errores[] = "numero_orden {$numeroOrden} duplicado dentro del mismo archivo (visto antes en línea {$this->pedidosVistosEnLote[$numeroOrden]})";
+        } else {
+            $this->pedidosVistosEnLote[$numeroOrden] = $lineNumber;
         }
         
         // 2. Validar coordenadas geográficas
@@ -428,6 +466,9 @@ class CSVPedidoValidator
      */
     public function validarLote($rows)
     {
+        $this->pedidosVistosEnLote = [];
+        $this->precargarOrdenesLote($rows);
+
         $totalFilas = count($rows);
         $filasValidas = 0;
         $filasConErrores = 0;

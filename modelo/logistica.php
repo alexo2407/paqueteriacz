@@ -798,8 +798,11 @@ class LogisticaModel {
         $sinCambios   = 0;
         $fallidos     = 0;
         $failedRows   = [];
+        $webhooksPendientes = [];
 
         try {
+            $stmtTrigger = $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs, @current_created_at = :cat");
+
             foreach ($rowsValidadas as $row) {
                 $idPedido         = (int)$row['id_pedido'];
                 $nuevoComentario  = $row['nuevo_comentario'];
@@ -851,26 +854,25 @@ class LogisticaModel {
                 $stmt = $db->prepare($sql);
                 // Comunicar usuario y observaciones al trigger after_pedido_update_estado
                 if ($nuevoIdEstado !== null) {
-                    $db->prepare("SET @current_user_id = :uid, @current_observaciones = :obs, @current_created_at = :cat")
-                       ->execute([
-                           ':uid' => (int)$userId, 
-                           ':obs' => $row['motivo'] ?? null,
-                           ':cat' => $row['fecha_registro'] ?? $row['created_at'] ?? null
-                       ]);
+                    $stmtTrigger->execute([
+                        ':uid' => (int)$userId, 
+                        ':obs' => $row['motivo'] ?? null,
+                        ':cat' => $row['fecha_registro'] ?? $row['created_at'] ?? null
+                    ]);
                 }
-                $ok   = $stmt->execute($params);
+                $ok = $stmt->execute($params);
 
                 if ($ok && $stmt->rowCount() > 0) {
                     $actualizados++;
                     
-                    // [Webhook] Notificar cambio de estado a API externo
+                    // Acumular webhook para disparar fuera de la transacción en lote
                     if ($nuevoIdEstado !== null) {
-                        try {
-                            require_once __DIR__ . '/webhook.php';
-                            WebhookModel::dispararPorPedidoId((int)$idPedido, (int)$nuevoIdEstado, $row['motivo'] ?? null);
-                        } catch (Exception $webEx) {
-                            error_log("[Webhook] Error en bulkCommit pedido $idPedido: " . $webEx->getMessage());
-                        }
+                        $webhooksPendientes[] = [
+                            'id_pedido'       => $idPedido,
+                            'numero_orden'    => $row['numero_orden'] ?? null,
+                            'id_estado_nuevo' => $nuevoIdEstado,
+                            'notes'           => $row['motivo'] ?? null,
+                        ];
                     }
 
                     // Auditoría
@@ -897,7 +899,7 @@ class LogisticaModel {
                     if (!empty($row['motivo'])) {
                         $nuevos['motivo'] = $row['motivo'];
                     }
-                    AuditoriaModel::registrar('pedidos', $idPedido, 'actualizar', $userId, $antes, $nuevos);
+                    AuditoriaModel::registrar('pedidos', $idPedido, 'actualizar', $userId, $antes, $nuevos, $db);
                 } else {
                     $fallidos++;
                     $failedRows[] = "Fila {$row['_line']}: pedido {$idPedido} — sin filas afectadas.";
@@ -921,6 +923,16 @@ class LogisticaModel {
                 ]);
             } catch (Exception $e) {
                 error_log('BulkCommit log error: ' . $e->getMessage());
+            }
+
+            // [Webhook] Notificar cambios de estado en lote fuera de la transacción
+            if (!empty($webhooksPendientes)) {
+                try {
+                    require_once __DIR__ . '/webhook.php';
+                    WebhookModel::dispararLote($webhooksPendientes);
+                } catch (\Throwable $webEx) {
+                    error_log("[Webhook] Error en bulkCommit dispararLote: " . $webEx->getMessage());
+                }
             }
 
         } catch (Exception $e) {

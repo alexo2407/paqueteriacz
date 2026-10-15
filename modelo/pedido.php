@@ -11,8 +11,13 @@ include_once __DIR__ . '/codigos_postales.php';
 
 class PedidosModel
 {
+    private static $columnsCache = [];
+    private static $paisesCache = null;
+    private static $departamentosCache = [];
+
     /**
      * Comprueba si una tabla contiene una columna dada en la base de datos actual.
+     * Cachea las columnas de la tabla en memoria para evitar consultas repetitivas a information_schema.
      *
      * @param PDO $db
      * @param string $table
@@ -21,18 +26,20 @@ class PedidosModel
      */
     private static function tableHasColumn($db, $table, $column)
     {
-        try {
-            $stmt = $db->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table AND COLUMN_NAME = :column");
-            $stmt->execute([':table' => $table, ':column' => $column]);
-            return (int)$stmt->fetchColumn() > 0;
-        } catch (Exception $e) {
-            // Si hay algún error al consultar information_schema devolvemos true por compatibilidad
-            return true;
+        if (!isset(self::$columnsCache[$table])) {
+            try {
+                $stmt = $db->prepare("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table");
+                $stmt->execute([':table' => $table]);
+                self::$columnsCache[$table] = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            } catch (Exception $e) {
+                return true;
+            }
         }
+        return in_array($column, self::$columnsCache[$table], true);
     }
 
     /**
-     * Resolver un valor de país (id o nombre/codigo) a su id numérico.
+     * Resolver un valor de país (id o nombre/codigo) a su id numérico con caché en memoria.
      * Devuelve null si no se puede resolver.
      * @param mixed $value
      * @return int|null
@@ -41,10 +48,11 @@ class PedidosModel
     {
         if ($value === null || $value === '') return null;
         if (is_numeric($value)) return (int)$value;
-        // Intentar resolver por nombre o codigo_iso
-        $paises = PaisModel::listar();
+        if (self::$paisesCache === null) {
+            self::$paisesCache = PaisModel::listar();
+        }
         $needle = mb_strtolower(trim((string)$value), 'UTF-8');
-        foreach ($paises as $p) {
+        foreach (self::$paisesCache as $p) {
             if (mb_strtolower(trim($p['nombre']), 'UTF-8') === $needle) return (int)$p['id'];
             if (isset($p['codigo_iso']) && mb_strtolower(trim($p['codigo_iso']), 'UTF-8') === $needle) return (int)$p['id'];
         }
@@ -52,7 +60,7 @@ class PedidosModel
     }
 
     /**
-     * Resolver departamento a id. Si se proporciona $paisHint puede filtrar la búsqueda.
+     * Resolver departamento a id con caché en memoria. Si se proporciona $paisHint puede filtrar la búsqueda.
      * @param mixed $value
      * @param mixed $paisHint (id or name)
      * @return int|null
@@ -67,15 +75,20 @@ class PedidosModel
             if (is_numeric($paisHint)) $paisId = (int)$paisHint;
             else $paisId = self::resolvePaisId($paisHint);
         }
-        $departamentos = DepartamentoModel::listarPorPais($paisId);
+        $cacheKey = $paisId !== null ? (string)$paisId : 'all';
+        if (!isset(self::$departamentosCache[$cacheKey])) {
+            self::$departamentosCache[$cacheKey] = DepartamentoModel::listarPorPais($paisId);
+        }
         $needle = mb_strtolower(trim((string)$value));
-        foreach ($departamentos as $d) {
+        foreach (self::$departamentosCache[$cacheKey] as $d) {
             if (mb_strtolower($d['nombre']) === $needle) return (int)$d['id'];
         }
         // si no encontró y no filtramos por país, intentar buscar en todos
         if ($paisId !== null) {
-            $departamentosAll = DepartamentoModel::listarPorPais(null);
-            foreach ($departamentosAll as $d) {
+            if (!isset(self::$departamentosCache['all'])) {
+                self::$departamentosCache['all'] = DepartamentoModel::listarPorPais(null);
+            }
+            foreach (self::$departamentosCache['all'] as $d) {
                 if (mb_strtolower($d['nombre']) === $needle) return (int)$d['id'];
             }
         }
@@ -468,7 +481,8 @@ class PedidosModel
                             'crear',
                             AuditoriaModel::getIdUsuarioActual(),
                             null,
-                            $datosAuditoria
+                            $datosAuditoria,
+                            $db
                         );
                     } catch (Exception $e) {
                         error_log("Error auditoria insertarPedidosLote fila $idx: " . $e->getMessage());

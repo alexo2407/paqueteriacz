@@ -21,16 +21,79 @@ class AuditoriaModel
      * @param array|null $datosNuevos Estado nuevo del registro (para creates/updates)
      * @return int|null ID del registro de auditoría creado, o null en error
      */
+    private static $contextCache = null;
+    private static $sharedPdo = null;
+
+    /**
+     * Obtener y cachear en memoria el contexto de ejecución de auditoría
+     * para toda la petición HTTP actual, evitando llamadas externas repetitivas a IP-API.
+     */
+    public static function getContextoAuditoria(): array
+    {
+        if (self::$contextCache !== null) {
+            return self::$contextCache;
+        }
+
+        $ipAddress  = self::getClientIp();
+        $geoData    = self::resolverGeoYProxy($ipAddress);
+        $userAgent  = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
+        $parsedDevice = self::parseUserAgent($userAgent);
+        $urlEndpoint = isset($_SERVER['REQUEST_URI']) ? substr($_SERVER['REQUEST_URI'], 0, 500) : null;
+        $httpMethod  = isset($_SERVER['REQUEST_METHOD']) ? substr($_SERVER['REQUEST_METHOD'], 0, 10) : null;
+        $sessionId   = session_status() === PHP_SESSION_ACTIVE ? session_id() : null;
+        if (empty($sessionId)) { $sessionId = null; }
+
+        $userRole = null;
+        if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
+            $userRole = implode(', ', $_SESSION['roles_nombres']);
+        }
+
+        self::$contextCache = [
+            'ipAddress'     => $ipAddress,
+            'paisOrigen'    => $geoData['geo_string'] ?? null,
+            'isProxy'       => $geoData['is_proxy'] ?? 0,
+            'userAgent'     => $userAgent,
+            'deviceOs'      => $parsedDevice['os'] ?? null,
+            'deviceBrowser' => $parsedDevice['browser'] ?? null,
+            'urlEndpoint'   => $urlEndpoint,
+            'httpMethod'    => $httpMethod,
+            'sessionId'     => $sessionId,
+            'userRole'      => $userRole,
+        ];
+
+        return self::$contextCache;
+    }
+
+    /**
+     * Registrar un cambio en la auditoría.
+     *
+     * @param string $tabla Nombre de la tabla afectada (ej: 'productos', 'monedas')
+     * @param int $idRegistro ID del registro afectado
+     * @param string $accion Tipo de acción: 'crear', 'actualizar', 'eliminar'
+     * @param int|null $idUsuario ID del usuario que realiza la acción (null para sistema)
+     * @param array|null $datosAnteriores Estado anterior del registro (para updates/deletes)
+     * @param array|null $datosNuevos Estado nuevo del registro (para creates/updates)
+     * @param PDO|null $customDb Conexión PDO opcional para reutilizar en bucles
+     * @return int|null ID del registro de auditoría creado, o null en error
+     */
     public static function registrar(
         string $tabla,
         int $idRegistro,
         string $accion,
         ?int $idUsuario = null,
         ?array $datosAnteriores = null,
-        ?array $datosNuevos = null
+        ?array $datosNuevos = null,
+        ?PDO $customDb = null
     ): ?int {
         try {
-            $db = (new Conexion())->conectar();
+            if ($customDb !== null) {
+                $db = $customDb;
+            } else {
+                if (self::$sharedPdo === null) {
+                    self::$sharedPdo = (new Conexion())->conectar();
+                }
+                $db = self::$sharedPdo;
+            }
             
             $sql = 'INSERT INTO auditoria_cambios 
                     (tabla, id_registro, accion, id_usuario, datos_anteriores, datos_nuevos, ip_address, pais_origen, user_agent, url_endpoint, http_method, session_id, user_role, is_proxy, device_os, device_browser) 
@@ -65,26 +128,18 @@ class AuditoriaModel
                 $stmt->bindValue(':datos_nuevos', $jsonNuevos, PDO::PARAM_STR);
             }
             
-            // Obtener contexto de ejecución
-            $ipAddress  = self::getClientIp();
-            $geoData    = self::resolverGeoYProxy($ipAddress);
-            $paisOrigen = $geoData['geo_string'];
-            $isProxy    = $geoData['is_proxy'];
-            $userAgent  = isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 500) : null;
-            
-            $parsedDevice   = self::parseUserAgent($userAgent);
-            $deviceOs       = $parsedDevice['os'];
-            $deviceBrowser  = $parsedDevice['browser'];
-            
-            $urlEndpoint = isset($_SERVER['REQUEST_URI']) ? substr($_SERVER['REQUEST_URI'], 0, 500) : null;
-            $httpMethod  = isset($_SERVER['REQUEST_METHOD']) ? substr($_SERVER['REQUEST_METHOD'], 0, 10) : null;
-            $sessionId   = session_status() === PHP_SESSION_ACTIVE ? session_id() : null;
-            if (empty($sessionId)) { $sessionId = null; }
-            
-            $userRole    = null;
-            if (isset($_SESSION['roles_nombres']) && is_array($_SESSION['roles_nombres'])) {
-                $userRole = implode(', ', $_SESSION['roles_nombres']);
-            }
+            // Obtener contexto de ejecución cacheado (evita llamar IP-API en cada fila)
+            $ctx = self::getContextoAuditoria();
+            $ipAddress     = $ctx['ipAddress'];
+            $paisOrigen    = $ctx['paisOrigen'];
+            $isProxy       = $ctx['isProxy'];
+            $userAgent     = $ctx['userAgent'];
+            $deviceOs      = $ctx['deviceOs'];
+            $deviceBrowser = $ctx['deviceBrowser'];
+            $urlEndpoint   = $ctx['urlEndpoint'];
+            $httpMethod    = $ctx['httpMethod'];
+            $sessionId     = $ctx['sessionId'];
+            $userRole      = $ctx['userRole'];
             
             if ($ipAddress === null) {
                 $stmt->bindValue(':ip_address', null, PDO::PARAM_NULL);
