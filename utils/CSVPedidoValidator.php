@@ -156,10 +156,10 @@ class CSVPedidoValidator
             $errores[] = "numero_orden debe ser numérico entero";
         } elseif (isset($this->pedidosExistentesMap[$numeroOrden]) || in_array($numeroOrden, $this->pedidosExistentes, true)) {
             $errores[] = "numero_orden {$numeroOrden} ya existe en la base de datos";
-        } elseif (isset($this->pedidosVistosEnLote[$numeroOrden])) {
+        } elseif (isset($this->pedidosVistosEnLote[$numeroOrden]) && (int)$this->pedidosVistosEnLote[$numeroOrden] !== (int)$lineNumber) {
             $errores[] = "numero_orden {$numeroOrden} duplicado dentro del mismo archivo (visto antes en línea {$this->pedidosVistosEnLote[$numeroOrden]})";
         } else {
-            $this->pedidosVistosEnLote[$numeroOrden] = $lineNumber;
+            $this->pedidosVistosEnLote[$numeroOrden] = (int)$lineNumber;
         }
         
         // 2. Validar coordenadas geográficas
@@ -459,6 +459,14 @@ class CSVPedidoValidator
     }
     
     /**
+     * Reiniciar el registro de pedidos vistos en el lote actual
+     */
+    public function reiniciarVistos(): void
+    {
+        $this->pedidosVistosEnLote = [];
+    }
+
+    /**
      * Validar lote completo y retornar resumen
      * 
      * @param array $rows Array de filas a validar
@@ -466,7 +474,7 @@ class CSVPedidoValidator
      */
     public function validarLote($rows)
     {
-        $this->pedidosVistosEnLote = [];
+        $this->reiniciarVistos();
         $this->precargarOrdenesLote($rows);
 
         $totalFilas = count($rows);

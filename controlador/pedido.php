@@ -1470,9 +1470,21 @@ class PedidosController
         require_once __DIR__ . '/../utils/CSVHelper.php';
         require_once __DIR__ . '/../modelo/importacion.php';
 
+        ob_start();
+
         $tiempoInicio = microtime(true);
         $isPreview = isset($_POST['preview']) && $_POST['preview'] === '1';
         $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+        $sendJson = function($data, $statusCode = 200) {
+            if (ob_get_level()) {
+                ob_clean();
+            }
+            http_response_code($statusCode);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            exit;
+        };
 
         // Constante para tamaño de chunk
         if (!defined('CHUNK_SIZE')) define('CHUNK_SIZE', 100);
@@ -1482,10 +1494,9 @@ class PedidosController
             if (!isset($_FILES['csv_file'])) {
                 $resp = ['success' => false, 'message' => 'No se recibió el archivo CSV.'];
                 if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode($resp, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-                    exit;
+                    $sendJson($resp);
                 }
+                if (ob_get_level()) ob_end_clean();
                 set_flash('error', $resp['message']);
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
                 exit;
@@ -1495,10 +1506,9 @@ class PedidosController
             if (!$validacion['valido']) {
                 $resp = ['success' => false, 'message' => $validacion['error']];
                 if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode($resp, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-                    exit;
+                    $sendJson($resp);
                 }
+                if (ob_get_level()) ob_end_clean();
                 set_flash('error', $resp['message']);
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
                 exit;
@@ -1582,10 +1592,9 @@ class PedidosController
             if (!empty($missing)) {
                 $msg = 'Faltan columnas requeridas: ' . implode(', ', $missing);
                 if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode(['success' => false, 'message' => $msg], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-                    exit;
+                    $sendJson(['success' => false, 'message' => $msg]);
                 }
+                if (ob_get_level()) ob_end_clean();
                 set_flash('error', $msg);
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
                 exit;
@@ -1747,23 +1756,20 @@ class PedidosController
                     'auto_create_products' => $autoCreateProducts
                 ];
 
-                header('Content-Type: application/json');
-                echo json_encode($previewData, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-                exit;
+                $sendJson($previewData);
             }
 
             // Si NO puede importar (todos con errores), detener
             if (!$resumenValidacion['puede_importar']) {
                 $msg = 'No hay filas válidas para importar. Total de errores: ' . count($resumenValidacion['errores']);
                 if ($isAjax) {
-                    header('Content-Type: application/json');
-                    echo json_encode([
+                    $sendJson([
                         'success' => false,
                         'message' => $msg,
                         'errores' => $resumenValidacion['errores']
-                    ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-                    exit;
+                    ]);
                 }
+                if (ob_get_level()) ob_end_clean();
                 $_SESSION['import_errors'] = $resumenValidacion['errores'];
                 set_flash('error', $msg);
                 header('Location: ' . RUTA_URL . 'pedidos/listar');
@@ -1778,6 +1784,9 @@ class PedidosController
             $erroresFilasErrorneas = [];
             $todosProductosCreados = [];
             $todosPedidosCreados   = []; // acumula [{id, numero_orden, id_proveedor, id_cliente}]
+
+            // Reiniciar registro de pedidos vistos para la pasada de inserción
+            $validator->reiniciarVistos();
 
             for ($i = 0; $i < $totalFilas; $i += CHUNK_SIZE) {
                 $chunk = array_slice($allRows, $i, CHUNK_SIZE);
@@ -1950,10 +1959,10 @@ class PedidosController
             }
 
             if ($isAjax) {
-                header('Content-Type: application/json');
-                echo json_encode($responseData, JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-                exit;
+                $sendJson($responseData);
             }
+
+            if (ob_get_level()) ob_end_clean();
 
             // Para peticiones normales
             if (!empty($todosErrores)) {
@@ -1978,15 +1987,14 @@ class PedidosController
             @file_put_contents($logDir . '/import_errors.log', $dump . "\n\n", FILE_APPEND | LOCK_EX);
 
             if ($isAjax) {
-                header('Content-Type: application/json', true, 500);
-                echo json_encode([
+                $sendJson([
                     'success' => false,
                     'message' => 'Error interno durante la importación. ID: ' . $errorId,
                     'error_id' => $errorId
-                ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
-                exit;
+                ], 500);
             }
 
+            if (ob_get_level()) ob_end_clean();
             set_flash('error', 'Ocurrió un error interno durante la importación. Contacta al administrador con el ID: ' . $errorId);
             header('Location: ' . RUTA_URL . 'pedidos/listar');
             exit;

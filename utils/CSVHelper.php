@@ -326,8 +326,29 @@ class CSVHelper
         // Escribir filas con sus errores
         foreach ($rows as $index => $row) {
             $error = isset($errores[$index]) ? $errores[$index] : 'Error desconocido';
-            $rowConError = array_merge(array_values($row), [$error]);
-            fputcsv($fp, $rowConError, $delimiter);
+            if (is_array($error)) {
+                $error = implode('; ', $error);
+            }
+
+            $rowClean = [];
+            if (!empty($headers)) {
+                foreach ($headers as $colName) {
+                    $val = $row[$colName] ?? '';
+                    if (is_array($val)) {
+                        $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+                    }
+                    $rowClean[] = (string)$val;
+                }
+            } else {
+                foreach ($row as $val) {
+                    if (is_array($val)) {
+                        $val = json_encode($val, JSON_UNESCAPED_UNICODE);
+                    }
+                    $rowClean[] = (string)$val;
+                }
+            }
+            $rowClean[] = (string)$error;
+            fputcsv($fp, $rowClean, $delimiter);
         }
         
         fclose($fp);

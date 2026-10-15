@@ -1485,16 +1485,25 @@ document.addEventListener('DOMContentLoaded', function(){
                 try {
                     json = JSON.parse(xhr.responseText);
                 } catch (e) {
-                    console.error('No JSON response', xhr.responseText);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error de respuesta',
-                        html: `El servidor devolvió una respuesta inválida.<br>
-                               <small class="text-danger">Status: ${xhr.status}</small><br>
-                               <small class="text-muted">Ver consola para detalles</small>`,
-                        confirmButtonText: 'OK'
-                    });
-                    return;
+                    try {
+                        const jsonMatch = xhr.responseText.match(/\{[\s\S]*\}/);
+                        if (jsonMatch) {
+                            json = JSON.parse(jsonMatch[0]);
+                        }
+                    } catch (e2) {}
+
+                    if (!json) {
+                        console.error('No JSON response', xhr.responseText);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error de respuesta',
+                            html: `El servidor devolvió una respuesta inválida.<br>
+                                   <small class="text-danger">Status: ${xhr.status}</small><br>
+                                   <small class="text-muted">Ver consola para detalles</small>`,
+                            confirmButtonText: 'OK'
+                        });
+                        return;
+                    }
                 }
                 
                 if (xhr.status >= 200 && xhr.status < 400) {
