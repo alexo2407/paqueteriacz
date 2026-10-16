@@ -767,11 +767,23 @@ class ThermalLabelService
         // ── 3. FRANJA CENTRAL: NÚMERO DE GUÍA (y = 79, Alto: 9) ──────
         $yMid = $y0 + 75; // 79
         $pdf->Rect($x0, $yMid, $usableW, 9);
+
+        // Reservar espacio a la derecha para bultos (14 mm) y dejar margen de separación
+        $maxWGuia = $usableW - 18; // 54 mm útiles para la guía
+        $fontGuia = 11.5;
+        $pdf->SetFont('Arial', 'B', $fontGuia);
+        while ($fontGuia > 7.0 && $pdf->GetStringWidth($numGuia) > $maxWGuia) {
+            $fontGuia -= 0.3;
+            $pdf->SetFont('Arial', 'B', $fontGuia);
+        }
+
         $pdf->SetXY($x0 + 1.5, $yMid + 1.5);
-        $pdf->SetFont('Arial', 'B', 12);
-        $pdf->Cell(50, 6, $numGuia, 0, 0, 'L');
-        $pdf->SetFont('Arial', 'B', 9.5);
-        $pdf->Cell($usableW - 53, 6, $bultosTexto, 0, 1, 'R');
+        $pdf->Cell($maxWGuia, 6, $numGuia, 0, 0, 'L');
+
+        // Bultos alineado a la derecha con espacio garantizado
+        $pdf->SetXY($x0 + $usableW - 15, $yMid + 1.5);
+        $pdf->SetFont('Arial', 'B', 8.5);
+        $pdf->Cell(13.5, 6, $bultosTexto, 0, 1, 'R');
 
         // ── 4. BLOQUE INFERIOR (y = 88, Alto: 34) ──────────────────────
         $yBot = $yMid + 9; // 88
