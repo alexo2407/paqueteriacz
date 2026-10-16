@@ -783,33 +783,47 @@ class ThermalLabelService
 
         $pdf->SetXY($x0 + 1.5, $yBot + 2);
         $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell(11, 4, 'PAGO:', 0, 0, 'L');
+        $pdf->Cell(11, 3.8, 'PAGO:', 0, 0, 'L');
         $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell($wBotLeft - 13, 4, self::utf8($pago), 0, 1, 'L');
+        $pdf->Cell($wBotLeft - 13, 3.8, self::utf8($pago), 0, 1, 'L');
 
-        $pdf->SetXY($x0 + 1.5, $yBot + 7);
+        $pdf->SetXY($x0 + 1.5, $yBot + 6.5);
         $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell(11, 4, 'Peso:', 0, 0, 'L');
+        $pdf->Cell(11, 3.8, 'Peso:', 0, 0, 'L');
         $pdf->SetFont('Arial', '', 7.5);
-        $pdf->Cell($wBotLeft - 13, 4, $pesoTexto, 0, 1, 'L');
+        $pdf->Cell($wBotLeft - 13, 3.8, $pesoTexto, 0, 1, 'L');
 
-        $pdf->SetXY($x0 + 1.5, $yBot + 12);
+        $pdf->SetXY($x0 + 1.5, $yBot + 11);
         $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell(20, 4, self::utf8('Peso Máximo:'), 0, 0, 'L');
+        $pdf->Cell(20, 3.8, self::utf8('Peso Máximo:'), 0, 0, 'L');
         $pdf->SetFont('Arial', '', 7.5);
-        $pdf->Cell($wBotLeft - 22, 4, $pesoMaxTexto, 0, 1, 'L');
+        $pdf->Cell($wBotLeft - 22, 3.8, $pesoMaxTexto, 0, 1, 'L');
 
-        $pdf->SetXY($x0 + 1.5, $yBot + 17);
+        $pdf->SetXY($x0 + 1.5, $yBot + 15.5);
         $pdf->SetFont('Arial', 'B', 7.2);
-        $pdf->Cell(23, 4, 'Tipo de entrega:', 0, 0, 'L');
+        $pdf->Cell(23, 3.8, 'Tipo de entrega:', 0, 0, 'L');
         $pdf->SetFont('Arial', 'B', 7.5);
-        $pdf->Cell($wBotLeft - 25, 4, $tipoEntrega, 0, 1, 'L');
+        $pdf->Cell($wBotLeft - 25, 3.8, $tipoEntrega, 0, 1, 'L');
 
-        $pdf->SetXY($x0 + 1.5, $yBot + 22);
+        // 4.1.5 Especiales: control estricto de ancho para no tocar el QR
+        $pdf->SetXY($x0 + 1.5, $yBot + 20.2);
         $pdf->SetFont('Arial', 'B', 6.8);
-        $pdf->Cell(16, 3.5, 'Especiales:', 0, 0, 'L');
-        $pdf->SetFont('Arial', '', 6.2);
-        $pdf->Cell($wBotLeft - 18, 3.5, self::utf8(self::truncar($especiales, 28)), 0, 1, 'L');
+        $lblW = $pdf->GetStringWidth('Especiales: ');
+        $pdf->Cell($lblW, 3.2, 'Especiales: ', 0, 0, 'L');
+
+        $maxWEsp = ($wBotLeft - 3) - $lblW; // ~31 mm disponibles en la misma línea
+        $txtEsp = trim($especiales);
+
+        $pdf->SetFont('Arial', '', 6.0);
+        if ($pdf->GetStringWidth(self::utf8($txtEsp)) <= $maxWEsp) {
+            $pdf->Cell($maxWEsp, 3.2, self::utf8($txtEsp), 0, 1, 'L');
+        } else {
+            // Si el texto es largo, salta a la siguiente línea usando el ancho completo disponible (44 mm)
+            $pdf->Ln(3.2);
+            $pdf->SetX($x0 + 1.5);
+            $pdf->SetFont('Arial', '', 5.5);
+            $pdf->MultiCell($wBotLeft - 3, 2.5, self::utf8(self::truncar($txtEsp, 70)), 0, 'L');
+        }
 
         // 4.2 Sub-bloque QR Inferior
         $pdf->Rect($x0 + $wBotLeft, $yBot, $wBotRight, 34);
