@@ -1346,6 +1346,57 @@ document.addEventListener('DOMContentLoaded', function(){
     
     if (!form) return;
     
+    // ================== CASCADA DEPTO -> MUNICIPIO EN OPCIONES AVANZADAS ==================
+    const $deptoSel = $('#default_departamento');
+    const $muniSel = $('#default_municipio');
+    if ($deptoSel.length && $muniSel.length) {
+        // Guardar todas las opciones originales con sus datos de departamento
+        const muniOriginalOptions = [];
+        $muniSel.find('option').each(function() {
+            muniOriginalOptions.push({
+                val: $(this).val(),
+                text: $(this).text(),
+                depto: $(this).data('depto') || ''
+            });
+        });
+
+        $deptoSel.on('change', function() {
+            const deptoVal = ($(this).val() || '').trim().toLowerCase();
+            const currentMuni = $muniSel.val();
+
+            $muniSel.empty();
+            let optionExists = false;
+
+            muniOriginalOptions.forEach(function(opt) {
+                if (!opt.val) {
+                    $muniSel.append(new Option(opt.text, opt.val, false, false));
+                    return;
+                }
+                const optDepto = (opt.depto || '').trim().toLowerCase();
+                if (!deptoVal || optDepto === deptoVal) {
+                    const isSelected = (opt.val === currentMuni);
+                    if (isSelected) optionExists = true;
+                    const newOpt = new Option(opt.text, opt.val, false, isSelected);
+                    $(newOpt).attr('data-depto', opt.depto);
+                    $muniSel.append(newOpt);
+                }
+            });
+
+            if (!optionExists) {
+                $muniSel.val('');
+            }
+            $muniSel.trigger('change.select2');
+        });
+
+        $muniSel.on('change', function() {
+            const selectedOpt = $muniSel.find('option:selected');
+            const deptoVal = selectedOpt.attr('data-depto');
+            if (deptoVal && !$deptoSel.val()) {
+                $deptoSel.val(deptoVal).trigger('change.select2');
+            }
+        });
+    }
+    
     let previewData = null; // Guardar datos de preview
     
     // ================== PREVIEW FLOW ==================
