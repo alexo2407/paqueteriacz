@@ -1,8 +1,8 @@
--- 1. Estructura de tabla: agregar columnas de estación/hub si no existen
+-- 1. Estructura de tabla: agregar columnas de estación/hub
 ALTER TABLE `c807_municipios`
-  ADD COLUMN IF NOT EXISTS `codigo_estacion` VARCHAR(10) NULL COMMENT 'Código de Estación/Hub (ej. HAHU, PLL, HTOR)' AFTER `nombre`,
-  ADD COLUMN IF NOT EXISTS `estacion` VARCHAR(100) NULL COMMENT 'Nombre de la Estación/Hub' AFTER `codigo_estacion`,
-  ADD COLUMN IF NOT EXISTS `codigo_distrito` VARCHAR(100) NULL COMMENT 'Código oficial del distrito C807' AFTER `estacion`;
+  ADD COLUMN `codigo_estacion` VARCHAR(10) NULL COMMENT 'Código de Estación/Hub (ej. HAHU, PLL, HTOR)' AFTER `nombre`,
+  ADD COLUMN `estacion` VARCHAR(100) NULL COMMENT 'Nombre de la Estación/Hub' AFTER `codigo_estacion`,
+  ADD COLUMN `codigo_distrito` VARCHAR(100) NULL COMMENT 'Código oficial del distrito C807' AFTER `estacion`;
 
 -- 2. Catálogo oficial de distritos y estaciones C807 Express (262 distritos)
 INSERT INTO `c807_municipios` (`id`, `c807_departamento_id`, `nombre`, `codigo_estacion`, `estacion`, `codigo_distrito`) VALUES
