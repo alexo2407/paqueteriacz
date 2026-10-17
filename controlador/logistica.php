@@ -3166,7 +3166,7 @@ class LogisticaController {
 
         $externalId = $log['external_order_id'] ?? null;
         $responseDecoded = json_decode($log['response_payload'] ?? '{}', true) ?: [];
-        $shipmentId = $externalId ?: ($responseDecoded['id'] ?? $responseDecoded['external_order_id'] ?? null);
+        $shipmentId = $responseDecoded['id'] ?? $externalId ?? ($responseDecoded['external_order_id'] ?? null);
         $trackingNumber = $responseDecoded['tracking_number'] ?? $responseDecoded['order_number'] ?? null;
 
         try {

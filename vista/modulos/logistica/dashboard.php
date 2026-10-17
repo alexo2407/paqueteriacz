@@ -614,9 +614,13 @@ include "vista/includes/header.php";
                                     </div>
                                     <?php endif; ?>
 
-                                    <?php if (!empty($p['numero_traking'])): ?>
+                                    <?php 
+                                    // Mostrar external_order_id / tracking solo para ese cliente (EconGlobal Panamá / HL Express)
+                                    $esEconGlobal = ($p['id_cliente'] == 21 || $p['id_proveedor'] == 26 || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
+                                    if (!empty($p['numero_traking']) && $esEconGlobal): 
+                                    ?>
                                     <div class="d-flex align-items-center mb-2">
-                                        <span class="badge bg-primary font-monospace" title="Número de Tracking">
+                                        <span class="badge bg-primary font-monospace" title="External Order ID / Tracking">
                                             <i class="bi bi-upc-scan me-1"></i><?= htmlspecialchars($p['numero_traking']) ?>
                                         </span>
                                     </div>

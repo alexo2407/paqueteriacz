@@ -56,11 +56,13 @@ class HLExpressProvider extends BaseProvider
             'http_status'       => $httpStatus,
         ];
 
-        // Extraer ID de la respuesta
-        if (isset($data['id'])) {
-            $result['external_order_id'] = (string)$data['id'];
-        } elseif (isset($data['external_order_id'])) {
+        // Extraer número de orden externo / guía legible de la respuesta (priorizar external_order_id / tracking_number)
+        if (!empty($data['external_order_id'])) {
             $result['external_order_id'] = (string)$data['external_order_id'];
+        } elseif (!empty($data['tracking_number'])) {
+            $result['external_order_id'] = (string)$data['tracking_number'];
+        } elseif (isset($data['id'])) {
+            $result['external_order_id'] = (string)$data['id'];
         }
 
         if (!$result['success']) {
