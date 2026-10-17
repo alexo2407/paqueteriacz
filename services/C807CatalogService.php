@@ -17,7 +17,7 @@ class C807CatalogService
      * @param int|null $idMunInterno
      * @param string $depNombre
      * @param string $munNombre
-     * @return array ['success' => bool, 'c807_departamento_id' => int, 'c807_municipio_id' => int, 'message' => string]
+     * @return array ['success' => bool, 'c807_departamento_id' => int, 'c807_municipio_id' => int, 'codigo_estacion' => string|null, 'estacion' => string|null, 'message' => string]
      */
     public static function resolverUbicacionC807(?int $idDepInterno, ?int $idMunInterno, string $depNombre = '', string $munNombre = ''): array
     {
@@ -27,7 +27,8 @@ class C807CatalogService
             // 1. Intentar resolver por relación directa en c807_municipios y c807_departamentos
             if ($idMunInterno && $idMunInterno > 0) {
                 $stmt = $db->prepare("
-                    SELECT m.id AS c807_mun_id, m.c807_departamento_id AS c807_dep_id
+                    SELECT m.id AS c807_mun_id, m.c807_departamento_id AS c807_dep_id,
+                           m.codigo_estacion, m.estacion, m.nombre AS mun_nombre
                     FROM c807_municipios m
                     WHERE m.id_municipio_interno = :id_mun_interno
                     LIMIT 1
@@ -39,36 +40,78 @@ class C807CatalogService
                         'success'               => true,
                         'c807_departamento_id'  => (int)$direct['c807_dep_id'],
                         'c807_municipio_id'     => (int)$direct['c807_mun_id'],
+                        'codigo_estacion'       => $direct['codigo_estacion'] ?? null,
+                        'estacion'              => $direct['estacion'] ?? null,
                         'message'               => 'Homologación directa encontrada por ID interno.',
                     ];
                 }
             }
 
-            // 2. Si no hay mapeo por ID numérico pero tenemos nombres, intentar coincidencia normalizada
+            // 2. Coincidencia por nombres normalizados
             $munNorm = self::normalizarTexto($munNombre);
             $depNorm = self::normalizarTexto($depNombre);
 
+            // Diccionario de alias comunes para El Salvador (reforma territorial / nombres coloquiales)
+            $aliasDistritos = [
+                'delgado'            => 'ciudaddelgado',
+                'escalon'            => 'sansalvador',
+                'coloniaescalon'     => 'sansalvador',
+                'eldelirio'          => 'sanmiguel',
+                'delirio'            => 'sanmiguel',
+                'puertolalibertad'   => 'lalibertad',
+                'sansalvadorcentro'  => 'sansalvador',
+                'sansalvadorsur'     => 'sansalvador',
+                'sansalvadoreste'    => 'soyapango',
+                'sansalvadoroeste'   => 'apopa',
+                'sansalvadornorte'   => 'aguilares',
+                'lalibertadcentro'   => 'santatecla',
+                'lalibertadsur'      => 'santatecla',
+                'lalibertadnorte'    => 'quezaltepeque',
+                'lalibertadoeste'    => 'colon',
+                'lalibertadcosta'    => 'lalibertad',
+                'mercedesdelaceiba'  => 'mercedeslaceiba',
+                'sanrafaeldeoriente' => 'sanrafaeloriente',
+            ];
+
+            if (isset($aliasDistritos[$munNorm])) {
+                $munNorm = $aliasDistritos[$munNorm];
+            }
+
             if ($munNorm !== '') {
-                // Buscar municipios coincidentes en c807_municipios
+                // Obtener todos los distritos C807 con su departamento y datos de estación
                 $stmt = $db->prepare("
                     SELECT m.id AS c807_mun_id, m.c807_departamento_id AS c807_dep_id, m.nombre AS mun_nombre,
-                           d.nombre AS dep_nombre
+                           d.nombre AS dep_nombre, m.codigo_estacion, m.estacion
                     FROM c807_municipios m
                     INNER JOIN c807_departamentos d ON d.id = m.c807_departamento_id
                 ");
                 $stmt->execute();
                 $allMun = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+                // Paso A: Coincidencia exacta de distrito
                 $candidatos = [];
                 foreach ($allMun as $row) {
                     $c807MunNorm = self::normalizarTexto($row['mun_nombre']);
                     $c807DepNorm = self::normalizarTexto($row['dep_nombre']);
 
-                    // Coincidencia exacta de municipio
                     if ($c807MunNorm === $munNorm) {
-                        // Si también coincide departamento o no se especificó departamento, es candidato fuerte
                         if ($depNorm === '' || $c807DepNorm === $depNorm || strpos($c807DepNorm, $depNorm) !== false || strpos($depNorm, $c807DepNorm) !== false) {
                             $candidatos[] = $row;
+                        }
+                    }
+                }
+
+                // Paso B: Si no hubo coincidencia exacta, probar subcadenas si viene departamento especificado
+                if (empty($candidatos) && $depNorm !== '') {
+                    foreach ($allMun as $row) {
+                        $c807MunNorm = self::normalizarTexto($row['mun_nombre']);
+                        $c807DepNorm = self::normalizarTexto($row['dep_nombre']);
+
+                        $mismoDepto = ($c807DepNorm === $depNorm || strpos($c807DepNorm, $depNorm) !== false || strpos($depNorm, $c807DepNorm) !== false);
+                        if ($mismoDepto) {
+                            if (strpos($c807MunNorm, $munNorm) !== false || strpos($munNorm, $c807MunNorm) !== false) {
+                                $candidatos[] = $row;
+                            }
                         }
                     }
                 }
@@ -76,7 +119,6 @@ class C807CatalogService
                 // Si encontramos exactamente una coincidencia inequívoca
                 if (count($candidatos) === 1) {
                     $cand = $candidatos[0];
-                    // Si tenemos ID interno, auto-asociarlo para optimizar futuras búsquedas
                     if ($idMunInterno && $idMunInterno > 0) {
                         try {
                             $upd = $db->prepare("UPDATE c807_municipios SET id_municipio_interno = :id_interno WHERE id = :id AND id_municipio_interno IS NULL");
@@ -88,6 +130,8 @@ class C807CatalogService
                         'success'              => true,
                         'c807_departamento_id' => (int)$cand['c807_dep_id'],
                         'c807_municipio_id'    => (int)$cand['c807_mun_id'],
+                        'codigo_estacion'      => $cand['codigo_estacion'] ?? null,
+                        'estacion'             => $cand['estacion'] ?? null,
                         'message'              => 'Homologación unívoca resuelta por nombre: ' . $cand['mun_nombre'],
                     ];
                 }

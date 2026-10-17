@@ -15,6 +15,7 @@
  */
 
 require_once __DIR__ . '/../libs/PDF_Code128.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
@@ -473,6 +474,31 @@ class ThermalLabelService
     }
 
     /**
+     * Obtiene un directorio temporal con permisos de escritura garantizados para Apache y CLI
+     */
+    private static function obtenerDirectorioTemporal(): string
+    {
+        $candidatos = [
+            '/Applications/XAMPP/xamppfiles/temp',
+            '/private/tmp',
+            '/tmp',
+            sys_get_temp_dir(),
+        ];
+
+        foreach ($candidatos as $dir) {
+            if (!empty($dir) && is_dir($dir) && is_writable($dir)) {
+                return rtrim($dir, '/\\');
+            }
+        }
+
+        $local = __DIR__ . '/../temp';
+        if (!is_dir($local)) {
+            @mkdir($local, 0777, true);
+        }
+        return is_writable($local) ? $local : sys_get_temp_dir();
+    }
+
+    /**
      * Genera un archivo temporal PNG con el código QR usando chillerlan/php-qrcode
      */
     private static function generarImagenQR(string $data): ?string
@@ -490,8 +516,13 @@ class ThermalLabelService
             $qrcode = new QRCode($options);
             $rawImage = $qrcode->render($data);
 
-            $tempPath = tempnam(sys_get_temp_dir(), 'qr_3nstar_') . '.png';
-            file_put_contents($tempPath, $rawImage);
+            $tempDir = self::obtenerDirectorioTemporal();
+            $tempPath = $tempDir . '/qr_3nstar_' . bin2hex(random_bytes(8)) . '.png';
+            if (file_put_contents($tempPath, $rawImage) === false) {
+                error_log("ThermalLabelService::generarImagenQR: no se pudo escribir en {$tempPath}");
+                return null;
+            }
+
             return $tempPath;
         } catch (\Throwable $e) {
             error_log('Error generando QR térmica: ' . $e->getMessage());
@@ -551,6 +582,44 @@ class ThermalLabelService
         $depNombre = trim($p['departamento_nombre'] ?? $p['departmentName'] ?? '');
         $norm = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $depNombre)));
         return self::$c807DeptosCache[$norm] ?? 'SLV';
+    }
+
+    private static $c807EstacionCache = null;
+
+    /**
+     * Resuelve el código de estación/Hub (ej. HAHU, PLL, HTOR) según el municipio/distrito del pedido
+     */
+    private static function getC807EstacionCodigo(array $p): string
+    {
+        if (self::$c807EstacionCache === null) {
+            self::$c807EstacionCache = [];
+            try {
+                require_once __DIR__ . '/../modelo/conexion.php';
+                $db = (new Conexion())->conectar();
+                $rows = $db->query("
+                    SELECT m.nombre, m.codigo_estacion, d.nombre AS dep_nombre
+                    FROM c807_municipios m
+                    INNER JOIN c807_departamentos d ON d.id = m.c807_departamento_id
+                    WHERE m.codigo_estacion IS NOT NULL AND m.codigo_estacion != ''
+                ")->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($rows as $r) {
+                    $normMun = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $r['nombre'])));
+                    $normDep = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $r['dep_nombre'])));
+                    self::$c807EstacionCache[$normDep . '|' . $normMun] = strtoupper(trim($r['codigo_estacion']));
+                    self::$c807EstacionCache[$normMun] = strtoupper(trim($r['codigo_estacion']));
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        $depNombre = trim($p['departamento_nombre'] ?? $p['departmentName'] ?? '');
+        $munNombre = trim($p['municipio_nombre'] ?? $p['municipalitiesName'] ?? '');
+        $normDep = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $depNombre)));
+        $normMun = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', iconv('UTF-8', 'ASCII//TRANSLIT', $munNombre)));
+
+        return self::$c807EstacionCache[$normDep . '|' . $normMun] 
+            ?? self::$c807EstacionCache[$normMun] 
+            ?? 'PLL';
     }
 
     /**
@@ -622,7 +691,7 @@ class ThermalLabelService
         $contenido = implode('; ', $itemsArr);
 
         // Parámetros C807
-        $estacion      = 'PLL';
+        $estacion      = self::getC807EstacionCodigo($p);
         $codigoDepto   = self::getC807DeptoCodigo($p);
         $distrito      = strtoupper(trim($p['municipio_nombre'] ?? $p['municipalitiesName'] ?? 'SAN SALVADOR'));
         $totalCobrar   = floatval($p['precio_total_local'] ?? ($p['precio_local'] ?? 0));
