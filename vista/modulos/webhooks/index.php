@@ -567,8 +567,11 @@ function abrirModalLog(id) {
             const httpColor = (log.response_code >= 200 && log.response_code < 300) ? 'text-success' : 'text-danger';
 
             let reqJson = '{}', resJson = '{}';
-            try { reqJson = JSON.stringify(JSON.parse(log.request_body  || '{}'), null, 2); } catch(e){}
-            try { resJson = JSON.stringify(JSON.parse(log.response_body || '{}'), null, 2); } catch(e){}
+            try { reqJson = JSON.stringify(JSON.parse(log.request_body  || '{}'), null, 2); } catch(e){ reqJson = log.request_body || '{}'; }
+            try { resJson = JSON.stringify(JSON.parse(log.response_body || '{}'), null, 2); } catch(e){ resJson = log.response_body || log.error_message || '{}'; }
+            if ((!resJson || resJson === '{}') && log.error_message) {
+                resJson = log.error_message;
+            }
 
             body.innerHTML = `
               <div class="row g-2 mb-3">

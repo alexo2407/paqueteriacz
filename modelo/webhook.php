@@ -207,6 +207,41 @@ class WebhookModel
     }
 
     /**
+     * Homologar el estado interno hacia los estados soportados por APIs externas (ej. LogisPro).
+     *
+     * LogisPro admite oficialmente:
+     * - 'En ruta o proceso'
+     * - 'Entregado'
+     * - 'Rechazado'
+     * - 'Devuelto'
+     * - 'Reprogramado'
+     * - 'Domicilio cerrado'
+     * - 'Domicilio no encontrado'
+     *
+     * @param string $estado Nombre del estado interno
+     * @return string Estado homologado
+     */
+    public static function homologarEstado(string $estado): string
+    {
+        $trim = trim($estado);
+        $map = [
+            'Incidencia'                            => 'Rechazado',
+            'No puede pagar recaudo'                => 'Rechazado',
+            'Cancelado'                             => 'Rechazado',
+            'Devolución – entregado a bodega'       => 'Devuelto',
+            'Devolución - entregado a bodega'       => 'Devuelto',
+            'Pendiente recolección por mensajería'  => 'En ruta o proceso',
+            'Pendiente recolección por mensajería ' => 'En ruta o proceso',
+            'Recolectado por mensajería'            => 'En ruta o proceso',
+            'Traslado a punto de distribución'      => 'En ruta o proceso',
+            'En bodega'                             => 'En ruta o proceso',
+            'Disponible para retirar en Agencia'    => 'Reprogramado',
+            'Correo'                                => 'En ruta o proceso',
+        ];
+        return $map[$trim] ?? $trim;
+    }
+
+    /**
      * Enviar cambio de estado al API del cliente.
      *
      * @param string      $jwt Token de autenticación
@@ -214,20 +249,26 @@ class WebhookModel
      * @param string      $numeroOrden Número de orden del pedido
      * @param string      $estadoNombre Nombre del nuevo estado
      * @param string|null $notes Observaciones/comentario del cambio de estado
-     * @return array ['success' => bool, 'http_code' => int, 'response' => string]
+     * @return array ['success' => bool, 'http_code' => int, 'response' => string, 'payload' => string, 'estado_enviado' => string]
      */
     public static function enviarCambioEstado(string $jwt, array $config, string $numeroOrden, string $estadoNombre, ?string $notes = null): array
     {
+        $estadoEnviado = self::homologarEstado($estadoNombre);
         $notesValue = is_string($notes) ? trim($notes) : '';
+        if ($estadoEnviado !== $estadoNombre && !str_contains($notesValue, "[$estadoNombre]")) {
+            $notesValue = trim("[$estadoNombre] " . $notesValue);
+        }
+
         $payload = json_encode([
             'customersId' => (int)$config['customers_id'],
             'orderNumber' => $numeroOrden,
-            'state'       => $estadoNombre,
+            'state'       => $estadoEnviado,
             'auditUser'   => $config['auth_user'],
             'Notes'       => $notesValue
         ]);
 
-        $ch = curl_init($config['url_webhook']);
+        $urlWebhook = !empty($config['url_webhook']) ? $config['url_webhook'] : ($config['url_cambio_estado'] ?? '');
+        $ch = curl_init($urlWebhook);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
@@ -238,26 +279,32 @@ class WebhookModel
             ],
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => 15,
-            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_CONNECTTIMEOUT => 6,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false,
         ]);
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $response  = curl_exec($ch);
+        $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $curlError = curl_error($ch);
         curl_close($ch);
 
         if ($curlError) {
             return [
-                'success'   => false,
-                'http_code' => 0,
-                'response'  => "cURL error: $curlError"
+                'success'        => false,
+                'http_code'      => $httpCode ?: 0,
+                'response'       => "cURL error: $curlError",
+                'payload'        => $payload,
+                'estado_enviado' => $estadoEnviado
             ];
         }
 
         return [
-            'success'   => ($httpCode >= 200 && $httpCode < 300),
-            'http_code' => $httpCode,
-            'response'  => $response
+            'success'        => ($httpCode >= 200 && $httpCode < 300),
+            'http_code'      => $httpCode,
+            'response'       => $response,
+            'payload'        => $payload,
+            'estado_enviado' => $estadoEnviado
         ];
     }
 
@@ -347,10 +394,10 @@ class WebhookModel
             $resultado = self::enviarCambioEstado($jwt, $config, $numeroOrden, $estadoNombre, $notesValue);
 
             // 4. Registrar log
-            $requestBody = json_encode([
+            $requestBody = $resultado['payload'] ?? json_encode([
                 'customersId' => (int)$config['customers_id'],
                 'orderNumber' => $numeroOrden,
-                'state'       => $estadoNombre,
+                'state'       => $resultado['estado_enviado'] ?? $estadoNombre,
                 'auditUser'   => $config['auth_user'],
                 'Notes'       => $notesValue
             ]);
@@ -359,7 +406,7 @@ class WebhookModel
                 $config['id'],
                 $idPedido,
                 $numeroOrden,
-                $estadoNombre,
+                $resultado['estado_enviado'] ?? $estadoNombre,
                 $requestBody,
                 $resultado['http_code'],
                 $resultado['success'] ? 'ok' : 'error',
@@ -476,21 +523,29 @@ class WebhookModel
      */
     private static function enviarLoteMulti(string $jwt, array $config, array $pedidos, int $concurrency = 15): void
     {
+        $urlWebhook = !empty($config['url_webhook']) ? $config['url_webhook'] : ($config['url_cambio_estado'] ?? '');
         $chunks = array_chunk($pedidos, $concurrency);
         foreach ($chunks as $chunk) {
             $mh = curl_multi_init();
             $handles = [];
 
             foreach ($chunk as $idx => $p) {
+                $estadoOriginal = (string)$p['estado_nombre'];
+                $estadoEnviado  = self::homologarEstado($estadoOriginal);
+                $notes = (string)($p['notes'] ?? '');
+                if ($estadoEnviado !== $estadoOriginal && !str_contains($notes, "[$estadoOriginal]")) {
+                    $notes = trim("[$estadoOriginal] " . $notes);
+                }
+
                 $payload = json_encode([
                     'customersId' => (int)$config['customers_id'],
-                    'orderNumber' => $p['numero_orden'],
-                    'state'       => $p['estado_nombre'],
+                    'orderNumber' => (string)$p['numero_orden'],
+                    'state'       => $estadoEnviado,
                     'auditUser'   => $config['auth_user'],
-                    'Notes'       => $p['notes']
+                    'Notes'       => $notes
                 ]);
 
-                $ch = curl_init($config['url_cambio_estado']);
+                $ch = curl_init($urlWebhook);
                 curl_setopt_array($ch, [
                     CURLOPT_POST           => true,
                     CURLOPT_POSTFIELDS     => $payload,
@@ -500,15 +555,18 @@ class WebhookModel
                         'Authorization: Bearer ' . $jwt
                     ],
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_TIMEOUT        => 8,
-                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_TIMEOUT        => 12,
+                    CURLOPT_CONNECTTIMEOUT => 6,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
                 ]);
 
                 curl_multi_add_handle($mh, $ch);
                 $handles[$idx] = [
-                    'ch'      => $ch,
-                    'pedido'  => $p,
-                    'payload' => $payload
+                    'ch'             => $ch,
+                    'pedido'         => $p,
+                    'payload'        => $payload,
+                    'estado_enviado' => $estadoEnviado
                 ];
             }
 
@@ -524,9 +582,10 @@ class WebhookModel
                 $ch = $h['ch'];
                 $p = $h['pedido'];
                 $payload = $h['payload'];
+                $estadoEnviado = $h['estado_enviado'];
 
                 $response  = curl_multi_getcontent($ch);
-                $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $httpCode  = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 $curlError = curl_error($ch);
 
                 curl_multi_remove_handle($mh, $ch);
@@ -534,13 +593,13 @@ class WebhookModel
 
                 $success   = ($httpCode >= 200 && $httpCode < 300);
                 $statusStr = $success ? 'ok' : 'error';
-                $errMsg    = $curlError ?: ($success ? null : substr($response, 0, 500));
+                $errMsg    = $curlError ?: ($success ? null : substr((string)$response, 0, 500));
 
                 self::registrarLog(
                     (int)$config['id'],
                     (int)$p['id_pedido'],
                     (string)$p['numero_orden'],
-                    (string)$p['estado_nombre'],
+                    (string)$estadoEnviado,
                     $payload,
                     $httpCode ?: null,
                     $statusStr,
