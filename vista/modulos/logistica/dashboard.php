@@ -608,21 +608,14 @@ include "vista/includes/header.php";
                                         <i class="bi bi-telephone me-1"></i> <?= htmlspecialchars($p['telefono']) ?>
                                     </div>
 
-                                    <?php if (canViewCourier() && !empty($p['courier_service'])): ?>
-                                    <div class="d-flex align-items-center mb-2">
-                                        <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars(getDisplayCourierName($p['courier_service']) ?? '') ?></span>
-                                    </div>
-                                    <?php endif; ?>
-
                                     <?php 
-                                    // Mostrar external_order_id / tracking solo para ese cliente (EconGlobal Panamá / HL Express)
                                     $esEconGlobal = ($p['id_cliente'] == 21 || $p['id_proveedor'] == 26 || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
-                                    if (!empty($p['numero_traking']) && $esEconGlobal): 
+                                    $showCourier = (canViewCourier() || $esEconGlobal) && !empty($p['courier_service']);
+                                    if ($showCourier): 
+                                        $displayCourier = getDisplayCourierName($p['courier_service']) ?: $p['courier_service'];
                                     ?>
                                     <div class="d-flex align-items-center mb-2">
-                                        <span class="badge bg-primary font-monospace" title="External Order ID / Tracking">
-                                            <i class="bi bi-upc-scan me-1"></i><?= htmlspecialchars($p['numero_traking']) ?>
-                                        </span>
+                                        <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars($displayCourier) ?></span>
                                     </div>
                                     <?php endif; ?>
 
@@ -923,12 +916,17 @@ include "vista/includes/header.php";
                                         <small class="text-muted"><?= htmlspecialchars($p['direccion']) ?></small>
                                     </td>
                                     <td>
-                                        <?php if (canViewCourier() && !empty($p['courier_service'])): ?>
-                                            <span class="badge bg-info text-dark"><?= htmlspecialchars(getDisplayCourierName($p['courier_service']) ?? '') ?></span>
+                                        <?php 
+                                        $esEconGlobalH = ($p['id_cliente'] == 21 || $p['id_proveedor'] == 26 || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
+                                        $showCourierH = (canViewCourier() || $esEconGlobalH) && !empty($p['courier_service']);
+                                        if ($showCourierH): 
+                                            $displayCourierH = getDisplayCourierName($p['courier_service']) ?: $p['courier_service'];
+                                        ?>
+                                            <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars($displayCourierH) ?></span>
                                         <?php else: ?>
                                             <span class="text-muted small">—</span>
                                         <?php endif; ?>
-                                        <?php if (!empty($p['numero_traking'])): ?>
+                                        <?php if (isAdmin() && !empty($p['numero_traking'])): ?>
                                             <span class="badge bg-primary font-monospace d-block mt-1" title="Tracking">
                                                 <i class="bi bi-upc-scan"></i> <?= htmlspecialchars($p['numero_traking']) ?>
                                             </span>

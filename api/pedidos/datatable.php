@@ -39,8 +39,20 @@ $start  = (int)($_REQUEST['start']  ?? 0);
 $length = (int)($_REQUEST['length'] ?? 25);
 $search = trim($_REQUEST['search']['value'] ?? '');
 
-// Columnas mapeadas (índice DataTables → columna SQL segura)
-$columnasMapeadas = [
+// Columnas mapeadas (soporta búsqueda por nombre de dato o índice numérico seguro)
+$orderCol  = (int)($_REQUEST['order'][0]['column'] ?? 0);
+$orderDir  = strtoupper($_REQUEST['order'][0]['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
+$colData   = $_REQUEST['columns'][$orderCol]['data'] ?? null;
+
+$mapaPorCampo = [
+    'numero_traking'  => 'p.numero_traking',
+    'Numero_Orden'    => 'p.numero_orden',
+    'Cliente'         => 'p.destinatario',
+    'courier_service' => 'p.courier_service',
+    'Comentario'      => 'p.comentario',
+    'Estado'          => 'ep.nombre_estado',
+];
+$columnasMapeadasIndex = [
     0 => 'p.numero_traking',
     1 => 'p.numero_orden',
     2 => 'p.destinatario',
@@ -48,9 +60,8 @@ $columnasMapeadas = [
     4 => 'p.comentario',
     5 => 'ep.nombre_estado',
 ];
-$orderCol  = (int)($_REQUEST['order'][0]['column'] ?? 0);
-$orderDir  = strtoupper($_REQUEST['order'][0]['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-$orderSql  = ($columnasMapeadas[$orderCol] ?? 'p.id') . ' ' . $orderDir;
+$colSql = $mapaPorCampo[$colData] ?? ($columnasMapeadasIndex[$orderCol] ?? 'p.id');
+$orderSql = $colSql . ' ' . $orderDir;
 
 // ── Restricciones por rol ──────────────────────────────────────────────────
 // Replicar exactamente PedidoQueryService::listarExtendidos()
@@ -168,6 +179,15 @@ try {
             }
             unset($r);
         }
+    }
+
+    // Omitir numero_traking para EconGlobal Panamá / clientes HL Express si no es admin
+    $esClienteEconGlobal = ($userId == 21 || $userId == 26 || stripos($_SESSION['nombre'] ?? '', 'econglobal') !== false);
+    if (!$isAdmin && $esClienteEconGlobal) {
+        foreach ($rows as &$r) {
+            $r['numero_traking'] = null;
+        }
+        unset($r);
     }
 
     echo json_encode([

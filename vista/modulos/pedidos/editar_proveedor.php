@@ -464,7 +464,13 @@ $selectDisabledClient = $esCliente ? 'disabled' : ''; // Selects disabled are no
 
                                     <!-- Code City Field (HLExpress city_dane_code) -->
                                     <div class="col-md-6 mb-3">
-                                        <label for="code_city" class="form-label">Código Ciudad <span class="badge bg-info text-dark" title="Usado por HLExpress como city_dane_code">HLExpress</span></label>
+                                        <?php 
+                                        require_once __DIR__ . '/../../../utils/permissions.php';
+                                        $aliasCourierEp = getCourierAlias();
+                                        $courierRealEp = !empty($pedido['courier_service']) ? $pedido['courier_service'] : 'HL Express';
+                                        $courierBadgeTextEp = !empty($aliasCourierEp) ? $aliasCourierEp : (getDisplayCourierName($courierRealEp) ?: $courierRealEp);
+                                        ?>
+                                        <label for="code_city" class="form-label">Código Ciudad <span class="badge bg-info text-dark" title="Usado por <?= htmlspecialchars($courierBadgeTextEp) ?> como city_dane_code"><?= htmlspecialchars($courierBadgeTextEp) ?></span></label>
                                         <input type="text" class="form-control" id="code_city" name="code_city" placeholder="Ej: 100075918" value="<?= htmlspecialchars($pedido['code_city'] ?? '') ?>">
                                     </div>
                                 </div>

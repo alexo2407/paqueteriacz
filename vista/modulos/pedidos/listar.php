@@ -5,6 +5,27 @@ require_once "utils/permissions.php";
 require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
 $puedeVerCourier = canViewCourier();
 
+// Omitir columna Tracking para clientes de HL Express (EconGlobal Panamá)
+$userIdActual = (int)($_SESSION['user_id'] ?? ($_SESSION['idUsuario'] ?? 0));
+$userNombreActual = $_SESSION['nombre'] ?? '';
+$esClienteHLExpress = ($userIdActual == 21 || $userIdActual == 26 || stripos($userNombreActual, 'econglobal') !== false);
+if (!$esClienteHLExpress && $userIdActual > 0 && !isAdmin()) {
+    try {
+        require_once "modelo/conexion.php";
+        $dbTmp = (new Conexion())->conectar();
+        $stHl = $dbTmp->prepare("
+            SELECT COUNT(*) FROM forwarding_rules r 
+            INNER JOIN forwarding_providers p ON p.id = r.id_provider 
+            WHERE p.slug = 'hlexpress' AND r.id_cliente = :uid AND r.activo = 1
+        ");
+        $stHl->execute([':uid' => $userIdActual]);
+        if ((int)$stHl->fetchColumn() > 0) {
+            $esClienteHLExpress = true;
+        }
+    } catch (\Throwable $t) {}
+}
+$puedeVerTracking = isAdmin() || !$esClienteHLExpress;
+
 include("vista/includes/header.php");
 ?>
 
@@ -1032,7 +1053,9 @@ require_once __DIR__ . '/../../../utils/permissions.php';
             <table id="tblPedidos" class="table table-striped">
                 <thead>
                     <tr>
+                        <?php if ($puedeVerTracking): ?>
                         <th>Tracking</th>
+                        <?php endif; ?>
                         <th>Número de Orden</th>
                         <th>Destinatario</th>
                         <?php if ($puedeVerCourier): ?>
@@ -1162,20 +1185,24 @@ $(document).ready(function() {
             }
         },
         columns: (function() {
-            var cols = [
-                {
-                    data: 'numero_traking',
-                    title: 'Tracking',
-                    orderable: false,
-                    render: function(data) {
-                        if (!data) return '<span class="text-muted">—</span>';
-                        return '<span class="badge fw-normal" style="background:#0d6efd;color:#fff;font-size:.7rem;letter-spacing:.02em;font-family:monospace">'
-                             + '<i class="bi bi-upc" style="font-size:.65rem;"></i> ' + data + '</span>';
-                    }
-                },
+            var cols = [];
+            <?php if ($puedeVerTracking): ?>
+            cols.push({
+                data: 'numero_traking',
+                title: 'Tracking',
+                orderable: false,
+                render: function(data) {
+                    if (!data) return '<span class="text-muted">—</span>';
+                    return '<span class="badge fw-normal" style="background:#0d6efd;color:#fff;font-size:.7rem;letter-spacing:.02em;font-family:monospace">'
+                         + '<i class="bi bi-upc" style="font-size:.65rem;"></i> ' + data + '</span>';
+                }
+            });
+            <?php endif; ?>
+
+            cols.push(
                 { data: 'Numero_Orden',   title: 'Nº Orden' },
                 { data: 'Cliente',        title: 'Destinatario' }
-            ];
+            );
 
             <?php if ($puedeVerCourier): ?>
             cols.push({
@@ -1211,7 +1238,7 @@ $(document).ready(function() {
 
             return cols;
         })(),
-        order: [[1, 'desc']],
+        order: [[<?= $puedeVerTracking ? 1 : 0 ?>, 'desc']],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         dom: 'Bfrtip',

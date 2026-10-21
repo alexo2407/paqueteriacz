@@ -419,7 +419,13 @@ if (!empty($fechaEntregaRaw)) {
                                     <?php endif; ?>
                                     <?php if (!empty($pedido['code_city'])): ?>
                                     <div class="col-12">
-                                        <dt>Código Ciudad <span class="badge bg-info text-dark" style="font-size:0.7em;" title="Usado por HLExpress como city_dane_code">HLExpress</span></dt>
+                                        <?php 
+                                        require_once __DIR__ . '/../../../utils/permissions.php';
+                                        $aliasCourier = getCourierAlias();
+                                        $courierReal = !empty($pedido['courier_service']) ? $pedido['courier_service'] : 'HL Express';
+                                        $courierBadgeText = !empty($aliasCourier) ? $aliasCourier : (getDisplayCourierName($courierReal) ?: $courierReal);
+                                        ?>
+                                        <dt>Código Ciudad <span class="badge bg-info text-dark" style="font-size:0.7em;" title="Usado por <?= htmlspecialchars($courierBadgeText) ?> como city_dane_code"><?= htmlspecialchars($courierBadgeText) ?></span></dt>
                                         <dd><?= htmlspecialchars($pedido['code_city']) ?></dd>
                                     </div>
                                     <?php endif; ?>
