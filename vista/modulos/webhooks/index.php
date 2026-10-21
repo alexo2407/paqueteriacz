@@ -189,12 +189,15 @@ $hayFiltros = ($filtroDesde || $filtroHasta || $filtroWebhook || $filtroStatus);
             <div class="col-6"><small class="text-muted">Auth User:</small><br><code><?= htmlspecialchars($cfg['auth_user']) ?></code></div>
             <div class="col-6"><small class="text-muted">CustomersId:</small><br><code><?= $cfg['customers_id'] ?? 'N/A' ?></code></div>
           </div>
-          <hr class="my-2">
-          <div class="d-flex justify-content-between">
+          <div class="d-flex justify-content-between mb-3">
             <span class="badge bg-success"><i class="bi bi-check-circle"></i> <?= $cfg['total_ok'] ?> OK</span>
             <span class="badge bg-danger"><i class="bi bi-x-circle"></i> <?= $cfg['total_error'] ?> Err</span>
             <span class="badge bg-primary"><i class="bi bi-list"></i> <?= $cfg['total_logs'] ?> Total</span>
           </div>
+          <button type="button" class="btn btn-outline-primary btn-sm w-100 fw-semibold d-flex align-items-center justify-content-center gap-1 shadow-sm"
+                  onclick="probarConexion(<?= $cfg['id'] ?>, '<?= addslashes(htmlspecialchars($cfg['nombre'])) ?>')">
+            <i class="bi bi-wifi"></i> Probar Conexión
+          </button>
         </div>
         <div class="wh-cfg-footer"><i class="bi bi-calendar3 me-1"></i>Creado: <?= date('d/m/Y H:i', strtotime($cfg['created_at'])) ?></div>
       </div>
@@ -374,9 +377,14 @@ $hayFiltros = ($filtroDesde || $filtroHasta || $filtroWebhook || $filtroStatus);
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Guardar</button>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-info" id="btnTestModal" onclick="probarConexionDesdeModal()">
+            <i class="bi bi-wifi me-1"></i> Probar Conexión
+          </button>
+          <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Guardar</button>
+          </div>
         </div>
       </form>
     </div>
@@ -717,5 +725,171 @@ function formatFechaCorta(s) {
     if (!s) return '';
     const [y,m,d] = s.split('-');
     return `${d}/${m}/${y}`;
+}
+
+// ── Probar Conexión Webhook ─────────────────────────────────────────
+function probarConexion(id, nombre) {
+    Swal.fire({
+        title: 'Probando conexión...',
+        html: `Conectando con <strong>${esc(nombre)}</strong><br><small class="text-muted">Autenticando contra el API Gateway de LogisPro...</small>`,
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    fetch(WH_AJAX_URL + '?action=test&id=' + encodeURIComponent(id))
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Conexión Exitosa!',
+                html: `
+                    <div class="text-start small">
+                        <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3">
+                            <i class="bi bi-check-circle-fill fs-5"></i>
+                            <div><strong>${esc(nombre)}</strong> está en línea y respondió satisfactoriamente.</div>
+                        </div>
+                        <ul class="list-group list-group-flush border rounded mb-2">
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span>Estado HTTP:</span>
+                                <span class="badge bg-success">${data.http_code} OK</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span>Tiempo de respuesta:</span>
+                                <span class="badge bg-primary">${data.duration_ms} ms</span>
+                            </li>
+                            ${data.customers_id ? `
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span>CustomersId:</span>
+                                <code>${esc(data.customers_id)}</code>
+                            </li>` : ''}
+                            <li class="list-group-item py-2">
+                                <span class="d-block mb-1 text-muted">URL Autenticada:</span>
+                                <code class="text-break">${esc(data.url_login)}</code>
+                            </li>
+                            <li class="list-group-item py-2">
+                                <span class="d-block mb-1 text-muted">Token JWT Obtenido:</span>
+                                <code class="text-break text-success" style="font-size:0.75rem;">${esc(data.token_preview || 'JWT Generado')}</code>
+                            </li>
+                        </ul>
+                    </div>
+                `,
+                confirmButtonColor: '#0B4EA2',
+                confirmButtonText: 'Entendido'
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Fallo de Conexión',
+                html: `
+                    <div class="text-start small">
+                        <div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3">
+                            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                            <div>Error al comunicarse con <strong>${esc(nombre)}</strong>.</div>
+                        </div>
+                        <ul class="list-group list-group-flush border rounded mb-2">
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span>Estado HTTP:</span>
+                                <span class="badge bg-danger">${data.http_code || 'N/A'}</span>
+                            </li>
+                            ${data.duration_ms ? `
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span>Tiempo de respuesta:</span>
+                                <span>${data.duration_ms} ms</span>
+                            </li>` : ''}
+                            <li class="list-group-item py-2">
+                                <span class="d-block mb-1 text-muted">Mensaje:</span>
+                                <span class="text-danger fw-semibold">${esc(data.message)}</span>
+                            </li>
+                            ${data.url_login ? `
+                            <li class="list-group-item py-2">
+                                <span class="d-block mb-1 text-muted">URL de Login:</span>
+                                <code class="text-break">${esc(data.url_login)}</code>
+                            </li>` : ''}
+                        </ul>
+                    </div>
+                `,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Cerrar'
+            });
+        }
+    })
+    .catch(err => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Red',
+            text: 'No se pudo completar la solicitud de prueba: ' + err.message,
+            confirmButtonColor: '#d33'
+        });
+    });
+}
+
+function probarConexionDesdeModal() {
+    const urlLogin = document.getElementById('fUrlLogin').value.trim();
+    const authUser = document.getElementById('fAuthUser').value.trim();
+    const authPass = document.getElementById('fAuthPassword').value;
+    const custId   = document.getElementById('fCustomersId').value;
+    const nombre   = document.getElementById('fNombre').value.trim() || 'Webhook';
+
+    if (!urlLogin || !authUser) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Campos requeridos',
+            text: 'Ingresa al menos la URL de Login y el Auth User para probar la conexión.',
+            confirmButtonColor: '#0B4EA2'
+        });
+        return;
+    }
+
+    Swal.fire({
+        title: 'Probando conexión...',
+        text: 'Validando credenciales con el servidor...',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    const formData = new FormData();
+    formData.append('url_login', urlLogin);
+    formData.append('auth_user', authUser);
+    formData.append('auth_password', authPass);
+    formData.append('customers_id', custId);
+
+    fetch(WH_AJAX_URL + '?action=test', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Conexión Exitosa!',
+                html: `
+                    <div class="text-start small">
+                        <div class="alert alert-success py-2 mb-2">Credenciales válidas. Token generado correctamente (${data.duration_ms} ms).</div>
+                        <div><strong>Token:</strong> <code class="text-break">${esc(data.token_preview)}</code></div>
+                    </div>
+                `,
+                confirmButtonColor: '#0B4EA2'
+            });
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Fallo de Conexión',
+                html: `<div class="text-start small text-danger">${esc(data.message)}</div>`,
+                confirmButtonColor: '#d33'
+            });
+        }
+    })
+    .catch(err => {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Red',
+            text: 'Fallo al realizar la prueba: ' + err.message,
+            confirmButtonColor: '#d33'
+        });
+    });
 }
 </script>

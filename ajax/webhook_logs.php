@@ -98,6 +98,37 @@ if ($action === 'detail') {
     exit;
 }
 
+// ── Acción: probar conexión con un webhook ─────────────────────────
+if ($action === 'test') {
+    $id = (int)($_POST['id'] ?? ($_GET['id'] ?? 0));
+
+    // Si viene ID, probar con la configuración de la BD
+    if ($id > 0) {
+        $result = WebhookModel::testConnection($id);
+        echo json_encode($result);
+        exit;
+    }
+
+    // Si vienen datos directos (ej. desde formulario)
+    $urlLogin = trim($_POST['url_login'] ?? ($_GET['url_login'] ?? ''));
+    $authUser = trim($_POST['auth_user'] ?? ($_GET['auth_user'] ?? ''));
+    $authPass = $_POST['auth_password'] ?? ($_GET['auth_password'] ?? '');
+
+    if (!empty($urlLogin) && !empty($authUser)) {
+        $result = WebhookModel::testConnection([
+            'url_login'     => $urlLogin,
+            'auth_user'     => $authUser,
+            'auth_password' => $authPass,
+            'customers_id'  => $_POST['customers_id'] ?? null
+        ]);
+        echo json_encode($result);
+        exit;
+    }
+
+    echo json_encode(['success' => false, 'message' => 'Parámetros insuficientes para la prueba.']);
+    exit;
+}
+
 // ── Acción principal: DataTables server-side ───────────────────────
 $params = $_GET;    // DataTables puede enviar por GET o POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -103,6 +103,110 @@ class WebhookModel
     }
 
     /**
+     * Probar conexión con el endpoint de login y validar la obtención del token JWT.
+     *
+     * @param int|array $configIdOrData ID del webhook o array con configuración
+     * @return array Detalle del resultado de la prueba
+     */
+    public static function testConnection($configIdOrData): array
+    {
+        $config = is_array($configIdOrData) ? $configIdOrData : self::obtenerPorId((int)$configIdOrData);
+        if (!$config) {
+            return [
+                'success'   => false,
+                'message'   => 'Configuración de webhook no encontrada.',
+                'http_code' => 0
+            ];
+        }
+
+        $urlLogin = trim($config['url_login'] ?? '');
+        $user     = trim($config['auth_user'] ?? '');
+        $password = $config['auth_password'] ?? '';
+
+        if (empty($urlLogin) || empty($user)) {
+            return [
+                'success'   => false,
+                'message'   => 'URL de login o usuario no configurados.',
+                'http_code' => 0
+            ];
+        }
+
+        $payload = json_encode([
+            'userName' => $user,
+            'password' => $password
+        ]);
+
+        $start = microtime(true);
+        $ch = curl_init($urlLogin);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'Accept: application/json'
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 12,
+            CURLOPT_CONNECTTIMEOUT => 6,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_SSL_VERIFYHOST => false
+        ]);
+
+        $response   = curl_exec($ch);
+        $durationMs = round((microtime(true) - $start) * 1000);
+        $httpCode   = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError  = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            return [
+                'success'     => false,
+                'message'     => 'Error de conexión cURL: ' . $curlError,
+                'http_code'   => $httpCode,
+                'duration_ms' => $durationMs,
+                'url_login'   => $urlLogin
+            ];
+        }
+
+        $data = json_decode($response, true);
+
+        // Caso LogisPro: { "HasError": false, "Data": { "JwtToken": "..." } }
+        $token = null;
+        if (isset($data['Data']['JwtToken'])) {
+            $token = $data['Data']['JwtToken'];
+        } elseif (isset($data['token'])) {
+            $token = $data['token'];
+        } elseif (isset($data['jwt'])) {
+            $token = $data['jwt'];
+        } elseif (is_string($response) && strlen($response) > 20 && !str_starts_with(trim($response), '{')) {
+            $token = trim($response, " \t\n\r\0\x0B\"");
+        }
+
+        if ($httpCode >= 200 && $httpCode < 300 && $token) {
+            return [
+                'success'       => true,
+                'message'       => '¡Conexión y autenticación exitosa! Token JWT obtenido correctamente.',
+                'http_code'     => $httpCode,
+                'duration_ms'   => $durationMs,
+                'url_login'     => $urlLogin,
+                'token_preview' => substr($token, 0, 30) . '...' . substr($token, -12),
+                'customers_id'  => $config['customers_id'] ?? null,
+                'raw_response'  => $data ?: substr($response, 0, 300)
+            ];
+        }
+
+        $errorMsg = $data['Message'] ?? ($data['error'] ?? 'No se pudo obtener el token JWT');
+        return [
+            'success'      => false,
+            'message'      => 'Fallo de autenticación (HTTP ' . $httpCode . '): ' . $errorMsg,
+            'http_code'    => $httpCode,
+            'duration_ms'  => $durationMs,
+            'url_login'    => $urlLogin,
+            'raw_response' => $data ?: substr($response, 0, 300)
+        ];
+    }
+
+    /**
      * Enviar cambio de estado al API del cliente.
      *
      * @param string      $jwt Token de autenticación
