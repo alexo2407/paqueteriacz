@@ -609,7 +609,7 @@ include "vista/includes/header.php";
                                     </div>
 
                                     <?php 
-                                    $esEconGlobal = ($p['id_cliente'] == 21 || $p['id_proveedor'] == 26 || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
+                                    $esEconGlobal = (isEconGlobalUser() || isEconGlobalOrder($p) || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
                                     $showCourier = (canViewCourier() || $esEconGlobal) && !empty($p['courier_service']);
                                     if ($showCourier): 
                                         $displayCourier = getDisplayCourierName($p['courier_service']) ?: $p['courier_service'];
@@ -917,7 +917,7 @@ include "vista/includes/header.php";
                                     </td>
                                     <td>
                                         <?php 
-                                        $esEconGlobalH = ($p['id_cliente'] == 21 || $p['id_proveedor'] == 26 || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
+                                        $esEconGlobalH = (isEconGlobalUser() || isEconGlobalOrder($p) || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
                                         $showCourierH = (canViewCourier() || $esEconGlobalH) && !empty($p['courier_service']);
                                         if ($showCourierH): 
                                             $displayCourierH = getDisplayCourierName($p['courier_service']) ?: $p['courier_service'];

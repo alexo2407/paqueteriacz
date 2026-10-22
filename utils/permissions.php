@@ -393,14 +393,76 @@ function isAdmin() {
 }
 
 /**
+ * Verifica si un usuario (o el usuario actual en sesión) pertenece a cuentas EconGlobal.
+ * Cubre Panamá, Uruguay, Guatemala y cualquier cuenta con 'econglobal' en nombre o email.
+ *
+ * @param int|null $userId
+ * @return bool
+ */
+function isEconGlobalUser($userId = null): bool {
+    $uid = (int)($userId ?: getCurrentUserId());
+    $knownEconIds = [10, 21, 26, 39, 52, 53];
+    if ($uid > 0 && in_array($uid, $knownEconIds, true)) {
+        return true;
+    }
+
+    if (!$userId || $uid === getCurrentUserId()) {
+        $sessNombre = $_SESSION['nombre'] ?? '';
+        $sessEmail  = $_SESSION['email'] ?? '';
+        if (stripos($sessNombre, 'econglobal') !== false || stripos($sessNombre, 'enconglobal') !== false || stripos($sessEmail, 'econglobal') !== false) {
+            return true;
+        }
+    }
+
+    if ($uid > 0) {
+        static $cacheEcon = [];
+        if (isset($cacheEcon[$uid])) {
+            return $cacheEcon[$uid];
+        }
+        try {
+            require_once __DIR__ . '/../modelo/conexion.php';
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("SELECT COUNT(*) FROM usuarios WHERE id = :id AND (nombre LIKE '%econglobal%' OR nombre LIKE '%enconglobal%' OR email LIKE '%econglobal%')");
+            $stmt->execute([':id' => $uid]);
+            $cacheEcon[$uid] = ((int)$stmt->fetchColumn() > 0);
+            return $cacheEcon[$uid];
+        } catch (\Throwable $t) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Verifica si un pedido pertenece a EconGlobal (por cliente o proveedor).
+ *
+ * @param array $pedido
+ * @return bool
+ */
+function isEconGlobalOrder(array $pedido): bool {
+    $idCliente = (int)($pedido['id_cliente'] ?? 0);
+    $idProv = (int)($pedido['id_proveedor'] ?? 0);
+    $knownEconIds = [10, 21, 26, 39, 52, 53];
+    if (in_array($idCliente, $knownEconIds, true) || in_array($idProv, $knownEconIds, true)) {
+        return true;
+    }
+    if (isEconGlobalUser($idCliente) || isEconGlobalUser($idProv)) {
+        return true;
+    }
+    return false;
+}
+
+/**
  * Verifica si el usuario actual tiene permiso para ver el nombre del courier/transportista externo.
  * - Administrador: SIEMPRE puede ver el courier.
+ * - Cuentas EconGlobal: SIEMPRE pueden ver el courier asignado.
  * - Otros roles (Cliente, Proveedor): Solo si tienen mostrar_courier = 1 en la tabla usuarios.
  *
  * @return bool
  */
 function canViewCourier(): bool {
-    if (isAdmin()) {
+    if (isAdmin() || isEconGlobalUser()) {
         return true;
     }
 
