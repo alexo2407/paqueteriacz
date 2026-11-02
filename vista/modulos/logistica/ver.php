@@ -238,7 +238,17 @@ include("vista/includes/header.php");
                         </div>
                         <?php endif; ?>
 
-                        <?php if (!empty($pedido['numero_traking'])): ?>
+                        <?php
+                        $userIdActualVer = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+                        $userNombreActualVer = $_SESSION['nombre'] ?? '';
+                        $ocultarTrackingEconGlobal = !isSuperAdmin() && (
+                            $userIdActualVer === 26 ||
+                            $userIdActualVer === 21 ||
+                            stripos($userNombreActualVer, 'econglobal') !== false ||
+                            stripos($userNombreActualVer, 'enconglobal') !== false
+                        );
+                        ?>
+                        <?php if (!empty($pedido['numero_traking']) && !$ocultarTrackingEconGlobal): ?>
                         <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Número de Tracking</label>
                             <div class="text-dark d-flex align-items-center gap-2">
