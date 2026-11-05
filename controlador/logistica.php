@@ -1703,17 +1703,11 @@ class LogisticaController {
         // BOM para que Excel abra bien en Windows con UTF-8
         fputs($out, "\xEF\xBB\xBF");
 
-        $ocultarTrackingCsv = !isSuperAdmin() && in_array((int)$userId, [21, 26], true);
-
         // Encabezado: columnas reconocidas por BulkParser + referencias de solo lectura
-        $csvHeaders = ['numero_orden', 'estado_actual', 'estado', 'comentario', 'motivo', 'fecha_entrega', 'fecha_liquidacion'];
-        if (!$ocultarTrackingCsv) {
-            $csvHeaders[] = 'numero_traking';
-        }
-        fputcsv($out, $csvHeaders);
+        fputcsv($out, ['numero_orden', 'estado_actual', 'estado', 'comentario', 'motivo', 'fecha_entrega', 'fecha_liquidacion', 'numero_traking']);
 
         foreach ($pedidos as $p) {
-            $csvRow = [
+            fputcsv($out, [
                 $p['numero_orden']      ?? '',
                 $p['estado']            ?? '',   // referencia — NO se sube de vuelta
                 '',                               // <-- nuevo estado
@@ -1721,11 +1715,8 @@ class LogisticaController {
                 '',                               // <-- motivo opcional
                 '',                               // <-- fecha_entrega (solo si estado = Reprogramado)
                 '',                               // <-- fecha_liquidacion (solo si estado = Entregado - liquidado)
-            ];
-            if (!$ocultarTrackingCsv) {
-                $csvRow[] = $p['numero_traking'] ?? ''; // <-- número de tracking (dejar vacío para no sobreescribir)
-            }
-            fputcsv($out, $csvRow);
+                $p['numero_traking']    ?? '',    // <-- número de tracking (dejar vacío para no sobreescribir)
+            ]);
         }
 
         fclose($out);
@@ -2017,14 +2008,6 @@ class LogisticaController {
 
             $result = $hlExpress->getIncidentsFiltered($filters);
 
-            if (!isSuperAdmin() && in_array((int)getCurrentUserId(), [21, 26], true) && !empty($result['data']) && is_array($result['data'])) {
-                foreach ($result['data'] as &$incItem) {
-                    if (isset($incItem['tracking_number'])) $incItem['tracking_number'] = '';
-                    if (isset($incItem['shipment']['tracking_number'])) $incItem['shipment']['tracking_number'] = '';
-                }
-                unset($incItem);
-            }
-
             if (ob_get_length()) ob_clean();
             header('Content-Type: application/json');
             echo json_encode(['success' => true] + $result);
@@ -2075,9 +2058,6 @@ class LogisticaController {
 
             $hlExpress = new HLExpressProvider($providerData['base_url'], $credentials, $config);
             $shipment = $hlExpress->getShipmentById($shipmentId);
-            if (!isSuperAdmin() && in_array((int)getCurrentUserId(), [21, 26], true)) {
-                $shipment['tracking_number'] = null;
-            }
 
             // Extraer historial de estados y obtener el último evento registrado
             $history = $shipment['shipment_status_history'] ?? [];
@@ -2159,12 +2139,6 @@ class LogisticaController {
             if (!empty($_GET['end_date']))        $filters['end_date']        = trim($_GET['end_date']);
 
             $result = $hlExpress->getShipmentsFiltered($filters);
-            if (!isSuperAdmin() && in_array((int)getCurrentUserId(), [21, 26], true) && !empty($result['data']) && is_array($result['data'])) {
-                foreach ($result['data'] as &$shipItem) {
-                    $shipItem['tracking_number'] = null;
-                }
-                unset($shipItem);
-            }
 
             header('Content-Type: application/json');
             echo json_encode(['success' => true] + $result);
@@ -2348,11 +2322,10 @@ class LogisticaController {
                 // 6. Código de ciudad (pre-rellenado para resolución)
                 $cityCodePre = $dest['city_dane_code'] ?? $dest['zip_code'] ?? $dest['code_city'] ?? ($pedLoc['code_city'] ?? $pedLoc['codigo_postal'] ?? '');
 
-                $ocultarGuiaNov = !isSuperAdmin() && in_array((int)getCurrentUserId(), [21, 26], true);
                 $sheet->setCellValue("A{$row}", $fechaOrden);
                 $sheet->setCellValue("B{$row}", $dest['full_name']           ?? ($pedLoc['destinatario'] ?? ''));
                 $sheet->setCellValue("C{$row}", $dest['phone_number']        ?? ($pedLoc['telefono'] ?? ''));
-                $sheet->setCellValue("D{$row}", $ocultarGuiaNov ? '' : ($shipment['tracking_number'] ?? ($pedLoc['numero_traking'] ?? '')));
+                $sheet->setCellValue("D{$row}", $shipment['tracking_number'] ?? ($pedLoc['numero_traking'] ?? ''));
                 $sheet->setCellValue("E{$row}", $inc['incident_type']['name'] ?? ($inc['status'] ?? 'NOVEDAD'));
                 $sheet->setCellValue("F{$row}", $depto);
                 $sheet->setCellValue("G{$row}", $ciudad);
@@ -2727,12 +2700,6 @@ class LogisticaController {
             do {
                 $filters['page'] = $page;
                 $result = $hlExpress->getShipmentsFiltered($filters);
-            if (!isSuperAdmin() && in_array((int)getCurrentUserId(), [21, 26], true) && !empty($result['data']) && is_array($result['data'])) {
-                foreach ($result['data'] as &$shipItem) {
-                    $shipItem['tracking_number'] = null;
-                }
-                unset($shipItem);
-            }
                 $allShipments = array_merge($allShipments, $result['data'] ?? []);
                 $lastPage = $result['last_page'] ?? 1;
                 $page++;
@@ -2785,8 +2752,7 @@ class LogisticaController {
                     ? (new \DateTime($s['created_at']))->setTimezone(new \DateTimeZone('America/Panama'))->format('d/m/Y H:i')
                     : '';
 
-                $ocultarGuiaEnv = !isSuperAdmin() && in_array((int)getCurrentUserId(), [21, 26], true);
-                $sheet->setCellValue("A{$row}", $ocultarGuiaEnv ? '' : ($s['tracking_number'] ?? ''));
+                $sheet->setCellValue("A{$row}", $s['tracking_number'] ?? '');
                 $sheet->setCellValue("B{$row}", $s['order_number']    ?? '');
                 $sheet->setCellValue("C{$row}", $dest['full_name']    ?? '');
                 $sheet->setCellValue("D{$row}", $dest['phone_number'] ?? '');

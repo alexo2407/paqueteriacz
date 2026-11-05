@@ -456,7 +456,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderTracking(data) {
-        const ocultarTracking = <?= (!$isAdmin && ((int)$currentUserId === 21 || (int)$currentUserId === 26)) ? 'true' : 'false' ?>;
         // Agrupar por pedido para mejor visualización
         const orders = {};
         data.forEach(item => {
@@ -464,7 +463,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 orders[item.id_pedido] = {
                     id: item.id_pedido,
                     numero_orden: item.numero_orden,
-                    numero_traking: ocultarTracking ? null : (item.numero_traking || null),
+                    numero_traking: item.numero_traking || null,
                     history: []
                 };
             }

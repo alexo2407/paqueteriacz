@@ -172,12 +172,8 @@ try {
     // ── Consulta ───────────────────────────────────────────────────────────
     $resultado = PedidosModel::obtenerEstadoActualPedidos($filtros, $page, $limit);
 
-    // Formatear fechas a America/Managua (UTC-6) y ocultar tracking para EconGlobal Panamá (ID 21)
-    $ocultarTrackingApi = !$isAdmin && ((int)$authUserId === 21 || (int)$authUserId === 26);
+    // Formatear fechas a America/Managua (UTC-6)
     foreach ($resultado['data'] as &$item) {
-        if ($ocultarTrackingApi) {
-            $item['numero_traking'] = null;
-        }
         $fechasAFormatear = ['fecha_observacion_estado', 'fecha_ingreso', 'fecha_actualizacion'];
         foreach ($fechasAFormatear as $campo) {
             if (!empty($item[$campo])) {

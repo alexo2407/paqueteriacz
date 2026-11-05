@@ -55,9 +55,6 @@ $response = $pedidoController->buscarPedidoPorNumero($numeroOrden, $idClienteFil
 
 // Usar el helper responder() para mantener el sobre de respuesta consistente
 if (isset($response['success']) && $response['success']) {
-    if (!$isAdmin && ($authUserId === 21 || $authUserId === 26) && is_array($response['data'])) {
-        $response['data']['numero_traking'] = null;
-    }
     responder(true, $response['message'] ?? 'Pedido encontrado', $response['data'] ?? null, 200);
 } else {
     responder(false, $response['message'] ?? 'Pedido no encontrado', null, 404);

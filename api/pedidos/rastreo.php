@@ -246,11 +246,10 @@ try {
     $numeroOrden  = $pedido['Numero_Orden']  ?? $pedido['numero_orden']  ?? $codigo;
 
     // 6. Respuesta pública — SIN datos sensibles
-    $esPedidoEconGlobalPanama = ((int)($pedido['id_cliente'] ?? $pedido['ID_Cliente'] ?? 0) === 21);
     echo json_encode([
         'success'        => true,
         'numero_orden'   => (string) $numeroOrden,
-        'numero_traking' => $esPedidoEconGlobalPanama ? null : ($pedido['numero_traking'] ?? null),
+        'numero_traking' => $pedido['numero_traking'] ?? null,
         'estado'         => $estadoActual,
         'descripcion'    => $descripcion,
         'fecha_entrega'  => $fechaEntrega,
