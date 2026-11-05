@@ -151,8 +151,9 @@ class ThermalLabelService
         $pdf->Cell($usableW, 4.5, $numOrden, 0, 1, 'C');
         $y += 5.5;
 
-        // Subtítulo de tracking si existe
-        if (!empty($p['numero_traking']) && $p['numero_traking'] !== $numOrden) {
+        // Subtítulo de tracking si existe (omitir para EconGlobal Panamá ID 21)
+        $esEconGlobalPaLabel = ((int)($p['id_cliente'] ?? 0) === 21);
+        if (!$esEconGlobalPaLabel && !empty($p['numero_traking']) && $p['numero_traking'] !== $numOrden) {
             $pdf->SetXY($x0, $y);
             $pdf->SetFont('Arial', '', 7);
             $pdf->Cell($usableW, 3, 'Tracking: ' . $p['numero_traking'], 0, 1, 'C');
@@ -641,7 +642,8 @@ class ThermalLabelService
 
         // Datos del pedido
         $numOrden      = !empty($p['numero_orden']) ? (string)$p['numero_orden'] : 'ORD-' . ($p['id'] ?? 0);
-        $numGuia       = !empty($p['c807_guia']) ? (string)$p['c807_guia'] : (!empty($p['numero_traking']) ? (string)$p['numero_traking'] : ('EXLATA-' . $numOrden));
+        $esEconPa644   = ((int)($p['id_cliente'] ?? 0) === 21);
+        $numGuia       = !empty($p['c807_guia']) ? (string)$p['c807_guia'] : ((!$esEconPa644 && !empty($p['numero_traking'])) ? (string)$p['numero_traking'] : ('EXLATA-' . $numOrden));
         $remitente     = !empty($p['remitente_nombre']) ? $p['remitente_nombre'] : (!empty($p['proveedor_nombre']) ? $p['proveedor_nombre'] : 'RutaEx Cliente');
         $remitenteTel  = !empty($p['remitente_telefono']) ? $p['remitente_telefono'] : (!empty($p['telefono_remitente']) ? $p['telefono_remitente'] : '22222222');
         $destinatario  = !empty($p['destinatario']) ? $p['destinatario'] : 'Consignatario Final';

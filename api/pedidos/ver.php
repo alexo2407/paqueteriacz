@@ -55,6 +55,10 @@ try {
         exit;
     }
 
+    if (!$isAdmin && ($userId === 21 || $userId === 26)) {
+        $pedido['numero_traking'] = null;
+    }
+
     responder(true, "Detalle del pedido", $pedido, 200);
 } catch (Exception $e) {
     error_log('[api/pedidos/ver] Error: ' . $e->getMessage());

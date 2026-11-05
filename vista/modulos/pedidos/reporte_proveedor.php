@@ -80,6 +80,7 @@ $stmtToken->execute([':id' => $currUserId]);
 $tokenRow           = $stmtToken->fetch(PDO::FETCH_ASSOC);
 $tokenEnlacePublico = $tokenRow['token_enlace_publico'] ?? '';
 $currUserNombre     = $tokenRow['nombre'] ?? ($_SESSION['nombre'] ?? '');
+$ocultarTracking    = !$isAdmin && ((int)$currUserId === 21 || (int)$currUserId === 26);
 
 // ── Filtros ───────────────────────────────────────────────────────────────────
 // Default: 3 meses atrás para que los usuarios vean datos históricos recientes
@@ -292,9 +293,12 @@ if ($export && !empty($pedidosExport)) {
     // Cabeceras fijas
     $headersFixed = [
         'Núm. Orden', 'Fecha Ingreso', 'Destinatario', 'Teléfono',
-        'Dirección', 'Zona', 'Comentario', 'Courier Service', 'Nº Tracking', 'Estado Actual',
-        'Liquidación', 'Moneda', 'Fecha Creado',
+        'Dirección', 'Zona', 'Comentario', 'Courier Service',
     ];
+    if (!$ocultarTracking) {
+        $headersFixed[] = 'Nº Tracking';
+    }
+    array_push($headersFixed, 'Estado Actual', 'Liquidación', 'Moneda', 'Fecha Creado');
 
     // Fila 1: Título (se define aquí, las celdas se configuran después de calcular el historial completo)
     $titulo = 'REPORTE DE PEDIDOS  ' . date('d/m/Y', strtotime($fechaDesde)) . ' → ' . date('d/m/Y', strtotime($fechaHasta));
@@ -367,7 +371,9 @@ if ($export && !empty($pedidosExport)) {
             $courierExcel = $isPublicLink ? ($aliasCourierPub ?: ($ped['courier_service'] ?? '')) : (getDisplayCourierName($ped['courier_service'] ?? '') ?? '');
         }
         $sheet->setCellValue($coord($c++, $excelRow), $courierExcel);
-        $sheet->setCellValue($coord($c++, $excelRow), $ped['numero_traking'] ?? '');
+        if (!$ocultarTracking) {
+            $sheet->setCellValue($coord($c++, $excelRow), $ped['numero_traking'] ?? '');
+        }
 
         // Estado actual con color
         $cellEstado = $coord($c, $excelRow);
@@ -681,7 +687,9 @@ if ($export && !empty($pedidosExport)) {
                             <th>Zona</th>
                             <th>Comentario</th>
                             <th>Courier Service</th>
+                            <?php if (!$ocultarTracking): ?>
                             <th>Nº Tracking</th>
+                            <?php endif; ?>
                             <th>Estado Actual</th>
                             <th>Liquidación</th>
                             <th>Moneda</th>
@@ -693,7 +701,7 @@ if ($export && !empty($pedidosExport)) {
                         </tr>
                         <?php if ($maxTransiciones > 0): ?>
                         <tr>
-                            <th colspan="13"></th>
+                            <th colspan="<?= $ocultarTracking ? 12 : 13 ?>"></th>
                             <?php for ($n = 1; $n <= $maxTransiciones; $n++): ?>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Estado</th>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Fecha / Hora</th>
@@ -730,6 +738,7 @@ if ($export && !empty($pedidosExport)) {
                                     &mdash;
                                 <?php endif; ?>
                             </td>
+                            <?php if (!$ocultarTracking): ?>
                             <td class="text-center font-monospace" style="font-size:.75rem;">
                                 <?php if (!empty($ped['numero_traking'])): ?>
                                     <span class="badge" style="background:#0d6efd;color:#fff;letter-spacing:.03em;"
@@ -740,6 +749,7 @@ if ($export && !empty($pedidosExport)) {
                                     <span class="text-muted">&mdash;</span>
                                 <?php endif; ?>
                             </td>
+                            <?php endif; ?>
                             <td class="text-center">
                                 <span class="badge-estado"
                                       style="background:<?= $clrActual['bg'] ?>;color:<?= $clrActual['text'] ?>;">

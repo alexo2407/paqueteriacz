@@ -47,6 +47,14 @@ try {
     
     // Ejecutar listado paginado (aplica filtros de seguridad automáticamente)
     $result = $controller->listarPedidosPaginados($page, $limit);
+    $authUserId = (int)($check['data']['id'] ?? 0);
+    $authUserRole = (int)($check['data']['rol'] ?? 0);
+    if ($authUserRole !== 1 && ($authUserId === 21 || $authUserId === 26) && !empty($result['data']) && is_array($result['data'])) {
+        foreach ($result['data'] as &$item) {
+            $item['numero_traking'] = null;
+        }
+        unset($item);
+    }
     
     // Responder con la data y los metadatos de paginación
     responder(true, 'Listado de pedidos', $result['data'], 200, $result['pagination']);
