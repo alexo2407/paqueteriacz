@@ -1677,6 +1677,64 @@ if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] =
 }
 
 // -----------------------
+// Rutas C807 Xpress (Exclusivo Proveedor Yall-Ego El Salvador)
+// -----------------------
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'listarEstadosC807' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/permissions.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+    if (!isYallEgoElSalvadorProvider($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos para acceder a este módulo.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $ctrl = new LogisticaController();
+    $ctrl->listarEstadosC807();
+    exit;
+}
+
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'consultarHistoriaC807' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/permissions.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+    if (!isYallEgoElSalvadorProvider($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos para acceder a este módulo.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $id = isset($ruta[2]) ? (int)$ruta[2] : 0;
+    $ctrl = new LogisticaController();
+    $ctrl->consultarHistoriaC807($id);
+    exit;
+}
+
+if (isset($ruta[0]) && $ruta[0] === 'logistica' && isset($ruta[1]) && $ruta[1] === 'aplicarEstadosC807' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/../controlador/logistica.php';
+    require_once __DIR__ . '/../utils/session.php';
+    require_once __DIR__ . '/../utils/permissions.php';
+    start_secure_session();
+
+    $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+    if (!isYallEgoElSalvadorProvider($userId)) {
+        header('Content-Type: application/json', true, 403);
+        echo json_encode(['success' => false, 'message' => 'No tienes permisos para realizar esta acción.'], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $ctrl = new LogisticaController();
+    $ctrl->aplicarEstadosC807();
+    exit;
+}
+
+// -----------------------
 // Manejo de Logística (POST a ?enlace=logistica/<accion>)
 // -----------------------
 if (isset($ruta[0]) && $ruta[0] === 'logistica' && $_SERVER['REQUEST_METHOD'] === 'POST') {

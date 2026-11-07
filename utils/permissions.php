@@ -539,6 +539,78 @@ function getDisplayCourierName(?string $realCourier): ?string {
     return !empty($alias) ? $alias : $realCourier;
 }
 
+/**
+ * Verifica si el usuario actual (o el indicado por $userId) corresponde
+ * exclusivamente al perfil del proveedor de Ya Llegó El Salvador ("Proovedor Yall-Ego El Salvador")
+ * al que le pertenece la integración con C807 Xpress.
+ *
+ * @param int|null $userId
+ * @return bool
+ */
+function isYallEgoElSalvadorProvider($userId = null): bool {
+    $uid = (int)($userId ?: getCurrentUserId());
+    if ($uid <= 0) {
+        return false;
+    }
+
+    // Excluir explícitamente cuentas EconGlobal o administradores/clientes ecommerce
+    if (isEconGlobalUser($uid)) {
+        return false;
+    }
+
+    // Si estamos evaluando la sesión activa, asegurar que sea perfil de proveedor logístico (isCliente)
+    if ($userId === null || $uid === (int)getCurrentUserId()) {
+        if (!isCliente() || isSuperAdmin()) {
+            return false;
+        }
+        $sessNombre = $_SESSION['nombre'] ?? '';
+        $sessEmail  = $_SESSION['email'] ?? '';
+        $normSess = strtolower(strtr($sessNombre . ' ' . $sessEmail, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+        ]));
+        if (
+            strpos($normSess, 'yall-ego') !== false ||
+            strpos($normSess, 'yallego') !== false ||
+            strpos($normSess, 'ya llego') !== false
+        ) {
+            return true;
+        }
+    }
+
+    static $cacheYallEgo = [];
+    if (isset($cacheYallEgo[$uid])) {
+        return $cacheYallEgo[$uid];
+    }
+
+    try {
+        require_once __DIR__ . '/../modelo/conexion.php';
+        $db = (new Conexion())->conectar();
+        $stmt = $db->prepare("SELECT nombre, email FROM usuarios WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $uid]);
+        $uRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($uRow) {
+            $normDb = strtolower(strtr(($uRow['nombre'] ?? '') . ' ' . ($uRow['email'] ?? ''), [
+                'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+                'Á' => 'a', 'É' => 'e', 'Í' => 'i', 'Ó' => 'o', 'Ú' => 'u',
+            ]));
+            if (
+                strpos($normDb, 'yall-ego') !== false ||
+                strpos($normDb, 'yallego') !== false ||
+                strpos($normDb, 'ya llego') !== false
+            ) {
+                $cacheYallEgo[$uid] = true;
+                return true;
+            }
+        }
+    } catch (\Throwable $t) {
+        // continuar
+    }
+
+    $cacheYallEgo[$uid] = false;
+    return false;
+}
+
 
 
 

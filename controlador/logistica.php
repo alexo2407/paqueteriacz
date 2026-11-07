@@ -3540,4 +3540,602 @@ class LogisticaController {
             exit;
         }
     }
+
+    // =========================================================================
+    // INTEGRACIÓN C807 XPRESS (EXCLUSIVO PROVEEDOR YALL-EGO EL SALVADOR)
+    // =========================================================================
+
+    /**
+     * Garantiza que el estado "Devolución" exista en estados_pedidos y en el mapeo de C807.
+     */
+    private function asegurarEstadoDevolucion(PDO $db): void
+    {
+        try {
+            $st = $db->prepare("SELECT id FROM estados_pedidos WHERE LOWER(TRIM(nombre_estado)) IN ('devolución', 'devolucion') LIMIT 1");
+            $st->execute();
+            $idDev = (int)$st->fetchColumn();
+
+            if ($idDev <= 0) {
+                $ins = $db->prepare("INSERT INTO estados_pedidos (nombre_estado, descripcion, created_at, updated_at) VALUES ('Devolución', 'Paquete en proceso de devolución al remitente o sede del cliente', NOW(), NOW())");
+                $ins->execute();
+            }
+        } catch (Throwable $e) {
+            error_log("LogisticaController::asegurarEstadoDevolucion warning: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Instancia C807Provider leyendo la configuración activa desde forwarding_providers.
+     */
+    private function instanciarC807Provider(PDO $db): C807Provider
+    {
+        require_once __DIR__ . '/../services/providers/C807Provider.php';
+        require_once __DIR__ . '/../modelo/forwarding.php';
+
+        $provRow = ForwardingModel::obtenerProveedorPorSlug('c807');
+        if (!$provRow) {
+            $stmt = $db->prepare("SELECT * FROM forwarding_providers WHERE slug = 'c807' ORDER BY activo DESC, id DESC LIMIT 1");
+            $stmt->execute();
+            $provRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        $baseUrl       = !empty($provRow['base_url']) ? $provRow['base_url'] : 'https://app.c807.com';
+        $credentials   = json_decode($provRow['credentials'] ?? '{}', true) ?: [];
+        $defaultConfig = json_decode($provRow['default_config'] ?? '{}', true) ?: [];
+        $config        = array_merge($defaultConfig, [
+            'auth_endpoint'  => $provRow['auth_endpoint']  ?? '/admin.php/sesion/get_token',
+            'order_endpoint' => $provRow['order_endpoint'] ?? '/guia.php/api/set_registro',
+            'auth_method'    => $provRow['auth_method']    ?? 'basic_jwt',
+            'id_provider'    => (int)($provRow['id'] ?? 0),
+        ]);
+
+        return new C807Provider($baseUrl, $credentials, $config);
+    }
+
+    /**
+     * GET logistica/listarEstadosC807
+     * Lista los envíos con guía C807 del proveedor Yall-Ego El Salvador, consulta sus historias
+     * en C807 (/guia.php/api/get_historia/{guia}) y analiza la secuencia de 3 etapas clave:
+     *   1) Problemas en la gestión (16) + observaciones
+     *   2) Devolución (17) + observaciones
+     *   3) En ruta a destino / Llegó a su destino (14 / 15) posterior a Devolución o Incidencia
+     */
+    public function listarEstadosC807(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../modelo/conexion.php';
+        require_once __DIR__ . '/../modelo/pedido.php';
+
+        $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+        if (!isYallEgoElSalvadorProvider($userId)) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Acceso restringido exclusivamente al perfil del proveedor Yall-Ego El Salvador.',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        try {
+            $db = (new Conexion())->conectar();
+            $this->asegurarEstadoDevolucion($db);
+
+            // Obtener todos los estados internos disponibles para los selectores manuales/masivos
+            $stEstados = $db->query("SELECT id, nombre_estado FROM estados_pedidos ORDER BY id ASC");
+            $estadosDisponibles = $stEstados ? $stEstados->fetchAll(PDO::FETCH_ASSOC) : [];
+
+            // Parámetros de filtrado y paginación
+            $page            = max(1, (int)($_GET['page'] ?? 1));
+            $limit           = max(5, min(50, (int)($_GET['limit'] ?? 20)));
+            $etapaFiltro     = trim((string)($_GET['etapa_c807'] ?? 'relevantes')); // 'relevantes' | '16' | '17' | 'post_ruta' | 'todos'
+            $idEstadoInterno = (int)($_GET['id_estado_interno'] ?? 0);
+            $orderNumber     = trim((string)($_GET['order_number'] ?? ''));
+            $trackingNumber  = trim((string)($_GET['tracking_number'] ?? ''));
+            $startDate       = trim((string)($_GET['start_date'] ?? ''));
+            $endDate         = trim((string)($_GET['end_date'] ?? ''));
+            $incluirFinales  = isset($_GET['incluir_finales']) ? (int)$_GET['incluir_finales'] : 0;
+            $forceRefresh    = !empty($_GET['refresh']);
+
+            // ID del provider c807
+            $stProv = $db->prepare("SELECT id FROM forwarding_providers WHERE slug = 'c807' ORDER BY activo DESC, id DESC LIMIT 1");
+            $stProv->execute();
+            $idProviderC807 = (int)$stProv->fetchColumn();
+
+            $where  = ["p.id_proveedor = :id_proveedor"];
+            $params = [':id_proveedor' => $userId];
+
+            if ($idEstadoInterno > 0) {
+                $where[] = "p.id_estado = :id_estado_interno";
+                $params[':id_estado_interno'] = $idEstadoInterno;
+            } elseif (!$incluirFinales) {
+                $where[] = "p.id_estado NOT IN (3, 7, 9, 10, 14, 15, 16, 17)";
+            }
+
+            if ($orderNumber !== '') {
+                $where[] = "(CAST(p.numero_orden AS CHAR) LIKE :ord OR p.destinatario LIKE :ord2)";
+                $params[':ord']  = '%' . $orderNumber . '%';
+                $params[':ord2'] = '%' . $orderNumber . '%';
+            }
+
+            if ($startDate !== '') {
+                $where[] = "DATE(p.fecha_ingreso) >= :start_date";
+                $params[':start_date'] = $startDate;
+            }
+
+            if ($endDate !== '') {
+                $where[] = "DATE(p.fecha_ingreso) <= :end_date";
+                $params[':end_date'] = $endDate;
+            }
+
+            // Subconsulta para resolver la guía de C807 del pedido
+            $condProvFg = $idProviderC807 > 0 ? "AND fg.id_provider = {$idProviderC807}" : "";
+            $condProvFl = $idProviderC807 > 0 ? "AND fl.id_provider = {$idProviderC807}" : "";
+
+            $sqlBase = "
+                SELECT * FROM (
+                    SELECT 
+                        p.id,
+                        p.numero_orden,
+                        p.destinatario,
+                        p.telefono,
+                        p.direccion,
+                        p.comentario,
+                        p.fecha_ingreso,
+                        p.fecha_entrega,
+                        p.fecha_liquidacion,
+                        p.id_estado,
+                        COALESCE(ep.nombre_estado, 'Sin Estado') AS estado_interno,
+                        p.id_cliente,
+                        COALESCE(uc.nombre, 'N/A') AS nombre_cliente,
+                        COALESCE(d.nombre, '') AS departamento_nombre,
+                        COALESCE(m.nombre, '') AS municipio_nombre,
+                        COALESCE(
+                            (SELECT CONVERT(fg.numero_guia USING utf8mb4) COLLATE utf8mb4_unicode_ci FROM forwarding_guias fg WHERE fg.id_pedido = p.id {$condProvFg} AND fg.numero_guia IS NOT NULL AND TRIM(fg.numero_guia) != '' ORDER BY fg.id DESC LIMIT 1),
+                            CASE WHEN p.numero_traking LIKE 'EXLATA-%' THEN CONVERT(TRIM(p.numero_traking) USING utf8mb4) COLLATE utf8mb4_unicode_ci ELSE NULL END,
+                            (SELECT CONVERT(fl.external_order_id USING utf8mb4) COLLATE utf8mb4_unicode_ci FROM forwarding_log fl WHERE fl.id_pedido = p.id {$condProvFl} AND fl.status = 'success' AND fl.external_order_id IS NOT NULL AND TRIM(fl.external_order_id) != '' ORDER BY fl.id DESC LIMIT 1),
+                            CONVERT(NULLIF(TRIM(p.numero_traking), '') USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                        ) AS c807_guia,
+                        (SELECT ph.observaciones FROM pedidos_historial_estados ph WHERE ph.id_pedido = p.id ORDER BY ph.created_at DESC, ph.id DESC LIMIT 1) AS ultima_obs_interna
+                    FROM pedidos p
+                    LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                    LEFT JOIN usuarios uc ON uc.id = p.id_cliente
+                    LEFT JOIN departamentos d ON d.id = p.id_departamento
+                    LEFT JOIN municipios m ON m.id = p.id_municipio
+                    WHERE " . implode(' AND ', $where) . "
+                ) AS sub
+                WHERE sub.c807_guia IS NOT NULL AND sub.c807_guia != ('' COLLATE utf8mb4_unicode_ci)
+            ";
+
+            if ($trackingNumber !== '') {
+                $sqlBase .= " AND sub.c807_guia LIKE CONVERT(:trk USING utf8mb4) COLLATE utf8mb4_unicode_ci ";
+                $params[':trk'] = '%' . $trackingNumber . '%';
+            }
+
+            $sqlBase .= " ORDER BY sub.id DESC LIMIT 80";
+
+            $stmt = $db->prepare($sqlBase);
+            $stmt->execute($params);
+            $pedidos = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            // Recolectar guías a consultar en C807 (con caché de sesión corta de 45s para paginación rápida, salvo refresh=1)
+            if (!isset($_SESSION['c807_historia_cache']) || $forceRefresh) {
+                $_SESSION['c807_historia_cache'] = [];
+            }
+            $now = time();
+            $guiasPorConsultar = [];
+            foreach ($pedidos as $ped) {
+                $g = trim((string)($ped['c807_guia'] ?? ''));
+                if ($g === '') continue;
+                $cached = $_SESSION['c807_historia_cache'][$g] ?? null;
+                if ($forceRefresh || !$cached || empty($cached['historia']) || ($now - ($cached['ts'] ?? 0)) > 45) {
+                    $guiasPorConsultar[$g] = $g;
+                }
+            }
+
+            $errorApiC807 = null;
+            if (!empty($guiasPorConsultar)) {
+                try {
+                    $c807 = $this->instanciarC807Provider($db);
+                    $historiasFrescas = $c807->consultarHistoriasMultiples(array_values($guiasPorConsultar), 15);
+                    foreach ($historiasFrescas as $gKey => $evList) {
+                        if (!empty($evList)) {
+                            $_SESSION['c807_historia_cache'][$gKey] = [
+                                'ts'       => $now,
+                                'historia' => $evList,
+                            ];
+                        }
+                    }
+                } catch (Throwable $apiEx) {
+                    $errorApiC807 = $apiEx->getMessage();
+                    error_log("LogisticaController::listarEstadosC807 C807 API warning: " . $errorApiC807);
+                }
+            }
+
+            require_once __DIR__ . '/../services/providers/C807Provider.php';
+
+            $kpis = [
+                'todos'        => 0,
+                'relevantes'   => 0,
+                'problemas_16' => 0,
+                'devolucion_17'=> 0,
+                'post_ruta'    => 0,
+            ];
+
+            $filasFiltradas = [];
+            foreach ($pedidos as $ped) {
+                $guia = trim((string)($ped['c807_guia'] ?? ''));
+                $historiaRaw = $_SESSION['c807_historia_cache'][$guia]['historia'] ?? [];
+                $analisis = C807Provider::analizarHistoriaGuia(is_array($historiaRaw) ? $historiaRaw : []);
+                $etapaActual = (string)($analisis['etapa_relevante'] ?? 'normal');
+
+                $kpis['todos']++;
+                if ($analisis['tiene_hito_relevante']) {
+                    $kpis['relevantes']++;
+                }
+                if ($etapaActual === 'problema_gestion') {
+                    $kpis['problemas_16']++;
+                } elseif ($etapaActual === 'devolucion') {
+                    $kpis['devolucion_17']++;
+                } elseif ($etapaActual === 'post_devolucion') {
+                    $kpis['post_ruta']++;
+                }
+
+                // Aplicar filtro de etapa C807 (por defecto solo muestra las que interesan: 'relevantes')
+                $pasaFiltro = true;
+                if ($etapaFiltro === 'relevantes') {
+                    $pasaFiltro = (bool)$analisis['tiene_hito_relevante'];
+                } elseif ($etapaFiltro === '16') {
+                    $pasaFiltro = ($etapaActual === 'problema_gestion');
+                } elseif ($etapaFiltro === '17') {
+                    $pasaFiltro = ($etapaActual === 'devolucion');
+                } elseif ($etapaFiltro === 'post_ruta') {
+                    $pasaFiltro = ($etapaActual === 'post_devolucion');
+                }
+
+                if (!$pasaFiltro) {
+                    continue;
+                }
+
+                $dirPartes = array_filter([
+                    trim((string)$ped['departamento_nombre']),
+                    trim((string)$ped['municipio_nombre']),
+                    trim((string)$ped['direccion']),
+                ]);
+
+                $filasFiltradas[] = [
+                    'id_pedido'          => (int)$ped['id'],
+                    'numero_orden'       => (string)$ped['numero_orden'],
+                    'c807_guia'          => $guia,
+                    'destinatario'       => (string)($ped['destinatario'] ?? ''),
+                    'telefono'           => (string)($ped['telefono'] ?? ''),
+                    'direccion_completa' => implode(', ', $dirPartes),
+                    'nombre_cliente'     => (string)($ped['nombre_cliente'] ?? ''),
+                    'fecha_ingreso'      => (string)($ped['fecha_ingreso'] ?? ''),
+                    'id_estado_interno'  => (int)$ped['id_estado'],
+                    'estado_interno'     => (string)$ped['estado_interno'],
+                    'ultima_obs_interna' => (string)($ped['ultima_obs_interna'] ?? ''),
+                    'analisis_c807'      => $analisis,
+                ];
+            }
+
+            $totalFiltrados = count($filasFiltradas);
+            $lastPage       = max(1, (int)ceil($totalFiltrados / $limit));
+            if ($page > $lastPage) {
+                $page = $lastPage;
+            }
+            $offset      = ($page - 1) * $limit;
+            $dataPagina  = array_slice($filasFiltradas, $offset, $limit);
+
+            echo json_encode([
+                'success'             => true,
+                'data'                => $dataPagina,
+                'kpis'                => $kpis,
+                'estados_disponibles' => $estadosDisponibles,
+                'api_warning'         => $errorApiC807,
+                'refreshed_at'        => date('Y-m-d H:i:s'),
+                'pagination'          => [
+                    'total'        => $totalFiltrados,
+                    'per_page'     => $limit,
+                    'current_page' => $page,
+                    'last_page'    => $lastPage,
+                ],
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            exit;
+        } catch (Throwable $e) {
+            error_log("LogisticaController::listarEstadosC807 error: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al consultar estados C807: ' . $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    /**
+     * GET logistica/consultarHistoriaC807/<idPedido>
+     * Consulta el historial completo en vivo de una guía en C807 junto con el historial interno de nuestro sistema.
+     */
+    public function consultarHistoriaC807($idPedido = 0): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../modelo/conexion.php';
+        require_once __DIR__ . '/../modelo/pedido.php';
+
+        $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+        if (!isYallEgoElSalvadorProvider($userId)) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Acceso restringido al proveedor Yall-Ego El Salvador.',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $idPedido = (int)$idPedido;
+        $pedido   = PedidosModel::obtenerPedidoPorId($idPedido);
+        if (!$pedido || (int)($pedido['id_proveedor'] ?? 0) !== $userId) {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Pedido no encontrado o no pertenece a este proveedor.',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        try {
+            $db   = (new Conexion())->conectar();
+            $c807 = $this->instanciarC807Provider($db);
+
+            $guia = trim((string)($_GET['guia'] ?? ''));
+            if ($guia === '') {
+                $localInfo = $c807->obtenerGuiaLocal($idPedido, (string)($pedido['numero_orden'] ?? ''));
+                $guia = trim((string)($localInfo['numero_guia'] ?? $pedido['numero_traking'] ?? ''));
+            }
+
+            if ($guia === '') {
+                throw new Exception("Este pedido no tiene número de guía C807 asociado.");
+            }
+
+            $historiaRaw = $c807->getHistoria($guia);
+            $_SESSION['c807_historia_cache'][$guia] = [
+                'ts'       => time(),
+                'historia' => $historiaRaw,
+            ];
+
+            $analisis = C807Provider::analizarHistoriaGuia($historiaRaw);
+
+            // Limpiar cada evento para mostrarlo amigable en el modal
+            $eventosLimpios = [];
+            foreach ($historiaRaw as $ev) {
+                if (!is_array($ev)) continue;
+                $obsLimpia = C807Provider::limpiarObservacionC807($ev['observaciones'] ?? null);
+                $eventosLimpios[] = [
+                    'codigo'               => (string)($ev['codigo'] ?? ''),
+                    'estatus'              => (string)($ev['estatus'] ?? ''),
+                    'fecha'                => (string)($ev['fecha'] ?? ''),
+                    'observacion_corta'    => $obsLimpia['resumen'],
+                    'observacion_completa' => $obsLimpia['completa'],
+                    'observacion_html_raw' => (string)($ev['observaciones'] ?? ''),
+                ];
+            }
+
+            $historialInterno = PedidosModel::obtenerHistorialEstados($idPedido);
+
+            echo json_encode([
+                'success'           => true,
+                'id_pedido'         => $idPedido,
+                'numero_orden'      => (string)($pedido['numero_orden'] ?? ''),
+                'c807_guia'         => $guia,
+                'estado_interno'    => (string)($pedido['nombre_estado'] ?? $pedido['estado'] ?? ''),
+                'analisis_c807'     => $analisis,
+                'historia_c807'     => $eventosLimpios,
+                'historial_interno' => $historialInterno,
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            exit;
+        } catch (Throwable $e) {
+            error_log("LogisticaController::consultarHistoriaC807 error: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+
+    /**
+     * POST logistica/aplicarEstadosC807
+     * Aplica de forma manual (1 a 1) o masiva (múltiples seleccionados) el estado interno
+     * y observación elegidos por el usuario e inserta el registro en nuestro tracking interno.
+     */
+    public function aplicarEstadosC807(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.']);
+            exit;
+        }
+
+        require_once __DIR__ . '/../utils/permissions.php';
+        require_once __DIR__ . '/../modelo/conexion.php';
+        require_once __DIR__ . '/../modelo/pedido.php';
+        require_once __DIR__ . '/../modelo/logistica.php';
+
+        $userId = (int)($_SESSION['idUsuario'] ?? $_SESSION['user_id'] ?? 0);
+        if (!isYallEgoElSalvadorProvider($userId)) {
+            http_response_code(403);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Acceso restringido al proveedor Yall-Ego El Salvador.',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $rawInput = file_get_contents('php://input');
+        $payload  = json_decode($rawInput, true) ?: $_POST;
+        $items    = $payload['items'] ?? [];
+
+        if (empty($items) || !is_array($items)) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No se recibieron pedidos para actualizar.',
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        try {
+            $db = (new Conexion())->conectar();
+            $this->asegurarEstadoDevolucion($db);
+
+            $actualizados = 0;
+            $errores      = [];
+            $resultados   = [];
+
+            $stmtUpdateTrk = $db->prepare("
+                UPDATE pedidos 
+                SET numero_traking = :guia,
+                    courier_service = COALESCE(NULLIF(courier_service, ''), 'C807 Xpress')
+                WHERE id = :id_pedido AND (numero_traking IS NULL OR TRIM(numero_traking) = '')
+            ");
+
+            $stmtResolverEstado = $db->prepare("
+                SELECT id, nombre_estado FROM estados_pedidos 
+                WHERE id = :id_est OR LOWER(TRIM(nombre_estado)) = LOWER(TRIM(:nom_est))
+                LIMIT 1
+            ");
+
+            $stmtInsertHistorialDirecto = $db->prepare("
+                INSERT INTO pedidos_historial_estados (id_pedido, id_estado, id_usuario, observaciones, created_at)
+                VALUES (:id_pedido, :id_estado, :id_usuario, :observaciones, NOW())
+            ");
+
+            foreach ($items as $idx => $item) {
+                $idPedido         = (int)($item['id_pedido'] ?? 0);
+                $estadoSeleccion  = trim((string)($item['estado'] ?? ''));
+                $observaciones    = trim((string)($item['observaciones'] ?? ''));
+                $numeroGuia       = trim((string)($item['numero_guia'] ?? ''));
+                $fechaEntrega     = !empty($item['fecha_entrega']) ? trim((string)$item['fecha_entrega']) : null;
+                $fechaLiquidacion = !empty($item['fecha_liquidacion']) ? trim((string)$item['fecha_liquidacion']) : null;
+
+                if ($idPedido <= 0 || $estadoSeleccion === '') {
+                    $msg = "Fila #" . ($idx + 1) . ": Falta el pedido o el estado a aplicar.";
+                    $errores[] = $msg;
+                    $resultados[] = ['id_pedido' => $idPedido, 'success' => false, 'message' => $msg];
+                    continue;
+                }
+
+                $pedido = PedidosModel::obtenerPedidoPorId($idPedido);
+                if (!$pedido || (int)($pedido['id_proveedor'] ?? 0) !== $userId) {
+                    $msg = "Pedido #{$idPedido}: No encontrado o no pertenece a su cuenta de proveedor.";
+                    $errores[] = $msg;
+                    $resultados[] = ['id_pedido' => $idPedido, 'success' => false, 'message' => $msg];
+                    continue;
+                }
+
+                // Resolver nombre e ID del estado seleccionado
+                $idBuscado = is_numeric($estadoSeleccion) ? (int)$estadoSeleccion : 0;
+                $stmtResolverEstado->execute([
+                    ':id_est'  => $idBuscado,
+                    ':nom_est' => $estadoSeleccion,
+                ]);
+                $estadoRow = $stmtResolverEstado->fetch(PDO::FETCH_ASSOC);
+                if (!$estadoRow) {
+                    $msg = "Orden #{$pedido['numero_orden']}: El estado '{$estadoSeleccion}' no existe en el sistema.";
+                    $errores[] = $msg;
+                    $resultados[] = ['id_pedido' => $idPedido, 'numero_orden' => $pedido['numero_orden'], 'success' => false, 'message' => $msg];
+                    continue;
+                }
+
+                $idEstadoNuevo     = (int)$estadoRow['id'];
+                $nombreEstadoNuevo = (string)$estadoRow['nombre_estado'];
+                $idEstadoAnterior  = (int)($pedido['id_estado'] ?? 0);
+
+                // Asegurar que la guía C807 quede guardada en numero_traking si estaba vacío
+                if ($numeroGuia !== '') {
+                    try {
+                        $stmtUpdateTrk->execute([
+                            ':guia'      => $numeroGuia,
+                            ':id_pedido' => $idPedido,
+                        ]);
+                    } catch (Throwable $eTrk) {}
+                }
+
+                $obsFinal = $observaciones !== ''
+                    ? $observaciones
+                    : ("Actualizado desde Control de Estados C807" . ($numeroGuia !== '' ? " (Guía {$numeroGuia})" : ""));
+
+                $ok = LogisticaModel::actualizarEstado(
+                    $idPedido,
+                    $nombreEstadoNuevo,
+                    $obsFinal,
+                    $userId,
+                    $fechaEntrega,
+                    $fechaLiquidacion
+                );
+
+                if ($ok) {
+                    // Si el pedido ya tenía el mismo id_estado, el trigger after_pedido_update_estado
+                    // (OLD.id_estado != NEW.id_estado) no inserta fila nueva; insertamos explícitamente
+                    // la nueva observación para que siempre quede registrada en el tracking interno.
+                    if ($idEstadoAnterior === $idEstadoNuevo) {
+                        try {
+                            $stmtInsertHistorialDirecto->execute([
+                                ':id_pedido'     => $idPedido,
+                                ':id_estado'     => $idEstadoNuevo,
+                                ':id_usuario'    => $userId,
+                                ':observaciones' => $obsFinal,
+                            ]);
+                        } catch (Throwable $eHist) {}
+                    }
+
+                    $actualizados++;
+                    $resultados[] = [
+                        'id_pedido'         => $idPedido,
+                        'numero_orden'      => (string)$pedido['numero_orden'],
+                        'id_estado_interno' => $idEstadoNuevo,
+                        'estado_interno'    => $nombreEstadoNuevo,
+                        'observaciones'     => $obsFinal,
+                        'success'           => true,
+                        'message'           => "Orden #{$pedido['numero_orden']} actualizada a '{$nombreEstadoNuevo}'.",
+                    ];
+                } else {
+                    $msg = "Orden #{$pedido['numero_orden']}: No fue posible actualizar el estado.";
+                    $errores[] = $msg;
+                    $resultados[] = [
+                        'id_pedido'    => $idPedido,
+                        'numero_orden' => (string)$pedido['numero_orden'],
+                        'success'      => false,
+                        'message'      => $msg,
+                    ];
+                }
+            }
+
+            echo json_encode([
+                'success'      => ($actualizados > 0),
+                'actualizados' => $actualizados,
+                'errores'      => $errores,
+                'resultados'   => $resultados,
+                'message'      => $actualizados > 0
+                    ? "Se actualizaron {$actualizados} pedido(s) en el tracking interno."
+                    : "No se pudo actualizar ningún pedido.",
+            ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
+            exit;
+        } catch (Throwable $e) {
+            error_log("LogisticaController::aplicarEstadosC807 error: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error al aplicar estados: ' . $e->getMessage(),
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
 }

@@ -110,6 +110,13 @@ try {
     error_log("Error in dashboard HL Express check: " . $e->getMessage());
 }
 
+// Verificar si el usuario actual es exclusivamente el proveedor Yall-Ego El Salvador (integración C807)
+$tieneC807 = isYallEgoElSalvadorProvider((int)($userId ?? 0));
+if ($tieneC807) {
+    // Garantizar aislamiento visual: en el perfil de Yall-Ego El Salvador no se muestran pestañas de HL Express
+    $tieneHLExpress = false;
+}
+
 
 // Colores semánticos por categoría funcional (hex + texto)
 // ORDEN IMPORTA: claves específicas primero (evita match prematuro)
@@ -355,12 +362,14 @@ include "vista/includes/header.php";
     $showAll        = ($activeTab === 'all')        ? 'active' : '';
     $showLiq        = ($activeTab === 'liq')        ? 'active' : '';
     $showNovedades  = ($activeTab === 'novedades')  ? 'active' : '';
+    $showC807       = ($activeTab === 'c807')       ? 'active' : '';
 
     $panePedidos    = ($activeTab === 'pedidos')    ? 'show active' : '';
     $paneUpdates    = ($activeTab === 'updates')    ? 'show active' : '';
     $paneAll        = ($activeTab === 'all')        ? 'show active' : '';
     $paneLiq        = ($activeTab === 'liq')        ? 'show active' : '';
     $paneNovedades  = ($activeTab === 'novedades')  ? 'show active' : '';
+    $paneC807       = ($activeTab === 'c807')       ? 'show active' : '';
 
     // Usar el total de pedidos de la paginación, no solo los de la página actual
     $countActivos = $data['pagination']['total'] ?? count($pedidosActivos);
@@ -454,6 +463,23 @@ include "vista/includes/header.php";
                     <i class="bi bi-box-seam text-primary"></i>
                     <span>Envíos HL</span>
                     <span class="badge rounded-pill bg-primary text-white" id="badgeEnviosCount">...</span>
+                </button>
+            </li>
+        <?php endif; ?>
+
+        <!-- Tab: Control de Estados C807 (Exclusivo Proveedor Yall-Ego El Salvador) -->
+        <?php if ($tieneC807): ?>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link <?= $showC807 ?> d-flex align-items-center gap-2"
+                    id="pills-c807-tab"
+                    data-bs-toggle="pill"
+                    data-bs-target="#pills-c807"
+                    type="button"
+                    onclick="history.pushState(null, '', '?tab=c807'); cargarEstadosC807Tab();">
+                    <i class="bi bi-arrow-left-right text-warning"></i>
+                    <span>Estados C807</span>
+                    <span class="badge rounded-pill text-dark" id="badgeC807Count"
+                        style="background:#f39c12;">...</span>
                 </button>
             </li>
         <?php endif; ?>
@@ -4235,6 +4261,1179 @@ include "vista/includes/header.php";
             function escH(str) {
                 return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             }
+        })();
+    </script>
+<?php endif; ?>
+
+<?php if ($tieneC807): ?>
+    <style>
+        /* Estilos del Control de Estados C807 con la paleta semántica del sistema */
+        .c807-kpi-card {
+            cursor: pointer;
+            border-radius: 10px;
+            border: 1.5px solid #e9ecef;
+            background: #fff;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .c807-kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .c807-kpi-card.active {
+            border-color: #0B4EA2;
+            background: rgba(11, 78, 162, 0.05);
+            box-shadow: 0 3px 10px rgba(11, 78, 162, 0.14);
+        }
+        .c807-step-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.25rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.25;
+            white-space: nowrap;
+        }
+        .c807-step-16 {
+            background: #f39c12;
+            color: #212529;
+        }
+        .c807-step-17 {
+            background: #c0392b;
+            color: #ffffff;
+        }
+        .c807-step-14 {
+            background: #2ecc71;
+            color: #212529;
+        }
+        .c807-step-15 {
+            background: #27ae60;
+            color: #ffffff;
+        }
+        .c807-step-normal {
+            background: #3498db;
+            color: #ffffff;
+        }
+        .c807-step-empty {
+            background: #95a5a6;
+            color: #212529;
+        }
+        .c807-bulk-bar {
+            position: sticky;
+            top: 10px;
+            z-index: 1020;
+            background: linear-gradient(135deg, #1B3B6F 0%, #0B4EA2 100%);
+            color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(11, 78, 162, 0.28);
+        }
+        .c807-row-selected {
+            background-color: rgba(11, 78, 162, 0.06) !important;
+        }
+        .c807-quick-chip {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid rgba(0,0,0,0.12);
+            transition: opacity 0.15s;
+        }
+        .c807-quick-chip:hover {
+            opacity: 0.85;
+        }
+    </style>
+
+    <!-- Modal: Historial Completo C807 vs Nuestro Tracking Interno -->
+    <div class="modal fade" id="modalHistoriaC807" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header text-white" style="background: linear-gradient(135deg, #1B3B6F 0%, #0B4EA2 100%);">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">
+                            <i class="bi bi-clock-history me-2"></i>Detalle de Tracking C807 vs Sistema Interno
+                        </h5>
+                        <small class="opacity-75" id="modalHistoriaC807Subtitulo">Consultando guía...</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body bg-light" id="modalHistoriaC807Body">
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-white">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const tabContent = document.getElementById('pills-tabContent');
+            if (!tabContent) return;
+
+            const c807Pane = document.createElement('div');
+            c807Pane.className = 'tab-pane fade <?= $paneC807 ?>';
+            c807Pane.id = 'pills-c807';
+            c807Pane.setAttribute('role', 'tabpanel');
+            c807Pane.innerHTML = `
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-bottom pt-3 pb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <i class="bi bi-arrow-left-right fs-5" style="color:#0B4EA2;"></i>
+                            <span class="fw-bold text-dark">Control de Estados C807 Xpress (El Salvador)</span>
+                            <span class="badge rounded-pill text-dark" id="c807HeaderCount" style="background:#f39c12;">0</span>
+                            <small class="text-muted ms-2" id="c807LastRefreshLabel"></small>
+                        </div>
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <button class="btn btn-sm text-white fw-semibold d-flex align-items-center gap-1"
+                                    style="background:#0B4EA2;"
+                                    onclick="cargarEstadosC807Tab(true, 1)"
+                                    title="Consultar estados en vivo desde la API de C807">
+                                <i class="bi bi-arrow-clockwise" id="c807RefreshIcon"></i>
+                                <span>Refrescar Estados C807</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body pb-3">
+                        <!-- Tarjetas KPI de las 3 Etapas Clave -->
+                        <div class="row g-2 mb-3" id="c807KpiRow">
+                            <div class="col-6 col-md-2">
+                                <div class="c807-kpi-card p-2 text-center active" data-etapa="relevantes" onclick="seleccionarEtapaC807('relevantes')">
+                                    <div class="small fw-semibold" style="color:#0B4EA2;">Con Hitos Clave</div>
+                                    <div class="fs-5 fw-bold" style="color:#0B4EA2;" id="kpiC807Relevantes">0</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <div class="c807-kpi-card p-2 text-center" data-etapa="16" onclick="seleccionarEtapaC807('16')">
+                                    <div class="small fw-semibold" style="color:#d68910;">1️⃣ Problemas en la gestión (16)</div>
+                                    <div class="fs-5 fw-bold" style="color:#d68910;" id="kpiC807Prob16">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="c807-kpi-card p-2 text-center" data-etapa="17" onclick="seleccionarEtapaC807('17')">
+                                    <div class="small fw-semibold" style="color:#c0392b;">2️⃣ Devolución (17)</div>
+                                    <div class="fs-5 fw-bold" style="color:#c0392b;" id="kpiC807Dev17">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="c807-kpi-card p-2 text-center" data-etapa="post_ruta" onclick="seleccionarEtapaC807('post_ruta')">
+                                    <div class="small fw-semibold" style="color:#27ae60;">3️⃣ En Ruta / Destino Post-Dev.</div>
+                                    <div class="fs-5 fw-bold" style="color:#27ae60;" id="kpiC807PostRuta">0</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <div class="c807-kpi-card p-2 text-center" data-etapa="todos" onclick="seleccionarEtapaC807('todos')">
+                                    <div class="small text-muted fw-semibold">Todos (En Proceso)</div>
+                                    <div class="fs-5 fw-bold text-dark" id="kpiC807Todos">0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Filtros de búsqueda -->
+                        <div class="row g-2 align-items-end bg-light p-2 rounded border mb-3">
+                            <div class="col-sm-6 col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Etapa C807</label>
+                                <select id="c807FilterEtapa" class="form-select form-select-sm" onchange="sincronizarKpiEtapaC807(); cargarEstadosC807Tab(false, 1);">
+                                    <option value="relevantes" selected>Solo Hitos Clave (16 / 17 / Post)</option>
+                                    <option value="16">1️⃣ Problemas en la gestión (16)</option>
+                                    <option value="17">2️⃣ Devolución (17)</option>
+                                    <option value="post_ruta">3️⃣ En ruta / Destino posterior (14/15)</option>
+                                    <option value="todos">Todos los envíos activos</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-6 col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Nuestro Estado</label>
+                                <select id="c807FilterEstadoInterno" class="form-select form-select-sm">
+                                    <option value="0">Todos los estados</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-6 col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Orden / Destinatario</label>
+                                <input type="text" id="c807FilterOrder" class="form-control form-control-sm" placeholder="Ej. 1615130...">
+                            </div>
+                            <div class="col-sm-6 col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Guía C807 (Tracking)</label>
+                                <input type="text" id="c807FilterGuia" class="form-control form-control-sm" placeholder="EXLATA-...">
+                            </div>
+                            <div class="col-sm-6 col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Desde</label>
+                                <input type="date" id="c807FilterStart" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-sm-6 col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Hasta</label>
+                                <input type="date" id="c807FilterEnd" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 mt-2 pt-1 border-top">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="c807FilterIncluirFinales" onchange="cargarEstadosC807Tab(false, 1)">
+                                    <label class="form-check-label small text-muted" for="c807FilterIncluirFinales">
+                                        Incluir histórico ya cerrado (Entregado / Devuelto / Liquidado)
+                                    </label>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-primary btn-sm px-3" onclick="cargarEstadosC807Tab(false, 1)">
+                                        <i class="bi bi-search me-1"></i>Filtrar
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" onclick="limpiarFiltrosC807()">
+                                        <i class="bi bi-x-circle me-1"></i>Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Barra Flotante de Acción Masiva (visible al seleccionar 1+ pedidos) -->
+                        <div id="c807BulkBar" class="c807-bulk-bar p-3 mb-3 d-none">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-12 col-lg-3 d-flex align-items-center gap-2">
+                                    <span class="badge bg-warning text-dark fs-6 px-2 py-1" id="c807BulkCount">0</span>
+                                    <div>
+                                        <div class="fw-bold small">Pedido(s) seleccionado(s)</div>
+                                        <div class="small opacity-75">Actualización masiva a nuestro tracking</div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-lg-3">
+                                    <label class="form-label small mb-1 text-white-50">Cambiar a nuestro estado:</label>
+                                    <select id="c807BulkEstadoSelect" class="form-select form-select-sm" onchange="onC807BulkEstadoChange()">
+                                        <option value="">-- Seleccionar estado --</option>
+                                    </select>
+                                    <div id="c807BulkExtraDateWrap" class="mt-1 d-none">
+                                        <input type="date" id="c807BulkExtraDate" class="form-control form-control-sm" title="Fecha requerida por el estado">
+                                    </div>
+                                </div>
+                                <div class="col-sm-6 col-lg-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label small mb-0 text-white-50">Observación para el tracking:</label>
+                                        <div class="form-check form-check-inline mb-0">
+                                            <input class="form-check-input" type="checkbox" id="c807BulkUsarObsFila" checked onchange="toggleC807BulkObsInput()">
+                                            <label class="form-check-label small text-warning fw-semibold" for="c807BulkUsarObsFila">
+                                                Usar observación de cada fila
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <input type="text" id="c807BulkObsInput" class="form-control form-control-sm"
+                                           placeholder="Se usará la observación capturada/editada en cada fila..." disabled>
+                                </div>
+                                <div class="col-12 col-lg-2 d-flex gap-1 justify-content-end">
+                                    <button type="button" class="btn btn-warning btn-sm fw-bold text-dark w-100" id="btnC807AplicarMasivo" onclick="aplicarSeleccionadosC807()">
+                                        <i class="bi bi-check2-all me-1"></i>Aplicar Masivo
+                                    </button>
+                                    <button type="button" class="btn btn-outline-light btn-sm" onclick="deseleccionarTodosC807()" title="Deseleccionar todos">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contenedor de la tabla -->
+                        <div id="c807TableContainer">
+                            <div class="text-center py-5 text-muted">
+                                <div class="spinner-border text-primary mb-2" role="status"></div>
+                                <p class="small mb-0">Consultando estados en C807 Xpress...</p>
+                            </div>
+                        </div>
+
+                        <!-- Paginación -->
+                        <div id="c807Pager" class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top d-none"></div>
+                    </div>
+                </div>
+            `;
+            tabContent.appendChild(c807Pane);
+
+            // Estado en memoria del módulo C807
+            let c807RowsMap = {};
+            let c807EstadosDisponibles = [];
+            let c807SelectedIds = new Set();
+            let c807CurrentPage = 1;
+            let c807LoadedOnce = false;
+
+            function escC807(str) {
+                return String(str ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            /**
+             * Devuelve el estilo inline de badge usando exactamente la paleta semántica de dashboard.php
+             */
+            function obtenerEstiloEstadoInterno(nombreEstado) {
+                const norm = String(nombreEstado ?? '')
+                    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                    .toUpperCase().trim();
+
+                if (norm.includes('DEVOLUCION') || norm.includes('DEVUELTO')) {
+                    return 'background:#c0392b;color:#fff'; // CLR_FALLO
+                }
+                if (norm.includes('PENDIENTE RECOLECCION')) {
+                    return 'background:#f39c12;color:#212529'; // CLR_EXCEPCION
+                }
+                if (norm.includes('RECOLECTADO') || norm.includes('BODEGA') || norm.includes(' LISTO')) {
+                    return 'background:#3498db;color:#fff'; // CLR_LOGISTICA
+                }
+                if (norm.includes('TRANSITO') || norm.includes('RUTA')) {
+                    return 'background:#2ecc71;color:#212529'; // CLR_TRANSITO
+                }
+                if (norm.includes('ENTREGADO') || norm.includes('LIQUIDADO') || norm.includes('COMPLETADO')) {
+                    return 'background:#27ae60;color:#fff'; // CLR_COMPLETADO
+                }
+                if (norm.includes('INCIDENCIA') || norm.includes('REPROGRAMADO') || norm.includes('PENDIENTE') || norm.includes('DOMICILIO') || norm.includes('PROBLEMA')) {
+                    return 'background:#f39c12;color:#212529'; // CLR_EXCEPCION
+                }
+                if (norm.includes('ROBO') || norm.includes('EXTRAVIO')) {
+                    return 'background:#e74c3c;color:#fff'; // CLR_CRITICO
+                }
+                if (norm.includes('RECHAZADO') || norm.includes('CANCELADO') || norm.includes('NO RECOLECTADO') || norm.includes('SIN COBERTURA')) {
+                    return 'background:#c0392b;color:#fff'; // CLR_FALLO
+                }
+                return 'background:#95a5a6;color:#212529'; // CLR_GRIS
+            }
+
+            function poblarSelectoresEstadosInternos(estados) {
+                if (!Array.isArray(estados) || estados.length === 0) return;
+                c807EstadosDisponibles = estados;
+
+                const filterSel = document.getElementById('c807FilterEstadoInterno');
+                if (filterSel && filterSel.options.length <= 1) {
+                    estados.forEach(e => {
+                        const opt = document.createElement('option');
+                        opt.value = e.id;
+                        opt.textContent = e.nombre_estado;
+                        filterSel.appendChild(opt);
+                    });
+                }
+
+                const bulkSel = document.getElementById('c807BulkEstadoSelect');
+                if (bulkSel && bulkSel.options.length <= 1) {
+                    estados.forEach(e => {
+                        const opt = document.createElement('option');
+                        opt.value = e.nombre_estado;
+                        opt.textContent = e.nombre_estado;
+                        bulkSel.appendChild(opt);
+                    });
+                }
+            }
+
+            window.seleccionarEtapaC807 = function(etapa) {
+                const sel = document.getElementById('c807FilterEtapa');
+                if (sel) sel.value = etapa;
+                sincronizarKpiEtapaC807();
+                cargarEstadosC807Tab(false, 1);
+            };
+
+            window.sincronizarKpiEtapaC807 = function() {
+                const sel = document.getElementById('c807FilterEtapa');
+                const val = sel ? sel.value : 'relevantes';
+                document.querySelectorAll('#c807KpiRow .c807-kpi-card').forEach(card => {
+                    card.classList.toggle('active', card.getAttribute('data-etapa') === val);
+                });
+            };
+
+            window.limpiarFiltrosC807 = function() {
+                document.getElementById('c807FilterEtapa').value = 'relevantes';
+                document.getElementById('c807FilterEstadoInterno').value = '0';
+                document.getElementById('c807FilterOrder').value = '';
+                document.getElementById('c807FilterGuia').value = '';
+                document.getElementById('c807FilterStart').value = '';
+                document.getElementById('c807FilterEnd').value = '';
+                document.getElementById('c807FilterIncluirFinales').checked = false;
+                sincronizarKpiEtapaC807();
+                cargarEstadosC807Tab(false, 1);
+            };
+
+            window.cargarEstadosC807Tab = function(forceRefresh = false, page = 1) {
+                c807CurrentPage = page;
+                const container = document.getElementById('c807TableContainer');
+                const pager = document.getElementById('c807Pager');
+                const refreshIcon = document.getElementById('c807RefreshIcon');
+
+                if (refreshIcon && forceRefresh) {
+                    refreshIcon.classList.add('spinner-border', 'spinner-border-sm');
+                    refreshIcon.classList.remove('bi', 'bi-arrow-clockwise');
+                }
+
+                container.innerHTML = `
+                    <div class="text-center py-5 text-muted">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="small mb-0">${forceRefresh ? 'Refrescando historias en tiempo real desde C807 Xpress...' : 'Cargando envíos C807...'}</p>
+                    </div>`;
+                if (pager) pager.classList.add('d-none');
+
+                const params = new URLSearchParams({
+                    page: page,
+                    limit: 20,
+                    etapa_c807: document.getElementById('c807FilterEtapa')?.value || 'relevantes',
+                    id_estado_interno: document.getElementById('c807FilterEstadoInterno')?.value || '0',
+                    order_number: document.getElementById('c807FilterOrder')?.value.trim() || '',
+                    tracking_number: document.getElementById('c807FilterGuia')?.value.trim() || '',
+                    start_date: document.getElementById('c807FilterStart')?.value || '',
+                    end_date: document.getElementById('c807FilterEnd')?.value || '',
+                    incluir_finales: document.getElementById('c807FilterIncluirFinales')?.checked ? '1' : '0'
+                });
+                if (forceRefresh) {
+                    params.set('refresh', '1');
+                }
+
+                fetch('<?= RUTA_URL ?>logistica/listarEstadosC807?' + params.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(res => {
+                    c807LoadedOnce = true;
+                    if (refreshIcon) {
+                        refreshIcon.className = 'bi bi-arrow-clockwise';
+                    }
+
+                    if (!res.success) {
+                        container.innerHTML = `<div class="alert alert-danger m-3"><i class="bi bi-exclamation-octagon me-2"></i>${escC807(res.message || 'Error al consultar C807.')}</div>`;
+                        return;
+                    }
+
+                    poblarSelectoresEstadosInternos(res.estados_disponibles || []);
+
+                    // Actualizar KPIs
+                    const kpis = res.kpis || {};
+                    const elTodos = document.getElementById('kpiC807Todos');
+                    const elRel   = document.getElementById('kpiC807Relevantes');
+                    const elP16   = document.getElementById('kpiC807Prob16');
+                    const elD17   = document.getElementById('kpiC807Dev17');
+                    const elPost  = document.getElementById('kpiC807PostRuta');
+                    if (elTodos) elTodos.textContent = kpis.todos ?? 0;
+                    if (elRel)   elRel.textContent   = kpis.relevantes ?? 0;
+                    if (elP16)   elP16.textContent   = kpis.problemas_16 ?? 0;
+                    if (elD17)   elD17.textContent   = kpis.devolucion_17 ?? 0;
+                    if (elPost)  elPost.textContent  = kpis.post_ruta ?? 0;
+
+                    const badgeTab = document.getElementById('badgeC807Count');
+                    const badgeHdr = document.getElementById('c807HeaderCount');
+                    const badgeVal = (kpis.relevantes > 0) ? kpis.relevantes : (kpis.todos ?? 0);
+                    if (badgeTab) badgeTab.textContent = badgeVal;
+                    if (badgeHdr) badgeHdr.textContent = (res.pagination?.total ?? 0);
+
+                    const lblRefresh = document.getElementById('c807LastRefreshLabel');
+                    if (lblRefresh && res.refreshed_at) {
+                        lblRefresh.innerHTML = `<i class="bi bi-clock me-1"></i>Actualizado: ${escC807(res.refreshed_at)}`;
+                    }
+
+                    const rows = res.data || [];
+                    c807RowsMap = {};
+                    rows.forEach(r => { c807RowsMap[r.id_pedido] = r; });
+
+                    renderizarTablaC807(rows, res.api_warning);
+                    renderizarPaginacionC807(res.pagination || {});
+                    actualizarBarraMasivaC807();
+                })
+                .catch(err => {
+                    if (refreshIcon) refreshIcon.className = 'bi bi-arrow-clockwise';
+                    container.innerHTML = `<div class="alert alert-danger m-3"><i class="bi bi-wifi-off me-2"></i>Error de conexión: ${escC807(err.message)}</div>`;
+                });
+            };
+
+            function renderizarSecuenciaC807(analisis) {
+                if (!analisis || !analisis.tiene_historia) {
+                    return `<span class="c807-step-pill c807-step-empty"><i class="bi bi-hourglass-split"></i> Sin eventos en C807</span>`;
+                }
+
+                const hitos = analisis.secuencia_hitos || [];
+                let html = `<div class="d-flex flex-column gap-1">`;
+
+                if (hitos.length > 0) {
+                    hitos.forEach(h => {
+                        let cls = 'c807-step-normal';
+                        let icon = 'bi-info-circle-fill';
+                        let numPrefix = '';
+                        if (String(h.codigo) === '16') {
+                            cls = 'c807-step-16';
+                            icon = 'bi-exclamation-triangle-fill';
+                            numPrefix = '1️⃣ ';
+                        } else if (String(h.codigo) === '17') {
+                            cls = 'c807-step-17';
+                            icon = 'bi-arrow-return-left';
+                            numPrefix = '2️⃣ ';
+                        } else if (String(h.codigo) === '14') {
+                            cls = 'c807-step-14';
+                            icon = 'bi-truck';
+                            numPrefix = '3️⃣ ';
+                        } else if (String(h.codigo) === '15') {
+                            cls = 'c807-step-15';
+                            icon = 'bi-check-circle-fill';
+                            numPrefix = '3️⃣ ';
+                        }
+
+                        const intentosBadge = (h.intentos && h.intentos > 1)
+                            ? `<span class="badge bg-dark text-white ms-1" style="font-size:0.65rem;">x${h.intentos}</span>`
+                            : '';
+                        const labelTexto = h.etiqueta || h.estatus;
+
+                        html += `
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                <span class="c807-step-pill ${cls}" title="Código C807: ${escC807(h.codigo)} | Fecha: ${escC807(h.fecha)}">
+                                    <i class="bi ${icon}"></i>
+                                    <span>${numPrefix}${escC807(labelTexto)}</span>
+                                    ${intentosBadge}
+                                </span>
+                                <small class="text-muted" style="font-size:0.7rem;">${escC807(h.fecha)}</small>
+                            </div>`;
+                    });
+                } else if (analisis.ultimo_evento) {
+                    const u = analisis.ultimo_evento;
+                    const uCls = (String(u.codigo) === '15') ? 'c807-step-15' : (String(u.codigo) === '14' ? 'c807-step-14' : 'c807-step-normal');
+                    html += `
+                        <div class="d-flex align-items-center gap-1 flex-wrap">
+                            <span class="c807-step-pill ${uCls}" title="Código C807: ${escC807(u.codigo)}">
+                                <i class="bi bi-box-seam"></i>
+                                <span>${escC807(u.estatus || 'En tránsito')}</span>
+                            </span>
+                            <small class="text-muted" style="font-size:0.7rem;">${escC807(u.fecha || '')}</small>
+                        </div>`;
+                }
+
+                html += `</div>`;
+                return html;
+            }
+
+            function construirOpcionesEstadosFila(idPedido) {
+                let opts = `<option value="">-- Seleccionar nuestro estado --</option>`;
+                c807EstadosDisponibles.forEach(est => {
+                    opts += `<option value="${escC807(est.nombre_estado)}">${escC807(est.nombre_estado)}</option>`;
+                });
+                return opts;
+            }
+
+            function renderizarTablaC807(rows, apiWarning) {
+                const container = document.getElementById('c807TableContainer');
+                let warningBanner = '';
+                if (apiWarning) {
+                    warningBanner = `
+                        <div class="alert alert-warning py-2 small mb-2">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Aviso al consultar API C807: ${escC807(apiWarning)}
+                        </div>`;
+                }
+
+                if (!rows || rows.length === 0) {
+                    container.innerHTML = warningBanner + `
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 opacity-50"></i>
+                            <p class="mb-1 fw-semibold">No se encontraron envíos de C807 con los filtros seleccionados.</p>
+                            <small>Puedes cambiar el filtro "Etapa C807" a "Todos los envíos C807" o pulsar Refrescar.</small>
+                        </div>`;
+                    return;
+                }
+
+                let html = warningBanner + `
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 0.84rem;">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 36px;" class="text-center">
+                                        <input type="checkbox" class="form-check-input" id="c807CheckAll" onchange="toggleSelectAllC807(this.checked)" title="Seleccionar todos los de esta página">
+                                    </th>
+                                    <th style="min-width: 145px;">Orden / Guía C807</th>
+                                    <th style="min-width: 180px;">Destinatario / Dirección</th>
+                                    <th style="min-width: 130px;">Nuestro Estado</th>
+                                    <th style="min-width: 230px;">Estatus Capturado C807 (Secuencia)</th>
+                                    <th style="min-width: 210px;">Observación Capturada (C807)</th>
+                                    <th style="min-width: 210px;">Cambiar a Nuestro Estado</th>
+                                    <th style="min-width: 210px;">Observación para Nuestro Tracking</th>
+                                    <th style="min-width: 115px;" class="text-center">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                rows.forEach(r => {
+                    const idPed = r.id_pedido;
+                    const checked = c807SelectedIds.has(idPed) ? 'checked' : '';
+                    const rowSelectedCls = c807SelectedIds.has(idPed) ? 'c807-row-selected' : '';
+                    const estiloInterno = obtenerEstiloEstadoInterno(r.estado_interno);
+                    const analisis = r.analisis_c807 || {};
+                    const cap = analisis.estatus_capturado || {};
+                    const obsCorta = cap.observacion_corta || '';
+                    const obsCompleta = cap.observacion_completa || obsCorta;
+                    const motivoPrevio = cap.motivo_problema_previo || '';
+
+                    // Observación sugerida por defecto para insertar en nuestro tracking
+                    let obsSugerida = obsCorta;
+                    if (motivoPrevio && !obsSugerida.includes(motivoPrevio)) {
+                        obsSugerida = `Motivo: ${motivoPrevio} | ${obsSugerida}`;
+                    }
+
+                    html += `
+                        <tr id="c807Row_${idPed}" class="${rowSelectedCls}">
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input c807-row-check"
+                                       data-id="${idPed}" ${checked}
+                                       onchange="onToggleRowC807(${idPed}, this.checked)">
+                            </td>
+                            <td>
+                                <div class="fw-bold text-dark">#${escC807(r.numero_orden)}</div>
+                                <div class="d-flex align-items-center gap-1 mt-1">
+                                    <span class="badge bg-light text-dark border font-monospace" style="font-size:0.73rem;">
+                                        ${escC807(r.c807_guia)}
+                                    </span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 text-secondary"
+                                            onclick="copiarTextoC807('${escC807(r.c807_guia)}')" title="Copiar guía C807">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1" style="font-size:0.7rem;">${escC807(r.nombre_cliente)}</small>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">${escC807(r.destinatario || 'Sin nombre')}</div>
+                                ${r.telefono ? `<div class="text-muted small"><i class="bi bi-telephone me-1"></i>${escC807(r.telefono)}</div>` : ''}
+                                <div class="text-muted small text-truncate" style="max-width: 210px;" title="${escC807(r.direccion_completa)}">
+                                    ${escC807(r.direccion_completa || '—')}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill px-2 py-1" id="c807BadgeInterno_${idPed}" style="${estiloInterno};font-size:0.75rem;">
+                                    ${escC807(r.estado_interno)}
+                                </span>
+                                ${r.ultima_obs_interna ? `
+                                    <div class="text-muted small mt-1 text-truncate" style="max-width:140px;font-size:0.7rem;" title="Última obs. interna: ${escC807(r.ultima_obs_interna)}">
+                                        <i class="bi bi-chat-left-text me-1"></i>${escC807(r.ultima_obs_interna)}
+                                    </div>` : ''}
+                            </td>
+                            <td>
+                                ${renderizarSecuenciaC807(analisis)}
+                            </td>
+                            <td>
+                                ${obsCorta ? `
+                                    <div class="small text-dark fw-semibold" style="line-height:1.25;">
+                                        ${escC807(obsCorta)}
+                                    </div>
+                                    ${motivoPrevio ? `<div class="small text-warning-emphasis mt-1" style="font-size:0.72rem;"><i class="bi bi-exclamation-circle me-1"></i>1️⃣ Motivo: ${escC807(motivoPrevio)}</div>` : ''}
+                                    <div class="d-flex gap-2 align-items-center mt-1">
+                                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.7rem;"
+                                                onclick="usarObservacionC807EnFila(${idPed})">
+                                            <i class="bi bi-arrow-right-circle me-1"></i>Usar motivo
+                                        </button>
+                                        ${obsCompleta.length > obsCorta.length ? `
+                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" style="font-size:0.7rem;"
+                                                    onclick="verHistoriaCompletaC807(${idPed})">
+                                                Ver completa
+                                            </button>` : ''}
+                                    </div>
+                                ` : `<span class="text-muted small fst-italic">Sin observación en C807</span>`}
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm mb-1" id="c807SelectEstado_${idPed}" onchange="onFilaEstadoC807Change(${idPed})">
+                                    ${construirOpcionesEstadosFila(idPed)}
+                                </select>
+                                <div id="c807ExtraDateWrap_${idPed}" class="d-none mt-1">
+                                    <input type="date" class="form-control form-control-sm" id="c807ExtraDate_${idPed}" title="Fecha requerida">
+                                </div>
+                                <!-- Atajos rápidos con los colores del sistema -->
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    <span class="c807-quick-chip" style="background:#f39c12;color:#212529;" onclick="seleccionarRapidoFilaC807(${idPed}, 'Incidencia')" title="Seleccionar Incidencia">Incidencia</span>
+                                    <span class="c807-quick-chip" style="background:#c0392b;color:#fff;" onclick="seleccionarRapidoFilaC807(${idPed}, 'Devolución')" title="Seleccionar Devolución">Devolución</span>
+                                    <span class="c807-quick-chip" style="background:#2ecc71;color:#212529;" onclick="seleccionarRapidoFilaC807(${idPed}, 'En ruta o proceso de entrega')" title="Seleccionar En ruta">En ruta</span>
+                                </div>
+                            </td>
+                            <td>
+                                <textarea class="form-control form-control-sm" id="c807InputObs_${idPed}" rows="2"
+                                          placeholder="Escribe o edita la observación para nuestro tracking...">${escC807(obsSugerida)}</textarea>
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex flex-column gap-1">
+                                    <button type="button" class="btn btn-sm text-white fw-semibold"
+                                            style="background:#0B4EA2;"
+                                            id="btnC807ApplyRow_${idPed}"
+                                            onclick="aplicarFilaIndividualC807(${idPed})">
+                                        <i class="bi bi-check2-circle me-1"></i>Aplicar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            onclick="verHistoriaCompletaC807(${idPed})">
+                                        <i class="bi bi-eye me-1"></i>Historia
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                html += `</tbody></table></div>`;
+                container.innerHTML = html;
+            }
+
+            function renderizarPaginacionC807(pagination) {
+                const pager = document.getElementById('c807Pager');
+                if (!pager) return;
+
+                const total = pagination.total ?? 0;
+                const current = pagination.current_page ?? 1;
+                const last = pagination.last_page ?? 1;
+
+                if (total <= 0) {
+                    pager.classList.add('d-none');
+                    return;
+                }
+
+                pager.classList.remove('d-none');
+                let pagesHtml = '';
+                const startPage = Math.max(1, current - 2);
+                const endPage = Math.min(last, current + 2);
+
+                pagesHtml += `
+                    <button class="btn btn-outline-secondary btn-sm" ${current <= 1 ? 'disabled' : ''}
+                            onclick="cargarEstadosC807Tab(false, ${current - 1})">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>`;
+
+                for (let p = startPage; p <= endPage; p++) {
+                    const activeCls = (p === current) ? 'btn-primary' : 'btn-outline-secondary';
+                    pagesHtml += `
+                        <button class="btn ${activeCls} btn-sm" onclick="cargarEstadosC807Tab(false, ${p})">
+                            ${p}
+                        </button>`;
+                }
+
+                pagesHtml += `
+                    <button class="btn btn-outline-secondary btn-sm" ${current >= last ? 'disabled' : ''}
+                            onclick="cargarEstadosC807Tab(false, ${current + 1})">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>`;
+
+                pager.innerHTML = `
+                    <div class="small text-muted">
+                        Mostrando página <strong>${current}</strong> de <strong>${last}</strong> (${total} envío${total === 1 ? '' : 's'} C807)
+                    </div>
+                    <div class="btn-group btn-group-sm">${pagesHtml}</div>`;
+            }
+
+            window.copiarTextoC807 = function(texto) {
+                if (!navigator.clipboard) return;
+                navigator.clipboard.writeText(texto);
+            };
+
+            window.usarObservacionC807EnFila = function(idPedido) {
+                const r = c807RowsMap[idPedido];
+                if (!r) return;
+                const cap = r.analisis_c807?.estatus_capturado || {};
+                const input = document.getElementById('c807InputObs_' + idPedido);
+                if (input) {
+                    input.value = cap.observacion_completa || cap.observacion_corta || '';
+                    input.focus();
+                }
+            };
+
+            window.seleccionarRapidoFilaC807 = function(idPedido, nombreBuscado) {
+                const sel = document.getElementById('c807SelectEstado_' + idPedido);
+                if (!sel) return;
+                const targetNorm = nombreBuscado.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                for (let i = 0; i < sel.options.length; i++) {
+                    const optNorm = sel.options[i].value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                    if (optNorm === targetNorm || optNorm.includes(targetNorm)) {
+                        sel.selectedIndex = i;
+                        onFilaEstadoC807Change(idPedido);
+                        break;
+                    }
+                }
+            };
+
+            window.onFilaEstadoC807Change = function(idPedido) {
+                const sel = document.getElementById('c807SelectEstado_' + idPedido);
+                const wrap = document.getElementById('c807ExtraDateWrap_' + idPedido);
+                if (!sel || !wrap) return;
+                const val = sel.value.toLowerCase();
+                if (val.includes('reprogramado') || val.includes('liquidado')) {
+                    wrap.classList.remove('d-none');
+                } else {
+                    wrap.classList.add('d-none');
+                }
+            };
+
+            window.onC807BulkEstadoChange = function() {
+                const sel = document.getElementById('c807BulkEstadoSelect');
+                const wrap = document.getElementById('c807BulkExtraDateWrap');
+                if (!sel || !wrap) return;
+                const val = sel.value.toLowerCase();
+                if (val.includes('reprogramado') || val.includes('liquidado')) {
+                    wrap.classList.remove('d-none');
+                } else {
+                    wrap.classList.add('d-none');
+                }
+            };
+
+            window.toggleC807BulkObsInput = function() {
+                const chk = document.getElementById('c807BulkUsarObsFila');
+                const inp = document.getElementById('c807BulkObsInput');
+                if (!chk || !inp) return;
+                inp.disabled = chk.checked;
+                if (!chk.checked) {
+                    inp.placeholder = 'Escribe la observación general para todos los seleccionados...';
+                    inp.focus();
+                } else {
+                    inp.value = '';
+                    inp.placeholder = 'Se usará la observación capturada/editada en cada fila...';
+                }
+            };
+
+            window.onToggleRowC807 = function(idPedido, isChecked) {
+                if (isChecked) {
+                    c807SelectedIds.add(idPedido);
+                } else {
+                    c807SelectedIds.delete(idPedido);
+                }
+                const rowEl = document.getElementById('c807Row_' + idPedido);
+                if (rowEl) {
+                    rowEl.classList.toggle('c807-row-selected', isChecked);
+                }
+                actualizarBarraMasivaC807();
+            };
+
+            window.toggleSelectAllC807 = function(isChecked) {
+                document.querySelectorAll('.c807-row-check').forEach(chk => {
+                    chk.checked = isChecked;
+                    const id = parseInt(chk.getAttribute('data-id'), 10);
+                    if (id > 0) {
+                        if (isChecked) c807SelectedIds.add(id);
+                        else c807SelectedIds.delete(id);
+                        const rowEl = document.getElementById('c807Row_' + id);
+                        if (rowEl) rowEl.classList.toggle('c807-row-selected', isChecked);
+                    }
+                });
+                actualizarBarraMasivaC807();
+            };
+
+            window.deseleccionarTodosC807 = function() {
+                c807SelectedIds.clear();
+                const chkAll = document.getElementById('c807CheckAll');
+                if (chkAll) chkAll.checked = false;
+                document.querySelectorAll('.c807-row-check').forEach(chk => {
+                    chk.checked = false;
+                });
+                document.querySelectorAll('[id^="c807Row_"]').forEach(rowEl => {
+                    rowEl.classList.remove('c807-row-selected');
+                });
+                actualizarBarraMasivaC807();
+            };
+
+            function actualizarBarraMasivaC807() {
+                const bar = document.getElementById('c807BulkBar');
+                const cnt = document.getElementById('c807BulkCount');
+                if (!bar || !cnt) return;
+                const totalSel = c807SelectedIds.size;
+                cnt.textContent = totalSel;
+                bar.classList.toggle('d-none', totalSel === 0);
+            }
+
+            window.aplicarFilaIndividualC807 = function(idPedido) {
+                const sel = document.getElementById('c807SelectEstado_' + idPedido);
+                const obsInput = document.getElementById('c807InputObs_' + idPedido);
+                const dateInput = document.getElementById('c807ExtraDate_' + idPedido);
+                const btn = document.getElementById('btnC807ApplyRow_' + idPedido);
+                const r = c807RowsMap[idPedido] || {};
+
+                const estadoElegido = sel ? sel.value.trim() : '';
+                const observacion = obsInput ? obsInput.value.trim() : '';
+                const extraDate = dateInput ? dateInput.value : '';
+
+                if (!estadoElegido) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'warning', title: 'Selecciona un estado', text: 'Elige a cuál de nuestros estados deseas cambiar este pedido.' });
+                    } else {
+                        alert('Selecciona el estado a aplicar.');
+                    }
+                    return;
+                }
+
+                if (estadoElegido.toLowerCase().includes('reprogramado') && !extraDate) {
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Indica la fecha de reprogramación para este pedido.' });
+                    } else {
+                        alert('Indica la fecha de reprogramación.');
+                    }
+                    return;
+                }
+
+                const item = {
+                    id_pedido: idPedido,
+                    estado: estadoElegido,
+                    observaciones: observacion,
+                    numero_guia: r.c807_guia || '',
+                    fecha_entrega: estadoElegido.toLowerCase().includes('reprogramado') ? extraDate : null,
+                    fecha_liquidacion: estadoElegido.toLowerCase().includes('liquidado') ? extraDate : null
+                };
+
+                enviarActualizacionEstadosC807([item], btn);
+            };
+
+            window.aplicarSeleccionadosC807 = function() {
+                if (c807SelectedIds.size === 0) return;
+
+                const bulkSel = document.getElementById('c807BulkEstadoSelect');
+                const bulkEstado = bulkSel ? bulkSel.value.trim() : '';
+                const usarObsFila = document.getElementById('c807BulkUsarObsFila')?.checked ?? true;
+                const bulkObsGeneral = document.getElementById('c807BulkObsInput')?.value.trim() || '';
+                const bulkDate = document.getElementById('c807BulkExtraDate')?.value || '';
+                const btnBulk = document.getElementById('btnC807AplicarMasivo');
+
+                const items = [];
+                for (const idPed of c807SelectedIds) {
+                    const r = c807RowsMap[idPed] || {};
+                    const filaEstadoSel = document.getElementById('c807SelectEstado_' + idPed)?.value.trim() || '';
+                    const filaObs = document.getElementById('c807InputObs_' + idPed)?.value.trim() || '';
+                    const filaDate = document.getElementById('c807ExtraDate_' + idPed)?.value || '';
+
+                    const estadoFinal = bulkEstado || filaEstadoSel;
+                    if (!estadoFinal) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Falta seleccionar estado',
+                                text: `Selecciona un estado en la barra masiva (o en cada fila seleccionada) antes de aplicar.`
+                            });
+                        } else {
+                            alert('Selecciona un estado en la barra masiva antes de aplicar.');
+                        }
+                        return;
+                    }
+
+                    const fechaUso = bulkDate || filaDate;
+                    if (estadoFinal.toLowerCase().includes('reprogramado') && !fechaUso) {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'warning', title: 'Fecha requerida', text: 'Indica la fecha de reprogramación para aplicar el estado Reprogramado.' });
+                        } else {
+                            alert('Indica la fecha de reprogramación.');
+                        }
+                        return;
+                    }
+
+                    const obsFinal = usarObsFila
+                        ? (filaObs || (r.analisis_c807?.estatus_capturado?.observacion_corta ?? ''))
+                        : (bulkObsGeneral || filaObs);
+
+                    items.push({
+                        id_pedido: idPed,
+                        estado: estadoFinal,
+                        observaciones: obsFinal,
+                        numero_guia: r.c807_guia || '',
+                        fecha_entrega: estadoFinal.toLowerCase().includes('reprogramado') ? fechaUso : null,
+                        fecha_liquidacion: estadoFinal.toLowerCase().includes('liquidado') ? fechaUso : null
+                    });
+                }
+
+                enviarActualizacionEstadosC807(items, btnBulk, true);
+            };
+
+            function enviarActualizacionEstadosC807(items, btnElement, esMasivo = false) {
+                const originalHtml = btnElement ? btnElement.innerHTML : '';
+                if (btnElement) {
+                    btnElement.disabled = true;
+                    btnElement.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span>Guardando...`;
+                }
+
+                fetch('<?= RUTA_URL ?>logistica/aplicarEstadosC807', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ items })
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (btnElement) {
+                        btnElement.disabled = false;
+                        btnElement.innerHTML = originalHtml;
+                    }
+
+                    if (!res.success) {
+                        const msg = (res.errores && res.errores.length) ? res.errores.join('\n') : (res.message || 'No se pudo actualizar.');
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({ icon: 'error', title: 'Error al actualizar', text: msg });
+                        } else {
+                            alert(msg);
+                        }
+                        return;
+                    }
+
+                    // Actualizar en vivo el badge de cada fila procesada
+                    (res.resultados || []).forEach(itemRes => {
+                        if (!itemRes.success) return;
+                        const badge = document.getElementById('c807BadgeInterno_' + itemRes.id_pedido);
+                        if (badge) {
+                            badge.textContent = itemRes.estado_interno;
+                            badge.setAttribute('style', obtenerEstiloEstadoInterno(itemRes.estado_interno) + ';font-size:0.75rem;');
+                        }
+                        if (c807RowsMap[itemRes.id_pedido]) {
+                            c807RowsMap[itemRes.id_pedido].estado_interno = itemRes.estado_interno;
+                            c807RowsMap[itemRes.id_pedido].id_estado_interno = itemRes.id_estado_interno;
+                            c807RowsMap[itemRes.id_pedido].ultima_obs_interna = itemRes.observaciones;
+                        }
+                    });
+
+                    if (esMasivo) {
+                        deseleccionarTodosC807();
+                    }
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Tracking Interno Actualizado',
+                            text: res.message || `Se actualizaron ${res.actualizados} pedido(s).`,
+                            timer: 2200,
+                            showConfirmButton: false
+                        });
+                    }
+                })
+                .catch(err => {
+                    if (btnElement) {
+                        btnElement.disabled = false;
+                        btnElement.innerHTML = originalHtml;
+                    }
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Error de red', text: err.message });
+                    } else {
+                        alert('Error de red: ' + err.message);
+                    }
+                });
+            }
+
+            window.verHistoriaCompletaC807 = function(idPedido) {
+                const modalEl = document.getElementById('modalHistoriaC807');
+                const bodyEl = document.getElementById('modalHistoriaC807Body');
+                const subEl = document.getElementById('modalHistoriaC807Subtitulo');
+                if (!modalEl || !bodyEl) return;
+
+                const rowInfo = c807RowsMap[idPedido] || {};
+                if (subEl) {
+                    subEl.textContent = `Orden #${rowInfo.numero_orden || idPedido} — Guía C807: ${rowInfo.c807_guia || ''}`;
+                }
+                bodyEl.innerHTML = `
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="small text-muted mb-0">Consultando historial completo de la guía en C807...</p>
+                    </div>`;
+
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+
+                const q = rowInfo.c807_guia ? ('?guia=' + encodeURIComponent(rowInfo.c807_guia)) : '';
+                fetch('<?= RUTA_URL ?>logistica/consultarHistoriaC807/' + idPedido + q, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (!res.success) {
+                        bodyEl.innerHTML = `<div class="alert alert-danger">${escC807(res.message || 'Error al obtener historia.')}</div>`;
+                        return;
+                    }
+
+                    const evC807 = res.historia_c807 || [];
+                    const evInt  = res.historial_interno || [];
+                    const hitos  = res.analisis_c807?.secuencia_hitos || [];
+
+                    let resumenHitosHtml = '';
+                    if (hitos.length > 0) {
+                        resumenHitosHtml = `
+                            <div class="alert alert-light border shadow-sm mb-3">
+                                <div class="fw-bold small text-uppercase text-muted mb-2">
+                                    <i class="bi bi-stars text-warning me-1"></i>Secuencia de 3 Etapas Clave Detectada en C807
+                                </div>
+                                <div class="d-flex flex-wrap gap-2">
+                                    ${hitos.map(h => `
+                                        <div class="p-2 rounded border bg-white" style="min-width:220px;flex:1;">
+                                            <div class="fw-bold small">${escC807(h.etiqueta || h.estatus)} <span class="badge bg-secondary ms-1">Cód. ${escC807(h.codigo)}</span></div>
+                                            <div class="text-muted" style="font-size:0.72rem;">${escC807(h.fecha)}</div>
+                                            <div class="small mt-1">${escC807(h.observacion_completa || h.observacion_corta || '—')}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>`;
+                    }
+
+                    let htmlC807 = evC807.length === 0
+                        ? `<p class="text-muted small">Sin eventos reportados por C807.</p>`
+                        : `<div class="list-group list-group-flush">`;
+
+                    evC807.slice().reverse().forEach(ev => {
+                        const cod = String(ev.codigo || '');
+                        let badgeStyle = 'background:#3498db;color:#fff';
+                        if (cod === '16') badgeStyle = 'background:#f39c12;color:#212529';
+                        else if (cod === '17') badgeStyle = 'background:#c0392b;color:#fff';
+                        else if (cod === '14') badgeStyle = 'background:#2ecc71;color:#212529';
+                        else if (cod === '15') badgeStyle = 'background:#27ae60;color:#fff';
+
+                        htmlC807 += `
+                            <div class="list-group-item px-3 py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge rounded-pill" style="${badgeStyle}">${escC807(ev.estatus)} (Cód. ${escC807(cod)})</span>
+                                    <small class="text-muted">${escC807(ev.fecha)}</small>
+                                </div>
+                                ${ev.observacion_completa ? `<div class="small text-dark mt-1">${escC807(ev.observacion_completa)}</div>` : ''}
+                            </div>`;
+                    });
+                    if (evC807.length > 0) htmlC807 += `</div>`;
+
+                    let htmlInt = evInt.length === 0
+                        ? `<p class="text-muted small p-3 mb-0">Sin historial interno registrado.</p>`
+                        : `<div class="list-group list-group-flush">`;
+
+                    evInt.forEach(hi => {
+                        const estStyle = obtenerEstiloEstadoInterno(hi.nombre_estado);
+                        htmlInt += `
+                            <div class="list-group-item px-3 py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge rounded-pill" style="${estStyle}">${escC807(hi.nombre_estado)}</span>
+                                    <small class="text-muted">${escC807(hi.created_at || '')}</small>
+                                </div>
+                                ${hi.observaciones ? `<div class="small text-dark mt-1">${escC807(hi.observaciones)}</div>` : ''}
+                                ${hi.usuario_nombre ? `<div class="text-muted" style="font-size:0.7rem;">Por: ${escC807(hi.usuario_nombre)}</div>` : ''}
+                            </div>`;
+                    });
+                    if (evInt.length > 0) htmlInt += `</div>`;
+
+                    bodyEl.innerHTML = `
+                        ${resumenHitosHtml}
+                        <div class="row g-3">
+                            <div class="col-md-7">
+                                <div class="card border-0 shadow-sm h-100">
+                                    <div class="card-header bg-white fw-bold small">
+                                        <i class="bi bi-cloud-download text-primary me-1"></i>Eventos Capturados en C807 (${evC807.length})
+                                    </div>
+                                    <div class="card-body p-0" style="max-height:420px;overflow-y:auto;">
+                                        ${htmlC807}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="card border-0 shadow-sm h-100">
+                                    <div class="card-header bg-white fw-bold small">
+                                        <i class="bi bi-hdd-stack text-success me-1"></i>Nuestro Tracking Interno (${evInt.length})
+                                    </div>
+                                    <div class="card-body p-0" style="max-height:420px;overflow-y:auto;">
+                                        ${htmlInt}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                })
+                .catch(err => {
+                    bodyEl.innerHTML = `<div class="alert alert-danger">Error de red: ${escC807(err.message)}</div>`;
+                });
+            };
+
+            // Cargar contador inicial en segundo plano o cargar la pestaña si está activa en ?tab=c807
+            document.addEventListener('DOMContentLoaded', function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('tab') === 'c807') {
+                    cargarEstadosC807Tab(false, 1);
+                } else {
+                    // Pre-cargar conteo del badge sin bloquear la vista
+                    setTimeout(() => {
+                        if (!c807LoadedOnce) {
+                            cargarEstadosC807Tab(false, 1);
+                        }
+                    }, 600);
+                }
+            });
         })();
     </script>
 <?php endif; ?>

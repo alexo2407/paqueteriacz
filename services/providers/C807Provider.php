@@ -769,6 +769,347 @@ class C807Provider extends BaseProvider
     }
 
     /**
+     * Consultar el historial de múltiples guías en paralelo usando curl_multi.
+     * Endpoint: GET /guia.php/api/get_historia/{guia}
+     *
+     * @param array $numerosGuias Lista de números de guía C807 (ej. EXLATA-...)
+     * @param int   $concurrency  Tamaño de lote simultáneo (default 15)
+     * @return array Mapa ['EXLATA-...' => [...eventos...], ...]
+     */
+    public function consultarHistoriasMultiples(array $numerosGuias, int $concurrency = 15): array
+    {
+        $guiasLimpias = [];
+        foreach ($numerosGuias as $g) {
+            $g = trim((string)$g);
+            if ($g !== '') {
+                $guiasLimpias[$g] = $g;
+            }
+        }
+        if (empty($guiasLimpias)) {
+            return [];
+        }
+
+        $authData = $this->authenticate();
+        $headers = [
+            "Authorization: Bearer " . $authData['token'],
+            "Accept: application/json",
+        ];
+
+        $resultados = [];
+        $lotes = array_chunk(array_values($guiasLimpias), max(1, $concurrency));
+
+        foreach ($lotes as $lote) {
+            $mh = curl_multi_init();
+            $handles = [];
+
+            foreach ($lote as $guia) {
+                $url = $this->baseUrl . "/guia.php/api/get_historia/" . urlencode($guia);
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 12,
+                    CURLOPT_CONNECTTIMEOUT => 6,
+                    CURLOPT_HTTPHEADER     => $headers,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                ]);
+                curl_multi_add_handle($mh, $ch);
+                $handles[$guia] = $ch;
+            }
+
+            $active = null;
+            do {
+                $mrc = curl_multi_exec($mh, $active);
+                if ($active) {
+                    curl_multi_select($mh, 1.0);
+                }
+            } while ($active && $mrc === CURLM_OK);
+
+            foreach ($handles as $guia => $ch) {
+                $rawBody    = curl_multi_getcontent($ch);
+                $httpStatus = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlErr    = curl_error($ch);
+
+                if ($curlErr === '' && $httpStatus >= 200 && $httpStatus < 300 && $rawBody) {
+                    $decoded = json_decode($rawBody, true);
+                    $resultados[$guia] = is_array($decoded) ? $decoded : [];
+                } else {
+                    $resultados[$guia] = [];
+                }
+
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+            }
+
+            curl_multi_close($mh);
+        }
+
+        return $resultados;
+    }
+
+    /**
+     * Limpia y resume el texto de observaciones de C807 (que en código 17 puede traer HTML).
+     *
+     * @param string|null $obs
+     * @return array ['completa' => string, 'resumen' => string]
+     */
+    public static function limpiarObservacionC807(?string $obs): array
+    {
+        if ($obs === null || trim($obs) === '') {
+            return ['completa' => '', 'resumen' => ''];
+        }
+
+        $texto = (string)$obs;
+        // Reemplazar saltos de bloque HTML por separadores legibles
+        $textoConSaltos = preg_replace('/<\s*br\s*\/?\s*>/i', ' | ', $texto);
+        $textoConSaltos = preg_replace('/<\/?\s*p\s*>/i', ' | ', (string)$textoConSaltos);
+        $sinTags = strip_tags((string)$textoConSaltos);
+        $decodificado = html_entity_decode($sinTags, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Colapsar espacios y separadores repetidos
+        $limpio = preg_replace('/\s+/', ' ', $decodificado);
+        $limpio = preg_replace('/(\s*\|\s*)+/', ' | ', (string)$limpio);
+        $limpio = trim((string)$limpio, " \t\n\r\0\x0B|");
+
+        // Crear resumen amigable si es muy largo (ej. devolución con datos anteriores/nuevos)
+        $resumen = $limpio;
+        if (mb_strlen($resumen, 'UTF-8') > 130) {
+            if (stripos($limpio, 'Paquete para devolución') !== false) {
+                $porMatch = '';
+                if (preg_match('/Por:\s*([^|]+)/iu', $limpio, $m)) {
+                    $porMatch = ' (Por: ' . trim($m[1]) . ')';
+                }
+                $dirMatch = '';
+                if (preg_match('/Datos nuevos\s*:\s*(?:.*?direccion\s*:\s*([^|]+))?/iu', $limpio, $m2) && !empty($m2[1])) {
+                    $dirMatch = ' → ' . trim($m2[1]);
+                }
+                $resumen = 'Paquete para devolución en sede de cliente' . $dirMatch . $porMatch;
+            } else {
+                $resumen = mb_substr($limpio, 0, 127, 'UTF-8') . '...';
+            }
+        }
+
+        return [
+            'completa' => $limpio,
+            'resumen'  => $resumen,
+        ];
+    }
+
+    /**
+     * Analiza el historial de eventos de una guía C807 enfocándose en la secuencia de 3 etapas clave:
+     *   1) Problemas en la gestión (código "16") + su observación/motivo.
+     *   2) Devolución (código "17", posterior o en la historia) + su observación limpia.
+     *   3) En ruta a destino / Llegó a su destino (códigos "14" o "15") en fecha posterior
+     *      a una Devolución ("17") o posterior a Problemas en la gestión ("16").
+     *
+     * Ignora los estados rutinarios de tránsito inicial (1, 13, 19, 21, 11 y el primer 14 previo a incidencias).
+     *
+     * @param array $historia Lista de eventos devuelta por get_historia
+     * @return array Estructura analizada lista para la tabla de control C807
+     */
+    public static function analizarHistoriaGuia(array $historia): array
+    {
+        if (empty($historia) || !is_array($historia)) {
+            return [
+                'tiene_historia'       => false,
+                'tiene_hito_relevante' => false,
+                'etapa_relevante'      => 'sin_historia',
+                'hito_problema'        => null,
+                'hito_devolucion'      => null,
+                'hito_posterior'       => null,
+                'secuencia_hitos'      => [],
+                'estatus_capturado'    => null,
+                'ultimo_evento'        => null,
+                'total_eventos'        => 0,
+            ];
+        }
+
+        // Ordenar cronológicamente por fecha ASC preservando orden original en empates
+        $eventos = [];
+        foreach (array_values($historia) as $idx => $ev) {
+            if (!is_array($ev)) continue;
+            $ev['_idx'] = $idx;
+            $eventos[] = $ev;
+        }
+
+        usort($eventos, function (array $a, array $b): int {
+            $fa = (string)($a['fecha'] ?? '');
+            $fb = (string)($b['fecha'] ?? '');
+            if ($fa === $fb) {
+                return ($a['_idx'] ?? 0) <=> ($b['_idx'] ?? 0);
+            }
+            return strcmp($fa, $fb);
+        });
+
+        $hitoProblema    = null;
+        $conteoProblema  = 0;
+        $motivosProblema = [];
+        $primeraFecha16  = null;
+        $ultimaFecha16   = null;
+
+        $hitoDevolucion  = null;
+        $ultimaFecha17   = null;
+
+        $hitoPosterior   = null;
+        $entregadoSinDevolucion = false;
+
+        foreach ($eventos as $ev) {
+            $codigo  = trim((string)($ev['codigo'] ?? ''));
+            $estatus = trim((string)($ev['estatus'] ?? ''));
+            $fecha   = trim((string)($ev['fecha'] ?? ''));
+            $obsInfo = self::limpiarObservacionC807($ev['observaciones'] ?? null);
+
+            if ($codigo === '16') {
+                $conteoProblema++;
+                if ($primeraFecha16 === null) {
+                    $primeraFecha16 = $fecha;
+                }
+                $ultimaFecha16 = $fecha;
+                if ($obsInfo['resumen'] !== '' && !in_array($obsInfo['resumen'], $motivosProblema, true)) {
+                    $motivosProblema[] = $obsInfo['resumen'];
+                }
+                $hitoProblema = [
+                    'etapa'                => 1,
+                    'codigo'               => '16',
+                    'estatus'              => $estatus !== '' ? $estatus : 'Problemas en la gestión',
+                    'fecha'                => $fecha,
+                    'primera_fecha'        => $primeraFecha16,
+                    'intentos'             => $conteoProblema,
+                    'observacion_corta'    => !empty($motivosProblema) ? implode(' / ', $motivosProblema) : ($obsInfo['resumen'] ?: 'Sin observación especificada'),
+                    'observacion_completa' => $obsInfo['completa'] ?: (!empty($motivosProblema) ? implode(' / ', $motivosProblema) : ''),
+                ];
+                $entregadoSinDevolucion = false;
+            } elseif ($codigo === '17') {
+                $ultimaFecha17 = $fecha;
+                $hitoDevolucion = [
+                    'etapa'                => 2,
+                    'codigo'               => '17',
+                    'estatus'              => $estatus !== '' ? $estatus : 'Devolución',
+                    'fecha'                => $fecha,
+                    'observacion_corta'    => $obsInfo['resumen'] ?: 'Paquete en proceso de devolución',
+                    'observacion_completa' => $obsInfo['completa'] ?: 'Paquete en proceso de devolución',
+                ];
+                // Al entrar en devolución (17), esperamos el siguiente 14/15 posterior a esta devolución.
+                $hitoPosterior = null;
+                $entregadoSinDevolucion = false;
+            } elseif (($codigo === '14' || $codigo === '15') && $hitoDevolucion !== null) {
+                // Etapa 3: Solo nos interesa el 14 ("En ruta a destino") o 15 ("Llegó a su destino")
+                // cuando ocurre en fecha posterior a una Devolución (17)
+                if ($ultimaFecha17 !== null && strcmp($fecha, $ultimaFecha17) >= 0) {
+                    $etiquetaExtra = ($codigo === '15')
+                        ? 'Llegó a su destino (Devolución)'
+                        : 'En ruta a destino (Devolución)';
+                    $obsDefault = $estatus . ' posterior a devolución'
+                        . ($hitoDevolucion['observacion_corta'] ? ': ' . $hitoDevolucion['observacion_corta'] : '');
+
+                    $hitoPosterior = [
+                        'etapa'                => 3,
+                        'codigo'               => $codigo,
+                        'estatus'              => $estatus !== '' ? $estatus : ($codigo === '15' ? 'Llegó a su destino' : 'En ruta a destino'),
+                        'etiqueta'             => $etiquetaExtra,
+                        'origen'               => 'post_devolucion',
+                        'fecha'                => $fecha,
+                        'observacion_corta'    => $obsInfo['resumen'] !== '' ? $obsInfo['resumen'] : $obsDefault,
+                        'observacion_completa' => $obsInfo['completa'] !== '' ? $obsInfo['completa'] : $obsDefault,
+                    ];
+                }
+            } elseif ($codigo === '15' && $hitoDevolucion === null) {
+                // Si llegó a su destino (15) SIN haber pasado por Devolución (17),
+                // significa que ya fue entregado al comprador final (ya se vendió).
+                $entregadoSinDevolucion = true;
+            }
+        }
+
+        $ultimoRaw = end($eventos);
+        $ultimoObs = self::limpiarObservacionC807($ultimoRaw['observaciones'] ?? null);
+        $ultimoEvento = [
+            'codigo'               => trim((string)($ultimoRaw['codigo'] ?? '')),
+            'estatus'              => trim((string)($ultimoRaw['estatus'] ?? '')),
+            'fecha'                => trim((string)($ultimoRaw['fecha'] ?? '')),
+            'observacion_corta'    => $ultimoObs['resumen'],
+            'observacion_completa' => $ultimoObs['completa'],
+        ];
+
+        // Si el paquete ya fue entregado al comprador final (15 sin devolución 17),
+        // no lo marcamos como incidencia activa pendiente.
+        if ($entregadoSinDevolucion && $hitoDevolucion === null) {
+            return [
+                'tiene_historia'       => true,
+                'tiene_hito_relevante' => false,
+                'etapa_relevante'      => 'entregado_cliente',
+                'hito_problema'        => null,
+                'hito_devolucion'      => null,
+                'hito_posterior'       => null,
+                'secuencia_hitos'      => [],
+                'estatus_capturado'    => [
+                    'etapa'                => 0,
+                    'codigo'               => $ultimoEvento['codigo'],
+                    'estatus'              => $ultimoEvento['estatus'],
+                    'fecha'                => $ultimoEvento['fecha'],
+                    'observacion_corta'    => $ultimoEvento['observacion_corta'],
+                    'observacion_completa' => $ultimoEvento['observacion_completa'],
+                ],
+                'ultimo_evento'        => $ultimoEvento,
+                'total_eventos'        => count($eventos),
+            ];
+        }
+
+        $secuenciaHitos = [];
+        if ($hitoProblema !== null)   $secuenciaHitos[] = $hitoProblema;
+        if ($hitoDevolucion !== null) $secuenciaHitos[] = $hitoDevolucion;
+        if ($hitoPosterior !== null)  $secuenciaHitos[] = $hitoPosterior;
+
+        // Determinar el estatus capturado principal a presentar al usuario
+        if ($hitoPosterior !== null) {
+            $etapaRelevante   = 'post_devolucion';
+            $estatusCapturado = $hitoPosterior;
+            if (empty($ultimoRaw['observaciones'])) {
+                $partesObs = [];
+                if ($hitoProblema !== null && !empty($hitoProblema['observacion_corta'])) {
+                    $partesObs[] = "Motivo previo: " . $hitoProblema['observacion_corta'];
+                }
+                if ($hitoDevolucion !== null && !empty($hitoDevolucion['observacion_corta'])) {
+                    $partesObs[] = $hitoDevolucion['observacion_corta'];
+                }
+                $partesObs[] = "C807: " . $hitoPosterior['estatus'] . " (" . $hitoPosterior['fecha'] . ")";
+                $estatusCapturado['observacion_corta']    = implode(' | ', $partesObs);
+                $estatusCapturado['observacion_completa'] = implode(' | ', $partesObs);
+            }
+        } elseif ($hitoDevolucion !== null) {
+            $etapaRelevante   = 'devolucion';
+            $estatusCapturado = $hitoDevolucion;
+            if ($hitoProblema !== null && !empty($hitoProblema['observacion_corta'])) {
+                $estatusCapturado['motivo_problema_previo'] = $hitoProblema['observacion_corta'];
+            }
+        } elseif ($hitoProblema !== null) {
+            $etapaRelevante   = 'problema_gestion';
+            $estatusCapturado = $hitoProblema;
+        } else {
+            $etapaRelevante   = 'normal';
+            $estatusCapturado = [
+                'etapa'                => 0,
+                'codigo'               => $ultimoEvento['codigo'],
+                'estatus'              => $ultimoEvento['estatus'],
+                'fecha'                => $ultimoEvento['fecha'],
+                'observacion_corta'    => $ultimoEvento['observacion_corta'],
+                'observacion_completa' => $ultimoEvento['observacion_completa'],
+            ];
+        }
+
+        return [
+            'tiene_historia'       => true,
+            'tiene_hito_relevante' => ($etapaRelevante === 'problema_gestion' || $etapaRelevante === 'devolucion' || $etapaRelevante === 'post_devolucion'),
+            'etapa_relevante'      => $etapaRelevante,
+            'hito_problema'        => $hitoProblema,
+            'hito_devolucion'      => $hitoDevolucion,
+            'hito_posterior'       => $hitoPosterior,
+            'secuencia_hitos'      => $secuenciaHitos,
+            'estatus_capturado'    => $estatusCapturado,
+            'ultimo_evento'        => $ultimoEvento,
+            'total_eventos'        => count($eventos),
+        ];
+    }
+
+    /**
      * Obtener el PDF o ZPL en base64 de una o más guías.
      * Endpoint: POST /guia.php/api/get_pdf
      *
