@@ -4333,15 +4333,113 @@ include "vista/includes/header.php";
             background-color: rgba(11, 78, 162, 0.06) !important;
         }
         .c807-quick-chip {
-            font-size: 0.7rem;
-            padding: 0.15rem 0.45rem;
-            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.22rem 0.55rem;
+            border-radius: 5px;
             cursor: pointer;
             border: 1px solid rgba(0,0,0,0.12);
-            transition: opacity 0.15s;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
         }
         .c807-quick-chip:hover {
-            opacity: 0.85;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.12);
+        }
+        /* Tabla espaciosa y 100% visible sin cortar botones */
+        .c807-table {
+            border-collapse: separate;
+            border-spacing: 0 10px;
+            width: 100%;
+        }
+        .c807-table thead th {
+            background: #1B3B6F;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            padding: 0.75rem 0.85rem;
+            border: none;
+        }
+        .c807-table thead th:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+        .c807-table thead th:last-child {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        .c807-table tbody tr {
+            background: #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+        .c807-table tbody tr:hover {
+            box-shadow: 0 4px 12px rgba(11, 78, 162, 0.12);
+        }
+        .c807-table tbody td {
+            padding: 1rem 0.85rem;
+            border-top: 1px solid #e9ecef;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+        .c807-table tbody td:first-child {
+            border-left: 1px solid #e9ecef;
+            border-top-left-radius: 10px;
+            border-bottom-left-radius: 10px;
+            vertical-align: middle;
+        }
+        .c807-table tbody td:last-child {
+            border-right: 1px solid #e9ecef;
+            border-top-right-radius: 10px;
+            border-bottom-right-radius: 10px;
+            vertical-align: middle;
+        }
+        .c807-obs-box {
+            background: #f8f9fa;
+            border-left: 3px solid #f39c12;
+            border-radius: 6px;
+            padding: 0.5rem 0.65rem;
+            margin-top: 0.5rem;
+        }
+        .c807-mobile-label {
+            display: none;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #6c757d;
+            margin-bottom: 0.3rem;
+        }
+        /* Modo tarjetas apiladas en pantallas medianas y móviles */
+        @media (max-width: 991.98px) {
+            .c807-table thead {
+                display: none;
+            }
+            .c807-table, .c807-table tbody, .c807-table tr, .c807-table td {
+                display: block;
+                width: 100% !important;
+            }
+            .c807-table tbody tr {
+                margin-bottom: 1rem;
+                border: 1px solid #dee2e6;
+                border-radius: 12px;
+                padding: 0.5rem;
+            }
+            .c807-table tbody td {
+                border: none !important;
+                border-bottom: 1px dashed #e9ecef !important;
+                padding: 0.75rem 0.65rem !important;
+                border-radius: 0 !important;
+            }
+            .c807-table tbody td:last-child {
+                border-bottom: none !important;
+            }
+            .c807-mobile-label {
+                display: block;
+            }
         }
     </style>
 
@@ -4828,21 +4926,21 @@ include "vista/includes/header.php";
                 }
 
                 let html = warningBanner + `
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0" style="font-size: 0.84rem;">
-                            <thead class="table-dark">
+                    <div class="d-lg-none mb-2 d-flex align-items-center gap-2 bg-light p-2 rounded border">
+                        <input type="checkbox" class="form-check-input m-0" onchange="toggleSelectAllC807(this.checked)" id="c807CheckAllMobile">
+                        <label class="form-check-label small fw-semibold" for="c807CheckAllMobile">Seleccionar todos los pedidos de esta página</label>
+                    </div>
+                    <div>
+                        <table class="c807-table align-middle mb-0" style="font-size: 0.84rem;">
+                            <thead>
                                 <tr>
-                                    <th style="width: 36px;" class="text-center">
+                                    <th style="width: 42px;" class="text-center">
                                         <input type="checkbox" class="form-check-input" id="c807CheckAll" onchange="toggleSelectAllC807(this.checked)" title="Seleccionar todos los de esta página">
                                     </th>
-                                    <th style="min-width: 145px;">Orden / Guía C807</th>
-                                    <th style="min-width: 180px;">Destinatario / Dirección</th>
-                                    <th style="min-width: 130px;">Nuestro Estado</th>
-                                    <th style="min-width: 230px;">Estatus Capturado C807 (Secuencia)</th>
-                                    <th style="min-width: 210px;">Observación Capturada (C807)</th>
-                                    <th style="min-width: 210px;">Cambiar a Nuestro Estado</th>
-                                    <th style="min-width: 210px;">Observación para Nuestro Tracking</th>
-                                    <th style="min-width: 115px;" class="text-center">Acción</th>
+                                    <th style="width: 24%;">Orden / Destinatario</th>
+                                    <th style="width: 31%;">Estatus y Observación Capturada (C807)</th>
+                                    <th style="width: 31%;">Cambiar Nuestro Estado y Observación</th>
+                                    <th style="width: 14%; min-width: 130px;" class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>`;
@@ -4867,13 +4965,22 @@ include "vista/includes/header.php";
                     html += `
                         <tr id="c807Row_${idPed}" class="${rowSelectedCls}">
                             <td class="text-center">
-                                <input type="checkbox" class="form-check-input c807-row-check"
-                                       data-id="${idPed}" ${checked}
-                                       onchange="onToggleRowC807(${idPed}, this.checked)">
+                                <div class="d-flex align-items-center justify-content-lg-center gap-2">
+                                    <input type="checkbox" class="form-check-input c807-row-check fs-6 m-0"
+                                           data-id="${idPed}" ${checked}
+                                           onchange="onToggleRowC807(${idPed}, this.checked)">
+                                    <span class="d-lg-none fw-bold text-dark">Seleccionar orden #${escC807(r.numero_orden)}</span>
+                                </div>
                             </td>
                             <td>
-                                <div class="fw-bold text-dark">#${escC807(r.numero_orden)}</div>
-                                <div class="d-flex align-items-center gap-1 mt-1">
+                                <span class="c807-mobile-label">Orden, Guía y Destinatario</span>
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mb-1">
+                                    <span class="fw-bold text-dark fs-6">#${escC807(r.numero_orden)}</span>
+                                    <span class="badge rounded-pill px-2 py-1" id="c807BadgeInterno_${idPed}" style="${estiloInterno};font-size:0.73rem;" title="Nuestro estado actual">
+                                        ${escC807(r.estado_interno)}
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center gap-1 mb-2">
                                     <span class="badge bg-light text-dark border font-monospace" style="font-size:0.73rem;">
                                         ${escC807(r.c807_guia)}
                                     </span>
@@ -4882,75 +4989,73 @@ include "vista/includes/header.php";
                                         <i class="bi bi-clipboard"></i>
                                     </button>
                                 </div>
-                                <small class="text-muted d-block mt-1" style="font-size:0.7rem;">${escC807(r.nombre_cliente)}</small>
-                            </td>
-                            <td>
-                                <div class="fw-semibold text-dark">${escC807(r.destinatario || 'Sin nombre')}</div>
-                                ${r.telefono ? `<div class="text-muted small"><i class="bi bi-telephone me-1"></i>${escC807(r.telefono)}</div>` : ''}
-                                <div class="text-muted small text-truncate" style="max-width: 210px;" title="${escC807(r.direccion_completa)}">
+                                <div class="fw-semibold text-dark" style="line-height:1.3;">${escC807(r.destinatario || 'Sin nombre')}</div>
+                                ${r.telefono ? `<div class="text-muted small mt-1"><i class="bi bi-telephone me-1"></i>${escC807(r.telefono)}</div>` : ''}
+                                <div class="text-muted small mt-1" style="line-height:1.3;">
                                     ${escC807(r.direccion_completa || '—')}
+                                </div>
+                                <div class="text-muted mt-1" style="font-size:0.7rem;">
+                                    <i class="bi bi-building me-1"></i>${escC807(r.nombre_cliente)}
                                 </div>
                             </td>
                             <td>
-                                <span class="badge rounded-pill px-2 py-1" id="c807BadgeInterno_${idPed}" style="${estiloInterno};font-size:0.75rem;">
-                                    ${escC807(r.estado_interno)}
-                                </span>
-                                ${r.ultima_obs_interna ? `
-                                    <div class="text-muted small mt-1 text-truncate" style="max-width:140px;font-size:0.7rem;" title="Última obs. interna: ${escC807(r.ultima_obs_interna)}">
-                                        <i class="bi bi-chat-left-text me-1"></i>${escC807(r.ultima_obs_interna)}
-                                    </div>` : ''}
-                            </td>
-                            <td>
+                                <span class="c807-mobile-label">Estatus y Observación Capturada en C807</span>
                                 ${renderizarSecuenciaC807(analisis)}
+                                <div class="c807-obs-box">
+                                    ${obsCorta ? `
+                                        <div class="small text-dark fw-semibold" style="line-height:1.35;">
+                                            <i class="bi bi-chat-quote-fill text-warning me-1"></i>${escC807(obsCorta)}
+                                        </div>
+                                        ${motivoPrevio ? `<div class="small text-danger fw-semibold mt-1" style="font-size:0.74rem;"><i class="bi bi-exclamation-circle me-1"></i>1️⃣ Motivo: ${escC807(motivoPrevio)}</div>` : ''}
+                                        <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.72rem;"
+                                                    onclick="usarObservacionC807EnFila(${idPed})">
+                                                <i class="bi bi-arrow-right-circle me-1"></i>Usar motivo
+                                            </button>
+                                            ${obsCompleta.length > obsCorta.length ? `
+                                                <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" style="font-size:0.72rem;"
+                                                        onclick="verHistoriaCompletaC807(${idPed})">
+                                                    Ver completa
+                                                </button>` : ''}
+                                        </div>
+                                    ` : `<span class="text-muted small fst-italic">Sin observación reportada en C807</span>`}
+                                </div>
                             </td>
                             <td>
-                                ${obsCorta ? `
-                                    <div class="small text-dark fw-semibold" style="line-height:1.25;">
-                                        ${escC807(obsCorta)}
-                                    </div>
-                                    ${motivoPrevio ? `<div class="small text-warning-emphasis mt-1" style="font-size:0.72rem;"><i class="bi bi-exclamation-circle me-1"></i>1️⃣ Motivo: ${escC807(motivoPrevio)}</div>` : ''}
-                                    <div class="d-flex gap-2 align-items-center mt-1">
-                                        <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" style="font-size:0.7rem;"
-                                                onclick="usarObservacionC807EnFila(${idPed})">
-                                            <i class="bi bi-arrow-right-circle me-1"></i>Usar motivo
-                                        </button>
-                                        ${obsCompleta.length > obsCorta.length ? `
-                                            <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" style="font-size:0.7rem;"
-                                                    onclick="verHistoriaCompletaC807(${idPed})">
-                                                Ver completa
-                                            </button>` : ''}
-                                    </div>
-                                ` : `<span class="text-muted small fst-italic">Sin observación en C807</span>`}
-                            </td>
-                            <td>
-                                <select class="form-select form-select-sm mb-1" id="c807SelectEstado_${idPed}" onchange="onFilaEstadoC807Change(${idPed})">
+                                <span class="c807-mobile-label">Cambiar a Nuestro Estado y Observación</span>
+                                <select class="form-select form-select-sm mb-2 fw-semibold" id="c807SelectEstado_${idPed}" onchange="onFilaEstadoC807Change(${idPed})">
                                     ${construirOpcionesEstadosFila(idPed)}
                                 </select>
-                                <div id="c807ExtraDateWrap_${idPed}" class="d-none mt-1">
+                                <div id="c807ExtraDateWrap_${idPed}" class="d-none mb-2">
                                     <input type="date" class="form-control form-control-sm" id="c807ExtraDate_${idPed}" title="Fecha requerida">
                                 </div>
                                 <!-- Atajos rápidos con los colores del sistema -->
-                                <div class="d-flex flex-wrap gap-1 mt-1">
-                                    <span class="c807-quick-chip" style="background:#f39c12;color:#212529;" onclick="seleccionarRapidoFilaC807(${idPed}, 'Incidencia')" title="Seleccionar Incidencia">Incidencia</span>
-                                    <span class="c807-quick-chip" style="background:#c0392b;color:#fff;" onclick="seleccionarRapidoFilaC807(${idPed}, 'Devolución')" title="Seleccionar Devolución">Devolución</span>
-                                    <span class="c807-quick-chip" style="background:#2ecc71;color:#212529;" onclick="seleccionarRapidoFilaC807(${idPed}, 'En ruta o proceso de entrega')" title="Seleccionar En ruta">En ruta</span>
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    <span class="c807-quick-chip" style="background:#f39c12;color:#212529;" onclick="seleccionarRapidoFilaC807(${idPed}, 'Incidencia')" title="Seleccionar Incidencia">
+                                        <i class="bi bi-exclamation-triangle-fill"></i>Incidencia
+                                    </span>
+                                    <span class="c807-quick-chip" style="background:#c0392b;color:#fff;" onclick="seleccionarRapidoFilaC807(${idPed}, 'Devolución')" title="Seleccionar Devolución">
+                                        <i class="bi bi-arrow-return-left"></i>Devolución
+                                    </span>
+                                    <span class="c807-quick-chip" style="background:#2ecc71;color:#212529;" onclick="seleccionarRapidoFilaC807(${idPed}, 'En ruta o proceso de entrega')" title="Seleccionar En ruta">
+                                        <i class="bi bi-truck"></i>En ruta
+                                    </span>
                                 </div>
-                            </td>
-                            <td>
                                 <textarea class="form-control form-control-sm" id="c807InputObs_${idPed}" rows="2"
-                                          placeholder="Escribe o edita la observación para nuestro tracking...">${escC807(obsSugerida)}</textarea>
+                                          placeholder="Observación para nuestro tracking...">${escC807(obsSugerida)}</textarea>
                             </td>
                             <td class="text-center">
-                                <div class="d-flex flex-column gap-1">
-                                    <button type="button" class="btn btn-sm text-white fw-semibold"
+                                <span class="c807-mobile-label">Acciones</span>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-sm text-white fw-semibold py-2 shadow-sm"
                                             style="background:#0B4EA2;"
                                             id="btnC807ApplyRow_${idPed}"
                                             onclick="aplicarFilaIndividualC807(${idPed})">
                                         <i class="bi bi-check2-circle me-1"></i>Aplicar
                                     </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-1"
                                             onclick="verHistoriaCompletaC807(${idPed})">
-                                        <i class="bi bi-eye me-1"></i>Historia
+                                        <i class="bi bi-clock-history me-1"></i>Historia
                                     </button>
                                 </div>
                             </td>
