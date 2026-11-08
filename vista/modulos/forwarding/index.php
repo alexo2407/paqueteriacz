@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header.php") ?>
+<?php include("vista/includes/header.php") ?>
 
 <?php
 require_once __DIR__ . '/../../../modelo/forwarding.php';
@@ -7,10 +7,10 @@ $proveedores = ForwardingModel::obtenerProveedores(true);
 $reglasRecientes = ForwardingModel::obtenerTodasLasReglas();
 $logsRecientes = ForwardingModel::obtenerLogs([], 5, 0);
 
-// Webhooks recibidos de LogisPro y RutaEx (historial con nota de proveedor externo)
+// Webhooks recibidos de proveedores externos (ShipEdge, LogisPro, RutaEx, C807)
 try {
     $dbIdx  = (new Conexion())->conectar();
-    $whereWh = "(h.observaciones LIKE 'LogisPro [%]%' OR h.observaciones LIKE 'RutaEx [%]%')";
+    $whereWh = "(h.observaciones LIKE 'LogisPro [%]%' OR h.observaciones LIKE 'RutaEx [%]%' OR h.observaciones LIKE 'ShipEdge [%]%' OR h.observaciones LIKE 'C807%')";
     $stmtWh  = $dbIdx->query("
         SELECT h.id, h.id_pedido, h.id_estado_anterior, h.id_estado_nuevo,
                h.observaciones, h.created_at,
@@ -29,7 +29,7 @@ try {
 
     $webhooksHoy = (int)$dbIdx->query("
         SELECT COUNT(*) FROM pedidos_historial_estados
-        WHERE (observaciones LIKE 'LogisPro [%]%' OR observaciones LIKE 'RutaEx [%]%')
+        WHERE (observaciones LIKE 'LogisPro [%]%' OR observaciones LIKE 'RutaEx [%]%' OR observaciones LIKE 'ShipEdge [%]%' OR observaciones LIKE 'C807%')
           AND DATE(created_at) = CURDATE()
     ")->fetchColumn();
 } catch (Exception $e) {

@@ -2,10 +2,22 @@
 
 <?php
 require_once __DIR__ . '/../../../modelo/forwarding.php';
-$proveedores = ForwardingModel::obtenerProveedores(true); // Solo activos
+$proveedores = ForwardingModel::obtenerProveedores(false); // Todos los proveedores (activos e inactivos)
 $idProvider  = (int)($_GET['id_provider'] ?? 0);
 $provActual  = $idProvider ? ForwardingModel::obtenerProveedorPorId($idProvider) : null;
-$campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : [];
+if ($provActual && ($provActual['slug'] ?? '') === 'shipedge') {
+    $camposCheck = ForwardingModel::obtenerApiFields($idProvider);
+    if (empty($camposCheck)) {
+        ForwardingModel::sembrarPlantillaShipEdge($idProvider, false);
+    }
+    $estadosCheck = ForwardingModel::obtenerMapeosEstados('shipedge');
+    if (empty($estadosCheck)) {
+        ForwardingModel::sembrarEstadosShipEdge();
+    }
+}
+$campos          = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : [];
+$estadosMapeados = $provActual ? ForwardingModel::obtenerMapeosEstados($provActual['slug']) : [];
+$estadosInternos = ForwardingModel::obtenerEstadosInternos();
 ?>
 
 <style>
@@ -86,7 +98,12 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
                             <?php foreach ($proveedores as $p): ?>
                                 <div class="prov-item <?= $idProvider === (int)$p['id'] ? 'active' : '' ?>"
                                      onclick="seleccionarProveedor(<?= $p['id'] ?>, '<?= htmlspecialchars($p['nombre']) ?>', '<?= htmlspecialchars($p['payload_format'] ?? 'json') ?>')">
-                                    <div class="fw-semibold"><?= htmlspecialchars($p['nombre']) ?></div>
+                                    <div class="fw-semibold">
+                                        <?= htmlspecialchars($p['nombre']) ?>
+                                        <?php if (empty($p['activo'])): ?>
+                                            <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Inactivo</span>
+                                        <?php endif; ?>
+                                    </div>
                                     <small class="text-muted">
                                         <code><?= htmlspecialchars($p['slug']) ?></code>
                                         · <span class="badge badge-type <?= $p['payload_format'] ?? 'json' ?>"><?= strtoupper($p['payload_format'] ?? 'json') ?></span>
@@ -103,14 +120,21 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
         <div class="col-md-5">
             <div class="card fwd-card h-100">
                 <div class="card-body p-4">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                         <h6 class="fw-bold mb-0" id="lblProveedor">
                             <?= $provActual ? '📦 ' . htmlspecialchars($provActual['nombre']) : 'Selecciona un proveedor' ?>
                         </h6>
-                        <button class="btn btn-sm btn-primary" id="btnAgregarCampo" style="border-radius:8px;display:<?= $idProvider ? 'inline-flex' : 'none' ?>;"
-                                data-bs-toggle="modal" data-bs-target="#modalCampo">
-                            <i class="bi bi-plus me-1"></i> Agregar Campo
-                        </button>
+                        <div class="d-flex gap-2">
+                            <?php if ($provActual && ($provActual['slug'] ?? '') === 'shipedge'): ?>
+                                <button class="btn btn-sm btn-outline-success" style="border-radius:8px;" onclick="cargarPlantillaShipEdge()">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Plantilla ShipEdge v41
+                                </button>
+                            <?php endif; ?>
+                            <button class="btn btn-sm btn-primary" id="btnAgregarCampo" style="border-radius:8px;display:<?= $idProvider ? 'inline-flex' : 'none' ?>;"
+                                    data-bs-toggle="modal" data-bs-target="#modalCampo">
+                                <i class="bi bi-plus me-1"></i> Agregar Campo
+                            </button>
+                        </div>
                     </div>
 
                     <div id="tablaCampos">
@@ -190,6 +214,66 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
                             </table>
                         <?php endif; ?>
                     </div>
+
+                    <?php if ($provActual): ?>
+                    <hr class="my-4">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-0"><i class="bi bi-arrow-left-right me-1 text-success"></i> Homologación de Estados Externos → Internos</h6>
+                            <small class="text-muted">Mapeo configurable para webhooks y conciliación de <code><?= htmlspecialchars($provActual['slug']) ?></code></small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-success" style="border-radius:8px;" data-bs-toggle="modal" data-bs-target="#modalEstadoMapeo" onclick="nuevoEstadoMapeo()">
+                            <i class="bi bi-plus me-1"></i> Mapear Estado
+                        </button>
+                    </div>
+                    <?php if (($provActual['slug'] ?? '') === 'shipedge'): ?>
+                        <div class="alert alert-warning py-2 px-3 small mb-3">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                            <strong>Regla operativa ShipEdge:</strong> El estado externo <code>shipped</code> significa despachado de almacén (<strong>En ruta o proceso</strong>), nunca se interpreta como <strong>Entregado</strong>.
+                        </div>
+                    <?php endif; ?>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Código Externo</th>
+                                    <th>Descripción Externa</th>
+                                    <th>Estado Interno</th>
+                                    <th class="text-center">Confirmado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($estadosMapeados)): ?>
+                                    <tr><td colspan="5" class="text-center text-muted small py-3">Sin estados homologados para este proveedor.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($estadosMapeados as $em): ?>
+                                    <tr>
+                                        <td><code><?= htmlspecialchars($em['codigo_externo']) ?></code><?= !empty($em['razon_codigo']) ? ' <small class="text-muted">(' . htmlspecialchars($em['razon_codigo']) . ')</small>' : '' ?></td>
+                                        <td class="small text-muted"><?= htmlspecialchars($em['descripcion_externa'] ?? '') ?></td>
+                                        <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary"><?= htmlspecialchars($em['estado_interno_nombre'] ?? ('ID #' . $em['id_estado_interno'])) ?></span></td>
+                                        <td class="text-center"><?= !empty($em['es_confirmado']) ? '<span class="badge bg-success">Sí</span>' : '<span class="badge bg-warning text-dark">Por validar</span>' ?></td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary btn-editar-estado"
+                                                    data-id="<?= $em['id'] ?>"
+                                                    data-codigo="<?= htmlspecialchars($em['codigo_externo']) ?>"
+                                                    data-razon="<?= htmlspecialchars($em['razon_codigo'] ?? '') ?>"
+                                                    data-desc="<?= htmlspecialchars($em['descripcion_externa'] ?? '') ?>"
+                                                    data-interno="<?= (int)$em['id_estado_interno'] ?>"
+                                                    data-confirmado="<?= (int)$em['es_confirmado'] ?>"
+                                                    style="border-radius:6px;width:28px;height:28px;padding:0;"><i class="bi bi-pencil"></i></button>
+                                            <button class="btn btn-sm btn-outline-danger btn-eliminar-estado"
+                                                    data-id="<?= $em['id'] ?>"
+                                                    data-codigo="<?= htmlspecialchars($em['codigo_externo']) ?>"
+                                                    style="border-radius:6px;width:28px;height:28px;padding:0;"><i class="bi bi-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -325,6 +409,14 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
                         <label class="form-label fw-semibold">Transformación <small class="text-muted">(opcional)</small></label>
                         <select class="form-select" id="mapeoTransform">
                             <option value="">Sin transformación</option>
+                            <option value="preserve_leading_zeros">preserve_leading_zeros — Conservar ceros iniciales como texto (Código Postal)</option>
+                            <option value="preserve_string">preserve_string — Conservar texto exacto (order_number)</option>
+                            <option value="validate_currency">validate_currency — Precio unitario solo tras validar moneda (sold_price)</option>
+                            <option value="Desde configuración de cuenta o regla">Desde configuración de cuenta o regla</option>
+                            <option value="Prioridad: municipio_nombre -> municipalitiesName">Prioridad: municipio_nombre -> municipalitiesName</option>
+                            <option value="Prioridad: departamento -> departmentName">Prioridad: departamento -> departmentName</option>
+                            <option value="Prioridad: ISO país -> Nombre país -> País config">Prioridad: ISO país -> Nombre país -> País config</option>
+                            <option value="Opcional si existe">Opcional si existe</option>
                             <option value="SER / CCE">SER / CCE — Dinámico según monto (CCE si > 0, sino SER)</option>
                             <option value="Location + betweenStreets + zona">Location + betweenStreets + zona — Concatenar ubicación</option>
                             <option value="Homologación C807">Homologación C807 — Catálogo C807</option>
@@ -344,6 +436,55 @@ $campos      = $idProvider ? ForwardingModel::obtenerApiFields($idProvider) : []
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="guardarMapeo()"><i class="bi bi-check me-1"></i>Guardar Mapeo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Homologar Estado Externo → Interno ────────────── -->
+<div class="modal fade" id="modalEstadoMapeo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border:none;border-radius:16px;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#059669,#047857);color:#fff;border-radius:16px 16px 0 0;">
+                <h5 class="modal-title" id="modalEstadoMapeoTitle"><i class="bi bi-arrow-left-right me-2"></i> Homologación de Estado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="estadoMapeoId" value="0">
+                <input type="hidden" id="estadoMapeoSlug" value="<?= htmlspecialchars($provActual['slug'] ?? '') ?>">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Código Externo <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="estadoCodigoExterno" placeholder="Ej: shipped, pending, cancelled">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Sub-código / Razón <small class="text-muted">(opcional)</small></label>
+                        <input type="text" class="form-control" id="estadoRazonCodigo" placeholder="Ej: 01, null">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Descripción Externa</label>
+                        <input type="text" class="form-control" id="estadoDescripcionExterna" placeholder="Ej: Despachado de almacén (En ruta)">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Estado Interno del Sistema <span class="text-danger">*</span></label>
+                        <select class="form-select" id="estadoIdInterno">
+                            <?php foreach ($estadosInternos as $ei): ?>
+                                <option value="<?= (int)$ei['id'] ?>">#<?= (int)$ei['id'] ?> — <?= htmlspecialchars($ei['nombre_estado']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">¿Confirmado?</label>
+                        <select class="form-select" id="estadoEsConfirmado">
+                            <option value="1">Sí</option>
+                            <option value="0">Por validar</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarEstadoMapeo()"><i class="bi bi-check me-1"></i>Guardar Estado</button>
             </div>
         </div>
     </div>
@@ -572,10 +713,14 @@ function testPayload() {
         .then(data => {
             panel.style.display = 'block';
             if (data.success) {
-                status.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i> ${data.pedido_usado}`;
+                let warnHtml = '';
+                if (data.warnings && data.warnings.length) {
+                    warnHtml = '<div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">' + data.warnings.join('<br>') + '</div>';
+                }
+                status.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i> ${data.pedido_usado}${warnHtml}`;
                 pre.textContent  = data.json;
             } else {
-                status.innerHTML = `<i class="bi bi-x-circle-fill text-danger me-1"></i> Error`;
+                status.innerHTML = `<i class="bi bi-x-circle-fill text-danger me-1"></i> Validación Fallida`;
                 pre.textContent  = data.message;
             }
         })
@@ -595,5 +740,108 @@ function copiarPayload() {
     navigator.clipboard.writeText(text).then(() => {
         Swal.fire({ icon:'success', title:'¡Copiado!', timer:800, showConfirmButton:false });
     });
+}
+
+function cargarPlantillaShipEdge() {
+    Swal.fire({
+        title: '¿Restaurar plantilla inicial ShipEdge v41?',
+        text: 'Se cargarán todos los campos y mapeos predeterminados de ShipEdge OMS v41 y sus estados.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cargar plantilla',
+        cancelButtonText: 'Cancelar'
+    }).then(res => {
+        if (!res.isConfirmed) return;
+        const body = new FormData();
+        body.append('accion', 'cargar_plantilla_shipedge');
+        body.append('id_provider', ID_PROVIDER);
+        body.append('sobrescribir', '1');
+        fetch(BASE + 'ajax/forwarding_mapeos.php', { method: 'POST', body, credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    Swal.fire({ icon: 'success', title: 'Plantilla aplicada', text: data.message, timer: 1400, showConfirmButton: false })
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: data.message });
+                }
+            });
+    });
+}
+
+function nuevoEstadoMapeo() {
+    document.getElementById('estadoMapeoId').value = '0';
+    document.getElementById('estadoCodigoExterno').value = '';
+    document.getElementById('estadoRazonCodigo').value = '';
+    document.getElementById('estadoDescripcionExterna').value = '';
+    document.getElementById('estadoIdInterno').value = '2';
+    document.getElementById('estadoEsConfirmado').value = '1';
+}
+
+document.addEventListener('click', function(e) {
+    const btnEdit = e.target.closest('.btn-editar-estado');
+    if (btnEdit) {
+        document.getElementById('estadoMapeoId').value = btnEdit.dataset.id;
+        document.getElementById('estadoCodigoExterno').value = btnEdit.dataset.codigo;
+        document.getElementById('estadoRazonCodigo').value = btnEdit.dataset.razon || '';
+        document.getElementById('estadoDescripcionExterna').value = btnEdit.dataset.desc || '';
+        document.getElementById('estadoIdInterno').value = btnEdit.dataset.interno;
+        document.getElementById('estadoEsConfirmado').value = btnEdit.dataset.confirmado;
+        new bootstrap.Modal(document.getElementById('modalEstadoMapeo')).show();
+        return;
+    }
+
+    const btnDel = e.target.closest('.btn-eliminar-estado');
+    if (btnDel) {
+        const id = btnDel.dataset.id;
+        const codigo = btnDel.dataset.codigo;
+        Swal.fire({
+            title: '¿Eliminar homologación de estado?',
+            text: `Se eliminará el código externo "${codigo}".`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Eliminar'
+        }).then(r => {
+            if (!r.isConfirmed) return;
+            const body = new FormData();
+            body.append('accion', 'eliminar_estado');
+            body.append('id', id);
+            fetch(BASE + 'ajax/forwarding_mapeos.php', { method: 'POST', body, credentials: 'same-origin' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) location.reload();
+                    else Swal.fire({ icon: 'error', title: 'Error', text: data.message });
+                });
+        });
+    }
+});
+
+function guardarEstadoMapeo() {
+    const codigo = document.getElementById('estadoCodigoExterno').value.trim();
+    if (!codigo) {
+        Swal.fire({ icon: 'warning', title: 'Código externo requerido' });
+        return;
+    }
+    const body = new FormData();
+    body.append('accion', 'guardar_estado');
+    body.append('id', document.getElementById('estadoMapeoId').value);
+    body.append('provider_slug', document.getElementById('estadoMapeoSlug').value);
+    body.append('codigo_externo', codigo);
+    body.append('razon_codigo', document.getElementById('estadoRazonCodigo').value.trim());
+    body.append('descripcion_externa', document.getElementById('estadoDescripcionExterna').value.trim());
+    body.append('id_estado_interno', document.getElementById('estadoIdInterno').value);
+    body.append('es_confirmado', document.getElementById('estadoEsConfirmado').value);
+
+    fetch(BASE + 'ajax/forwarding_mapeos.php', { method: 'POST', body, credentials: 'same-origin' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Estado homologado', timer: 1200, showConfirmButton: false })
+                    .then(() => location.reload());
+            } else {
+                Swal.fire({ icon: 'error', title: 'Regla de Validación', text: data.message });
+            }
+        });
 }
 </script>

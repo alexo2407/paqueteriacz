@@ -63,13 +63,26 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($proveedores as $p): ?>
+                    <?php foreach ($proveedores as $p):
+                        $pCreds = json_decode($p['credentials'] ?? '{}', true) ?: [];
+                        $pDefCfg = json_decode($p['default_config'] ?? '{}', true) ?: [];
+                        $isShipEdge = (($p['slug'] ?? '') === 'shipedge');
+                        $safeShipEdgeConfig = [
+                            'shipping_method'   => $pCreds['shipping_method'] ?? $pDefCfg['shipping_method'] ?? '',
+                            'carrier_name'      => $pCreds['carrier_name'] ?? $pDefCfg['carrier_name'] ?? '',
+                            'store_channel'     => $pCreds['store_channel'] ?? $pDefCfg['store_channel'] ?? '',
+                            'default_country'   => $pCreds['default_country'] ?? $pDefCfg['default_country'] ?? '',
+                            'currency_code'     => $pCreds['currency_code'] ?? $pDefCfg['currency_code'] ?? '',
+                            'enable_sold_price' => !empty($pCreds['enable_sold_price'] ?? $pDefCfg['enable_sold_price'] ?? false),
+                            'has_credentials'   => !empty($pCreds['account_id'] ?? $pCreds['userName'] ?? '') && !empty($pCreds['api_key'] ?? $pCreds['password'] ?? ''),
+                        ];
+                    ?>
                         <tr data-id="<?= $p['id'] ?>">
                             <td><span class="badge bg-light text-dark border">#<?= $p['id'] ?></span></td>
                             <td class="fw-bold"><?= htmlspecialchars($p['nombre']) ?></td>
                             <td><code><?= htmlspecialchars($p['slug']) ?></code></td>
                             <td><small class="text-muted"><?= htmlspecialchars($p['base_url']) ?></small></td>
-                            <td><span class="badge bg-info text-dark"><?= htmlspecialchars($p['auth_method']) ?></span></td>
+                            <td><span class="badge bg-info text-dark"><?= htmlspecialchars($isShipEdge ? 'AccountID + Key (v41)' : ($p['auth_method'] ?? '')) ?></span></td>
                             <td>
                                 <span class="provider-status <?= $p['activo'] ? 'active' : 'inactive' ?>">
                                     <?= $p['activo'] ? '● Activo' : '● Inactivo' ?>
@@ -82,20 +95,21 @@ $proveedores = ForwardingModel::obtenerProveedores();
                                             data-nombre="<?= htmlspecialchars($p['nombre']) ?>"
                                             data-slug="<?= htmlspecialchars($p['slug']) ?>"
                                             data-baseurl="<?= htmlspecialchars($p['base_url']) ?>"
-                                            data-authep="<?= htmlspecialchars($p['auth_endpoint']) ?>"
-                                            data-orderep="<?= htmlspecialchars($p['order_endpoint']) ?>"
+                                            data-authep="<?= htmlspecialchars($p['auth_endpoint'] ?? '/ping') ?>"
+                                            data-orderep="<?= htmlspecialchars($p['order_endpoint'] ?? '/orders') ?>"
                                             data-payloadformat="<?= htmlspecialchars($p['payload_format'] ?? 'json') ?>"
-                                            data-authmethod="<?= htmlspecialchars($p['auth_method']) ?>"
-                                            data-username="<?= htmlspecialchars(json_decode($p['credentials'], true)['userName'] ?? '') ?>"
-                                            data-webhooksecret="<?= htmlspecialchars(json_decode($p['credentials'], true)['webhook_secret'] ?? '') ?>"
+                                            data-authmethod="<?= htmlspecialchars($p['auth_method'] ?? 'api_key') ?>"
+                                            data-username="<?= htmlspecialchars($isShipEdge ? '' : ($pCreds['userName'] ?? '')) ?>"
+                                            data-webhooksecret="<?= htmlspecialchars($isShipEdge ? (!empty($pCreds['webhook_secret']) ? '********' : '') : ($pCreds['webhook_secret'] ?? '')) ?>"
                                             data-defaultconfig="<?= htmlspecialchars($p['default_config'] ?? '{}') ?>"
+                                            data-shipedgeconfig="<?= htmlspecialchars(json_encode($safeShipEdgeConfig, JSON_UNESCAPED_UNICODE)) ?>"
                                             style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
                                         <i class="bi bi-pencil"></i>
                                     </button>
-                                    <button class="btn btn-sm btn-test btn-test-provider" title="Test Conexión"
+                                    <button class="btn btn-sm btn-test btn-test-provider" title="Probar Conexión"
                                             data-id="<?= $p['id'] ?>"
                                             data-baseurl="<?= htmlspecialchars($p['base_url']) ?>"
-                                            data-authep="<?= htmlspecialchars($p['auth_endpoint']) ?>"
+                                            data-authep="<?= htmlspecialchars($p['auth_endpoint'] ?? '/ping') ?>"
                                             data-slug="<?= htmlspecialchars($p['slug']) ?>"
                                             style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
                                         <i class="bi bi-plug"></i>
@@ -137,6 +151,7 @@ $proveedores = ForwardingModel::obtenerProveedores();
                         <label class="form-label fw-semibold">Slug / Driver <small class="text-muted">(tipo de integración)</small></label>
                         <input type="text" class="form-control" id="provSlug" placeholder="logispro" list="slugSuggestions" oninput="onSlugChange()" onchange="onSlugChange()">
                         <datalist id="slugSuggestions">
+                            <option value="shipedge">ShipEdge OMS v41</option>
                             <option value="c807">C807 Xpress</option>
                             <option value="logispro">LogisPro (Ecuador, México, etc.)</option>
                             <option value="hlexpress">HL Express</option>
@@ -146,10 +161,10 @@ $proveedores = ForwardingModel::obtenerProveedores();
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-semibold">URL Base de la API</label>
-                        <input type="url" class="form-control" id="provBaseUrl" placeholder="https://apigateway.logispro.app">
+                        <input type="url" class="form-control" id="provBaseUrl" placeholder="https://mlacostarica.shipedge.com/apirest/v41/oms">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Endpoint de Auth</label>
+                        <label class="form-label fw-semibold">Endpoint de Auth / Ping</label>
                         <input type="text" class="form-control" id="provAuthEp" value="/api/AccountApi">
                     </div>
                     <div class="col-md-6">
@@ -166,18 +181,18 @@ $proveedores = ForwardingModel::obtenerProveedores();
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Método de Auth</label>
-                        <select class="form-select" id="provAuthMethod">
+                        <select class="form-select" id="provAuthMethod" onchange="onAuthMethodChange()">
                             <option value="bearer_jwt" selected>Bearer JWT</option>
-                            <option value="api_key">API Key</option>
+                            <option value="api_key">API Key / Headers (ShipEdge AccountID+Key)</option>
                             <option value="basic">Basic Auth</option>
                         </select>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Usuario API</label>
-                        <input type="text" class="form-control" id="provUserName" placeholder="usuario.api">
+                        <label class="form-label fw-semibold" id="lblProvUserName">Usuario API / AccountID</label>
+                        <input type="text" class="form-control" id="provUserName" placeholder="usuario.api o AccountID">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Contraseña API</label>
+                        <label class="form-label fw-semibold" id="lblProvPassword">Contraseña API / Key</label>
                         <div class="input-group">
                             <input type="password" class="form-control" id="provPassword" placeholder="••••••••">
                             <button class="btn btn-outline-secondary" type="button" onclick="togglePass()">
@@ -194,6 +209,59 @@ $proveedores = ForwardingModel::obtenerProveedores();
                             </button>
                         </div>
                         <input type="hidden" id="provExistingWebhookSecret" value="">
+                    </div>
+
+                    <!-- ── Sección ShipEdge OMS v41 (solo visible cuando slug = shipedge) ── -->
+                    <div class="col-12" id="shipedgeSection" style="display:none;">
+                        <div class="p-3 rounded-3" style="background:#f0fdf4;border:1px dashed #16a34a;">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-truck" style="color:#16a34a;font-size:1.2rem;"></i>
+                                    <strong style="color:#14532d;">Parámetros de Cuenta ShipEdge OMS (API v41)</strong>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-success" id="btnReconcileShipEdge" onclick="reconcileShipEdgeOrders()">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Conciliar Órdenes Pendientes
+                                </button>
+                            </div>
+                            <div class="alert alert-light border small py-2 mb-3">
+                                <i class="bi bi-shield-lock me-1 text-success"></i>
+                                Autenticación por encabezados <code>AccountID</code> (campo <strong>AccountID</strong> arriba) y <code>Key</code> (campo <strong>Key</strong> arriba).
+                                El sistema normaliza automáticamente <code>/apirest/v41/oms</code> y bloquea el dominio <code>mlamia.shipedge.com</code>.
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Método de Envío (<code>shipping_method</code>) <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control form-control-sm" id="shipedgeShippingMethod" placeholder="Ej: STD_CR (Confirmar con ShipEdge)">
+                                    <div class="form-text" style="font-size:.72rem;">Obligatorio en <code>POST /orders</code>. Se puede sobrescribir por regla/cliente.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Transportista (<code>carrier_name</code>) <small class="text-muted">(opcional)</small></label>
+                                    <input type="text" class="form-control form-control-sm" id="shipedgeCarrierName" placeholder="Ej: Correos CR / Mensajería">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Tienda / Canal ShipEdge <small class="text-muted">(opcional)</small></label>
+                                    <input type="text" class="form-control form-control-sm" id="shipedgeStoreChannel" placeholder="Ej: MAIN_STORE">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">País de Destino Predeterminado <small class="text-muted">(opcional)</small></label>
+                                    <input type="text" class="form-control form-control-sm" id="shipedgeDefaultCountry" placeholder="Ej: CR">
+                                    <div class="form-text" style="font-size:.72rem;">Solo se usa si el pedido no trae país asociado.</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold small">Moneda Confirmada (<code>sold_price</code>)</label>
+                                    <input type="text" class="form-control form-control-sm" id="shipedgeCurrencyCode" placeholder="Ej: USD o CRC" maxlength="5">
+                                </div>
+                                <div class="col-md-4 d-flex align-items-center">
+                                    <div class="form-check form-switch mt-3">
+                                        <input class="form-check-input" type="checkbox" id="shipedgeEnableSoldPrice" value="1">
+                                        <label class="form-check-label fw-semibold small" for="shipedgeEnableSoldPrice">
+                                            Enviar <code>items[].sold_price</code> tras validar moneda
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="reconcileResultShipEdge" class="mt-2 small text-muted"></div>
+                        </div>
                     </div>
 
                     <!-- ── Sección C807 Xpress (solo visible cuando slug = c807) ── -->
@@ -352,9 +420,37 @@ function generateWebhookSecret() {
     document.getElementById('provWebhookSecret').value = hex;
 }
 
+function resolveEffectiveSlug() {
+    let rawSlug = document.getElementById('provSlug').value.toLowerCase().trim();
+    const authMethod = document.getElementById('provAuthMethod').value;
+    const baseUrl = document.getElementById('provBaseUrl').value.toLowerCase().trim();
+    if (!rawSlug && (authMethod === 'api_key' || baseUrl.includes('shipedge.com'))) {
+        rawSlug = 'shipedge';
+        document.getElementById('provSlug').value = 'shipedge';
+    }
+    return rawSlug || 'logispro';
+}
+
+function onAuthMethodChange() {
+    const authMethod = document.getElementById('provAuthMethod').value;
+    const slugInput = document.getElementById('provSlug');
+    const nombreInput = document.getElementById('provNombre');
+    if (authMethod === 'api_key' && (!slugInput.value.trim() || slugInput.value.trim().toLowerCase() === 'logispro')) {
+        slugInput.value = 'shipedge';
+        if (!nombreInput.value.trim()) {
+            nombreInput.value = 'ShipEdge Costa Rica';
+        }
+        onSlugChange();
+    }
+}
+
 function testConnection() {
     const btn = document.getElementById('btnTestModal');
     const res = document.getElementById('testResultModal');
+    const slug = resolveEffectiveSlug();
+    if (slug === 'shipedge') {
+        onSlugChange();
+    }
     btn.disabled = true;
     btn.innerHTML = '<i class="bi bi-arrow-repeat spin-icon me-2"></i>Conectando...';
     res.style.display = 'none';
@@ -366,7 +462,7 @@ function testConnection() {
         body: JSON.stringify({
             action: 'test',
             id: document.getElementById('providerId').value || undefined,
-            slug: document.getElementById('provSlug').value || 'logispro',
+            slug: slug,
             base_url: document.getElementById('provBaseUrl').value,
             auth_endpoint: document.getElementById('provAuthEp').value,
             auth_method: document.getElementById('provAuthMethod').value,
@@ -383,9 +479,13 @@ function testConnection() {
             if (data.customersId !== null && data.customersId !== undefined) {
                 extra += `<div class="mt-2"><strong>CustomersId:</strong> <span class="badge bg-primary">${data.customersId}</span></div>`;
             }
-            res.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i><strong>${data.message || 'Conexión exitosa'}</strong>
-                ${extra}
-                <div class="mt-1"><strong>Token:</strong> <code>${data.token_preview || ''}</code></div>`;
+            if (data.api_version) {
+                extra += `<div class="mt-1"><strong>API Version:</strong> <span class="badge bg-success">${data.api_version}</span></div>`;
+            }
+            if (data.token_preview) {
+                extra += `<div class="mt-1"><strong>Token:</strong> <code>${data.token_preview}</code></div>`;
+            }
+            res.innerHTML = `<i class="bi bi-check-circle-fill text-success me-2"></i><strong>${data.message || 'Conexión exitosa'}</strong>${extra}`;
         } else {
             res.className = 'test-result error';
             res.innerHTML = `<i class="bi bi-x-circle-fill text-danger me-2"></i><strong>Error:</strong> ${data.message}`;
@@ -404,21 +504,37 @@ function testConnection() {
 
 function onSlugChange() {
     const slug = document.getElementById('provSlug').value.toLowerCase().trim();
-    if (slug === 'c807') {
-        const authEp = document.getElementById('provAuthEp');
-        const orderEp = document.getElementById('provOrderEp');
-        const authM = document.getElementById('provAuthMethod');
-        const fmt = document.getElementById('provPayloadFormat');
-        const baseU = document.getElementById('provBaseUrl');
+    const authEp = document.getElementById('provAuthEp');
+    const orderEp = document.getElementById('provOrderEp');
+    const authM = document.getElementById('provAuthMethod');
+    const fmt = document.getElementById('provPayloadFormat');
+    const baseU = document.getElementById('provBaseUrl');
+    const lblUser = document.getElementById('lblProvUserName');
+    const lblPass = document.getElementById('lblProvPassword');
 
+    if (slug === 'c807') {
         if (!authEp.value || authEp.value === '/api/AccountApi') authEp.value = '/admin.php/sesion/get_token';
         if (!orderEp.value || orderEp.value === '/api/Orders/OrderAndOrderDetail') orderEp.value = '/guia.php/api/set_registro';
         authM.value = 'basic';
         fmt.value = 'json';
         if (!baseU.value) baseU.value = 'https://qaapp.c807.com';
+        if (lblUser) lblUser.textContent = 'Usuario API';
+        if (lblPass) lblPass.textContent = 'Contraseña API';
+    } else if (slug === 'shipedge') {
+        if (!authEp.value || authEp.value === '/api/AccountApi') authEp.value = '/ping';
+        if (!orderEp.value || orderEp.value === '/api/Orders/OrderAndOrderDetail') orderEp.value = '/orders';
+        authM.value = 'api_key';
+        fmt.value = 'json';
+        if (!baseU.value) baseU.value = 'https://mlacostarica.shipedge.com/apirest/v41/oms';
+        if (lblUser) lblUser.textContent = 'AccountID (Encabezado ShipEdge)';
+        if (lblPass) lblPass.textContent = 'Key / API Key (Encabezado ShipEdge)';
+    } else {
+        if (lblUser) lblUser.textContent = 'Usuario API';
+        if (lblPass) lblPass.textContent = 'Contraseña API';
     }
     toggleSoapSection();
     toggleC807Section();
+    toggleShipEdgeSection();
 }
 
 function toggleSoapSection() {
@@ -430,6 +546,45 @@ function toggleC807Section() {
     const slug = document.getElementById('provSlug').value.toLowerCase().trim();
     const el = document.getElementById('c807Section');
     if (el) el.style.display = (slug === 'c807') ? 'block' : 'none';
+}
+
+function toggleShipEdgeSection() {
+    const slug = document.getElementById('provSlug').value.toLowerCase().trim();
+    const el = document.getElementById('shipedgeSection');
+    if (el) el.style.display = (slug === 'shipedge') ? 'block' : 'none';
+}
+
+function reconcileShipEdgeOrders() {
+    const btn = document.getElementById('btnReconcileShipEdge');
+    const res = document.getElementById('reconcileResultShipEdge');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat spin-icon me-1"></i>Conciliando...';
+    res.innerHTML = '<span class="text-success"><i class="bi bi-hourglass-split me-1"></i>Consultando órdenes activas en ShipEdge v41...</span>';
+
+    fetch(BASE + 'ajax/forwarding_providers.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'same-origin',
+        body: JSON.stringify({
+            action: 'reconcile_shipedge',
+            id: document.getElementById('providerId').value || undefined,
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            res.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>${data.message}</span>`;
+        } else {
+            res.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>${data.message}</span>`;
+        }
+    })
+    .catch(err => {
+        res.innerHTML = `<span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Error: ${err.message}</span>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Conciliar Órdenes Pendientes';
+    });
 }
 
 function syncC807Catalogs() {
@@ -473,7 +628,7 @@ function saveProvider() {
     const id     = document.getElementById('providerId').value;
     const action = id ? 'actualizar' : 'crear';
     const fmt    = document.getElementById('provPayloadFormat').value;
-    const slug   = document.getElementById('provSlug').value.toLowerCase().trim();
+    const slug   = resolveEffectiveSlug();
 
     // Construir soap_config solo si aplica
     let soapConfig = null;
@@ -504,6 +659,21 @@ function saveProvider() {
         };
     }
 
+    // Construir shipedge_config si aplica
+    let shipedgeConfig = null;
+    if (slug === 'shipedge') {
+        shipedgeConfig = {
+            account_id:        document.getElementById('provUserName').value,
+            api_key:           document.getElementById('provPassword').value,
+            shipping_method:   document.getElementById('shipedgeShippingMethod').value,
+            carrier_name:      document.getElementById('shipedgeCarrierName').value,
+            store_channel:     document.getElementById('shipedgeStoreChannel').value,
+            default_country:   document.getElementById('shipedgeDefaultCountry').value,
+            currency_code:     document.getElementById('shipedgeCurrencyCode').value,
+            enable_sold_price: document.getElementById('shipedgeEnableSoldPrice').checked ? 1 : 0,
+        };
+    }
+
     const body = {
         action,
         id: id || undefined,
@@ -520,6 +690,7 @@ function saveProvider() {
         existing_webhook_secret: document.getElementById('provExistingWebhookSecret').value,
         soap_config:     soapConfig,
         c807_config:     c807Config,
+        shipedge_config: shipedgeConfig,
     };
 
     fetch(BASE + 'ajax/forwarding_providers.php', {
@@ -558,9 +729,10 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
         document.getElementById('modalProviderTitle').innerHTML = '<i class="bi bi-pencil me-2"></i>Editar Proveedor';
         document.getElementById('testResultModal').style.display = 'none';
 
-        // Cargar configuración SOAP y C807 si existe
+        // Cargar configuración SOAP, C807 y ShipEdge si existe
         try {
             const cfg = JSON.parse(this.dataset.defaultconfig || '{}');
+            const seCfg = JSON.parse(this.dataset.shipedgeconfig || '{}');
             document.getElementById('soapAction').value         = cfg.soap_action || '';
             document.getElementById('soapNamespace').value      = cfg.soap_namespace || '';
             document.getElementById('soapEnvelopeTag').value    = cfg.soap_envelope_tag || '';
@@ -580,10 +752,19 @@ document.querySelectorAll('.btn-edit-provider').forEach(btn => {
                 document.getElementById('c807PoliticaRecolecta').value = cfg.politica_recolecta_fecha || 'siguiente_dia_habil';
                 document.getElementById('c807RecolectaComentario').value = cfg.recolecta_comentario || '';
             }
+
+            // ShipEdge
+            if (document.getElementById('shipedgeShippingMethod')) {
+                document.getElementById('shipedgeShippingMethod').value  = seCfg.shipping_method || cfg.shipping_method || '';
+                document.getElementById('shipedgeCarrierName').value     = seCfg.carrier_name || cfg.carrier_name || '';
+                document.getElementById('shipedgeStoreChannel').value    = seCfg.store_channel || cfg.store_channel || '';
+                document.getElementById('shipedgeDefaultCountry').value  = seCfg.default_country || cfg.default_country || '';
+                document.getElementById('shipedgeCurrencyCode').value    = seCfg.currency_code || cfg.currency_code || '';
+                document.getElementById('shipedgeEnableSoldPrice').checked = !!(seCfg.enable_sold_price || cfg.enable_sold_price);
+            }
         } catch(e) { /* sin config */ }
 
-        toggleSoapSection();
-        toggleC807Section();
+        onSlugChange();
         new bootstrap.Modal(document.getElementById('modalProvider')).show();
     });
 });
@@ -618,27 +799,29 @@ document.querySelectorAll('.btn-toggle-provider').forEach(btn => {
     });
 });
 
-// Test from table — usa Swal con inputs en lugar de prompt() nativo
+// Test from table — soporta usar credenciales guardadas (por ID) o ingresarlas en Swal sin exponer las actuales
 document.querySelectorAll('.btn-test-provider').forEach(btn => {
     btn.addEventListener('click', function() {
         const self = this;
+        const id      = this.dataset.id;
         const slug    = this.dataset.slug;
         const baseUrl = this.dataset.baseurl;
         const authEp  = this.dataset.authep;
+        const isShipEdge = (slug === 'shipedge');
 
         Swal.fire({
-            title: 'Credenciales para test',
+            title: isShipEdge ? 'Probar Conexión ShipEdge (POST /ping)' : 'Credenciales para test',
             html:
-                '<input id="swal-user" class="swal2-input" placeholder="Usuario API">' +
-                '<input id="swal-pass" type="password" class="swal2-input" placeholder="Contraseña API">',
+                `<p class="small text-muted mb-2">${isShipEdge ? 'Deje en blanco para usar las credenciales guardadas de la cuenta, o ingrese AccountID y Key para probar:' : 'Deje en blanco si ya están guardadas o ingréselas:'}</p>` +
+                `<input id="swal-user" class="swal2-input" placeholder="${isShipEdge ? 'AccountID (opcional si ya está guardado)' : 'Usuario API'}">` +
+                `<input id="swal-pass" type="password" class="swal2-input" placeholder="${isShipEdge ? 'Key / API Key (opcional si ya está guardado)' : 'Contraseña API'}">`,
             icon: 'info',
             showCancelButton: true,
-            confirmButtonText: 'Probar',
+            confirmButtonText: 'Probar Conexión',
             cancelButtonText: 'Cancelar',
             preConfirm: () => {
                 const u = document.getElementById('swal-user').value;
                 const p = document.getElementById('swal-pass').value;
-                if (!u || !p) { Swal.showValidationMessage('Completa ambos campos'); return false; }
                 return { userName: u, password: p };
             }
         }).then(result => {
@@ -650,16 +833,25 @@ document.querySelectorAll('.btn-test-provider').forEach(btn => {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 credentials: 'same-origin',
-                body: JSON.stringify({ action: 'test', slug, base_url: baseUrl, auth_endpoint: authEp, ...result.value })
+                body: JSON.stringify({ action: 'test', id, slug, base_url: baseUrl, auth_endpoint: authEp, ...result.value })
             })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
+                    let detailsHtml = `<p>${data.message || 'Conexión exitosa'}</p>`;
+                    if (data.customersId) {
+                        detailsHtml += `<p><strong>CustomersId:</strong> <span class="badge bg-primary fs-6">${data.customersId}</span></p>`;
+                    }
+                    if (data.api_version) {
+                        detailsHtml += `<p><strong>API Version:</strong> <span class="badge bg-success">${data.api_version}</span></p>`;
+                    }
+                    if (data.token_preview) {
+                        detailsHtml += `<p><strong>Token:</strong> <code>${data.token_preview}</code></p>`;
+                    }
                     Swal.fire({
                         icon: 'success',
                         title: 'Conexión exitosa',
-                        html: `<p><strong>CustomersId:</strong> <span class="badge bg-primary fs-6">${data.customersId}</span></p>
-                               <p><strong>Token:</strong> <code>${data.token_preview || ''}</code></p>`
+                        html: detailsHtml
                     });
                 } else {
                     Swal.fire({ icon: 'error', title: 'Fallo de conexión', text: data.message });
@@ -688,13 +880,19 @@ document.getElementById('modalProvider').addEventListener('show.bs.modal', funct
         document.getElementById('provExistingWebhookSecret').value = '';
         document.getElementById('modalProviderTitle').innerHTML  = '<i class="bi bi-building me-2"></i>Nuevo Proveedor';
         document.getElementById('testResultModal').style.display = 'none';
-        // Limpiar campos SOAP
+        // Limpiar campos SOAP y ShipEdge
         ['soapAction','soapNamespace','soapEnvelopeTag','soapItemTag',
-         'soapResponseIdTags','soapAuthTag','soapAuthLoginTag','soapAuthPassTag'].forEach(id => {
-            document.getElementById(id).value = '';
+         'soapResponseIdTags','soapAuthTag','soapAuthLoginTag','soapAuthPassTag',
+         'shipedgeShippingMethod','shipedgeCarrierName','shipedgeStoreChannel',
+         'shipedgeDefaultCountry','shipedgeCurrencyCode'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
         });
         document.getElementById('soapAuthInBody').checked = false;
-        toggleSoapSection();
+        if (document.getElementById('shipedgeEnableSoldPrice')) {
+            document.getElementById('shipedgeEnableSoldPrice').checked = false;
+        }
+        onSlugChange();
     }
 });
 

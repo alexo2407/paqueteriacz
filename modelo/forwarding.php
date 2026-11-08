@@ -101,24 +101,46 @@ class ForwardingModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("
-                INSERT INTO forwarding_providers 
-                    (nombre, slug, base_url, auth_endpoint, order_endpoint, auth_method, credentials, default_config, activo)
-                VALUES 
-                    (:nombre, :slug, :base_url, :auth_endpoint, :order_endpoint, :auth_method, :credentials, :default_config, :activo)
-            ");
-            $stmt->execute([
-                ':nombre'         => $data['nombre'],
-                ':slug'           => $data['slug'],
-                ':base_url'       => rtrim($data['base_url'], '/'),
-                ':auth_endpoint'  => $data['auth_endpoint'] ?? '/api/AccountApi',
-                ':order_endpoint' => $data['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
-                ':auth_method'    => $data['auth_method'] ?? 'bearer_jwt',
-                ':credentials'    => is_string($data['credentials']) ? $data['credentials'] : json_encode($data['credentials']),
-                ':default_config' => isset($data['default_config']) ? (is_string($data['default_config']) ? $data['default_config'] : json_encode($data['default_config'])) : null,
-                ':activo'         => $data['activo'] ?? 1,
-            ]);
-            return (int) $db->lastInsertId();
+            try {
+                $stmt = $db->prepare("
+                    INSERT INTO forwarding_providers 
+                        (nombre, slug, base_url, auth_endpoint, order_endpoint, auth_method, credentials, default_config, activo)
+                    VALUES 
+                        (:nombre, :slug, :base_url, :auth_endpoint, :order_endpoint, :auth_method, :credentials, :default_config, :activo)
+                ");
+                $stmt->execute([
+                    ':nombre'         => $data['nombre'],
+                    ':slug'           => $data['slug'],
+                    ':base_url'       => rtrim($data['base_url'], '/'),
+                    ':auth_endpoint'  => $data['auth_endpoint'] ?? '/api/AccountApi',
+                    ':order_endpoint' => $data['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                    ':auth_method'    => $data['auth_method'] ?? 'bearer_jwt',
+                    ':credentials'    => is_string($data['credentials']) ? $data['credentials'] : json_encode($data['credentials']),
+                    ':default_config' => isset($data['default_config']) ? (is_string($data['default_config']) ? $data['default_config'] : json_encode($data['default_config'])) : null,
+                    ':activo'         => $data['activo'] ?? 1,
+                ]);
+            } catch (PDOException $pdoEx) {
+                $stmt = $db->prepare("
+                    INSERT INTO forwarding_providers 
+                        (nombre, slug, base_url, auth_method, credentials, activo)
+                    VALUES 
+                        (:nombre, :slug, :base_url, :auth_method, :credentials, :activo)
+                ");
+                $stmt->execute([
+                    ':nombre'      => $data['nombre'],
+                    ':slug'        => $data['slug'],
+                    ':base_url'    => rtrim($data['base_url'], '/'),
+                    ':auth_method' => $data['auth_method'] ?? 'bearer_jwt',
+                    ':credentials' => is_string($data['credentials']) ? $data['credentials'] : json_encode($data['credentials']),
+                    ':activo'      => $data['activo'] ?? 1,
+                ]);
+            }
+            $nuevoId = (int) $db->lastInsertId();
+            if ($nuevoId > 0 && ($data['slug'] ?? '') === 'shipedge') {
+                self::sembrarPlantillaShipEdge($nuevoId, false);
+                self::sembrarEstadosShipEdge();
+            }
+            return $nuevoId;
         } catch (Exception $e) {
             error_log("ForwardingModel::crearProveedor error: " . $e->getMessage());
             return false;
@@ -274,6 +296,9 @@ class ForwardingModel
     {
         try {
             $db = (new Conexion())->conectar();
+            if (is_array($configOverride)) {
+                $configOverride = json_encode($configOverride, JSON_UNESCAPED_UNICODE);
+            }
             $stmt = $db->prepare("
                 INSERT INTO forwarding_rules (id_cliente, id_provider, activo, config_override)
                 VALUES (:id_cliente, :id_provider, 1, :config_override)
@@ -350,7 +375,8 @@ class ForwardingModel
             }
             if (array_key_exists('config_override', $data)) {
                 $sets[]                  = 'config_override = :config_override';
-                $params[':config_override'] = $data['config_override'];
+                $valOverride             = $data['config_override'];
+                $params[':config_override'] = is_array($valOverride) ? json_encode($valOverride, JSON_UNESCAPED_UNICODE) : $valOverride;
             }
 
             if (empty($sets)) return false;
@@ -716,15 +742,30 @@ class ForwardingModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("
-                SELECT pp.id_producto, pp.cantidad, pp.cantidad_devuelta, pp.precio_unitario_usd,
-                       pr.nombre AS producto_nombre, pr.sku
-                FROM pedidos_productos pp
-                INNER JOIN productos pr ON pr.id = pp.id_producto
-                WHERE pp.id_pedido = :id_pedido
-            ");
-            $stmt->execute([':id_pedido' => $idPedido]);
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            try {
+                $stmt = $db->prepare("
+                    SELECT pp.id_producto, pp.cantidad, pp.cantidad_devuelta, pp.precio_unitario_usd,
+                           pp.precio_unitario_usd AS precio_unitario,
+                           pr.nombre AS producto_nombre, pr.sku
+                    FROM pedidos_productos pp
+                    INNER JOIN productos pr ON pr.id = pp.id_producto
+                    WHERE pp.id_pedido = :id_pedido
+                ");
+                $stmt->execute([':id_pedido' => $idPedido]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $pdoEx) {
+                $stmt = $db->prepare("
+                    SELECT pp.id_producto, pp.cantidad, pp.cantidad_devuelta,
+                           NULL AS precio_unitario_usd,
+                           NULL AS precio_unitario,
+                           pr.nombre AS producto_nombre, pr.sku
+                    FROM pedidos_productos pp
+                    INNER JOIN productos pr ON pr.id = pp.id_producto
+                    WHERE pp.id_pedido = :id_pedido
+                ");
+                $stmt->execute([':id_pedido' => $idPedido]);
+                return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
         } catch (Exception $e) {
             error_log("ForwardingModel::obtenerProductosPedido error: " . $e->getMessage());
             return [];
@@ -741,25 +782,30 @@ class ForwardingModel
         try {
             $db = (new Conexion())->conectar();
 
-            // Intento 1: query completa con JOIN a municipios, barrios, departamentos y columnas extendidas
+            // Intento 1: query completa con JOIN a municipios, barrios, departamentos, países, monedas y columnas extendidas
             try {
                 $stmt = $db->prepare("
                     SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
                            p.comentario, p.correo, p.peso, p.unidad_peso, p.bultos,
                            p.postalCode, p.codigo_postal, p.precio_total_local,
-                           p.fecha_entrega, p.id_cliente,
+                           p.fecha_entrega, p.id_cliente, p.id_pais, p.id_moneda,
                            p.municipalitiesName, p.departmentName, p.Location, p.betweenStreets,
                            p.zona, p.code_city,
                            p.id_municipio    AS _raw_id_municipio,
                            p.id_barrio       AS _raw_id_barrio,
                            p.id_departamento AS _raw_id_departamento,
-                           IFNULL(dep.nombre, '') AS departamento,
-                           IFNULL(mun.nombre, '') AS municipio_nombre,
-                           IFNULL(bar.nombre, '') AS barrio_nombre
+                           IFNULL(dep.nombre, '')    AS departamento,
+                           IFNULL(mun.nombre, '')    AS municipio_nombre,
+                           IFNULL(bar.nombre, '')    AS barrio_nombre,
+                           IFNULL(pa.nombre, '')     AS pais_nombre,
+                           IFNULL(pa.codigo_iso, '') AS pais_codigo_iso,
+                           IFNULL(mo.codigo, '')     AS moneda_codigo
                     FROM pedidos p
                     LEFT JOIN departamentos dep ON dep.id = p.id_departamento
                     LEFT JOIN municipios mun ON mun.id = p.id_municipio
                     LEFT JOIN barrios bar ON bar.id = p.id_barrio
+                    LEFT JOIN paises pa ON pa.id = p.id_pais
+                    LEFT JOIN monedas mo ON mo.id = p.id_moneda
                     WHERE p.id = :id
                 ");
                 $stmt->execute([':id' => $idPedido]);
@@ -771,7 +817,7 @@ class ForwardingModel
                 $stmt = $db->prepare("
                     SELECT p.id, p.numero_orden, p.destinatario, p.telefono, p.direccion,
                            p.comentario, p.codigo_postal, p.precio_total_local,
-                           p.fecha_entrega, p.id_cliente,
+                           p.fecha_entrega, p.id_cliente, p.id_pais, p.id_moneda,
                            p.zona, p.code_city,
                            NULL AS correo,
                            NULL AS peso,
@@ -787,8 +833,13 @@ class ForwardingModel
                            NULL AS _raw_id_departamento,
                            ''   AS departamento,
                            ''   AS municipio_nombre,
-                           ''   AS barrio_nombre
+                           ''   AS barrio_nombre,
+                           IFNULL(pa.nombre, '')     AS pais_nombre,
+                           IFNULL(pa.codigo_iso, '') AS pais_codigo_iso,
+                           IFNULL(mo.codigo, '')     AS moneda_codigo
                     FROM pedidos p
+                    LEFT JOIN paises pa ON pa.id = p.id_pais
+                    LEFT JOIN monedas mo ON mo.id = p.id_moneda
                     WHERE p.id = :id
                 ");
                 $stmt->execute([':id' => $idPedido]);
@@ -899,19 +950,34 @@ class ForwardingModel
     {
         try {
             $db = (new Conexion())->conectar();
-            $stmt = $db->prepare("
-                INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
-                VALUES (:id_api_field, :internal_key, :transform_rule)
-                ON DUPLICATE KEY UPDATE
-                    internal_key   = VALUES(internal_key),
-                    transform_rule = VALUES(transform_rule),
-                    updated_at     = CURRENT_TIMESTAMP
-            ");
-            $stmt->execute([
-                ':id_api_field'   => (int)$idApiField,
-                ':internal_key'   => trim($internalKey),
-                ':transform_rule' => $transformRule,
-            ]);
+            $stmtCheck = $db->prepare("SELECT id FROM forwarding_api_mappings WHERE id_api_field = :id_api_field LIMIT 1");
+            $stmtCheck->execute([':id_api_field' => (int)$idApiField]);
+            $existingId = $stmtCheck->fetchColumn();
+
+            if ($existingId) {
+                $stmt = $db->prepare("
+                    UPDATE forwarding_api_mappings
+                    SET internal_key   = :internal_key,
+                        transform_rule = :transform_rule,
+                        updated_at     = CURRENT_TIMESTAMP
+                    WHERE id = :id
+                ");
+                $stmt->execute([
+                    ':internal_key'   => trim($internalKey),
+                    ':transform_rule' => $transformRule,
+                    ':id'             => (int)$existingId,
+                ]);
+            } else {
+                $stmt = $db->prepare("
+                    INSERT INTO forwarding_api_mappings (id_api_field, internal_key, transform_rule)
+                    VALUES (:id_api_field, :internal_key, :transform_rule)
+                ");
+                $stmt->execute([
+                    ':id_api_field'   => (int)$idApiField,
+                    ':internal_key'   => trim($internalKey),
+                    ':transform_rule' => $transformRule,
+                ]);
+            }
             return true;
         } catch (Exception $e) {
             error_log("ForwardingModel::guardarApiMapping error: " . $e->getMessage());
@@ -973,6 +1039,462 @@ class ForwardingModel
         } catch (Exception $e) {
             error_log("ForwardingModel::obtenerLogForwardingExitoso error: " . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Actualizar metadatos de un campo de API (obligatoriedad, tipo, valor por defecto, etiqueta).
+     * @param int $id
+     * @param array $data
+     * @return bool
+     */
+    public static function actualizarApiField($id, $data)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $sets = [];
+            $params = [':id' => (int)$id];
+            $allowed = ['field_path', 'label', 'field_type', 'is_required', 'default_value', 'sort_order'];
+            foreach ($allowed as $col) {
+                if (array_key_exists($col, $data)) {
+                    $sets[] = "$col = :$col";
+                    $params[":$col"] = $data[$col];
+                }
+            }
+            if (empty($sets)) {
+                return false;
+            }
+            $sql = "UPDATE forwarding_api_fields SET " . implode(', ', $sets) . " WHERE id = :id";
+            $stmt = $db->prepare($sql);
+            return $stmt->execute($params);
+        } catch (Exception $e) {
+            error_log("ForwardingModel::actualizarApiField error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Retorna la definición de la plantilla inicial de campos y mapeos para ShipEdge OMS v41.
+     * @return array
+     */
+    public static function getPlantillaInicialShipEdge()
+    {
+        return [
+            [
+                'field_path'     => 'order_number',
+                'label'          => 'Número único de orden (order_number)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 10,
+                'internal_key'   => 'numero_orden',
+                'transform_rule' => 'preserve_string',
+            ],
+            [
+                'field_path'     => 'shipping_method',
+                'label'          => 'Método de envío configurado (shipping_method)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 20,
+                'internal_key'   => '_config_shipping_method',
+                'transform_rule' => 'Desde configuración de cuenta o regla',
+            ],
+            [
+                'field_path'     => 'customer.firstname',
+                'label'          => 'Nombre completo del destinatario (customer.firstname)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 30,
+                'internal_key'   => 'destinatario',
+                'transform_rule' => null,
+            ],
+            [
+                'field_path'     => 'customer.address1',
+                'label'          => 'Dirección principal (customer.address1)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 40,
+                'internal_key'   => 'direccion',
+                'transform_rule' => null,
+            ],
+            [
+                'field_path'     => 'customer.address2',
+                'label'          => 'Dirección secundaria / Entre calles (customer.address2)',
+                'field_type'     => 'string',
+                'is_required'    => 0,
+                'default_value'  => null,
+                'sort_order'     => 50,
+                'internal_key'   => 'betweenStreets',
+                'transform_rule' => 'Opcional si existe',
+            ],
+            [
+                'field_path'     => 'customer.city',
+                'label'          => 'Municipio / Ciudad (customer.city)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 60,
+                'internal_key'   => 'municipio_nombre|municipalitiesName',
+                'transform_rule' => 'Prioridad: municipio_nombre -> municipalitiesName',
+            ],
+            [
+                'field_path'     => 'customer.state',
+                'label'          => 'Departamento / Provincia / Estado (customer.state)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 70,
+                'internal_key'   => 'departamento|departmentName',
+                'transform_rule' => 'Prioridad: departamento -> departmentName',
+            ],
+            [
+                'field_path'     => 'customer.zip',
+                'label'          => 'Código Postal como texto (customer.zip)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 80,
+                'internal_key'   => 'codigo_postal|postalCode',
+                'transform_rule' => 'preserve_leading_zeros',
+            ],
+            [
+                'field_path'     => 'customer.country',
+                'label'          => 'País de destino (customer.country)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 90,
+                'internal_key'   => 'pais_codigo_iso|pais_nombre|_config_default_country',
+                'transform_rule' => 'Prioridad: ISO país -> Nombre país -> País config',
+            ],
+            [
+                'field_path'     => 'customer.email',
+                'label'          => 'Correo electrónico (customer.email)',
+                'field_type'     => 'string',
+                'is_required'    => 0,
+                'default_value'  => null,
+                'sort_order'     => 100,
+                'internal_key'   => 'correo',
+                'transform_rule' => 'Opcional si existe',
+            ],
+            [
+                'field_path'     => 'customer.phone',
+                'label'          => 'Teléfono del destinatario (customer.phone)',
+                'field_type'     => 'string',
+                'is_required'    => 0,
+                'default_value'  => null,
+                'sort_order'     => 110,
+                'internal_key'   => 'telefono',
+                'transform_rule' => 'Opcional si existe',
+            ],
+            [
+                'field_path'     => 'items[].sku',
+                'label'          => 'SKU del Producto (items[].sku)',
+                'field_type'     => 'string',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 120,
+                'internal_key'   => 'productos.sku',
+                'transform_rule' => null,
+            ],
+            [
+                'field_path'     => 'items[].quantity',
+                'label'          => 'Cantidad del Producto (items[].quantity)',
+                'field_type'     => 'int',
+                'is_required'    => 1,
+                'default_value'  => null,
+                'sort_order'     => 130,
+                'internal_key'   => 'productos.cantidad',
+                'transform_rule' => null,
+            ],
+            [
+                'field_path'     => 'items[].sold_price',
+                'label'          => 'Precio unitario validado (items[].sold_price)',
+                'field_type'     => 'float',
+                'is_required'    => 0,
+                'default_value'  => null,
+                'sort_order'     => 140,
+                'internal_key'   => 'productos.precio_unitario',
+                'transform_rule' => 'validate_currency',
+            ],
+        ];
+    }
+
+    /**
+     * Sembrar la plantilla inicial de campos y mapeos de ShipEdge v41 para un proveedor.
+     * @param int $idProvider
+     * @param bool $sobrescribir Si es true, actualiza también mapeos existentes.
+     * @return bool
+     */
+    public static function sembrarPlantillaShipEdge($idProvider, $sobrescribir = false)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $plantilla = self::getPlantillaInicialShipEdge();
+
+            foreach ($plantilla as $item) {
+                $stmtCheck = $db->prepare("
+                    SELECT id FROM forwarding_api_fields
+                    WHERE id_provider = :id_provider AND field_path = :field_path
+                    LIMIT 1
+                ");
+                $stmtCheck->execute([
+                    ':id_provider' => (int)$idProvider,
+                    ':field_path'  => $item['field_path'],
+                ]);
+                $existingFieldId = $stmtCheck->fetchColumn();
+
+                if (!$existingFieldId) {
+                    $fieldId = self::crearApiField([
+                        'id_provider'   => (int)$idProvider,
+                        'field_path'    => $item['field_path'],
+                        'label'         => $item['label'],
+                        'field_type'    => $item['field_type'],
+                        'is_required'   => $item['is_required'],
+                        'default_value' => $item['default_value'],
+                        'sort_order'    => $item['sort_order'],
+                    ]);
+                    if ($fieldId) {
+                        self::guardarApiMapping($fieldId, $item['internal_key'], $item['transform_rule']);
+                    }
+                } elseif ($sobrescribir) {
+                    self::actualizarApiField((int)$existingFieldId, [
+                        'label'         => $item['label'],
+                        'field_type'    => $item['field_type'],
+                        'is_required'   => $item['is_required'],
+                        'default_value' => $item['default_value'],
+                        'sort_order'    => $item['sort_order'],
+                    ]);
+                    self::guardarApiMapping((int)$existingFieldId, $item['internal_key'], $item['transform_rule']);
+                }
+            }
+            return true;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::sembrarPlantillaShipEdge error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Sembrar los estados iniciales de ShipEdge en forwarding_status_mapping.
+     * IMPORTANTE: 'shipped' -> 2 (En ruta o proceso), NUNCA 3 (Entregado).
+     * @return bool
+     */
+    public static function sembrarEstadosShipEdge()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmtDev = $db->query("SELECT id FROM estados_pedidos WHERE nombre_estado = 'Devolución' LIMIT 1");
+            $idDevolucion = (int)($stmtDev ? $stmtDev->fetchColumn() : 0) ?: 7;
+
+            $estados = [
+                ['pending',       null, 'Orden recibida / Pendiente en OMS',                    1,  0, 1],
+                ['processing',    null, 'En proceso de preparación / Picking en almacén',       1,  0, 1],
+                ['in_process',    null, 'En proceso en almacén (ShipEdge OMS)',                 1,  0, 1],
+                ['ready_to_ship', null, 'Empacado / Listo para despacho',                      12,  0, 1],
+                ['packed',        null, 'Empacado en almacén',                                 12,  0, 1],
+                ['shipped',       null, 'Despachado de almacén (En ruta — NO es Entregado)',    2,  1, 1],
+                ['in_transit',    null, 'En tránsito con transportista',                        2,  0, 1],
+                ['delivered',     null, 'Entregado confirmado por transportista (por validar)', 3,  0, 1],
+                ['on_hold',       null, 'Orden retenida / En espera (On Hold)',                 4,  0, 1],
+                ['backorder',     null, 'Sin stock / Backorder en almacén',                     4,  0, 1],
+                ['cancelled',     null, 'Orden cancelada en ShipEdge',                          6,  0, 1],
+                ['canceled',      null, 'Orden cancelada en ShipEdge (US spelling)',            6,  0, 1],
+                ['returned',      null, 'Devolución reportada en ShipEdge',          $idDevolucion, 0, 1],
+            ];
+
+            $stmtCheck = $db->prepare("
+                SELECT id FROM forwarding_status_mapping
+                WHERE provider_slug = 'shipedge' AND codigo_externo = :codigo_externo
+                LIMIT 1
+            ");
+            $stmtInsert = $db->prepare("
+                INSERT INTO forwarding_status_mapping
+                    (provider_slug, codigo_externo, razon_codigo, descripcion_externa, id_estado_interno, es_confirmado, activo)
+                VALUES
+                    ('shipedge', :codigo_externo, :razon_codigo, :descripcion_externa, :id_estado_interno, :es_confirmado, :activo)
+            ");
+            $stmtUpdate = $db->prepare("
+                UPDATE forwarding_status_mapping
+                SET descripcion_externa = :descripcion_externa
+                WHERE id = :id
+            ");
+
+            foreach ($estados as $est) {
+                $stmtCheck->execute([':codigo_externo' => $est[0]]);
+                $existId = $stmtCheck->fetchColumn();
+                if ($existId) {
+                    $stmtUpdate->execute([
+                        ':descripcion_externa' => $est[2],
+                        ':id'                  => (int)$existId,
+                    ]);
+                } else {
+                    $stmtInsert->execute([
+                        ':codigo_externo'      => $est[0],
+                        ':razon_codigo'        => $est[1],
+                        ':descripcion_externa' => $est[2],
+                        ':id_estado_interno'   => $est[3],
+                        ':es_confirmado'       => $est[4],
+                        ':activo'              => $est[5],
+                    ]);
+                }
+            }
+            return true;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::sembrarEstadosShipEdge error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // HOMOLOGACIÓN DE ESTADOS EXTERNOS (forwarding_status_mapping)
+    // =========================================================================
+
+    /**
+     * Listar mapeos de estados externos a internos.
+     * @param string|null $providerSlug
+     * @return array
+     */
+    public static function obtenerMapeosEstados($providerSlug = null)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $where = '';
+            $params = [];
+            if (!empty($providerSlug)) {
+                $where = 'WHERE fsm.provider_slug = :slug';
+                $params[':slug'] = $providerSlug;
+            }
+            $stmt = $db->prepare("
+                SELECT fsm.*, ep.nombre_estado AS estado_interno_nombre
+                FROM forwarding_status_mapping fsm
+                LEFT JOIN estados_pedidos ep ON ep.id = fsm.id_estado_interno
+                $where
+                ORDER BY fsm.provider_slug ASC, fsm.id ASC
+            ");
+            $stmt->execute($params);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("ForwardingModel::obtenerMapeosEstados error: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Guardar (crear o actualizar) un mapeo de estado externo -> interno.
+     * Protege la regla de negocio: en 'shipedge', 'shipped' nunca puede mapearse a Entregado (ID 3).
+     * @param array $data
+     * @return int|bool
+     * @throws InvalidArgumentException
+     */
+    public static function guardarMapeoEstado($data)
+    {
+        $slug = strtolower(trim($data['provider_slug'] ?? ''));
+        $codigoExterno = trim($data['codigo_externo'] ?? '');
+        $idEstadoInterno = (int)($data['id_estado_interno'] ?? 0);
+
+        if ($slug === 'shipedge' && strtolower($codigoExterno) === 'shipped' && $idEstadoInterno === 3) {
+            throw new InvalidArgumentException(
+                "Regla de negocio ShipEdge: el estado externo 'shipped' indica despacho de almacén (En ruta), no puede homologarse como 'Entregado' (ID 3)."
+            );
+        }
+
+        try {
+            $db = (new Conexion())->conectar();
+            $id = !empty($data['id']) ? (int)$data['id'] : 0;
+
+            if ($id <= 0) {
+                $stmtFind = $db->prepare("
+                    SELECT id FROM forwarding_status_mapping
+                    WHERE provider_slug = :provider_slug AND codigo_externo = :codigo_externo
+                    LIMIT 1
+                ");
+                $stmtFind->execute([
+                    ':provider_slug'  => $slug,
+                    ':codigo_externo' => $codigoExterno,
+                ]);
+                $id = (int)($stmtFind->fetchColumn() ?: 0);
+            }
+
+            if ($id > 0) {
+                $stmt = $db->prepare("
+                    UPDATE forwarding_status_mapping
+                    SET provider_slug       = :provider_slug,
+                        codigo_externo      = :codigo_externo,
+                        razon_codigo        = :razon_codigo,
+                        descripcion_externa = :descripcion_externa,
+                        id_estado_interno   = :id_estado_interno,
+                        es_confirmado       = :es_confirmado,
+                        activo              = :activo
+                    WHERE id = :id
+                ");
+                return $stmt->execute([
+                    ':provider_slug'       => $slug,
+                    ':codigo_externo'      => $codigoExterno,
+                    ':razon_codigo'        => !empty($data['razon_codigo']) ? trim($data['razon_codigo']) : null,
+                    ':descripcion_externa' => !empty($data['descripcion_externa']) ? trim($data['descripcion_externa']) : null,
+                    ':id_estado_interno'   => $idEstadoInterno,
+                    ':es_confirmado'       => isset($data['es_confirmado']) ? (int)$data['es_confirmado'] : 0,
+                    ':activo'              => isset($data['activo']) ? (int)$data['activo'] : 1,
+                    ':id'                  => $id,
+                ]);
+            }
+
+            $stmt = $db->prepare("
+                INSERT INTO forwarding_status_mapping
+                    (provider_slug, codigo_externo, razon_codigo, descripcion_externa, id_estado_interno, es_confirmado, activo)
+                VALUES
+                    (:provider_slug, :codigo_externo, :razon_codigo, :descripcion_externa, :id_estado_interno, :es_confirmado, :activo)
+            ");
+            $stmt->execute([
+                ':provider_slug'       => $slug,
+                ':codigo_externo'      => $codigoExterno,
+                ':razon_codigo'        => !empty($data['razon_codigo']) ? trim($data['razon_codigo']) : null,
+                ':descripcion_externa' => !empty($data['descripcion_externa']) ? trim($data['descripcion_externa']) : null,
+                ':id_estado_interno'   => $idEstadoInterno,
+                ':es_confirmado'       => isset($data['es_confirmado']) ? (int)$data['es_confirmado'] : 0,
+                ':activo'              => isset($data['activo']) ? (int)$data['activo'] : 1,
+            ]);
+            return (int)$db->lastInsertId() ?: true;
+        } catch (Exception $e) {
+            error_log("ForwardingModel::guardarMapeoEstado error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Eliminar un mapeo de estado externo.
+     * @param int $id
+     * @return bool
+     */
+    public static function eliminarMapeoEstado($id)
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->prepare("DELETE FROM forwarding_status_mapping WHERE id = :id");
+            return $stmt->execute([':id' => (int)$id]);
+        } catch (Exception $e) {
+            error_log("ForwardingModel::eliminarMapeoEstado error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Listar catálogo de estados internos de pedidos.
+     * @return array
+     */
+    public static function obtenerEstadosInternos()
+    {
+        try {
+            $db = (new Conexion())->conectar();
+            $stmt = $db->query("SELECT id, nombre_estado, descripcion FROM estados_pedidos ORDER BY id ASC");
+            return $stmt ? $stmt->fetchAll(PDO::FETCH_ASSOC) : [];
+        } catch (Exception $e) {
+            error_log("ForwardingModel::obtenerEstadosInternos error: " . $e->getMessage());
+            return [];
         }
     }
 }

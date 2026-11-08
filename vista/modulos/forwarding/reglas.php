@@ -1,4 +1,4 @@
-﻿<?php include("vista/includes/header.php") ?>
+<?php include("vista/includes/header.php") ?>
 
 <?php
 $usaDataTables = true;
@@ -74,13 +74,19 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
                             <th>ID</th>
                             <th>Cliente</th>
                             <th>Proveedor Externo</th>
+                            <th>Configuración por Regla</th>
                             <th>Estado</th>
                             <th class="text-center">Activo</th>
                             <th class="text-end">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($reglas as $r): ?>
+                    <?php foreach ($reglas as $r):
+                        $cfgOverride = is_string($r['config_override'] ?? null)
+                            ? (json_decode($r['config_override'], true) ?? [])
+                            : (is_array($r['config_override'] ?? null) ? $r['config_override'] : []);
+                        $cfgJsonAttr = htmlspecialchars(json_encode($cfgOverride ?: new stdClass()), ENT_QUOTES, 'UTF-8');
+                    ?>
                         <tr>
                             <td><span class="badge bg-light text-dark border">#<?= $r['id'] ?></span></td>
                             <td class="fw-bold text-primary"><?= htmlspecialchars($r['cliente_nombre'] ?? 'ID:' . $r['id_cliente']) ?></td>
@@ -88,6 +94,26 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
                                 <span class="badge bg-info text-dark">
                                     <i class="bi bi-building me-1"></i><?= htmlspecialchars($r['provider_nombre'] ?? $r['provider_slug'] ?? '-') ?>
                                 </span>
+                            </td>
+                            <td>
+                                <?php if (!empty($cfgOverride)): ?>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <?php if (!empty($cfgOverride['shipping_method'])): ?>
+                                            <span class="badge bg-secondary">Method: <?= htmlspecialchars($cfgOverride['shipping_method']) ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($cfgOverride['default_country'])): ?>
+                                            <span class="badge bg-light text-dark border">País: <?= htmlspecialchars($cfgOverride['default_country']) ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($cfgOverride['store_channel'])): ?>
+                                            <span class="badge bg-light text-dark border">Canal: <?= htmlspecialchars($cfgOverride['store_channel']) ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($cfgOverride['carrier_name'])): ?>
+                                            <span class="badge bg-light text-dark border">Carrier: <?= htmlspecialchars($cfgOverride['carrier_name']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <small class="text-muted">Por defecto del proveedor</small>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <span class="rule-status <?= $r['activo'] ? 'active' : 'inactive' ?>">
@@ -107,6 +133,7 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
                                             data-id="<?= $r['id'] ?>"
                                             data-cliente="<?= $r['id_cliente'] ?>"
                                             data-provider="<?= $r['id_provider'] ?>"
+                                            data-config="<?= $cfgJsonAttr ?>"
                                             title="Editar" style="border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;">
                                         <i class="bi bi-pencil"></i>
                                     </button>
@@ -152,6 +179,27 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="border rounded p-3 mb-3 bg-light">
+                    <h6 class="fw-bold mb-2" style="font-size:0.88rem;"><i class="bi bi-sliders me-1"></i>Sobrescribir Configuración por Regla (Opcional)</h6>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">shipping_method</label>
+                            <input type="text" class="form-control form-control-sm" id="ruleShippingMethod" placeholder="Herencia del proveedor">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">País destino (ISO-2)</label>
+                            <input type="text" class="form-control form-control-sm" id="ruleDefaultCountry" placeholder="Ej: CR, GT">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Tienda / Canal (store_channel)</label>
+                            <input type="text" class="form-control form-control-sm" id="ruleStoreChannel" placeholder="Opcional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Transportista (carrier_name)</label>
+                            <input type="text" class="form-control form-control-sm" id="ruleCarrierName" placeholder="Opcional">
+                        </div>
+                    </div>
+                </div>
                 <div class="alert alert-info mb-0">
                     <i class="bi bi-info-circle me-1"></i>
                     Al crear esta regla, todos los pedidos futuros de este cliente serán reenviados automáticamente al proveedor seleccionado.
@@ -195,6 +243,27 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="border rounded p-3 mb-3 bg-light">
+                    <h6 class="fw-bold mb-2" style="font-size:0.88rem;"><i class="bi bi-sliders me-1"></i>Sobrescribir Configuración por Regla (Opcional)</h6>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">shipping_method</label>
+                            <input type="text" class="form-control form-control-sm" id="editRuleShippingMethod" placeholder="Herencia del proveedor">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">País destino (ISO-2)</label>
+                            <input type="text" class="form-control form-control-sm" id="editRuleDefaultCountry" placeholder="Ej: CR, GT">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Tienda / Canal (store_channel)</label>
+                            <input type="text" class="form-control form-control-sm" id="editRuleStoreChannel" placeholder="Opcional">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Transportista (carrier_name)</label>
+                            <input type="text" class="form-control form-control-sm" id="editRuleCarrierName" placeholder="Opcional">
+                        </div>
+                    </div>
+                </div>
                 <div class="alert alert-warning mb-0">
                     <i class="bi bi-exclamation-triangle me-1"></i>
                     Cambiar el proveedor afectará todos los pedidos futuros de este cliente.
@@ -215,6 +284,19 @@ usort($clientes, function($a, $b) { return strcasecmp($a['nombre'], $b['nombre']
 <script>
 const BASE = '<?= RUTA_URL ?>';
 
+function collectRuleConfigOverride(prefix) {
+    const cfg = {};
+    const sm = document.getElementById(prefix + 'ShippingMethod')?.value?.trim();
+    const dc = document.getElementById(prefix + 'DefaultCountry')?.value?.trim();
+    const sc = document.getElementById(prefix + 'StoreChannel')?.value?.trim();
+    const cn = document.getElementById(prefix + 'CarrierName')?.value?.trim();
+    if (sm) cfg.shipping_method = sm;
+    if (dc) cfg.default_country = dc;
+    if (sc) cfg.store_channel = sc;
+    if (cn) cfg.carrier_name = cn;
+    return Object.keys(cfg).length > 0 ? cfg : null;
+}
+
 function saveRule() {
     const idCliente = document.getElementById('ruleCliente').value;
     const idProvider = document.getElementById('ruleProvider').value;
@@ -222,11 +304,12 @@ function saveRule() {
         Swal.fire({ icon: 'warning', title: 'Campos requeridos', text: 'Selecciona un cliente y un proveedor.' });
         return;
     }
+    const configOverride = collectRuleConfigOverride('rule');
     fetch(BASE + 'ajax/forwarding_rules.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'same-origin',
-        body: JSON.stringify({ action: 'crear', id_cliente: idCliente, id_provider: idProvider })
+        body: JSON.stringify({ action: 'crear', id_cliente: idCliente, id_provider: idProvider, config_override: configOverride })
     })
     .then(r => r.json())
     .then(data => {
@@ -246,6 +329,12 @@ document.querySelectorAll('.btn-edit-rule').forEach(btn => {
         document.getElementById('editRuleId').value       = this.dataset.id;
         document.getElementById('editRuleCliente').value  = this.dataset.cliente;
         document.getElementById('editRuleProvider').value = this.dataset.provider;
+        let cfg = {};
+        try { cfg = JSON.parse(this.dataset.config || '{}'); } catch (e) {}
+        document.getElementById('editRuleShippingMethod').value = cfg.shipping_method || '';
+        document.getElementById('editRuleDefaultCountry').value = cfg.default_country || '';
+        document.getElementById('editRuleStoreChannel').value   = cfg.store_channel || '';
+        document.getElementById('editRuleCarrierName').value    = cfg.carrier_name || '';
         new bootstrap.Modal(document.getElementById('modalEditRule')).show();
     });
 });
@@ -258,11 +347,12 @@ function saveEditRule() {
         Swal.fire({ icon: 'warning', title: 'Campos requeridos', text: 'Selecciona un cliente y un proveedor.' });
         return;
     }
+    const configOverride = collectRuleConfigOverride('editRule');
     fetch(BASE + 'ajax/forwarding_rules.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         credentials: 'same-origin',
-        body: JSON.stringify({ action: 'actualizar', id, id_cliente: idCliente, id_provider: idProvider })
+        body: JSON.stringify({ action: 'actualizar', id, id_cliente: idCliente, id_provider: idProvider, config_override: configOverride })
     })
     .then(r => r.json())
     .then(data => {

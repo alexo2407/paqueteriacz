@@ -12,8 +12,8 @@ $filtroDesde  = trim($_GET['desde']  ?? '');
 $filtroHasta  = trim($_GET['hasta']  ?? '');
 
 // Construir WHERE
-// Capturar webhooks de cualquier proveedor externo (LogisPro, RutaEx, etc.)
-    $where  = ["(h.observaciones LIKE 'LogisPro [%]%' OR h.observaciones LIKE 'RutaEx [%]%')"];
+// Capturar webhooks de cualquier proveedor externo (LogisPro, RutaEx, ShipEdge, C807, etc.)
+$where  = ["(h.observaciones LIKE 'LogisPro [%]%' OR h.observaciones LIKE 'RutaEx [%]%' OR h.observaciones LIKE 'ShipEdge [%]%' OR h.observaciones LIKE 'C807%')"];
 $params = [];
 
 if ($filtroOrden) {
@@ -54,16 +54,26 @@ try {
     $stmt->execute($params);
     $registros = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Eventos crudos recibidos en forwarding_webhook_events (ShipEdge, C807, etc.)
+    $eventosCrudos = $db->query("
+        SELECT id, provider_slug, external_order_id, event_type, external_status,
+               internal_status, processed, error_message, created_at
+        FROM forwarding_webhook_events
+        ORDER BY created_at DESC
+        LIMIT 50
+    ")->fetchAll(PDO::FETCH_ASSOC);
+
     // Para el filtro de estado
     $estados = $db->query("SELECT id, nombre_estado AS nombre FROM estados_pedidos ORDER BY nombre_estado")->fetchAll(PDO::FETCH_ASSOC);
 
     // KPIs rápidos
-    $whereKpi  = "(observaciones LIKE 'LogisPro [%]%' OR observaciones LIKE 'RutaEx [%]%')";
+    $whereKpi  = "(observaciones LIKE 'LogisPro [%]%' OR observaciones LIKE 'RutaEx [%]%' OR observaciones LIKE 'ShipEdge [%]%' OR observaciones LIKE 'C807%')";
     $totalHoy  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE $whereKpi AND DATE(created_at) = CURDATE()")->fetchColumn();
     $totalSem  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE $whereKpi AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn();
     $totalAll  = $db->query("SELECT COUNT(*) FROM pedidos_historial_estados WHERE $whereKpi")->fetchColumn();
 } catch (Exception $e) {
     $registros = [];
+    $eventosCrudos = [];
     $estados   = [];
     $totalHoy = $totalSem = $totalAll = 0;
 }
@@ -92,7 +102,7 @@ try {
                         </div>
                         <div>
                             <h3>Webhooks Recibidos</h3>
-                            <p class="mb-0 opacity-75">Actualizaciones de estado recibidas vía webhook (LogisPro · RutaEx)</p>
+                            <p class="mb-0 opacity-75">Actualizaciones de estado recibidas vía webhook (ShipEdge · C807 · LogisPro · RutaEx)</p>
                         </div>
                     </div>
                 </div>
@@ -105,6 +115,17 @@ try {
                 </div>
             </div>
         </div>
+    </div>
+
+    <div class="alert alert-light border d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <strong><i class="bi bi-broadcast me-1 text-primary"></i>Endpoint Webhook ShipEdge:</strong>
+            <code><?= RUTA_URL ?>api/forwarding/webhook_shipedge.php</code>
+            <small class="text-muted ms-2">(Autenticación por encabezado <code>X-ShipEdge-Secret</code> o <code>X-Webhook-Secret</code>)</small>
+        </div>
+        <a href="<?= RUTA_URL ?>forwarding/mapeos" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-diagram-3 me-1"></i>Configurar Homologación de Estados
+        </a>
     </div>
 
     <!-- KPIs -->
@@ -208,11 +229,11 @@ try {
                     <tbody>
                     <?php foreach ($registros as $r):
                         // Extraer proveedor y auditUser de la observación
-                        // Soporta: "LogisPro [user] → ..." y "RutaEx [user] → ..."
-                        preg_match('/^(LogisPro|RutaEx) \[([^\]]+)\]/', $r['observaciones'] ?? '', $mAudit);
+                        // Soporta: "ShipEdge [webhook] → ...", "LogisPro [user] → ...", "RutaEx [user] → ...", "C807 ..."
+                        preg_match('/^(ShipEdge|LogisPro|RutaEx|C807)\s*(?:\[([^\]]+)\])?/', $r['observaciones'] ?? '', $mAudit);
                         $proveedor = $mAudit[1] ?? 'Desconocido';
                         $auditUser = $mAudit[2] ?? '-';
-                        $badgeColor = ($proveedor === 'RutaEx') ? '#0ea5e9' : '#e65100';
+                        $badgeColor = ($proveedor === 'RutaEx') ? '#0ea5e9' : (($proveedor === 'ShipEdge') ? '#2563eb' : '#e65100');
                     ?>
                         <tr>
                             <td>

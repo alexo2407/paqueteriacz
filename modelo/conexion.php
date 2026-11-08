@@ -19,6 +19,12 @@ class Conexion
     private $userName;
     private $password;
     private $conexion;
+    private static $overridePdo = null;
+
+    public static function setOverridePdo(?PDO $pdo): void
+    {
+        self::$overridePdo = $pdo;
+    }
 
     public function __construct()
     {
@@ -40,6 +46,9 @@ class Conexion
      */
     public function conectar()
     {
+        if (self::$overridePdo instanceof PDO) {
+            return self::$overridePdo;
+        }
         $this->conexion = null;
 
             // Crear la conexión usando PDO

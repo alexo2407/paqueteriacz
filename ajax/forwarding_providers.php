@@ -37,9 +37,28 @@ if ($method === 'GET') {
     $proveedores = ForwardingModel::obtenerProveedores();
     // Ocultar credenciales sensibles en la respuesta
     foreach ($proveedores as &$p) {
-        $creds = json_decode($p['credentials'] ?? '{}', true);
-        if (isset($creds['password'])) {
-            $creds['password'] = str_repeat('*', min(strlen($creds['password']), 8));
+        $creds = json_decode($p['credentials'] ?? '{}', true) ?: [];
+        if (isset($creds['password']) && $creds['password'] !== '') {
+            $creds['password'] = str_repeat('*', min(strlen((string)$creds['password']), 8));
+        }
+        if (isset($creds['api_key']) && $creds['api_key'] !== '') {
+            $creds['api_key'] = str_repeat('*', min(strlen((string)$creds['api_key']), 8));
+        }
+        if (isset($creds['account_id']) && $creds['account_id'] !== '') {
+            $accStr = (string)$creds['account_id'];
+            $creds['account_id_masked'] = strlen($accStr) > 2
+                ? substr($accStr, 0, 2) . str_repeat('*', max(2, strlen($accStr) - 2))
+                : '****';
+            $creds['account_id'] = '';
+        }
+        if (isset($creds['userName']) && ($p['slug'] ?? '') === 'shipedge' && $creds['userName'] !== '') {
+            $creds['userName'] = '';
+        }
+        if (isset($creds['webhook_secret']) && $creds['webhook_secret'] !== '') {
+            $creds['has_webhook_secret'] = true;
+            if (($p['slug'] ?? '') === 'shipedge') {
+                $creds['webhook_secret'] = '********';
+            }
         }
         $p['credentials_masked'] = $creds;
         unset($p['credentials']); // No enviar raw
@@ -57,14 +76,37 @@ if ($method === 'POST') {
     switch ($action) {
 
         case 'crear':
-            $required = ['nombre', 'slug', 'base_url', 'auth_method', 'password'];
-            foreach ($required as $f) {
-                if (empty($input[$f])) {
-                    echo json_encode(['success' => false, 'message' => "Campo requerido: $f"]);
+            $slugNorm = strtolower(preg_replace('/[^a-z0-9_-]/', '', $input['slug'] ?? ''));
+            $shipedgeCfg = is_array($input['shipedge_config'] ?? null) ? $input['shipedge_config'] : [];
+
+            if ($slugNorm === 'shipedge') {
+                require_once __DIR__ . '/../services/providers/ShipEdgeProvider.php';
+                try {
+                    $input['base_url'] = ShipEdgeProvider::normalizeBaseUrl($input['base_url'] ?? '');
+                } catch (Exception $e) {
+                    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
                     exit;
                 }
+                $accId  = trim((string)($shipedgeCfg['account_id'] ?? $input['account_id'] ?? $input['userName'] ?? ''));
+                $apiKey = trim((string)($shipedgeCfg['api_key'] ?? $input['api_key'] ?? $input['password'] ?? ''));
+                if (empty($input['nombre']) || $accId === '' || $apiKey === '') {
+                    echo json_encode(['success' => false, 'message' => 'Para ShipEdge se requiere Nombre, AccountID y API Key.']);
+                    exit;
+                }
+                $input['userName']    = $accId;
+                $input['password']    = $apiKey;
+                $input['auth_method'] = 'api_key';
+            } else {
+                $required = ['nombre', 'slug', 'base_url', 'auth_method', 'password'];
+                foreach ($required as $f) {
+                    if (empty($input[$f])) {
+                        echo json_encode(['success' => false, 'message' => "Campo requerido: $f"]);
+                        exit;
+                    }
+                }
             }
-            // userName es requerido para JWT y Basic, pero opcional para API Key
+
+            // userName es requerido para JWT y Basic, pero opcional para API Key (excepto ShipEdge que ya lo validó arriba)
             $authMethod = $input['auth_method'] ?? 'bearer_jwt';
             if ($authMethod === 'bearer_jwt' || $authMethod === 'basic') {
                 if (empty($input['userName'])) {
@@ -73,19 +115,31 @@ if ($method === 'POST') {
                 }
             }
 
+            $credsToSave = [
+                'userName'       => $input['userName'] ?? '',
+                'password'       => $input['password'] ?? '',
+                'webhook_secret' => !empty($input['webhook_secret']) ? $input['webhook_secret'] : bin2hex(random_bytes(16)),
+            ];
+            if ($slugNorm === 'shipedge') {
+                $credsToSave['account_id']        = $input['userName'];
+                $credsToSave['api_key']           = $input['password'];
+                $credsToSave['shipping_method']   = trim((string)($shipedgeCfg['shipping_method'] ?? ''));
+                $credsToSave['carrier_name']      = trim((string)($shipedgeCfg['carrier_name'] ?? ''));
+                $credsToSave['store_channel']     = trim((string)($shipedgeCfg['store_channel'] ?? ''));
+                $credsToSave['default_country']   = trim((string)($shipedgeCfg['default_country'] ?? ''));
+                $credsToSave['currency_code']     = strtoupper(trim((string)($shipedgeCfg['currency_code'] ?? '')));
+                $credsToSave['enable_sold_price'] = !empty($shipedgeCfg['enable_sold_price']);
+            }
+
             $id = ForwardingModel::crearProveedor([
                 'nombre'         => $input['nombre'],
-                'slug'           => strtolower(preg_replace('/[^a-z0-9_-]/', '', $input['slug'])),
+                'slug'           => $slugNorm,
                 'base_url'       => $input['base_url'],
-                'auth_endpoint'  => $input['auth_endpoint'] ?? '/api/AccountApi',
-                'order_endpoint' => $input['order_endpoint'] ?? '/api/Orders/OrderAndOrderDetail',
+                'auth_endpoint'  => $input['auth_endpoint'] ?? ($slugNorm === 'shipedge' ? '/ping' : '/api/AccountApi'),
+                'order_endpoint' => $input['order_endpoint'] ?? ($slugNorm === 'shipedge' ? '/orders' : '/api/Orders/OrderAndOrderDetail'),
                 'payload_format' => in_array($input['payload_format'] ?? '', ['json','xml','soap']) ? $input['payload_format'] : 'json',
                 'auth_method'    => $authMethod,
-                'credentials'    => json_encode([
-                    'userName'       => $input['userName'] ?? '',
-                    'password'       => $input['password'] ?? '',
-                    'webhook_secret' => !empty($input['webhook_secret']) ? $input['webhook_secret'] : bin2hex(random_bytes(16)),
-                ]),
+                'credentials'    => json_encode($credsToSave, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 'default_config' => buildDefaultConfig($input),
             ]);
             echo json_encode([
@@ -100,6 +154,22 @@ if ($method === 'POST') {
                 echo json_encode(['success' => false, 'message' => 'ID requerido']);
                 exit;
             }
+            $existingProv = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
+            if (!$existingProv) {
+                echo json_encode(['success' => false, 'message' => 'Proveedor no encontrado']);
+                exit;
+            }
+            $slugEffective = strtolower($input['slug'] ?? $existingProv['slug'] ?? '');
+            if ($slugEffective === 'shipedge' && !empty($input['base_url'])) {
+                require_once __DIR__ . '/../services/providers/ShipEdgeProvider.php';
+                try {
+                    $input['base_url'] = ShipEdgeProvider::normalizeBaseUrl($input['base_url']);
+                } catch (Exception $e) {
+                    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                    exit;
+                }
+            }
+
             $data = [];
             $fields = ['nombre', 'slug', 'base_url', 'auth_endpoint', 'order_endpoint', 'auth_method'];
             foreach ($fields as $f) {
@@ -110,24 +180,62 @@ if ($method === 'POST') {
                 $data['payload_format'] = $input['payload_format'];
             }
             // Actualizar credenciales si se proporcionan o cambian
-            $existingProv = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
-            $creds = json_decode($existingProv['credentials'] ?? '{}', true);
+            $creds = json_decode($existingProv['credentials'] ?? '{}', true) ?: [];
             $updateCreds = false;
 
-            if (!empty($input['userName'])) { $creds['userName'] = $input['userName']; $updateCreds = true; }
-            if (!empty($input['password'])) { $creds['password'] = $input['password']; $updateCreds = true; }
-            if (!empty($input['webhook_secret']) && $input['webhook_secret'] !== ($input['existing_webhook_secret'] ?? '')) {
+            if (!empty($input['userName'])) {
+                $creds['userName'] = $input['userName'];
+                if ($slugEffective === 'shipedge') {
+                    $creds['account_id'] = $input['userName'];
+                }
+                $updateCreds = true;
+            }
+            if (!empty($input['password'])) {
+                $creds['password'] = $input['password'];
+                if ($slugEffective === 'shipedge') {
+                    $creds['api_key'] = $input['password'];
+                }
+                $updateCreds = true;
+            }
+            if (!empty($input['webhook_secret']) && $input['webhook_secret'] !== '********' && $input['webhook_secret'] !== ($input['existing_webhook_secret'] ?? '')) {
                 $creds['webhook_secret'] = $input['webhook_secret'];
                 $updateCreds = true;
             }
 
-            if ($updateCreds) {
-                $data['credentials'] = json_encode($creds);
+            if ($slugEffective === 'shipedge' && !empty($input['shipedge_config']) && is_array($input['shipedge_config'])) {
+                $sc = $input['shipedge_config'];
+                if (!empty($sc['account_id'])) {
+                    $creds['account_id'] = trim((string)$sc['account_id']);
+                    $creds['userName']   = $creds['account_id'];
+                }
+                if (!empty($sc['api_key'])) {
+                    $creds['api_key']  = trim((string)$sc['api_key']);
+                    $creds['password'] = $creds['api_key'];
+                }
+                foreach (['shipping_method', 'carrier_name', 'store_channel', 'default_country', 'currency_code'] as $sk) {
+                    if (array_key_exists($sk, $sc)) {
+                        $creds[$sk] = $sk === 'currency_code'
+                            ? strtoupper(trim((string)$sc[$sk]))
+                            : trim((string)$sc[$sk]);
+                    }
+                }
+                if (array_key_exists('enable_sold_price', $sc)) {
+                    $creds['enable_sold_price'] = !empty($sc['enable_sold_price']);
+                }
+                $updateCreds = true;
             }
-            // Mergear soap_config dentro de default_config
+
+            if ($updateCreds) {
+                $data['credentials'] = json_encode($creds, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
+            // Mergear soap_config, c807_config y shipedge_config dentro de default_config
             $data['default_config'] = buildDefaultConfig($input, $existingProv['default_config'] ?? null);
 
             $ok = ForwardingModel::actualizarProveedor((int)$input['id'], $data);
+            if ($ok && $slugEffective === 'shipedge') {
+                ForwardingModel::sembrarPlantillaShipEdge((int)$input['id'], false);
+                ForwardingModel::sembrarEstadosShipEdge();
+            }
             echo json_encode(['success' => $ok, 'message' => $ok ? 'Proveedor actualizado' : 'Error al actualizar']);
             break;
 
@@ -141,34 +249,49 @@ if ($method === 'POST') {
             break;
 
         case 'test':
-            $testPass = $input['password'] ?? '';
-            $testUser = $input['userName'] ?? '';
+            $shipedgeCfg = is_array($input['shipedge_config'] ?? null) ? $input['shipedge_config'] : [];
+            $testPass = $input['password'] ?? ($shipedgeCfg['api_key'] ?? '');
+            $testUser = $input['userName'] ?? ($shipedgeCfg['account_id'] ?? '');
             $authMethod = $input['auth_method'] ?? '';
             $slug = $input['slug'] ?? '';
             
             if (!empty($input['id'])) {
                 $existingProv = ForwardingModel::obtenerProveedorPorId((int)$input['id']);
                 if ($existingProv) {
-                    $creds = json_decode($existingProv['credentials'] ?? '{}', true);
-                    if (empty($testPass)) $testPass = $creds['password'] ?? '';
-                    if (empty($testUser)) $testUser = $creds['userName'] ?? '';
+                    $creds = json_decode($existingProv['credentials'] ?? '{}', true) ?: [];
+                    if (empty($testPass)) $testPass = $creds['api_key'] ?? $creds['password'] ?? '';
+                    if (empty($testUser)) $testUser = $creds['account_id'] ?? $creds['userName'] ?? '';
                     if (empty($authMethod)) $authMethod = $existingProv['auth_method'] ?? '';
                     if (empty($slug)) $slug = $existingProv['slug'] ?? '';
                 }
             }
 
             if (empty($authMethod)) {
-                $authMethod = ($slug === 'hlexpress') ? 'api_key' : 'bearer_jwt';
+                $authMethod = (in_array($slug, ['hlexpress', 'shipedge'], true)) ? 'api_key' : 'bearer_jwt';
             }
 
-            if (empty($input['base_url']) || empty($testPass)) {
-                echo json_encode(['success' => false, 'message' => 'base_url y password/API Key son requeridos']);
-                exit;
-            }
+            if ($slug === 'shipedge') {
+                require_once __DIR__ . '/../services/providers/ShipEdgeProvider.php';
+                try {
+                    $input['base_url'] = ShipEdgeProvider::normalizeBaseUrl($input['base_url'] ?? '');
+                } catch (Exception $e) {
+                    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                    exit;
+                }
+                if (empty($testUser) || empty($testPass)) {
+                    echo json_encode(['success' => false, 'message' => 'AccountID y Key son obligatorios para probar la conexión con ShipEdge (POST /ping).']);
+                    exit;
+                }
+            } else {
+                if (empty($input['base_url']) || empty($testPass)) {
+                    echo json_encode(['success' => false, 'message' => 'base_url y password/API Key son requeridos']);
+                    exit;
+                }
 
-            if (($authMethod === 'bearer_jwt' || $authMethod === 'basic') && empty($testUser)) {
-                echo json_encode(['success' => false, 'message' => 'userName es requerido para este método de autenticación']);
-                exit;
+                if (($authMethod === 'bearer_jwt' || $authMethod === 'basic') && empty($testUser)) {
+                    echo json_encode(['success' => false, 'message' => 'userName es requerido para este método de autenticación']);
+                    exit;
+                }
             }
             require_once __DIR__ . '/../services/ForwardingService.php';
 
@@ -193,11 +316,33 @@ if ($method === 'POST') {
                 'payload_format' => $payloadFormat,
                 'default_config' => $defaultConfig,
                 'credentials'    => [
-                    'userName' => $testUser,
-                    'password' => $testPass,
+                    'userName'   => $testUser,
+                    'password'   => $testPass,
+                    'account_id' => $testUser,
+                    'api_key'    => $testPass,
                 ],
             ]);
             echo json_encode($result);
+            break;
+
+        case 'reconcile_shipedge':
+            try {
+                require_once __DIR__ . '/../services/ShipEdgeWebhookAndReconcileService.php';
+                $db = (new Conexion())->conectar();
+                $idProv = !empty($input['id']) ? (int)$input['id'] : null;
+                $summary = ShipEdgeWebhookAndReconcileService::conciliarOrdenesPendientes($db, $idProv, 50);
+                echo json_encode([
+                    'success' => empty($summary['errors']),
+                    'message' => sprintf(
+                        'Conciliación completada: %d órdenes verificadas, %d actualizadas.',
+                        $summary['orders_checked'],
+                        $summary['orders_updated']
+                    ),
+                    'summary' => $summary,
+                ]);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            }
             break;
 
         case 'sync_c807_catalogs':
@@ -289,6 +434,26 @@ function buildDefaultConfig(array $input, ?string $existingJson = null): ?string
                 $v = $input['c807_config'][$k];
                 if ($v !== '' && $v !== null) {
                     $config[$k] = $v;
+                } else {
+                    unset($config[$k]);
+                }
+            }
+        }
+    }
+
+    // Mergear shipedge_config si viene en el request
+    if (!empty($input['shipedge_config']) && is_array($input['shipedge_config'])) {
+        $shipedgeFields = [
+            'shipping_method', 'carrier_name', 'store_channel',
+            'default_country', 'currency_code', 'enable_sold_price',
+        ];
+        foreach ($shipedgeFields as $k) {
+            if (array_key_exists($k, $input['shipedge_config'])) {
+                $v = $input['shipedge_config'][$k];
+                if ($k === 'enable_sold_price') {
+                    $config[$k] = !empty($v);
+                } elseif ($v !== '' && $v !== null) {
+                    $config[$k] = $k === 'currency_code' ? strtoupper(trim((string)$v)) : trim((string)$v);
                 } else {
                     unset($config[$k]);
                 }

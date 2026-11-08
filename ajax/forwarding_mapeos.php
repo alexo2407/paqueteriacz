@@ -47,8 +47,88 @@ switch ($accion) {
             $respuesta = ['success' => false, 'message' => 'id_provider requerido'];
             break;
         }
-        $campos = ForwardingModel::obtenerApiFields($idProvider);
-        $respuesta = ['success' => true, 'campos' => $campos];
+        $provInfo = ForwardingModel::obtenerProveedorPorId($idProvider);
+        $campos   = ForwardingModel::obtenerApiFields($idProvider);
+        if (empty($campos) && ($provInfo['slug'] ?? '') === 'shipedge') {
+            ForwardingModel::sembrarPlantillaShipEdge($idProvider, false);
+            ForwardingModel::sembrarEstadosShipEdge();
+            $campos = ForwardingModel::obtenerApiFields($idProvider);
+        }
+        $respuesta = [
+            'success' => true,
+            'campos'  => $campos,
+            'slug'    => $provInfo['slug'] ?? '',
+        ];
+        break;
+
+    // -------------------------------------------------------------------------
+    case 'cargar_plantilla_shipedge':
+        $idProvider   = (int)($_POST['id_provider'] ?? 0);
+        $sobrescribir = !empty($_POST['sobrescribir']);
+        if (!$idProvider) {
+            $respuesta = ['success' => false, 'message' => 'id_provider requerido'];
+            break;
+        }
+        $ok1 = ForwardingModel::sembrarPlantillaShipEdge($idProvider, $sobrescribir);
+        $ok2 = ForwardingModel::sembrarEstadosShipEdge();
+        $respuesta = [
+            'success' => $ok1,
+            'message' => $ok1
+                ? 'Plantilla inicial de campos y homologación de estados de ShipEdge v41 aplicada correctamente.'
+                : 'No se pudo aplicar la plantilla de ShipEdge.',
+        ];
+        break;
+
+    // -------------------------------------------------------------------------
+    case 'listar_estados':
+        $slug = trim($_GET['provider_slug'] ?? $_POST['provider_slug'] ?? '');
+        if ($slug === 'shipedge') {
+            $actuales = ForwardingModel::obtenerMapeosEstados('shipedge');
+            if (empty($actuales)) {
+                ForwardingModel::sembrarEstadosShipEdge();
+                $actuales = ForwardingModel::obtenerMapeosEstados('shipedge');
+            }
+        } else {
+            $actuales = ForwardingModel::obtenerMapeosEstados($slug ?: null);
+        }
+        $respuesta = [
+            'success'          => true,
+            'estados_mapeados' => $actuales,
+            'estados_internos' => ForwardingModel::obtenerEstadosInternos(),
+        ];
+        break;
+
+    // -------------------------------------------------------------------------
+    case 'guardar_estado':
+        try {
+            $ok = ForwardingModel::guardarMapeoEstado([
+                'id'                  => (int)($_POST['id'] ?? 0),
+                'provider_slug'       => trim($_POST['provider_slug'] ?? ''),
+                'codigo_externo'      => trim($_POST['codigo_externo'] ?? ''),
+                'razon_codigo'        => trim($_POST['razon_codigo'] ?? '') ?: null,
+                'descripcion_externa' => trim($_POST['descripcion_externa'] ?? '') ?: null,
+                'id_estado_interno'   => (int)($_POST['id_estado_interno'] ?? 0),
+                'es_confirmado'       => (int)($_POST['es_confirmado'] ?? 0),
+                'activo'              => isset($_POST['activo']) ? (int)$_POST['activo'] : 1,
+            ]);
+            $respuesta = [
+                'success' => (bool)$ok,
+                'message' => $ok ? 'Homologación de estado guardada correctamente' : 'Error al guardar homologación de estado',
+            ];
+        } catch (InvalidArgumentException $ex) {
+            $respuesta = ['success' => false, 'message' => $ex->getMessage()];
+        }
+        break;
+
+    // -------------------------------------------------------------------------
+    case 'eliminar_estado':
+        $idEst = (int)($_POST['id'] ?? 0);
+        if (!$idEst) {
+            $respuesta = ['success' => false, 'message' => 'ID requerido'];
+            break;
+        }
+        $ok = ForwardingModel::eliminarMapeoEstado($idEst);
+        $respuesta = ['success' => $ok, 'message' => $ok ? 'Mapeo de estado eliminado' : 'Error al eliminar'];
         break;
 
     // -------------------------------------------------------------------------
@@ -148,7 +228,10 @@ switch ($accion) {
                 'municipalitiesName' => 'San Salvador',
                 'departmentName'     => 'San Salvador',
                 'municipio_nombre'   => 'San Salvador',
-                'departamento'       => 'San Salvador',
+                'departamento'       => 'San José',
+                'pais_codigo_iso'    => 'CR',
+                'pais_nombre'        => 'Costa Rica',
+                'moneda_codigo'      => 'USD',
                 'peso'               => 2.5,
                 'Location'           => 'Colonia Escalón',
                 'betweenStreets'     => 'Entre 1a y 3a Calle',
@@ -163,6 +246,7 @@ switch ($accion) {
                         'cantidad'            => 2,
                         'cantidad_devuelta'   => 0,
                         'precio_unitario_usd' => 15.00,
+                        'precio_unitario'     => 15.00,
                     ],
                     [
                         'producto_nombre'     => 'Pantalón Slim',
@@ -170,17 +254,19 @@ switch ($accion) {
                         'cantidad'            => 1,
                         'cantidad_devuelta'   => 0,
                         'precio_unitario_usd' => 25.00,
+                        'precio_unitario'     => 25.00,
                     ],
                 ],
             ];
         }
 
         try {
-            $mapeos  = ForwardingModel::obtenerMapeosDeProveedor($idProvider);
+            $mapeos   = ForwardingModel::obtenerMapeosDeProveedor($idProvider);
             $provData = ForwardingModel::obtenerProveedorPorId($idProvider);
-            $slug = $provData['slug'] ?? '';
+            $slug     = $provData['slug'] ?? '';
+            $warnings = [];
 
-            if (empty($mapeos) && $slug !== 'c807') {
+            if (empty($mapeos) && !in_array($slug, ['c807', 'shipedge'], true)) {
                 $respuesta = ['success' => false, 'message' => 'No hay mapeos configurados para este proveedor'];
                 break;
             }
@@ -191,15 +277,30 @@ switch ($accion) {
                 $creds = json_decode($provData['credentials'] ?? '{}', true) ?: [];
                 $provider = new C807Provider($provData['base_url'] ?? 'https://qaapp.c807.com', $creds, $cfg);
                 $payload = $provider->mapearCampos($pedido, $pedido['productos'] ?? [], ['token' => 'preview-token']);
+            } elseif ($slug === 'shipedge') {
+                require_once __DIR__ . '/../services/providers/ShipEdgeProvider.php';
+                $cfg = json_decode($provData['default_config'] ?? '{}', true) ?: [];
+                $creds = json_decode($provData['credentials'] ?? '{}', true) ?: [];
+                // En vista previa con pedido simulado, si aún no se configuró shipping_method en el proveedor,
+                // mostrar advertencia explícita al administrador.
+                if ($idPedido === 0 && empty($creds['shipping_method']) && empty($cfg['shipping_method'])) {
+                    $cfg['shipping_method'] = 'PENDIENTE_CONFIRMAR_SHIPEDGE';
+                    $warnings[] = 'Aviso: shipping_method aún no está configurado en el proveedor. Se muestra "PENDIENTE_CONFIRMAR_SHIPEDGE" solo para la vista previa simulada; en envíos reales se bloqueará hasta configurarlo.';
+                }
+                $cfg['id_provider'] = $idProvider;
+                $provider = new ShipEdgeProvider($provData['base_url'] ?? 'https://mlacostarica.shipedge.com/apirest/v41/oms', $creds, $cfg);
+                $payload = $provider->mapearCampos($pedido, $pedido['productos'] ?? [], []);
+                $payload = ShipEdgeProvider::sanitizeSensitiveData($payload);
             } else {
                 $payload = PayloadBuilderService::build($pedido, $mapeos);
             }
 
             $respuesta = [
-                'success' => true,
-                'payload' => $payload,
-                'json'    => json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                'pedido_usado' => $idPedido > 0 ? "Pedido #{$idPedido}" : "Pedido simulado",
+                'success'      => true,
+                'payload'      => $payload,
+                'warnings'     => $warnings,
+                'json'         => json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'pedido_usado' => $idPedido > 0 ? "Pedido #{$idPedido}" : "Pedido simulado (CP '010101' con cero inicial y 2 productos)",
             ];
         } catch (Exception $e) {
             $respuesta = ['success' => false, 'message' => $e->getMessage()];

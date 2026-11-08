@@ -37,16 +37,35 @@ class PayloadBuilderService
             ['key' => 'departmentName',       'label' => 'Nombre del Departamento'],
             ['key' => 'Location',             'label' => 'Ubicación (texto)'],
             ['key' => 'betweenStreets',       'label' => 'Entre Calles'],
+            ['key' => 'correo',               'label' => 'Correo Electrónico del Destinatario'],
+            ['key' => 'municipio_nombre',     'label' => 'Municipio (Catálogo Geográfico)'],
+            ['key' => 'departamento',         'label' => 'Departamento / Provincia (Catálogo Geográfico)'],
+            ['key' => 'pais_codigo_iso',      'label' => 'País (Código ISO, ej: CR, GT)'],
+            ['key' => 'pais_nombre',          'label' => 'País (Nombre)'],
+            ['key' => 'moneda_codigo',        'label' => 'Moneda del Pedido (Código ISO)'],
             ['key' => 'nit',                  'label' => 'NIT del Destinatario'],
             ['key' => 'lat',                  'label' => 'Latitud'],
             ['key' => 'lng',                  'label' => 'Longitud'],
             ['key' => 'code_city',            'label' => 'Código de Ciudad (City DANE Code)'],
-            // Productos (arreglo — usar prefijo productos[])
+            // Fuentes con prioridad alternativa (ShipEdge / Dinámico)
+            ['key' => 'municipio_nombre|municipalitiesName',                   'label' => 'Municipio con Prioridad (municipio_nombre → municipalitiesName)'],
+            ['key' => 'departamento|departmentName',                           'label' => 'Departamento con Prioridad (departamento → departmentName)'],
+            ['key' => 'codigo_postal|postalCode',                              'label' => 'Código Postal con Prioridad (codigo_postal → postalCode)'],
+            ['key' => 'pais_codigo_iso|pais_nombre|_config_default_country',   'label' => 'País con Prioridad (ISO → Nombre → País Config)'],
+            // Parámetros de configuración de cuenta / regla
+            ['key' => '_config_shipping_method',  'label' => 'Configuración → Método de Envío (shipping_method)'],
+            ['key' => '_config_carrier_name',     'label' => 'Configuración → Transportista (carrier_name)'],
+            ['key' => '_config_store_channel',    'label' => 'Configuración → Tienda / Canal (store_channel)'],
+            ['key' => '_config_default_country',  'label' => 'Configuración → País Predeterminado'],
+            // Productos (arreglo — usar prefijo productos[] o productos.)
             ['key' => 'productos[].producto_nombre',     'label' => 'Productos → Nombre'],
             ['key' => 'productos[].sku',                 'label' => 'Productos → SKU'],
+            ['key' => 'productos.sku',                   'label' => 'Productos → SKU (alias productos.sku)'],
             ['key' => 'productos[].cantidad',            'label' => 'Productos → Cantidad (bruta)'],
+            ['key' => 'productos.cantidad',              'label' => 'Productos → Cantidad (alias productos.cantidad)'],
             ['key' => 'productos[].cantidad_neta',       'label' => 'Productos → Cantidad (neta, -devueltos)'],
             ['key' => 'productos[].precio_unitario_usd', 'label' => 'Productos → Precio Unitario USD'],
+            ['key' => 'productos.precio_unitario',       'label' => 'Productos → Precio Unitario (requiere moneda validada)'],
             ['key' => 'productos[].nombre_con_cantidad', 'label' => 'Productos → Nombre formateado con cantidad (ej: 2x Producto)'],
             // Claves virtuales especiales
             ['key' => '_total_units',          'label' => 'Total de Unidades (suma cantidad_neta) — genera N elementos vacíos repetidos'],
@@ -68,9 +87,10 @@ class PayloadBuilderService
      * @return array         Array PHP estructurado listo para json_encode / arrayToXml
      * @throws Exception     Si un campo requerido no tiene valor
      */
-    public static function build(array $pedido, array $mapeos): array
+    public static function build(array $pedido, array $mapeos, array $options = []): array
     {
         $salida = [];
+        $omitEmptyOptional = !empty($options['omit_empty_optional']);
 
         // Inyectar claves virtuales calculadas en tiempo de ejecucion
         $totalUnits = 0;
@@ -93,11 +113,20 @@ class PayloadBuilderService
         ], fn($s) => $s !== '');
         $pedido['_referencia_extendida'] = implode(' - ', $refPartes);
 
-        // _caex_poblado: buscar codigo en la tabla caex_poblados por municipio del pedido
-        $pedido['_caex_poblado'] = self::buscarCodigoCaexPoblado(
-            $pedido['municipalitiesName'] ?? '',
-            $pedido['departmentName'] ?? ''
-        );
+        // _caex_poblado: buscar codigo en la tabla caex_poblados solo si algún mapeo lo solicita
+        $usaCaexPoblado = false;
+        foreach ($mapeos as $m) {
+            if (strpos((string)($m['internal_key'] ?? ''), '_caex_poblado') !== false) {
+                $usaCaexPoblado = true;
+                break;
+            }
+        }
+        $pedido['_caex_poblado'] = $usaCaexPoblado
+            ? self::buscarCodigoCaexPoblado(
+                $pedido['municipalitiesName'] ?? '',
+                $pedido['departmentName'] ?? ''
+            )
+            : '';
 
         // Separar mapeos simples de mapeos de arreglo
         $simples  = [];
@@ -112,14 +141,18 @@ class PayloadBuilderService
         }
 
         // 1. Resolver campos simples
+        $deferRequired = !empty($options['defer_required_validation']);
         foreach ($simples as $m) {
-            $valor = self::resolverValorSimple($pedido, $m);
+            $valor = self::resolverValorSimple($pedido, $m, $omitEmptyOptional, $deferRequired);
+            if ($omitEmptyOptional && !(int)($m['is_required'] ?? 0) && ($valor === null || $valor === '')) {
+                continue;
+            }
             self::setDotPath($salida, $m['field_path'], $valor);
         }
 
         // 2. Resolver campos de arreglo (productos o repeticion por cantidad)
         if (!empty($arrayMap)) {
-            $salida = self::resolverArreglos($salida, $pedido, $arrayMap);
+            $salida = self::resolverArreglos($salida, $pedido, $arrayMap, $options);
         }
 
         return $salida;
@@ -225,9 +258,34 @@ class PayloadBuilderService
     }
 
     /**
+     * Extraer valor de una clave interna o de una lista de claves con prioridad separadas por '|'.
+     */
+    private static function obtenerValorConPrioridad(array $fuente, string $internalKey, ?string $rule = null)
+    {
+        $candidatos = array_map('trim', explode('|', $internalKey));
+        if ($rule && strpos($rule, 'fallback:') === 0) {
+            $fallbackKey = trim(substr($rule, 9));
+            if ($fallbackKey !== '') {
+                $candidatos[] = $fallbackKey;
+            }
+        }
+
+        foreach ($candidatos as $cand) {
+            if ($cand === '') continue;
+            if (strpos($cand, 'constante:') === 0) {
+                return substr($cand, 10);
+            }
+            if (array_key_exists($cand, $fuente) && $fuente[$cand] !== null && trim((string)$fuente[$cand]) !== '') {
+                return $fuente[$cand];
+            }
+        }
+        return null;
+    }
+
+    /**
      * Resolver el valor de un campo simple del $pedido.
      */
-    private static function resolverValorSimple(array $pedido, array $m)
+    private static function resolverValorSimple(array $pedido, array $m, bool $omitEmptyOptional = false, bool $deferRequired = false)
     {
         $internalKey = $m['internal_key'] ?? '';
         $rule        = $m['transform_rule'] ?? null;
@@ -238,17 +296,28 @@ class PayloadBuilderService
             $valor = $pedido['_referencia_extendida'] ?? '';
         } elseif ($rule === 'SER / CCE' || $internalKey === '_tipo_servicio') {
             $valor = $pedido['_tipo_servicio'] ?? 'SER';
+        } elseif (strpos($internalKey, '|') !== false || ($rule && strpos($rule, 'fallback:') === 0)) {
+            $valor = self::obtenerValorConPrioridad($pedido, $internalKey, $rule);
+            if ($valor === null || $valor === '') {
+                $valor = $m['default_value'] ?? null;
+            }
         } else {
-            $valor = $pedido[$internalKey] ?? $m['default_value'] ?? null;
+            $valPedido = $pedido[$internalKey] ?? null;
+            $valor = ($valPedido !== null && trim((string)$valPedido) !== '')
+                ? $valPedido
+                : ($m['default_value'] ?? null);
         }
 
         if ($valor === null || $valor === '') {
-            if ((int)$m['is_required']) {
+            if ((int)$m['is_required'] && !$deferRequired) {
                 throw new Exception(
                     "PayloadBuilder: Campo requerido '{$m['field_path']}' (clave interna: '{$internalKey}') no tiene valor."
                 );
             }
-            $valor = $m['default_value'];
+            if ($omitEmptyOptional && !(int)$m['is_required'] && ($m['default_value'] === null || $m['default_value'] === '')) {
+                return null;
+            }
+            $valor = $m['default_value'] ?? '';
         }
 
         return self::castear($valor, $m['field_type'] ?? 'string', $rule);
@@ -258,9 +327,13 @@ class PayloadBuilderService
      * Procesar mapeos de arreglo iterando sobre $pedido['productos'].
      * Agrupa por prefijo de arreglo (antes del []).
      */
-    private static function resolverArreglos(array $salida, array $pedido, array $arrayMap): array
+    private static function resolverArreglos(array $salida, array $pedido, array $arrayMap, array $options = []): array
     {
-        // Agrupar por nombre del arreglo externo (ej "contains" de "contains[].name")
+        $omitEmptyOptional = !empty($options['omit_empty_optional']);
+        $requireItems      = !empty($options['require_items']);
+        $deferRequired     = !empty($options['defer_required_validation']);
+
+        // Agrupar por nombre del arreglo externo (ej "contains" de "contains[].name" o "items" de "items[].sku")
         $grupos = [];
         foreach ($arrayMap as $m) {
             $partes      = explode('[]', $m['field_path'], 2);
@@ -295,6 +368,10 @@ class PayloadBuilderService
             foreach ($productos as $prod) {
                 // Calcular cantidad neta
                 $prod['cantidad_neta'] = max(0, (int)($prod['cantidad'] ?? 0) - (int)($prod['cantidad_devuelta'] ?? 0));
+                // Alias de precio unitario (nunca derivado de precio_total_local)
+                if (!isset($prod['precio_unitario']) && isset($prod['precio_unitario_usd'])) {
+                    $prod['precio_unitario'] = $prod['precio_unitario_usd'];
+                }
                 // Campo virtual formateado (ej. "2x URO UP Forte")
                 $prod['nombre_con_cantidad'] = $prod['cantidad_neta'] . 'x ' . ($prod['producto_nombre'] ?? '');
 
@@ -318,6 +395,18 @@ class PayloadBuilderService
                         }
                     }
 
+                    // Condición especial para sold_price / validate_currency:
+                    // Solo enviar precio unitario del producto si la moneda fue validada y confirmada.
+                    // Prohibido transformar precio_total_local en precio unitario.
+                    if ($subPath === 'sold_price' || $rule === 'validate_currency') {
+                        if ($internalKey === 'precio_total_local') {
+                            throw new Exception("PayloadBuilder: Prohibido transformar precio_total_local en precio unitario (sold_price).");
+                        }
+                        if (empty($pedido['_currency_validated'])) {
+                            continue;
+                        }
+                    }
+
                     if (strpos($internalKey, 'constante:') === 0) {
                         $valor = substr($internalKey, 10);
                     } elseif ($rule === 'Location + betweenStreets + zona' || $internalKey === '_referencia_extendida') {
@@ -325,8 +414,34 @@ class PayloadBuilderService
                     } elseif ($rule === 'SER / CCE' || $internalKey === '_tipo_servicio') {
                         $valor = $pedido['_tipo_servicio'] ?? 'SER';
                     } else {
-                        $prodKey = ltrim(str_replace('productos[].', '', $internalKey), 'productos[].');
-                        $valor   = $prod[$prodKey] ?? $pedido[$internalKey] ?? $m['default_value'] ?? null;
+                        $prodKey = preg_replace('/^productos(\[\])?\./', '', $internalKey);
+                        if (strpos($prodKey, '|') !== false) {
+                            $valor = self::obtenerValorConPrioridad($prod, $prodKey, $rule)
+                                  ?? self::obtenerValorConPrioridad($pedido, $prodKey, $rule)
+                                  ?? $m['default_value']
+                                  ?? null;
+                        } else {
+                            $valProd = $prod[$prodKey] ?? $pedido[$internalKey] ?? null;
+                            $valor = ($valProd !== null && trim((string)$valProd) !== '')
+                                ? $valProd
+                                : ($m['default_value'] ?? null);
+                        }
+                    }
+
+                    if ($valor === null || $valor === '') {
+                        if ((int)($m['is_required'] ?? 0) && !$deferRequired) {
+                            throw new Exception(
+                                "PayloadBuilder: Campo de producto requerido '{$m['field_path']}' (clave interna: '{$internalKey}') no tiene valor."
+                            );
+                        }
+                        if ($omitEmptyOptional && !(int)($m['is_required'] ?? 0)) {
+                            continue;
+                        }
+                        $valor = $m['default_value'] ?? '';
+                    }
+
+                    if (($subPath === 'sold_price' || $rule === 'validate_currency') && (float)$valor <= 0) {
+                        continue;
                     }
 
                     $valor = self::castear($valor, $m['field_type'] ?? 'string', $rule);
@@ -340,8 +455,8 @@ class PayloadBuilderService
                 $itemsResultado[] = $item;
             }
 
-            // Fallback de seguridad: si no hay productos, meter un ítem vacío
-            if (empty($itemsResultado)) {
+            // Fallback de seguridad solo para proveedores legacy que no exigen validación estricta de productos
+            if (empty($itemsResultado) && !$requireItems) {
                 $itemsResultado[] = ['name' => 'Envio', 'quantity' => 1];
             }
 
@@ -374,11 +489,16 @@ class PayloadBuilderService
      *
      * @param mixed  $valor
      * @param string $type          string | int | float | boolean | array
-     * @param string|null $rule     to_int, to_float, to_bool, limit:N, upper, lower, SER / CCE
+     * @param string|null $rule     to_int, to_float, to_bool, limit:N, upper, lower, preserve_leading_zeros, SER / CCE
      * @return mixed
      */
     private static function castear($valor, string $type, ?string $rule)
     {
+        // Preservar como string exacto (ej. códigos postales con ceros iniciales "010101")
+        if ($rule === 'preserve_leading_zeros' || $rule === 'preserve_string' || $rule === 'Texto exacto (sin alterar en reintentos)') {
+            return trim((string)($valor ?? ''));
+        }
+
         // Primero aplicar transform_rule si existe
         if ($rule) {
             if ($rule === 'SER / CCE' || $rule === 'ser_cce') return ((float)$valor > 0 || $valor === 'CCE') ? 'CCE' : 'SER';

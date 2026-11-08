@@ -27,6 +27,7 @@ class ForwardingService
         'hlexpress' => 'HLExpressProvider',
         'caex'      => 'CAEXProvider',
         'c807'      => 'C807Provider',
+        'shipedge'  => 'ShipEdgeProvider',
         'dynamic'   => 'DynamicProvider',  // Motor dinámico configurable por UI
     ];
 
@@ -52,6 +53,12 @@ class ForwardingService
         $pedido = ForwardingModel::obtenerPedidoParaForwarding($idPedido);
         if (!$pedido) {
             error_log("ForwardingService: pedido $idPedido no encontrado para forwarding");
+            return null;
+        }
+
+        // Aislamiento estricto entre clientes: verificar que el pedido pertenezca al cliente de la regla
+        if (!empty($pedido['id_cliente']) && (int)$pedido['id_cliente'] !== (int)$idCliente) {
+            error_log("ForwardingService::evaluarYReenviar: bloqueo por aislamiento de cliente (pedido id_cliente={$pedido['id_cliente']} != regla id_cliente={$idCliente}).");
             return null;
         }
 
@@ -427,22 +434,15 @@ class ForwardingService
             // Marcar cualquier otro log previo fallido/pendiente de este pedido y regla como resuelto
             ForwardingModel::marcarLogsPreviosResueltos((int)$pedido['id'], (int)$regla['id'], (int)$logId);
 
-            // Sincronizar tracking y courier en la tabla pedidos si vino external_order_id
-            $extId = (string)($resultado['external_order_id'] ?? $resultado['numero_guia'] ?? '');
-            if ($extId !== '') {
+            // Sincronizar tracking y courier en la tabla pedidos
+            // Para ShipEdge distinguimos entre orden creada (external_order_id), guía generada y tracking_number:
+            // POST /orders no garantiza que los tres aparezcan al mismo tiempo.
+            if ($slug === 'shipedge') {
+                $shipEdgeTracking = (string)($resultado['tracking_number'] ?? $resultado['numero_guia'] ?? '');
+                $shipEdgeCourier  = (string)($resultado['carrier_name'] ?? $regla['provider_nombre'] ?? '');
                 try {
                     $dbPed = (new Conexion())->conectar();
-                    if ($slug === 'c807') {
-                        $stUpd = $dbPed->prepare("
-                            UPDATE pedidos 
-                            SET numero_traking = :traking
-                            WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
-                        ");
-                        $stUpd->execute([
-                            ':traking' => $extId,
-                            ':id'      => (int)$pedido['id'],
-                        ]);
-                    } else {
+                    if ($shipEdgeTracking !== '') {
                         $stUpd = $dbPed->prepare("
                             UPDATE pedidos 
                             SET numero_traking = :traking,
@@ -450,21 +450,69 @@ class ForwardingService
                             WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
                         ");
                         $stUpd->execute([
-                            ':traking' => $extId,
-                            ':courier' => $regla['provider_nombre'] ?? '',
+                            ':traking' => $shipEdgeTracking,
+                            ':courier' => $shipEdgeCourier,
+                            ':id'      => (int)$pedido['id'],
+                        ]);
+                    } elseif ($shipEdgeCourier !== '') {
+                        $stUpd = $dbPed->prepare("
+                            UPDATE pedidos 
+                            SET courier_service = COALESCE(NULLIF(courier_service, ''), :courier)
+                            WHERE id = :id
+                        ");
+                        $stUpd->execute([
+                            ':courier' => $shipEdgeCourier,
                             ':id'      => (int)$pedido['id'],
                         ]);
                     }
                 } catch (Exception $exUpd) {
-                    error_log("ForwardingService::ejecutarForwarding error al actualizar tracking en pedidos: " . $exUpd->getMessage());
+                    error_log("ForwardingService::ejecutarForwarding error al actualizar pedido ShipEdge: " . $exUpd->getMessage());
+                }
+            } else {
+                $extId = (string)($resultado['external_order_id'] ?? $resultado['numero_guia'] ?? '');
+                if ($extId !== '') {
+                    try {
+                        $dbPed = (new Conexion())->conectar();
+                        if ($slug === 'c807') {
+                            $stUpd = $dbPed->prepare("
+                                UPDATE pedidos 
+                                SET numero_traking = :traking
+                                WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
+                            ");
+                            $stUpd->execute([
+                                ':traking' => $extId,
+                                ':id'      => (int)$pedido['id'],
+                            ]);
+                        } else {
+                            $stUpd = $dbPed->prepare("
+                                UPDATE pedidos 
+                                SET numero_traking = :traking,
+                                    courier_service = COALESCE(NULLIF(courier_service, ''), :courier)
+                                WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
+                            ");
+                            $stUpd->execute([
+                                ':traking' => $extId,
+                                ':courier' => $regla['provider_nombre'] ?? '',
+                                ':id'      => (int)$pedido['id'],
+                            ]);
+                        }
+                    } catch (Exception $exUpd) {
+                        error_log("ForwardingService::ejecutarForwarding error al actualizar tracking en pedidos: " . $exUpd->getMessage());
+                    }
                 }
             }
 
             return [
-                'provider'          => $slug,
-                'success'           => true,
-                'message'           => 'Pedido reenviado exitosamente a ' . ($regla['provider_nombre'] ?? $slug),
-                'external_order_id' => $resultado['external_order_id'] ?? null,
+                'provider'           => $slug,
+                'success'            => true,
+                'message'            => 'Pedido reenviado exitosamente a ' . ($regla['provider_nombre'] ?? $slug),
+                'external_order_id'  => $resultado['external_order_id'] ?? null,
+                'numero_guia'        => $resultado['numero_guia'] ?? null,
+                'tracking_number'    => $resultado['tracking_number'] ?? null,
+                'order_created'      => $resultado['order_created'] ?? true,
+                'guide_generated'    => $resultado['guide_generated'] ?? false,
+                'tracking_generated' => $resultado['tracking_generated'] ?? false,
+                'reconciled'         => $resultado['reconciled'] ?? false,
             ];
 
         } catch (Exception $e) {
@@ -645,6 +693,15 @@ class ForwardingService
             $msg = 'Conexión exitosa';
             if ($slug === 'c807') {
                 $msg = 'Autenticación con C807 Xpress exitosa (Basic Auth a ' . ($config['auth_endpoint'] ?? '/admin.php/sesion/get_token') . '). Se validaron las credenciales y se obtuvo el Bearer Token correctamente (no se creó ninguna guía).';
+            } elseif ($slug === 'shipedge') {
+                $msg = 'Conexión con ShipEdge OMS v41 exitosa (POST /ping validado correctamente sin exponer credenciales).';
+                return [
+                    'success'       => true,
+                    'message'       => $msg,
+                    'api_version'   => $authData['api_version'] ?? 'v41',
+                    'endpoint'      => $authData['endpoint'] ?? null,
+                    'ping_response' => $authData['ping_response'] ?? null,
+                ];
             }
 
             return [
