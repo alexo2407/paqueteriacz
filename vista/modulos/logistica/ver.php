@@ -228,7 +228,7 @@ include("vista/includes/header.php");
                             </div>
                         </div>
 
-                        <?php if (!empty($pedido['courier_service'])): ?>
+                        <?php if (!empty($pedido['courier_service']) && stripos((string)$pedido['courier_service'], 'c807') === false): ?>
                         <div class="col-md-6">
                             <label class="small text-muted fw-bold text-uppercase">Courier Service</label>
                             <div class="text-dark">
@@ -865,6 +865,14 @@ include("vista/includes/header.php");
                                         $detalle = "Cambios: " . implode(', ', array_unique($labels));
                                     }
                                 }
+                                // Limpiar cualquier referencia interna a C807 Xpress / C807 en el detalle o comentario
+                                if (!empty($detalle)) {
+                                    $detalle = trim((string)preg_replace('/\bC807(\s*Xpress)?\b\s*[:\-]?\s*/iu', '', (string)$detalle));
+                                }
+                                if (!empty($comentarioBulk)) {
+                                    $comentarioBulk = trim((string)preg_replace('/\bC807(\s*Xpress)?\b\s*[:\-]?\s*/iu', '', (string)$comentarioBulk));
+                                }
+
                                 // Si no hay ningún detalle útil, mostrar texto genérico
                                 if (empty($detalle) && empty($comentarioBulk) && $cambio['accion'] !== 'crear') {
                                     $detalle = "Actualización de estado procesada por el sistema.";

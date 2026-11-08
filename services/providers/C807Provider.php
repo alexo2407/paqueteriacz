@@ -1070,7 +1070,7 @@ class C807Provider extends BaseProvider
                 if ($hitoDevolucion !== null && !empty($hitoDevolucion['observacion_corta'])) {
                     $partesObs[] = $hitoDevolucion['observacion_corta'];
                 }
-                $partesObs[] = "C807: " . $hitoPosterior['estatus'] . " (" . $hitoPosterior['fecha'] . ")";
+                $partesObs[] = $hitoPosterior['estatus'] . " (" . $hitoPosterior['fecha'] . ")";
                 $estatusCapturado['observacion_corta']    = implode(' | ', $partesObs);
                 $estatusCapturado['observacion_completa'] = implode(' | ', $partesObs);
             }
@@ -1260,8 +1260,7 @@ class C807Provider extends BaseProvider
 
             $stmtUpdatePedido = $db->prepare("
                 UPDATE pedidos 
-                SET numero_traking = :guia, 
-                    courier_service = COALESCE(NULLIF(courier_service, ''), 'C807 Xpress') 
+                SET numero_traking = :guia 
                 WHERE id = :id_pedido AND (numero_traking IS NULL OR numero_traking = '')
             ");
 

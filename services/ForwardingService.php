@@ -270,13 +270,11 @@ class ForwardingService
                                     $dbPed = (new Conexion())->conectar();
                                     $stUpd = $dbPed->prepare("
                                         UPDATE pedidos 
-                                        SET numero_traking = :traking,
-                                            courier_service = COALESCE(NULLIF(courier_service, ''), :courier)
+                                        SET numero_traking = :traking
                                         WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
                                     ");
                                     $stUpd->execute([
                                         ':traking' => $extId,
-                                        ':courier' => $regla['provider_nombre'] ?? 'C807 Xpress',
                                         ':id'      => (int)$p['id'],
                                     ]);
                                 } catch (Exception $exUpd) {
@@ -434,17 +432,29 @@ class ForwardingService
             if ($extId !== '') {
                 try {
                     $dbPed = (new Conexion())->conectar();
-                    $stUpd = $dbPed->prepare("
-                        UPDATE pedidos 
-                        SET numero_traking = :traking,
-                            courier_service = COALESCE(NULLIF(courier_service, ''), :courier)
-                        WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
-                    ");
-                    $stUpd->execute([
-                        ':traking' => $extId,
-                        ':courier' => $regla['provider_nombre'] ?? 'C807 Xpress',
-                        ':id'      => (int)$pedido['id'],
-                    ]);
+                    if ($slug === 'c807') {
+                        $stUpd = $dbPed->prepare("
+                            UPDATE pedidos 
+                            SET numero_traking = :traking
+                            WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
+                        ");
+                        $stUpd->execute([
+                            ':traking' => $extId,
+                            ':id'      => (int)$pedido['id'],
+                        ]);
+                    } else {
+                        $stUpd = $dbPed->prepare("
+                            UPDATE pedidos 
+                            SET numero_traking = :traking,
+                                courier_service = COALESCE(NULLIF(courier_service, ''), :courier)
+                            WHERE id = :id AND (numero_traking IS NULL OR numero_traking = '')
+                        ");
+                        $stUpd->execute([
+                            ':traking' => $extId,
+                            ':courier' => $regla['provider_nombre'] ?? '',
+                            ':id'      => (int)$pedido['id'],
+                        ]);
+                    }
                 } catch (Exception $exUpd) {
                     error_log("ForwardingService::ejecutarForwarding error al actualizar tracking en pedidos: " . $exUpd->getMessage());
                 }

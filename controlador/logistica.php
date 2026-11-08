@@ -3559,6 +3559,9 @@ class LogisticaController {
                 $ins = $db->prepare("INSERT INTO estados_pedidos (nombre_estado, descripcion, created_at, updated_at) VALUES ('Devolución', 'Paquete en proceso de devolución al remitente o sede del cliente', NOW(), NOW())");
                 $ins->execute();
             }
+
+            // Limpiar cualquier mención a 'C807 Xpress' en courier_service de pedidos existentes para que nunca aparezca al cliente
+            $db->exec("UPDATE pedidos SET courier_service = NULL WHERE LOWER(COALESCE(courier_service, '')) LIKE '%c807%'");
         } catch (Throwable $e) {
             error_log("LogisticaController::asegurarEstadoDevolucion warning: " . $e->getMessage());
         }
@@ -3924,7 +3927,28 @@ class LogisticaController {
                 ];
             }
 
-            $historialInterno = PedidosModel::obtenerHistorialEstados($idPedido);
+            $historialInterno = [];
+            try {
+                $stHistInt = $db->prepare("
+                    SELECT 
+                        ph.id,
+                        ph.id_estado_anterior,
+                        ph.id_estado_nuevo,
+                        COALESCE(ep.nombre_estado, CONCAT('Estado #', ph.id_estado_nuevo)) AS nombre_estado,
+                        ph.observaciones,
+                        ph.created_at,
+                        COALESCE(u.nombre, 'Sistema') AS usuario_nombre
+                    FROM pedidos_historial_estados ph
+                    LEFT JOIN estados_pedidos ep ON ep.id = ph.id_estado_nuevo
+                    LEFT JOIN usuarios u ON u.id = ph.id_usuario
+                    WHERE ph.id_pedido = :id_pedido
+                    ORDER BY ph.created_at DESC, ph.id DESC
+                ");
+                $stHistInt->execute([':id_pedido' => $idPedido]);
+                $historialInterno = $stHistInt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            } catch (Throwable $eHi) {
+                $historialInterno = [];
+            }
 
             echo json_encode([
                 'success'           => true,
@@ -4001,20 +4025,15 @@ class LogisticaController {
 
             $stmtUpdateTrk = $db->prepare("
                 UPDATE pedidos 
-                SET numero_traking = :guia,
-                    courier_service = COALESCE(NULLIF(courier_service, ''), 'C807 Xpress')
-                WHERE id = :id_pedido AND (numero_traking IS NULL OR TRIM(numero_traking) = '')
+                SET numero_traking = CASE WHEN (numero_traking IS NULL OR TRIM(numero_traking) = '') AND :guia != '' THEN :guia2 ELSE numero_traking END,
+                    courier_service = CASE WHEN LOWER(TRIM(COALESCE(courier_service, ''))) LIKE '%c807%' THEN NULL ELSE courier_service END
+                WHERE id = :id_pedido
             ");
 
             $stmtResolverEstado = $db->prepare("
                 SELECT id, nombre_estado FROM estados_pedidos 
                 WHERE id = :id_est OR LOWER(TRIM(nombre_estado)) = LOWER(TRIM(:nom_est))
                 LIMIT 1
-            ");
-
-            $stmtInsertHistorialDirecto = $db->prepare("
-                INSERT INTO pedidos_historial_estados (id_pedido, id_estado, id_usuario, observaciones, created_at)
-                VALUES (:id_pedido, :id_estado, :id_usuario, :observaciones, NOW())
             ");
 
             foreach ($items as $idx => $item) {
@@ -4058,19 +4077,19 @@ class LogisticaController {
                 $nombreEstadoNuevo = (string)$estadoRow['nombre_estado'];
                 $idEstadoAnterior  = (int)($pedido['id_estado'] ?? 0);
 
-                // Asegurar que la guía C807 quede guardada en numero_traking si estaba vacío
-                if ($numeroGuia !== '') {
-                    try {
-                        $stmtUpdateTrk->execute([
-                            ':guia'      => $numeroGuia,
-                            ':id_pedido' => $idPedido,
-                        ]);
-                    } catch (Throwable $eTrk) {}
-                }
+                // Asegurar que la guía quede en numero_traking si estaba vacío y limpiar cualquier mención a C807 en courier_service
+                try {
+                    $stmtUpdateTrk->execute([
+                        ':guia'      => $numeroGuia,
+                        ':guia2'     => $numeroGuia,
+                        ':id_pedido' => $idPedido,
+                    ]);
+                } catch (Throwable $eTrk) {}
 
-                $obsFinal = $observaciones !== ''
-                    ? $observaciones
-                    : ("Actualizado desde Control de Estados C807" . ($numeroGuia !== '' ? " (Guía {$numeroGuia})" : ""));
+                // Limpiar cualquier mención a "C807" o "C807 Xpress" de la observación antes de insertarla al sistema
+                $obsLimpia = preg_replace('/\bC807(\s*Xpress)?\b\s*[:\-]?\s*/iu', '', $observaciones);
+                $obsLimpia = trim((string)preg_replace('/\s{2,}/', ' ', (string)$obsLimpia));
+                $obsFinal  = $obsLimpia !== '' ? $obsLimpia : "Actualización de estado: {$nombreEstadoNuevo}";
 
                 $ok = LogisticaModel::actualizarEstado(
                     $idPedido,
@@ -4084,12 +4103,19 @@ class LogisticaController {
                 if ($ok) {
                     // Si el pedido ya tenía el mismo id_estado, el trigger after_pedido_update_estado
                     // (OLD.id_estado != NEW.id_estado) no inserta fila nueva; insertamos explícitamente
-                    // la nueva observación para que siempre quede registrada en el tracking interno.
+                    // la nueva observación en pedidos_historial_estados con sus columnas reales.
                     if ($idEstadoAnterior === $idEstadoNuevo) {
                         try {
-                            $stmtInsertHistorialDirecto->execute([
+                            $stmtHistDir = $db->prepare("
+                                INSERT INTO pedidos_historial_estados 
+                                    (id_pedido, id_estado_anterior, id_estado_nuevo, id_usuario, observaciones, created_at)
+                                VALUES 
+                                    (:id_pedido, :ant, :nuevo, :id_usuario, :observaciones, NOW())
+                            ");
+                            $stmtHistDir->execute([
                                 ':id_pedido'     => $idPedido,
-                                ':id_estado'     => $idEstadoNuevo,
+                                ':ant'           => $idEstadoAnterior,
+                                ':nuevo'         => $idEstadoNuevo,
                                 ':id_usuario'    => $userId,
                                 ':observaciones' => $obsFinal,
                             ]);
