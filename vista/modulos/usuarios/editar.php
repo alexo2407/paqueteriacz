@@ -329,7 +329,7 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
 
                             <hr class="my-3 text-muted opacity-25">
 
-                            <?php $mostrarTrackingChecked = !isset($usuario['mostrar_tracking']) || (int)$usuario['mostrar_tracking'] === 1; ?>
+                            <?php $mostrarTrackingChecked = !empty($usuario['mostrar_tracking']); ?>
                             <div class="form-check form-switch p-0 d-flex align-items-start gap-3">
                                 <input class="form-check-input ms-0 mt-1" type="checkbox" role="switch" id="mostrar_tracking" name="mostrar_tracking" value="1" style="width:2.5rem;height:1.35rem;cursor:pointer;" <?= $mostrarTrackingChecked ? 'checked' : '' ?>>
                                 <div>
@@ -337,7 +337,7 @@ $fechaRegistro = isset($usuario['created_at']) ? date('d/m/Y H:i', strtotime($us
                                         <i class="bi bi-upc-scan text-primary me-1"></i>Permitir ver etiqueta / Número de Tracking (<code>numero_traking</code>)
                                     </label>
                                     <div class="text-muted small mt-1">
-                                        Si está <strong>activado</strong>, el usuario verá el código de tracking en el Portal Logístico (debajo del courier), en el detalle del pedido y en el listado de pedidos. Si lo <strong>desactivas</strong>, la etiqueta de tracking se ocultará para este usuario.
+                                        Si está <strong>desactivado</strong> (por defecto), este usuario no verá el número de tracking en ninguna interfaz (Pedidos, Portal Logístico, Reportes ni Tracking de Estados). Si lo <strong>activas</strong>, podrá ver la etiqueta de tracking.
                                     </div>
                                 </div>
                             </div>

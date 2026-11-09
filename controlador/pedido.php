@@ -2135,9 +2135,16 @@ class PedidosController
 
         try {
             $resultado = PedidosModel::obtenerHistorialEstadosFiltrado($filtros, $page, $limit);
+            $rows = $resultado['data'] ?? [];
+            if (!$isAdmin && !canViewTracking((int)$currentUserId)) {
+                foreach ($rows as &$r) {
+                    $r['numero_traking'] = null;
+                }
+                unset($r);
+            }
             echo json_encode([
                 'success' => true,
-                'data' => $resultado['data'] ?? [],
+                'data' => $rows,
                 'pagination' => $resultado['pagination'] ?? null
             ], JSON_INVALID_UTF8_SUBSTITUTE | JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {

@@ -541,7 +541,8 @@ function getDisplayCourierName(?string $realCourier): ?string {
 
 /**
  * Asegura que la columna `mostrar_tracking` exista en la tabla `usuarios`
- * e inicializa los valores por defecto (1 = visible, 0 = oculto para Panamá IDs 21 y 26).
+ * e inicializa los valores por defecto (0 = oculto por defecto igual que mostrar_courier,
+ * 1 = visible para Uruguay IDs 52 y 53).
  *
  * @param \PDO $db
  * @return void
@@ -555,8 +556,7 @@ function ensureMostrarTrackingColumn(\PDO $db): void {
     try {
         $stmt = $db->query("SHOW COLUMNS FROM usuarios LIKE 'mostrar_tracking'");
         if (!$stmt || !$stmt->fetch()) {
-            $db->exec("ALTER TABLE usuarios ADD COLUMN mostrar_tracking TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 = puede ver numero de tracking; 0 = oculto'");
-            $db->exec("UPDATE usuarios SET mostrar_tracking = 0 WHERE id IN (21, 26)");
+            $db->exec("ALTER TABLE usuarios ADD COLUMN mostrar_tracking TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = puede ver numero de tracking; 0 = oculto'");
             $db->exec("UPDATE usuarios SET mostrar_tracking = 1, mostrar_courier = 1 WHERE email = 'proveedorrutaexteconglobaluyu@rutaexlatam.com' OR nombre LIKE '%Uruguay%' OR email LIKE '%econglobaluyu%'");
         }
     } catch (\Throwable $e) {
@@ -613,8 +613,8 @@ function canViewTracking(?int $userId = null): bool {
         // Fallback seguro si aún no existe la columna
     }
 
-    // Fallback en caso de que la consulta falle: ocultar solo a IDs 21 y 26 (Panamá), permitir a Uruguay y demás
-    $defaultVal = !in_array($uid, [21, 26], true);
+    // Fallback en caso de que la consulta falle: permitir solo a Uruguay (52, 53)
+    $defaultVal = in_array($uid, [52, 53], true);
     $cacheTracking[$uid] = $defaultVal;
     return $defaultVal;
 }

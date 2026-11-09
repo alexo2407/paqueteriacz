@@ -314,7 +314,7 @@ class UsuariosController
             $_SESSION['idUsuario'] = $user['ID_Usuario']; // Compatibilidad con el resto del sistema
             $_SESSION['mostrar_courier'] = (int)($user['mostrar_courier'] ?? 0);
             $_SESSION['alias_courier'] = $user['alias_courier'] ?? null;
-            $_SESSION['mostrar_tracking'] = isset($user['mostrar_tracking']) ? (int)$user['mostrar_tracking'] : 1;
+            $_SESSION['mostrar_tracking'] = (int)($user['mostrar_tracking'] ?? 0);
 
             // Guardar también el nombre del rol para facilitar comprobaciones por vista
             try {

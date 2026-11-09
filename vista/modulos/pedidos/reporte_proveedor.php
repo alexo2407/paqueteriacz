@@ -56,15 +56,17 @@ if ($isPublicLink) {
     $puedeVerCourier = (int)($uDataPub['mostrar_courier'] ?? 0) === 1;
     $aliasCourierPub = !empty($uDataPub['alias_courier']) ? trim($uDataPub['alias_courier']) : null;
 
-    $isAdmin        = false;
+    $isAdmin        = ($pubRol == ROL_ADMIN);
     $isProveedorExt = ($pubRol == ROL_CLIENTE);   // rol 5 en BD → aparece en id_proveedor
     $isClienteExt   = ($pubRol == ROL_PROVEEDOR); // rol 4 en BD → aparece en id_cliente
     $currUserId     = $pubU;
     $db             = $dbPub;
+    $puedeVerTracking = $isAdmin || canViewTracking((int)$currUserId);
 
 } else {
     // Acceso normal con sesión
-    $puedeVerCourier = canViewCourier();
+    $puedeVerCourier  = canViewCourier();
+    $puedeVerTracking = canViewTracking();
     require_login();
     $isAdmin        = isSuperAdmin();
     $currRol        = $_SESSION['rol'] ?? 0;
@@ -292,9 +294,14 @@ if ($export && !empty($pedidosExport)) {
     // Cabeceras fijas
     $headersFixed = [
         'Núm. Orden', 'Fecha Ingreso', 'Destinatario', 'Teléfono',
-        'Dirección', 'Zona', 'Comentario', 'Courier Service', 'Nº Tracking', 'Estado Actual',
-        'Liquidación', 'Moneda', 'Fecha Creado',
+        'Dirección', 'Zona', 'Comentario', 'Courier Service',
     ];
+    if ($puedeVerTracking) {
+        $headersFixed[] = 'Nº Tracking';
+    }
+    $headersFixed = array_merge($headersFixed, [
+        'Estado Actual', 'Liquidación', 'Moneda', 'Fecha Creado',
+    ]);
 
     // Fila 1: Título (se define aquí, las celdas se configuran después de calcular el historial completo)
     $titulo = 'REPORTE DE PEDIDOS  ' . date('d/m/Y', strtotime($fechaDesde)) . ' → ' . date('d/m/Y', strtotime($fechaHasta));
@@ -367,7 +374,9 @@ if ($export && !empty($pedidosExport)) {
             $courierExcel = $isPublicLink ? ($aliasCourierPub ?: ($ped['courier_service'] ?? '')) : (getDisplayCourierName($ped['courier_service'] ?? '') ?? '');
         }
         $sheet->setCellValue($coord($c++, $excelRow), $courierExcel);
-        $sheet->setCellValue($coord($c++, $excelRow), $ped['numero_traking'] ?? '');
+        if ($puedeVerTracking) {
+            $sheet->setCellValue($coord($c++, $excelRow), $ped['numero_traking'] ?? '');
+        }
 
         // Estado actual con color
         $cellEstado = $coord($c, $excelRow);
@@ -681,7 +690,9 @@ if ($export && !empty($pedidosExport)) {
                             <th>Zona</th>
                             <th>Comentario</th>
                             <th>Courier Service</th>
+                            <?php if ($puedeVerTracking): ?>
                             <th>Nº Tracking</th>
+                            <?php endif; ?>
                             <th>Estado Actual</th>
                             <th>Liquidación</th>
                             <th>Moneda</th>
@@ -693,7 +704,7 @@ if ($export && !empty($pedidosExport)) {
                         </tr>
                         <?php if ($maxTransiciones > 0): ?>
                         <tr>
-                            <th colspan="13"></th>
+                            <th colspan="<?= $puedeVerTracking ? 13 : 12 ?>"></th>
                             <?php for ($n = 1; $n <= $maxTransiciones; $n++): ?>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Estado</th>
                             <th class="th-hist" style="font-size:.7rem;font-weight:600;">Fecha / Hora</th>
@@ -730,6 +741,7 @@ if ($export && !empty($pedidosExport)) {
                                     &mdash;
                                 <?php endif; ?>
                             </td>
+                            <?php if ($puedeVerTracking): ?>
                             <td class="text-center font-monospace" style="font-size:.75rem;">
                                 <?php if (!empty($ped['numero_traking'])): ?>
                                     <span class="badge" style="background:#0d6efd;color:#fff;letter-spacing:.03em;"
@@ -740,6 +752,7 @@ if ($export && !empty($pedidosExport)) {
                                     <span class="text-muted">&mdash;</span>
                                 <?php endif; ?>
                             </td>
+                            <?php endif; ?>
                             <td class="text-center">
                                 <span class="badge-estado"
                                       style="background:<?= $clrActual['bg'] ?>;color:<?= $clrActual['text'] ?>;">

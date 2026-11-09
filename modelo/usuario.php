@@ -56,7 +56,7 @@ class UsuarioModel {
                 'RolesNombres' => $roles['nombres'],
                 'mostrar_courier' => (int)($user['mostrar_courier'] ?? 0),
                 'alias_courier' => $user['alias_courier'] ?? null,
-                'mostrar_tracking' => isset($user['mostrar_tracking']) ? (int)$user['mostrar_tracking'] : 1
+                'mostrar_tracking' => (int)($user['mostrar_tracking'] ?? 0)
             ];
         }
 
@@ -350,7 +350,7 @@ class UsuarioModel {
             $aliasCourier = !empty($data['alias_courier']) ? trim($data['alias_courier']) : null;
             $stmt->bindValue(':alias_courier', $aliasCourier, $aliasCourier !== null ? PDO::PARAM_STR : PDO::PARAM_NULL);
 
-            $mostrarTracking = isset($data['mostrar_tracking']) ? (int)$data['mostrar_tracking'] : 1;
+            $mostrarTracking = isset($data['mostrar_tracking']) ? (int)$data['mostrar_tracking'] : 0;
             $stmt->bindValue(':mostrar_tracking', $mostrarTracking, PDO::PARAM_INT);
 
             if ($stmt->execute()) {
