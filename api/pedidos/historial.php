@@ -209,8 +209,9 @@ try {
     // ── Consulta ───────────────────────────────────────────────────────────
     $resultado = PedidosModel::obtenerHistorialEstadosFiltrado($filtros, $page, $limit);
 
-    // Omitir el campo numero_traking para EconGlobal Panamá (ID 21 / 26)
-    $omitirTracking = ((int)$authUserId === 21 || (int)$authUserId === 26 || (int)($filtros['id_cliente'] ?? 0) === 21);
+    // Omitir el campo numero_traking según permiso configurado en Admin (mostrar_tracking)
+    require_once __DIR__ . '/../../utils/permissions.php';
+    $omitirTracking = !$isAdmin && !canViewTracking((int)$authUserId);
 
     // Ajustar zona horaria de UTC a America/Managua conservando el formato original Y-m-d H:i:s
     foreach ($resultado['data'] as &$item) {

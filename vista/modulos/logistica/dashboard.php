@@ -637,11 +637,17 @@ include "vista/includes/header.php";
                                     <?php 
                                     $esEconGlobal = (isEconGlobalUser() || isEconGlobalOrder($p) || in_array($p['id'], $idsPedidosHLExpress) || (!empty($p['courier_service']) && stripos($p['courier_service'], 'hl express') !== false));
                                     $showCourier = (canViewCourier() || $esEconGlobal) && !empty($p['courier_service']);
-                                    if ($showCourier): 
-                                        $displayCourier = getDisplayCourierName($p['courier_service']) ?: $p['courier_service'];
+                                    $showTrackingCard = canViewTracking() && !empty($p['numero_traking']);
+                                    if ($showCourier || $showTrackingCard): 
+                                        $displayCourier = $showCourier ? (getDisplayCourierName($p['courier_service']) ?: $p['courier_service']) : null;
                                     ?>
-                                    <div class="d-flex align-items-center mb-2">
-                                        <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars($displayCourier) ?></span>
+                                    <div class="d-flex flex-wrap align-items-center gap-1 mb-2">
+                                        <?php if ($showCourier): ?>
+                                            <span class="badge bg-info text-dark"><i class="bi bi-truck me-1"></i><?= htmlspecialchars($displayCourier) ?></span>
+                                        <?php endif; ?>
+                                        <?php if ($showTrackingCard): ?>
+                                            <span class="badge bg-primary font-monospace" title="Tracking"><i class="bi bi-upc-scan me-1"></i><?= htmlspecialchars($p['numero_traking']) ?></span>
+                                        <?php endif; ?>
                                     </div>
                                     <?php endif; ?>
 
@@ -952,7 +958,7 @@ include "vista/includes/header.php";
                                         <?php else: ?>
                                             <span class="text-muted small">—</span>
                                         <?php endif; ?>
-                                        <?php if (isAdmin() && !empty($p['numero_traking'])): ?>
+                                        <?php if (canViewTracking() && !empty($p['numero_traking'])): ?>
                                             <span class="badge bg-primary font-monospace d-block mt-1" title="Tracking">
                                                 <i class="bi bi-upc-scan"></i> <?= htmlspecialchars($p['numero_traking']) ?>
                                             </span>

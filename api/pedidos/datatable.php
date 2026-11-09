@@ -181,9 +181,8 @@ try {
         }
     }
 
-    // Omitir numero_traking para EconGlobal Panamá / clientes HL Express si no es admin
-    $esClienteEconGlobal = ($userId == 21 || $userId == 26 || stripos($_SESSION['nombre'] ?? '', 'econglobal') !== false);
-    if (!$isAdmin && $esClienteEconGlobal) {
+    // Controlar visibilidad de numero_traking según permiso configurado en Admin (mostrar_tracking)
+    if (!canViewTracking($userId)) {
         foreach ($rows as &$r) {
             $r['numero_traking'] = null;
         }

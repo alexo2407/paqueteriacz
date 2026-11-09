@@ -127,7 +127,8 @@ class UsuariosController
                 'activo' => isset($_POST['activo']) ? 1 : 0,
                 'id_estado' => $_POST['id_estado'] ?? null,
                 'mostrar_courier' => isset($_POST['mostrar_courier']) ? 1 : 0,
-                'alias_courier' => !empty($_POST['alias_courier']) ? trim($_POST['alias_courier']) : null
+                'alias_courier' => !empty($_POST['alias_courier']) ? trim($_POST['alias_courier']) : null,
+                'mostrar_tracking' => isset($_POST['mostrar_tracking']) ? 1 : 0
             ];
 
             require_once __DIR__ . '/../modelo/usuario.php';
@@ -313,6 +314,7 @@ class UsuariosController
             $_SESSION['idUsuario'] = $user['ID_Usuario']; // Compatibilidad con el resto del sistema
             $_SESSION['mostrar_courier'] = (int)($user['mostrar_courier'] ?? 0);
             $_SESSION['alias_courier'] = $user['alias_courier'] ?? null;
+            $_SESSION['mostrar_tracking'] = isset($user['mostrar_tracking']) ? (int)$user['mostrar_tracking'] : 1;
 
             // Guardar también el nombre del rol para facilitar comprobaciones por vista
             try {

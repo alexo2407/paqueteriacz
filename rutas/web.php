@@ -1008,6 +1008,7 @@ if (isset($ruta[0]) && $ruta[0] === 'usuarios' && $_SERVER['REQUEST_METHOD'] ===
             'id_pais' => isset($_POST['id_pais']) && $_POST['id_pais'] !== '' ? (int)$_POST['id_pais'] : null,
             'mostrar_courier' => isset($_POST['mostrar_courier']) ? 1 : 0,
             'alias_courier' => !empty($_POST['alias_courier']) ? trim($_POST['alias_courier']) : null,
+            'mostrar_tracking' => isset($_POST['mostrar_tracking']) ? 1 : 0,
             'roles' => $rolesSeleccionados
         ];
 

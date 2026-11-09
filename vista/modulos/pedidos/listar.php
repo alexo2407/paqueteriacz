@@ -4,27 +4,7 @@ require_once "utils/authorization.php";
 require_once "utils/permissions.php";
 require_role([ROL_NOMBRE_ADMIN, ROL_NOMBRE_PROVEEDOR, ROL_NOMBRE_REPARTIDOR]);
 $puedeVerCourier = canViewCourier();
-
-// Omitir columna Tracking para clientes de HL Express (EconGlobal Panamá)
-$userIdActual = (int)($_SESSION['user_id'] ?? ($_SESSION['idUsuario'] ?? 0));
-$userNombreActual = $_SESSION['nombre'] ?? '';
-$esClienteHLExpress = ($userIdActual == 21 || $userIdActual == 26 || stripos($userNombreActual, 'econglobal') !== false);
-if (!$esClienteHLExpress && $userIdActual > 0 && !isAdmin()) {
-    try {
-        require_once "modelo/conexion.php";
-        $dbTmp = (new Conexion())->conectar();
-        $stHl = $dbTmp->prepare("
-            SELECT COUNT(*) FROM forwarding_rules r 
-            INNER JOIN forwarding_providers p ON p.id = r.id_provider 
-            WHERE p.slug = 'hlexpress' AND r.id_cliente = :uid AND r.activo = 1
-        ");
-        $stHl->execute([':uid' => $userIdActual]);
-        if ((int)$stHl->fetchColumn() > 0) {
-            $esClienteHLExpress = true;
-        }
-    } catch (\Throwable $t) {}
-}
-$puedeVerTracking = isAdmin() || !$esClienteHLExpress;
+$puedeVerTracking = canViewTracking();
 
 include("vista/includes/header.php");
 ?>

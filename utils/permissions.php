@@ -540,6 +540,86 @@ function getDisplayCourierName(?string $realCourier): ?string {
 }
 
 /**
+ * Asegura que la columna `mostrar_tracking` exista en la tabla `usuarios`
+ * e inicializa los valores por defecto (1 = visible, 0 = oculto para Panamá IDs 21 y 26).
+ *
+ * @param \PDO $db
+ * @return void
+ */
+function ensureMostrarTrackingColumn(\PDO $db): void {
+    static $checked = false;
+    if ($checked) {
+        return;
+    }
+    $checked = true;
+    try {
+        $stmt = $db->query("SHOW COLUMNS FROM usuarios LIKE 'mostrar_tracking'");
+        if (!$stmt || !$stmt->fetch()) {
+            $db->exec("ALTER TABLE usuarios ADD COLUMN mostrar_tracking TINYINT(1) NOT NULL DEFAULT 1 COMMENT '1 = puede ver numero de tracking; 0 = oculto'");
+            $db->exec("UPDATE usuarios SET mostrar_tracking = 0 WHERE id IN (21, 26)");
+            $db->exec("UPDATE usuarios SET mostrar_tracking = 1, mostrar_courier = 1 WHERE email = 'proveedorrutaexteconglobaluyu@rutaexlatam.com' OR nombre LIKE '%Uruguay%' OR email LIKE '%econglobaluyu%'");
+        }
+    } catch (\Throwable $e) {
+        // Silencioso en caso de permisos restringidos de DDL
+    }
+}
+
+/**
+ * Verifica si el usuario actual (o el indicado por $userId) tiene permiso para ver
+ * el número/etiqueta de tracking (`numero_traking`).
+ * - Administrador / SuperAdmin: SIEMPRE puede ver el tracking.
+ * - Clientes / Proveedores: Controlado desde Admin en `usuarios.mostrar_tracking` (1 = visible, 0 = oculto).
+ *
+ * @param int|null $userId
+ * @return bool
+ */
+function canViewTracking(?int $userId = null): bool {
+    $currentUid = (int)getCurrentUserId();
+    $uid = (int)($userId ?: $currentUid);
+
+    if ($userId === null || $uid === $currentUid) {
+        if (isAdmin() || isSuperAdmin()) {
+            return true;
+        }
+    }
+
+    if ($uid <= 0) {
+        return false;
+    }
+
+    static $cacheTracking = [];
+    if (isset($cacheTracking[$uid])) {
+        return $cacheTracking[$uid];
+    }
+
+    try {
+        require_once __DIR__ . '/../modelo/conexion.php';
+        $db = (new Conexion())->conectar();
+        ensureMostrarTrackingColumn($db);
+
+        $stmt = $db->prepare("SELECT mostrar_tracking, email, nombre FROM usuarios WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $uid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row && array_key_exists('mostrar_tracking', $row) && $row['mostrar_tracking'] !== null) {
+            $val = ((int)$row['mostrar_tracking']) === 1;
+            $cacheTracking[$uid] = $val;
+            if ($uid === $currentUid) {
+                $_SESSION['mostrar_tracking'] = $val ? 1 : 0;
+            }
+            return $val;
+        }
+    } catch (\Throwable $e) {
+        // Fallback seguro si aún no existe la columna
+    }
+
+    // Fallback en caso de que la consulta falle: ocultar solo a IDs 21 y 26 (Panamá), permitir a Uruguay y demás
+    $defaultVal = !in_array($uid, [21, 26], true);
+    $cacheTracking[$uid] = $defaultVal;
+    return $defaultVal;
+}
+
+/**
  * Verifica si el usuario actual (o el indicado por $userId) corresponde
  * exclusivamente al perfil del proveedor de Ya Llegó El Salvador ("Proovedor Yall-Ego El Salvador")
  * al que le pertenece la integración con C807 Xpress.

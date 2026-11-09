@@ -24,9 +24,13 @@ class UsuarioModel {
     public function verificarCredenciales($email, $password) {
 
         $db = (new Conexion())->conectar();
+        require_once __DIR__ . '/../utils/permissions.php';
+        if (function_exists('ensureMostrarTrackingColumn')) {
+            ensureMostrarTrackingColumn($db);
+        }
 
     // No dependas de usuarios.id_rol: los roles se obtienen exclusivamente desde usuarios_roles
-    $sql = "SELECT id, nombre, contrasena, mostrar_courier, alias_courier FROM usuarios WHERE email = :email";
+    $sql = "SELECT id, nombre, contrasena, mostrar_courier, alias_courier, mostrar_tracking FROM usuarios WHERE email = :email";
         $stmt = $db->prepare($sql);
         $stmt->bindParam(':email', $email);
 
@@ -51,7 +55,8 @@ class UsuarioModel {
                 'Roles' => $roles['ids'],
                 'RolesNombres' => $roles['nombres'],
                 'mostrar_courier' => (int)($user['mostrar_courier'] ?? 0),
-                'alias_courier' => $user['alias_courier'] ?? null
+                'alias_courier' => $user['alias_courier'] ?? null,
+                'mostrar_tracking' => isset($user['mostrar_tracking']) ? (int)$user['mostrar_tracking'] : 1
             ];
         }
 
@@ -95,7 +100,8 @@ class UsuarioModel {
                     'Roles' => $roles['ids'],
                     'RolesNombres' => $roles['nombres'],
                     'mostrar_courier' => (int)($user['mostrar_courier'] ?? 0),
-                    'alias_courier' => $user['alias_courier'] ?? null
+                    'alias_courier' => $user['alias_courier'] ?? null,
+                    'mostrar_tracking' => isset($user['mostrar_tracking']) ? (int)$user['mostrar_tracking'] : 1
                 ];
             }
         }
@@ -144,8 +150,12 @@ class UsuarioModel {
     {
         try {
             $db = (new Conexion())->conectar();
+            require_once __DIR__ . '/../utils/permissions.php';
+            if (function_exists('ensureMostrarTrackingColumn')) {
+                ensureMostrarTrackingColumn($db);
+            }
             // Evitar seleccionar u.id_rol: esquema migrado a pivot usuarios_roles
-            $stmt = $db->prepare('SELECT u.id, u.nombre, u.telefono, u.email, u.id_pais, u.activo, u.id_estado, u.mostrar_courier, u.alias_courier FROM usuarios u WHERE u.id = :id');
+            $stmt = $db->prepare('SELECT u.id, u.nombre, u.telefono, u.email, u.id_pais, u.activo, u.id_estado, u.mostrar_courier, u.alias_courier, u.mostrar_tracking FROM usuarios u WHERE u.id = :id');
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
             return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -172,6 +182,10 @@ class UsuarioModel {
             $datosAnteriores = self::obtenerPorId($id);
             
             $db = (new Conexion())->conectar();
+            require_once __DIR__ . '/../utils/permissions.php';
+            if (function_exists('ensureMostrarTrackingColumn')) {
+                ensureMostrarTrackingColumn($db);
+            }
 
             $fields = [];
             $params = [];
@@ -230,6 +244,11 @@ class UsuarioModel {
                 $alias = !empty($data['alias_courier']) ? trim($data['alias_courier']) : null;
                 $fields[] = 'alias_courier = :alias_courier';
                 $params[':alias_courier'] = [$alias, $alias !== null ? PDO::PARAM_STR : PDO::PARAM_NULL];
+            }
+
+            if (array_key_exists('mostrar_tracking', $data)) {
+                $fields[] = 'mostrar_tracking = :mostrar_tracking';
+                $params[':mostrar_tracking'] = [!empty($data['mostrar_tracking']) ? 1 : 0, PDO::PARAM_INT];
             }
 
             if (!empty($data['contrasena'])) {
@@ -299,9 +318,13 @@ class UsuarioModel {
     {
         try {
             $db = (new Conexion())->conectar();
+            require_once __DIR__ . '/../utils/permissions.php';
+            if (function_exists('ensureMostrarTrackingColumn')) {
+                ensureMostrarTrackingColumn($db);
+            }
 
-            $sql = "INSERT INTO usuarios (nombre, email, contrasena, telefono, id_pais, activo, id_estado, mostrar_courier, alias_courier, created_at) 
-                    VALUES (:nombre, :email, :contrasena, :telefono, :id_pais, :activo, :id_estado, :mostrar_courier, :alias_courier, NOW())";
+            $sql = "INSERT INTO usuarios (nombre, email, contrasena, telefono, id_pais, activo, id_estado, mostrar_courier, alias_courier, mostrar_tracking, created_at) 
+                    VALUES (:nombre, :email, :contrasena, :telefono, :id_pais, :activo, :id_estado, :mostrar_courier, :alias_courier, :mostrar_tracking, NOW())";
             
             $stmt = $db->prepare($sql);
 
@@ -326,6 +349,9 @@ class UsuarioModel {
 
             $aliasCourier = !empty($data['alias_courier']) ? trim($data['alias_courier']) : null;
             $stmt->bindValue(':alias_courier', $aliasCourier, $aliasCourier !== null ? PDO::PARAM_STR : PDO::PARAM_NULL);
+
+            $mostrarTracking = isset($data['mostrar_tracking']) ? (int)$data['mostrar_tracking'] : 1;
+            $stmt->bindValue(':mostrar_tracking', $mostrarTracking, PDO::PARAM_INT);
 
             if ($stmt->execute()) {
                 $nuevoId = (int)$db->lastInsertId();
