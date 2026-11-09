@@ -147,6 +147,71 @@ if ($isAdmin) {
         </div>
     </div>
 
+    <!-- ── Panel de Ajuste de Tamaño de Etiqueta (Impresora) ────────────────── -->
+    <div class="card shadow-sm border-0 mb-3" style="border-radius:12px; border-left: 4px solid #0B4EA2 !important;">
+        <div class="card-body py-3 px-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-3 col-md-6">
+                    <label for="label_preset" class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-rulers text-primary me-1"></i> Formato / Impresora
+                    </label>
+                    <select id="label_preset" class="form-select form-select-sm">
+                        <option value="80|145|mm">Térmica 80 mm Estándar (80 × 145 mm)</option>
+                        <option value="4|6|in">Zebra / Envíos 4 × 6" (4 × 6 in)</option>
+                        <option value="4|4|in">Etiqueta Cuadrada 4 × 4" (4 × 4 in)</option>
+                        <option value="3|5|in">Etiqueta Mediana 3 × 5" (3 × 5 in)</option>
+                        <option value="2.25|4|in">Rollo Angosto 2.25 × 4" (2.25 × 4 in)</option>
+                        <option value="58|100|mm">Térmica 58 mm (58 × 100 mm)</option>
+                        <option value="10|15|cm">Logística 10 × 15 cm (10 × 15 cm)</option>
+                        <option value="custom">Personalizado (Ingresar medidas)</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-3 col-sm-6">
+                    <label for="label_unit" class="form-label small fw-bold text-secondary mb-1">Unidad de Medida</label>
+                    <select id="label_unit" class="form-select form-select-sm">
+                        <option value="mm" selected>Milímetros (mm)</option>
+                        <option value="cm">Centímetros (cm)</option>
+                        <option value="in">Pulgadas (in)</option>
+                        <option value="px">Píxeles (px)</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-3 col-md-5 col-sm-6">
+                    <label class="form-label small fw-bold text-secondary mb-1">Dimensiones (Ancho × Alto)</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light text-muted">Ancho</span>
+                        <input type="number" id="label_width" class="form-control text-center fw-semibold" value="80" min="1" max="5000" step="0.01">
+                        <button type="button" id="btnSwapLabelDims" class="btn btn-outline-secondary px-2" title="Intercambiar Ancho y Alto">
+                            <i class="bi bi-arrow-left-right"></i>
+                        </button>
+                        <span class="input-group-text bg-light text-muted">Alto</span>
+                        <input type="number" id="label_height" class="form-control text-center fw-semibold" value="145" min="1" max="5000" step="0.01">
+                    </div>
+                </div>
+
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <label for="label_fit" class="form-label small fw-bold text-secondary mb-1">Modo de Ajuste</label>
+                    <select id="label_fit" class="form-select form-select-sm">
+                        <option value="contain" selected>Adaptar contenido a la medida</option>
+                        <option value="fill">Estirar todo al 100%</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-2 col-md-4 col-sm-6 d-flex flex-column justify-content-end">
+                    <div class="d-flex align-items-center justify-content-between gap-1">
+                        <span class="badge bg-light text-primary border w-100 py-2 text-truncate" id="badgeLabelEquiv" title="Equivalencia en milímetros">
+                            80.0 × 145.0 mm
+                        </span>
+                        <button type="button" id="btnResetLabelDims" class="btn btn-outline-secondary btn-sm" title="Restablecer a 80 × 145 mm">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ── Barra de Acciones Masivas y Estadísticas ────────────────────────── -->
     <div class="card shadow-sm border-0 mb-3" style="border-radius:12px;">
         <div class="card-body p-3">
@@ -325,6 +390,148 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnBuscar = document.getElementById('btnBuscar');
     const btnRecargar = document.getElementById('btnRecargarTabla');
 
+    // Controles de Tamaño de Etiqueta
+    const selectLabelPreset = document.getElementById('label_preset');
+    const selectLabelUnit   = document.getElementById('label_unit');
+    const inputLabelWidth   = document.getElementById('label_width');
+    const inputLabelHeight  = document.getElementById('label_height');
+    const selectLabelFit    = document.getElementById('label_fit');
+    const btnSwapLabelDims  = document.getElementById('btnSwapLabelDims');
+    const btnResetLabelDims = document.getElementById('btnResetLabelDims');
+    const badgeLabelEquiv   = document.getElementById('badgeLabelEquiv');
+
+    const STORAGE_KEY_LABEL = 'paquetemaster_label_size_cfg_v1';
+    let currentUnit = 'mm';
+
+    function toMm(val, unit) {
+        const v = parseFloat(val) || 0;
+        if (unit === 'cm') return v * 10;
+        if (unit === 'in') return v * 25.4;
+        if (unit === 'px') return v * (25.4 / 96);
+        return v;
+    }
+
+    function fromMm(mmVal, unit) {
+        if (unit === 'cm') return +(mmVal / 10).toFixed(2);
+        if (unit === 'in') return +(mmVal / 25.4).toFixed(2);
+        if (unit === 'px') return Math.round(mmVal * (96 / 25.4));
+        return +mmVal.toFixed(1);
+    }
+
+    function getLabelConfig() {
+        const unit = selectLabelUnit.value || 'mm';
+        let w = parseFloat(inputLabelWidth.value);
+        let h = parseFloat(inputLabelHeight.value);
+        if (!w || w <= 0) w = fromMm(80, unit);
+        if (!h || h <= 0) h = fromMm(145, unit);
+        return {
+            width: w,
+            height: h,
+            unit: unit,
+            fit: selectLabelFit.value || 'contain'
+        };
+    }
+
+    function getLabelSummaryText() {
+        const cfg = getLabelConfig();
+        return `${cfg.width}×${cfg.height} ${cfg.unit}`;
+    }
+
+    function updateLabelUiAndPersist(syncPreset = true) {
+        const cfg = getLabelConfig();
+        const wMm = toMm(cfg.width, cfg.unit);
+        const hMm = toMm(cfg.height, cfg.unit);
+        const wIn = (wMm / 25.4).toFixed(2);
+        const hIn = (hMm / 25.4).toFixed(2);
+
+        badgeLabelEquiv.textContent = `${wMm.toFixed(1)} × ${hMm.toFixed(1)} mm (${wIn}×${hIn}")`;
+        badgeLabelEquiv.title = `Equivale a ${wMm.toFixed(1)} × ${hMm.toFixed(1)} mm | ${(wMm/10).toFixed(2)} × ${(hMm/10).toFixed(2)} cm | ${wIn} × ${hIn} in | ${Math.round(wMm * 96 / 25.4)} × ${Math.round(hMm * 96 / 25.4)} px`;
+
+        if (syncPreset) {
+            const candidate = `${cfg.width}|${cfg.height}|${cfg.unit}`;
+            let matched = false;
+            Array.from(selectLabelPreset.options).forEach(opt => {
+                if (opt.value === candidate) {
+                    selectLabelPreset.value = candidate;
+                    matched = true;
+                }
+            });
+            if (!matched) {
+                selectLabelPreset.value = 'custom';
+            }
+        }
+
+        // Actualizar texto en los botones de cada fila
+        const summary = getLabelSummaryText();
+        document.querySelectorAll('.lbl-btn-dim').forEach(el => {
+            el.textContent = summary;
+        });
+
+        try {
+            localStorage.setItem(STORAGE_KEY_LABEL, JSON.stringify(cfg));
+        } catch (e) {}
+    }
+
+    // Cargar configuración guardada del usuario si existe
+    (function loadSavedLabelConfig() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY_LABEL);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            if (saved && saved.unit && saved.width > 0 && saved.height > 0) {
+                selectLabelUnit.value  = saved.unit;
+                currentUnit            = saved.unit;
+                inputLabelWidth.value  = saved.width;
+                inputLabelHeight.value = saved.height;
+                if (saved.fit) selectLabelFit.value = saved.fit;
+                updateLabelUiAndPersist(true);
+            }
+        } catch (e) {}
+    })();
+
+    selectLabelPreset.addEventListener('change', function () {
+        if (this.value === 'custom') return;
+        const parts = this.value.split('|');
+        if (parts.length === 3) {
+            inputLabelWidth.value  = parseFloat(parts[0]);
+            inputLabelHeight.value = parseFloat(parts[1]);
+            selectLabelUnit.value  = parts[2];
+            currentUnit            = parts[2];
+            updateLabelUiAndPersist(false);
+        }
+    });
+
+    selectLabelUnit.addEventListener('change', function () {
+        const newUnit = this.value;
+        const wMm = toMm(inputLabelWidth.value, currentUnit);
+        const hMm = toMm(inputLabelHeight.value, currentUnit);
+        inputLabelWidth.value  = fromMm(wMm, newUnit);
+        inputLabelHeight.value = fromMm(hMm, newUnit);
+        currentUnit = newUnit;
+        updateLabelUiAndPersist(true);
+    });
+
+    inputLabelWidth.addEventListener('input', () => updateLabelUiAndPersist(true));
+    inputLabelHeight.addEventListener('input', () => updateLabelUiAndPersist(true));
+    selectLabelFit.addEventListener('change', () => updateLabelUiAndPersist(false));
+
+    btnSwapLabelDims.addEventListener('click', function () {
+        const tmp = inputLabelWidth.value;
+        inputLabelWidth.value  = inputLabelHeight.value;
+        inputLabelHeight.value = tmp;
+        updateLabelUiAndPersist(true);
+    });
+
+    btnResetLabelDims.addEventListener('click', function () {
+        selectLabelUnit.value   = 'mm';
+        currentUnit             = 'mm';
+        inputLabelWidth.value   = 80;
+        inputLabelHeight.value  = 145;
+        selectLabelFit.value    = 'contain';
+        selectLabelPreset.value = '80|145|mm';
+        updateLabelUiAndPersist(false);
+    });
+
     /**
      * Carga los pedidos en bodega desde la API
      */
@@ -499,8 +706,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     </td>
                     <td class="text-center">
                         <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-print-single px-2 py-1" data-id="${id}" title="Imprimir Etiqueta 80mm">
-                                <i class="bi bi-printer-fill me-1"></i> 80mm
+                            <button type="button" class="btn btn-print-single px-2 py-1" data-id="${id}" title="Imprimir Etiqueta (${escapeHtml(getLabelSummaryText())})">
+                                <i class="bi bi-printer-fill me-1"></i> <span class="lbl-btn-dim">${escapeHtml(getLabelSummaryText())}</span>
                             </button>
                             <a href="${RUTA_BASE}pedidos/ver/${id}" target="_blank" class="btn btn-outline-secondary px-2 py-1" title="Ver Detalle">
                                 <i class="bi bi-eye"></i>
@@ -666,12 +873,19 @@ document.addEventListener('DOMContentLoaded', function () {
         actualizarContadores();
     });
 
-    // Botón Imprimir Individual (80mm)
+    // Botón Imprimir Individual (con dimensiones configuradas)
     tbody.addEventListener('click', function (e) {
         const btn = e.target.closest('.btn-print-single');
         if (btn) {
             const id = btn.dataset.id;
-            window.open(RUTA_BASE + 'pedidos/etiqueta/' + id, '_blank');
+            const cfg = getLabelConfig();
+            const qs = new URLSearchParams({
+                width: cfg.width,
+                height: cfg.height,
+                unit: cfg.unit,
+                fit: cfg.fit
+            });
+            window.open(RUTA_BASE + 'pedidos/etiqueta/' + id + '?' + qs.toString(), '_blank');
         }
     });
 
@@ -680,6 +894,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (selectedIds.size === 0) return;
         
         const idsArray = Array.from(selectedIds);
+        const cfg = getLabelConfig();
         
         // Crear formulario dinámico para POST a nueva pestaña
         const form = document.createElement('form');
@@ -695,6 +910,14 @@ document.addEventListener('DOMContentLoaded', function () {
             form.appendChild(input);
         });
 
+        ['width', 'height', 'unit', 'fit'].forEach(k => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = k;
+            inp.value = cfg[k];
+            form.appendChild(inp);
+        });
+
         document.body.appendChild(form);
         form.submit();
         document.body.removeChild(form);
@@ -704,11 +927,16 @@ document.addEventListener('DOMContentLoaded', function () {
     btnImprimirTodoFiltro.addEventListener('click', function () {
         if (pedidosActuales.length === 0) return;
 
+        const cfg = getLabelConfig();
         const params = new URLSearchParams({
             fecha_desde: inputFechaDesde.value,
             fecha_hasta: inputFechaHasta.value,
             tipo_fecha: selectTipoFecha.value,
             search: inputSearch.value.trim(),
+            width: cfg.width,
+            height: cfg.height,
+            unit: cfg.unit,
+            fit: cfg.fit
         });
 
         if (IS_ADMIN && selectCliente && selectCliente.value) {

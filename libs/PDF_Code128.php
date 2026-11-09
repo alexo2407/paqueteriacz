@@ -289,4 +289,28 @@ class PDF_Code128 extends FPDF
             }
         }
     }
+
+    /**
+     * Inicia una transformación matricial PDF (escalado y traslación desde esquina superior izquierda)
+     * para adaptar el lienzo base de diseño al tamaño físico de la etiqueta de la impresora.
+     *
+     * @param float $scaleX Factor de escala horizontal
+     * @param float $scaleY Factor de escala vertical
+     * @param float $offsetX Desplazamiento horizontal en unidades de usuario (mm)
+     * @param float $offsetY Desplazamiento vertical desde arriba en unidades de usuario (mm)
+     */
+    public function startPageScale(float $scaleX, float $scaleY, float $offsetX = 0.0, float $offsetY = 0.0): void
+    {
+        $tx = $offsetX * $this->k;
+        $ty = ($this->h * (1.0 - $scaleY) - $offsetY) * $this->k;
+        $this->_out(sprintf('q %.6F 0 0 %.6F %.6F %.6F cm', $scaleX, $scaleY, $tx, $ty));
+    }
+
+    /**
+     * Finaliza la transformación matricial PDF activa.
+     */
+    public function stopPageScale(): void
+    {
+        $this->_out('Q');
+    }
 }

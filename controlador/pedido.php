@@ -2432,9 +2432,16 @@ class PedidosController
             ob_end_clean();
         }
 
+        $labelOptions = [
+            'width'  => $_REQUEST['width']  ?? $_REQUEST['w'] ?? null,
+            'height' => $_REQUEST['height'] ?? $_REQUEST['h'] ?? null,
+            'unit'   => $_REQUEST['unit']   ?? 'mm',
+            'fit'    => $_REQUEST['fit']    ?? 'contain',
+        ];
+
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="Etiqueta_Orden_' . ($pedidos[0]['numero_orden'] ?? $idPedido) . '.pdf"');
-        ThermalLabelService::generarPDF($pedidos, 'I');
+        ThermalLabelService::generarPDF($pedidos, 'I', $labelOptions);
         exit;
     }
 
@@ -2489,9 +2496,16 @@ class PedidosController
             ob_end_clean();
         }
 
+        $labelOptions = [
+            'width'  => $_REQUEST['width']  ?? $_REQUEST['w'] ?? null,
+            'height' => $_REQUEST['height'] ?? $_REQUEST['h'] ?? null,
+            'unit'   => $_REQUEST['unit']   ?? 'mm',
+            'fit'    => $_REQUEST['fit']    ?? 'contain',
+        ];
+
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="Etiquetas_Lote_' . date('Ymd_His') . '.pdf"');
-        ThermalLabelService::generarPDF($pedidos, 'I');
+        ThermalLabelService::generarPDF($pedidos, 'I', $labelOptions);
         exit;
     }
 }
