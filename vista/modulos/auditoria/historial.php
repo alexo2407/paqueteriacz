@@ -168,6 +168,18 @@ if ($agrupar) {
 // Obtener tablas y usuarios únicos para filtros
 $tablasUnicas = AuditoriaModel::obtenerTablasUnicas();
 $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
+
+// Obtener lista de estados de pedidos para la herramienta especial de Admin
+$estadosPedidosAdmin = [];
+if ($esAdmin) {
+    try {
+        require_once __DIR__ . '/../../../modelo/conexion.php';
+        $dbEst = (new Conexion())->conectar();
+        $estadosPedidosAdmin = $dbEst->query('SELECT id, nombre_estado FROM estados_pedidos ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        $estadosPedidosAdmin = [];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -320,9 +332,16 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                 <?php endif; ?>
             </p>
         </div>
-        <a href="<?php echo RUTA_URL; ?><?= $esAdmin ? 'dashboard' : 'logistica/dashboard' ?>" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left"></i> Volver
-        </a>
+        <div class="d-flex gap-2">
+            <?php if ($esAdmin): ?>
+            <button type="button" class="btn btn-warning fw-bold shadow-sm" id="btnAbrirAdminEstado" data-orden="<?php echo htmlspecialchars($pedidoFiltro); ?>">
+                <i class="bi bi-sliders"></i> Cambiar Estado de Pedido (Admin)
+            </button>
+            <?php endif; ?>
+            <a href="<?php echo RUTA_URL; ?><?= $esAdmin ? 'dashboard' : 'logistica/dashboard' ?>" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+        </div>
     </div>
 
     <?php if ($pedidoNoEncontrado): ?>
@@ -549,10 +568,19 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
                                 </span>
                             </td>
                             <td>
-                                <button class="btn btn-sm btn-outline-info btn-ver-detalle" type="button"
-                                        data-info='<?php echo htmlspecialchars($modalData, ENT_QUOTES, 'UTF-8'); ?>'>
-                                    <i class="bi bi-eye"></i> Ver
-                                </button>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-info btn-ver-detalle" type="button"
+                                            data-info='<?php echo htmlspecialchars($modalData, ENT_QUOTES, 'UTF-8'); ?>'>
+                                        <i class="bi bi-eye"></i> Ver
+                                    </button>
+                                    <?php if ($esAdmin && $reg['tabla'] === 'pedidos' && !empty($reg['numero_orden'])): ?>
+                                    <button class="btn btn-sm btn-outline-warning btn-cambiar-estado-fila" type="button"
+                                            title="Cambiar estado de la orden #<?php echo htmlspecialchars($reg['numero_orden']); ?>"
+                                            data-orden="<?php echo htmlspecialchars($reg['numero_orden']); ?>">
+                                        <i class="bi bi-sliders"></i>
+                                    </button>
+                                    <?php endif; ?>
+                                </div>
                             </td>
                             <?php if ($esAdmin): ?>
                             <td><small class="text-muted"><?php echo htmlspecialchars($reg['ip_address'] ?? 'N/A'); ?></small></td>
@@ -660,6 +688,127 @@ $usuarios = AuditoriaModel::obtenerUsuariosConAuditoria();
     </div>
 </div>
 
+<?php if ($esAdmin): ?>
+<!-- ════════════════════════════════════════════════════════════════════════
+     MODAL ESPECIAL ADMIN: CAMBIAR ESTADO Y RECONSTRUIR HISTORIAL POR ORDEN
+     ════════════════════════════════════════════════════════════════════════ -->
+<div class="modal fade" id="modalAdminCambiarEstado" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:12px;overflow:hidden;border:none;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+            <div class="modal-header audit-header py-3">
+                <div>
+                    <span style="font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;opacity:.75;font-weight:600">
+                        <i class="bi bi-shield-lock-fill text-warning"></i> Herramienta Especial de Administrador
+                    </span>
+                    <h5 class="modal-title mb-0" style="font-size:1.05rem;font-weight:700">
+                        Cambiar Estado y Ajustar Historial de Pedidos
+                    </h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="adminEstadoAlert" class="alert d-none mb-3" role="alert"></div>
+
+                <!-- Paso 1: Números de orden -->
+                <div class="mb-3">
+                    <label for="adminNumerosOrden" class="form-label fw-bold">
+                        <i class="bi bi-box-seam text-primary"></i> Número(s) de Orden
+                    </label>
+                    <div class="input-group">
+                        <textarea id="adminNumerosOrden" class="form-control font-monospace" rows="2"
+                                  placeholder="Ej: 1587154, 1587642 o 11643854 (separados por coma, espacio o salto de línea)"></textarea>
+                        <button class="btn btn-outline-primary fw-semibold px-3" type="button" id="btnAdminConsultarOrden">
+                            <i class="bi bi-search"></i> Consultar
+                        </button>
+                    </div>
+                    <div class="form-text">Puedes ingresar uno o varios números de orden al mismo tiempo.</div>
+                </div>
+
+                <!-- Vista previa de pedidos encontrados -->
+                <div id="adminPreviewContainer" class="mb-3 d-none">
+                    <div class="card border-info bg-light">
+                        <div class="card-header bg-info text-dark py-2 fw-bold small d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-card-checklist"></i> Pedidos encontrados e historial actual</span>
+                            <span id="adminPreviewCount" class="badge bg-dark">0</span>
+                        </div>
+                        <div class="card-body p-2" id="adminPreviewBody" style="max-height:220px;overflow-y:auto;font-size:.85rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="my-3">
+
+                <!-- Paso 2: Nuevo estado y opciones de historial -->
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="adminNuevoEstado" class="form-label fw-bold">
+                            <i class="bi bi-flag-fill text-success"></i> Nuevo Estado Destino
+                        </label>
+                        <select id="adminNuevoEstado" class="form-select">
+                            <option value="">— Seleccionar estado —</option>
+                            <?php foreach ($estadosPedidosAdmin as $est): ?>
+                                <option value="<?php echo (int)$est['id']; ?>" data-nombre="<?php echo htmlspecialchars($est['nombre_estado']); ?>">
+                                    [ID <?php echo (int)$est['id']; ?>] <?php echo htmlspecialchars($est['nombre_estado']); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="adminObservaciones" class="form-label fw-bold">
+                            <i class="bi bi-chat-left-text text-secondary"></i> Observación en Historial <small class="text-muted fw-normal">(opcional)</small>
+                        </label>
+                        <input type="text" id="adminObservaciones" class="form-control"
+                               placeholder="Por defecto usa el nombre del estado">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label fw-bold mb-2">
+                            <i class="bi bi-clock-history text-primary"></i> ¿Cómo deseas que quede el Historial de Estados?
+                        </label>
+                        <div class="list-group">
+                            <label class="list-group-item d-flex gap-3 align-items-start" style="cursor:pointer">
+                                <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="adminModoHistorial" value="limpio_bodega" checked>
+                                <span>
+                                    <strong class="d-block text-dark">Reconstruir historial limpio: <code>En bodega</code> ➝ <code>Nuevo Estado</code> (Recomendado)</strong>
+                                    <small class="text-muted">
+                                        Elimina estados anteriores erróneos (por ejemplo, si estaba en <em>Entregado</em>) y deja únicamente <strong>En bodega</strong> (con su fecha de ingreso) seguido del <strong>Nuevo Estado</strong> seleccionado.
+                                    </small>
+                                </span>
+                            </label>
+                            <label class="list-group-item d-flex gap-3 align-items-start" style="cursor:pointer">
+                                <input class="form-check-input flex-shrink-0 mt-1" type="radio" name="adminModoHistorial" value="agregar">
+                                <span>
+                                    <strong class="d-block text-dark">Conservar historial actual y solo agregar el nuevo estado</strong>
+                                    <small class="text-muted">
+                                        Mantiene todos los eventos anteriores del pedido en la línea de tiempo y agrega el cambio al nuevo estado.
+                                    </small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="adminDispararWebhook">
+                            <label class="form-check-label small text-muted" for="adminDispararWebhook">
+                                Notificar también por Webhook al cliente externo (dejar desmarcado para ajuste silencioso en base de datos)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light" style="border-top:1px solid #e9ecef;padding:12px 20px">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary fw-bold px-4" id="btnAdminAplicarEstado">
+                    <i class="bi bi-check2-circle"></i> Aplicar Cambio de Estado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <?php include __DIR__ . '/../../includes/footer.php'; ?>
 
 <script>
@@ -763,6 +912,161 @@ $(document).ready(function () {
     });
 
     function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+    <?php if ($esAdmin): ?>
+    /* ══════════════════════════════════════════════════════════════════
+       LÓGICA DEL MODAL ESPECIAL DE CAMBIO DE ESTADO (ADMIN)
+       ══════════════════════════════════════════════════════════════════ */
+    var adminAjaxUrl = '<?php echo RUTA_URL; ?>ajax/admin_cambiar_estado.php';
+
+    function mostrarAlertaAdmin(tipo, htmlMsg) {
+        var $al = $('#adminEstadoAlert');
+        $al.removeClass('d-none alert-success alert-danger alert-warning alert-info')
+           .addClass('alert-' + tipo)
+           .html(htmlMsg);
+    }
+
+    function consultarPedidosAdmin() {
+        var raw = $('#adminNumerosOrden').val().trim();
+        if (!raw) {
+            mostrarAlertaAdmin('warning', '<i class="bi bi-exclamation-triangle-fill me-1"></i> Ingresa al menos un número de orden para consultar.');
+            return;
+        }
+        $('#adminEstadoAlert').addClass('d-none');
+        var $btn = $('#btnAdminConsultarOrden');
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+        $.ajax({
+            url: adminAjaxUrl,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ action: 'preview', numeros_orden: raw }),
+            success: function (res) {
+                $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Consultar');
+                if (!res || !res.success) {
+                    mostrarAlertaAdmin('danger', (res && res.message) ? res.message : 'Error al consultar.');
+                    $('#adminPreviewContainer').addClass('d-none');
+                    return;
+                }
+
+                var html = '';
+                var pedidos = res.pedidos || [];
+                $('#adminPreviewCount').text(pedidos.length);
+
+                if (res.no_encontrados && res.no_encontrados.length > 0) {
+                    html += '<div class="alert alert-warning py-1 px-2 mb-2 small">' +
+                            '<i class="bi bi-exclamation-circle"></i> No encontrados: <strong>' +
+                            res.no_encontrados.join(', ') + '</strong></div>';
+                }
+
+                if (pedidos.length === 0) {
+                    html += '<div class="text-muted text-center py-2">No se encontraron pedidos con esos números de orden.</div>';
+                } else {
+                    pedidos.forEach(function (p) {
+                        var histBadges = '';
+                        if (p.historial && p.historial.length > 0) {
+                            histBadges = p.historial.map(function (h) {
+                                return '<span class="badge bg-secondary me-1">' +
+                                       (h.estado_nuevo || h.id_estado_nuevo) +
+                                       ' <small class="opacity-75">(' + (h.created_at || '').substring(0, 16) + ')</small></span>';
+                            }).join('<i class="bi bi-arrow-left text-muted me-1"></i>');
+                        } else {
+                            histBadges = '<span class="text-muted fst-italic">Sin registros en historial</span>';
+                        }
+
+                        html += '<div class="border rounded bg-white p-2 mb-2">' +
+                                '<div class="d-flex justify-content-between align-items-center">' +
+                                '<div><strong>Orden #' + p.numero_orden + '</strong> <small class="text-muted">(ID: ' + p.id + ')</small> &mdash; ' +
+                                '<span>' + (p.destinatario || 'Sin destinatario') + '</span></div>' +
+                                '<span class="badge bg-primary">Estado actual: ' + (p.nombre_estado || p.id_estado) + '</span>' +
+                                '</div>' +
+                                '<div class="mt-1 small text-muted">Historial actual (reciente ➝ antiguo): ' + histBadges + '</div>' +
+                                '</div>';
+                    });
+                }
+
+                $('#adminPreviewBody').html(html);
+                $('#adminPreviewContainer').removeClass('d-none');
+            },
+            error: function (xhr) {
+                $btn.prop('disabled', false).html('<i class="bi bi-search"></i> Consultar');
+                var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error de red al consultar pedidos.';
+                mostrarAlertaAdmin('danger', msg);
+            }
+        });
+    }
+
+    $('#btnAbrirAdminEstado').on('click', function () {
+        var ordenFiltro = ($(this).data('orden') || '').toString().trim();
+        $('#adminEstadoAlert').addClass('d-none');
+        if (ordenFiltro) {
+            $('#adminNumerosOrden').val(ordenFiltro);
+            consultarPedidosAdmin();
+        }
+        new bootstrap.Modal(document.getElementById('modalAdminCambiarEstado')).show();
+    });
+
+    $(document).on('click', '.btn-cambiar-estado-fila', function () {
+        var orden = ($(this).data('orden') || '').toString().trim();
+        $('#adminEstadoAlert').addClass('d-none');
+        $('#adminNumerosOrden').val(orden);
+        consultarPedidosAdmin();
+        new bootstrap.Modal(document.getElementById('modalAdminCambiarEstado')).show();
+    });
+
+    $('#btnAdminConsultarOrden').on('click', function () {
+        consultarPedidosAdmin();
+    });
+
+    $('#btnAdminAplicarEstado').on('click', function () {
+        var rawOrdenes = $('#adminNumerosOrden').val().trim();
+        var idEstado   = $('#adminNuevoEstado').val();
+        var modoHist   = $('input[name="adminModoHistorial"]:checked').val();
+        var obs        = $('#adminObservaciones').val().trim();
+        var webhook    = $('#adminDispararWebhook').is(':checked');
+
+        if (!rawOrdenes) {
+            mostrarAlertaAdmin('warning', '<i class="bi bi-exclamation-triangle-fill me-1"></i> Ingresa al menos un número de orden.');
+            return;
+        }
+        if (!idEstado) {
+            mostrarAlertaAdmin('warning', '<i class="bi bi-exclamation-triangle-fill me-1"></i> Selecciona el nuevo estado destino.');
+            return;
+        }
+
+        var $btn = $(this);
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Aplicando...');
+
+        $.ajax({
+            url: adminAjaxUrl,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                action: 'apply',
+                numeros_orden: rawOrdenes,
+                id_estado_nuevo: parseInt(idEstado, 10),
+                modo_historial: modoHist,
+                observaciones: obs,
+                disparar_webhook: webhook
+            }),
+            success: function (res) {
+                $btn.prop('disabled', false).html('<i class="bi bi-check2-circle"></i> Aplicar Cambio de Estado');
+                if (!res || !res.success) {
+                    mostrarAlertaAdmin('danger', '<i class="bi bi-x-circle-fill me-1"></i> ' + ((res && res.message) ? res.message : 'No se pudo actualizar.'));
+                    return;
+                }
+
+                mostrarAlertaAdmin('success', '<i class="bi bi-check-circle-fill me-1"></i> ' + res.message);
+                consultarPedidosAdmin();
+            },
+            error: function (xhr) {
+                $btn.prop('disabled', false).html('<i class="bi bi-check2-circle"></i> Aplicar Cambio de Estado');
+                var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al procesar la solicitud.';
+                mostrarAlertaAdmin('danger', '<i class="bi bi-x-circle-fill me-1"></i> ' + msg);
+            }
+        });
+    });
+    <?php endif; ?>
 });
 </script>
 </body>
